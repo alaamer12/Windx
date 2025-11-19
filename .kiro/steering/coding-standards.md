@@ -1132,6 +1132,102 @@ async def endpoint(data: Data, repo: Repo, db: DBSession):
 6. **Log with context** - Include request info
 7. **Test error cases** - Verify error handling works
 
+## Middleware Best Practices
+
+### Middleware Order
+
+- **ALWAYS** maintain proper middleware order for security
+- First middleware = last to execute
+- Last middleware = first to execute
+
+```python
+# ✅ CORRECT - Proper order
+def setup_middleware(app: FastAPI, settings: Settings):
+    app.add_middleware(RequestSizeLimitMiddleware)  # 1. Check size first
+    app.add_middleware(TrustedHostMiddleware)       # 2. Validate host
+    app.add_middleware(HTTPSRedirectMiddleware)     # 3. Force HTTPS
+    app.add_middleware(CORSMiddleware)              # 4. Handle CORS
+    app.add_middleware(SecurityHeadersMiddleware)   # 5. Add headers
+    app.add_middleware(GZipMiddleware)              # 6. Compress
+    app.add_middleware(RequestIDMiddleware)         # 7. Track requests
+    app.add_middleware(LoggingMiddleware)           # 8. Log everything
+
+# ❌ WRONG - Random order
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware)  # Should be first!
+```
+
+### Custom Middleware
+
+- Inherit from `BaseHTTPMiddleware` for simple middleware
+- Use `__init__` for configuration
+- Use `dispatch` method for request/response handling
+- Always call `await call_next(request)`
+
+```python
+# ✅ CORRECT
+class CustomMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app: ASGIApp, *, config: str) -> None:
+        super().__init__(app)
+        self.config = config
+    
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        # Pre-processing
+        request.state.custom = self.config
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Post-processing
+        response.headers["X-Custom"] = self.config
+        
+        return response
+
+# ❌ WRONG - Missing await
+async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    response = call_next(request)  # Missing await!
+    return response
+```
+
+### Security Headers
+
+- **ALWAYS** add OWASP security headers
+- Use HSTS in production
+- Customize CSP for your needs
+- Never disable security headers
+
+```python
+# ✅ CORRECT
+app.add_middleware(
+    SecurityHeadersMiddleware,
+    hsts_max_age=31536000,  # 1 year
+)
+
+# ❌ WRONG - No security headers
+# Missing security middleware entirely
+```
+
+### Request Tracking
+
+- **ALWAYS** use Request ID middleware
+- Access via `request.state.request_id`
+- Include in logs and errors
+- Return in response headers
+
+```python
+# ✅ CORRECT
+@router.get("/endpoint")
+async def endpoint(request: Request):
+    request_id = request.state.request_id
+    logger.info(f"Processing {request_id}")
+    return {"request_id": request_id}
+
+# ❌ WRONG - No request tracking
+@router.get("/endpoint")
+async def endpoint():
+    logger.info("Processing request")  # No correlation ID!
+```
+
 ## Questions?
 
 When in doubt:
@@ -1143,3 +1239,4 @@ When in doubt:
 6. Check `docs/DATABASE_SETUP.md` for database configuration
 7. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features
 8. Check `docs/EXCEPTION_HANDLING.md` for error handling patterns
+9. Check `docs/MIDDLEWARE_SECURITY.md` for middleware and security best practices

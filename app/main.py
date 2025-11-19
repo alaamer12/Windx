@@ -19,7 +19,6 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 
 from app.api.v1.router import api_router
@@ -28,8 +27,9 @@ from app.core.config import Settings, get_settings
 from app.core.database import close_db, init_db
 from app.core.exceptions import setup_exception_handlers
 from app.core.limiter import close_limiter, init_limiter
+from app.core.middleware import setup_middleware
 
-__all__ = ["app", "root", "health_check", "configure_cors", "lifespan"]
+__all__ = ["app", "root", "health_check", "lifespan"]
 
 
 @asynccontextmanager
@@ -104,26 +104,11 @@ async def health_check(
     }
 
 
-def configure_cors(application: FastAPI, settings: Settings) -> None:
-    """Configure CORS middleware.
-
-    Args:
-        application (FastAPI): FastAPI application instance
-        settings (Settings): Application settings
-    """
-    if settings.backend_cors_origins:
-        application.add_middleware(
-            CORSMiddleware,
-            allow_origins=[str(origin) for origin in settings.backend_cors_origins],
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
-
-
-# Configure CORS
+# Get settings
 settings = get_settings()
-configure_cors(app, settings)
+
+# Setup middleware (includes CORS, security headers, logging, etc.)
+setup_middleware(app, settings)
 
 # Setup exception handlers
 setup_exception_handlers(app)

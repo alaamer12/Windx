@@ -18,24 +18,27 @@ Features:
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi_cache.decorator import cache
 from pydantic import PositiveInt
 
 from app.api.types import CurrentSuperuser, CurrentUser, DBSession
-from app.core.cache import get_cache_namespace
 from app.core.limiter import rate_limit
 from app.core.pagination import Page, PaginationParams, create_pagination_params
-
-# Add pagination params dependency
-PaginationParams = Annotated[PaginationParams, Depends(create_pagination_params)]
 from app.models.user import User
+from app.schemas.responses import get_common_responses
 from app.schemas.user import User as UserSchema
 from app.schemas.user import UserUpdate
 
+# Add pagination params dependency
+PaginationParams = Annotated[PaginationParams, Depends(create_pagination_params)]
+
 __all__ = ["router"]
 
-router = APIRouter()
+router = APIRouter(
+    tags=["Users"],
+    responses=get_common_responses(401, 403, 500),
+)
 
 
 @router.get("/", response_model=Page[UserSchema])

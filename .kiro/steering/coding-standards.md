@@ -369,6 +369,76 @@ hashed_password = get_password_hash(user_in.password)
 - Use plural nouns for resource endpoints (`/users`, not `/user`)
 - Use proper HTTP methods (GET, POST, PATCH, DELETE)
 
+### Router Configuration
+- **ALWAYS** configure router with tags and common responses
+- Use descriptive tags for OpenAPI grouping
+- Include common error responses at router level
+
+```python
+# ✅ CORRECT - Router with configuration
+from app.schemas.responses import get_common_responses
+
+router = APIRouter(
+    tags=["Users"],
+    responses=get_common_responses(401, 403, 500),
+)
+
+# ❌ WRONG - No configuration
+router = APIRouter()
+```
+
+### Endpoint Documentation
+- **ALWAYS** include `summary`, `description`, `response_description`, `operation_id`
+- **ALWAYS** provide response examples for success cases
+- **ALWAYS** include common error responses with `**get_common_responses()`
+
+```python
+# ✅ CORRECT - Complete OpenAPI documentation
+@router.post(
+    "/users",
+    response_model=UserSchema,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create New User",
+    description="Create a new user account with email and password.",
+    response_description="Successfully created user",
+    operation_id="createUser",
+    responses={
+        201: {
+            "description": "User successfully created",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "email": "user@example.com",
+                        "username": "john_doe"
+                    }
+                }
+            }
+        },
+        409: {
+            "description": "Email already exists",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "Email already registered",
+                        "details": [{"detail": "Email is already in use"}]
+                    }
+                }
+            }
+        },
+        **get_common_responses(422, 500)
+    }
+)
+async def create_user(user_in: UserCreate, db: DBSession) -> User:
+    """Create a new user."""
+    pass
+
+# ❌ WRONG - No documentation
+@router.post("/users")
+async def create_user(user_in: UserCreate):
+    pass
+```
+
 ### Response Models
 - **ALWAYS** specify `response_model` in decorators
 - Use proper status codes (`status.HTTP_201_CREATED`, etc.)
@@ -383,17 +453,23 @@ async def create_user(user_in: UserCreate) -> User:
 ```
 
 ### Error Handling
-- Use `HTTPException` for all errors
+- Use domain exceptions (not HTTPException directly)
 - Include descriptive error messages
 - Use proper HTTP status codes
-- Include `detail` parameter
+- Errors are handled by global exception handlers
 
 ```python
-# ✅ CORRECT
-raise HTTPException(
-    status_code=status.HTTP_404_NOT_FOUND,
-    detail="User not found",
-)
+# ✅ CORRECT - Use domain exceptions
+from app.core.exceptions import NotFoundException, ConflictException
+
+if not user:
+    raise NotFoundException(resource="User", details={"user_id": user_id})
+
+if await user_repo.get_by_email(email):
+    raise ConflictException(message="Email already exists", details={"email": email})
+
+# ❌ WRONG - Direct HTTPException
+raise HTTPException(status_code=404, detail="User not found")
 ```
 
 ## File Organization
@@ -1365,6 +1441,78 @@ class UserRepository:
     async def get_by_email(self, email: str) -> User | None:
         result = await self.db.execute(...)
         return result.scalar_one_or_none()
+```
+
+## OpenAPI Response Models
+
+### Use Standard Response Models
+- **ALWAYS** use `get_common_responses()` for consistent error responses
+- **ALWAYS** configure router with common responses
+- **ALWAYS** add detailed OpenAPI documentation to endpoints
+
+```python
+# ✅ CORRECT - Router with common responses
+from app.schemas.responses import get_common_responses
+
+router = APIRouter(
+    tags=["MyFeature"],
+    responses=get_common_responses(401, 500),
+)
+
+# ✅ CORRECT - Endpoint with detailed OpenAPI docs
+@router.get(
+    "/endpoint",
+    response_model=MySchema,
+    summary="Short description",
+    description="Detailed description of what this endpoint does.",
+    response_description="What the response contains",
+    operation_id="uniqueOperationId",
+    responses={
+        200: {
+            "description": "Success case description",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Example"
+                    }
+                }
+            }
+        },
+        **get_common_responses(401, 404, 500)
+    }
+)
+async def my_endpoint():
+    pass
+
+# ❌ WRONG - No OpenAPI documentation
+@router.get("/endpoint")
+async def my_endpoint():
+    pass
+```
+
+### Standard Error Response Format
+- **ALWAYS** use `ErrorResponse` and `ErrorDetail` models
+- Errors should include message, details, and request_id
+
+```python
+# ✅ CORRECT - Standard error format
+{
+    "message": "Validation Error",
+    "details": [
+        {
+            "detail": "Field is required",
+            "error_code": "VALUE_ERROR_MISSING",
+            "field": "email"
+        }
+    ],
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+
+# ❌ WRONG - Inconsistent error format
+{
+    "error": "Something went wrong"
+}
 ```
 
 ## Testing Standards

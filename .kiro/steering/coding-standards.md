@@ -568,6 +568,154 @@ Available Methods:
 5. **Documentation**: Docstrings provide inline help
 6. **Maintainability**: Change dependency in one place
 
+## Performance Optimization
+
+### Caching with fastapi-cache2
+
+- **ALWAYS** cache read-only endpoints that don't change frequently
+- Use appropriate TTL (Time To Live) based on data volatility
+- Invalidate cache when data is updated
+- Use Redis for distributed caching
+
+```python
+# ✅ CORRECT - Cache read operations
+from fastapi_cache.decorator import cache
+
+@router.get("/users/{user_id}")
+@cache(expire=300)  # Cache for 5 minutes
+async def get_user(user_id: int, user_repo: UserRepo) -> User:
+    return await user_repo.get(user_id)
+
+# ✅ CORRECT - Invalidate cache on update
+@router.patch("/users/{user_id}")
+async def update_user(user_id: int, user_update: UserUpdate, user_repo: UserRepo):
+    user = await user_repo.update(user_id, user_update)
+    await invalidate_cache(f"*get_user*{user_id}*")
+    return user
+
+# ❌ WRONG - Don't cache write operations
+@router.post("/users")
+@cache(expire=300)  # Wrong!
+async def create_user(user_in: UserCreate):
+    pass
+```
+
+### Rate Limiting with fastapi-limiter
+
+- **ALWAYS** add rate limiting to public endpoints
+- Use stricter limits for sensitive operations (login, register)
+- Use per-user rate limiting when possible
+- Configure appropriate time windows
+
+```python
+# ✅ CORRECT - Rate limit sensitive endpoints
+from app.core.limiter import rate_limit
+
+@router.post(
+    "/login",
+    dependencies=[Depends(rate_limit(times=10, seconds=300))]  # 10 per 5 min
+)
+async def login(login_data: LoginRequest):
+    pass
+
+@router.post(
+    "/register",
+    dependencies=[Depends(rate_limit(times=5, seconds=3600))]  # 5 per hour
+)
+async def register(user_in: UserCreate):
+    pass
+
+# ✅ CORRECT - Rate limit read endpoints
+@router.get(
+    "/users/{user_id}",
+    dependencies=[Depends(rate_limit(times=20, seconds=60))]  # 20 per minute
+)
+async def get_user(user_id: int):
+    pass
+
+# ❌ WRONG - No rate limiting on public endpoint
+@router.post("/login")
+async def login(login_data: LoginRequest):  # Vulnerable to brute force!
+    pass
+```
+
+### Pagination with fastapi-pagination
+
+- **ALWAYS** paginate list endpoints
+- Use `Page[T]` response model for paginated responses
+- Set reasonable default and maximum page sizes
+- Use `PaginationParams` dependency
+
+```python
+# ✅ CORRECT - Paginated list endpoint
+from app.core.pagination import Page, PaginationParams
+
+@router.get("/users", response_model=Page[UserSchema])
+async def list_users(
+    params: Annotated[PaginationParams, Depends(create_pagination_params)],
+    db: DBSession,
+) -> Page[User]:
+    query = select(User).order_by(User.created_at.desc())
+    return await paginate(query, params)
+
+# Response:
+# {
+#   "items": [...],
+#   "total": 100,
+#   "page": 1,
+#   "size": 50,
+#   "pages": 2
+# }
+
+# ❌ WRONG - No pagination on list endpoint
+@router.get("/users", response_model=list[UserSchema])
+async def list_users(user_repo: UserRepo) -> list[User]:
+    return await user_repo.get_multi()  # Could return thousands!
+```
+
+### Cache Configuration
+
+```python
+# Cache settings in .env
+CACHE_ENABLED=True
+CACHE_REDIS_HOST=localhost
+CACHE_REDIS_PORT=6379
+CACHE_REDIS_DB=0
+CACHE_PREFIX=myapi:cache
+CACHE_DEFAULT_TTL=300  # 5 minutes
+
+# Different TTLs for different data
+@cache(expire=60)    # 1 minute - frequently changing
+@cache(expire=300)   # 5 minutes - moderate
+@cache(expire=3600)  # 1 hour - rarely changing
+```
+
+### Rate Limit Configuration
+
+```python
+# Rate limiter settings in .env
+LIMITER_ENABLED=True
+LIMITER_REDIS_HOST=localhost
+LIMITER_REDIS_PORT=6379
+LIMITER_REDIS_DB=1
+LIMITER_PREFIX=myapi:limiter
+
+# Different limits for different operations
+rate_limit(times=5, seconds=3600)    # Registration: 5 per hour
+rate_limit(times=10, seconds=300)    # Login: 10 per 5 minutes
+rate_limit(times=20, seconds=60)     # Read: 20 per minute
+rate_limit(times=10, seconds=60)     # Write: 10 per minute
+```
+
+### Performance Best Practices
+
+1. **Cache Read Operations**: Cache GET endpoints with appropriate TTL
+2. **Invalidate on Write**: Clear cache when data changes
+3. **Rate Limit All Endpoints**: Protect against abuse
+4. **Paginate Lists**: Never return unbounded lists
+5. **Use Redis**: For distributed caching and rate limiting
+6. **Monitor Performance**: Track cache hit rates and rate limit violations
+
 ## Database Provider Switching
 
 ### Configuration

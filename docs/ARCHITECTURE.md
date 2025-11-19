@@ -1,139 +1,470 @@
-# Backend API Architecture
+# Application Architecture
 
 ## Overview
 
-Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase), and repository pattern.
+This application follows a **layered architecture** with clear separation of concerns, implementing the **Repository Pattern** with a **Service Layer** for business logic.
 
-## Project Structure
+## Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      API Layer (HTTP)                        │
+│  - Endpoints (FastAPI routes)                               │
+│  - Request/Response handling                                │
+│  - HTTP status codes                                        │
+│  - OpenAPI documentation                                    │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│                    Service Layer                             │
+│  - Business logic                                           │
+│  - Transaction management                                   │
+│  - Validation rules                                         │
+│  - Complex operations                                       │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│                  Repository Layer                            │
+│  - Data access only                                         │
+│  - CRUD operations                                          │
+│  - Custom queries                                           │
+│  - No business logic                                        │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│                   Database Layer                             │
+│  - Connection management                                    │
+│  - Session lifecycle                                        │
+│  - ORM models                                               │
+│  - Migrations                                               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Directory Structure
 
 ```
 app/
-├── __init__.py              # Main package with Google-style docstring
-├── main.py                  # FastAPI application entry point
-├── core/                    # Core functionality
+├── api/                    # API Layer
+│   ├── deps.py            # FastAPI dependencies
+│   ├── types.py           # Type aliases for dependencies
+│   └── v1/                # API version 1
+│       ├── endpoints/     # Route handlers
+│       │   ├── auth.py    # Authentication endpoints
+│       │   └── users.py   # User endpoints
+│       └── router.py      # API router configuration
+│
+├── services/              # Service Layer (Business Logic)
 │   ├── __init__.py
-│   ├── config.py           # Settings with lru_cache, composed Pydantic models
-│   ├── database.py         # Database connection, session management
-│   └── security.py         # Password hashing, JWT tokens
-├── models/                  # SQLAlchemy ORM models
+│   ├── base.py           # Base service class
+│   ├── auth.py           # Authentication service
+│   ├── user.py           # User service
+│   └── session.py        # Session service
+│
+├── repositories/          # Repository Layer (Data Access)
 │   ├── __init__.py
-│   ├── user.py             # User model with Mapped columns
-│   └── session.py          # Session model with Mapped columns
-├── schemas/                 # Pydantic schemas (composed)
+│   ├── base.py           # Base repository class
+│   ├── user.py           # User repository
+│   └── session.py        # Session repository
+│
+├── database/              # Database Layer
 │   ├── __init__.py
-│   ├── user.py             # User schemas with semantic types
-│   └── session.py          # Session schemas
-├── repositories/            # Repository pattern
+│   ├── base.py           # Declarative base
+│   ├── connection.py     # Connection & session management
+│   └── utils.py          # Database utilities
+│
+├── models/                # ORM Models
 │   ├── __init__.py
-│   ├── base.py             # Generic base repository
-│   ├── user.py             # User repository
-│   └── session.py          # Session repository
-└── api/                     # API layer
-    ├── __init__.py
-    ├── deps.py             # Dependency injection
-    └── v1/
-        ├── __init__.py
-        ├── router.py       # API router
-        └── endpoints/
-            ├── __init__.py
-            ├── auth.py     # Authentication endpoints
-            └── users.py    # User management endpoints
+│   ├── user.py           # User model
+│   └── session.py        # Session model
+│
+├── schemas/               # Pydantic Schemas
+│   ├── __init__.py
+│   ├── user.py           # User schemas
+│   └── session.py        # Session schemas
+│
+├── core/                  # Core Functionality
+│   ├── config.py         # Configuration
+│   ├── security.py       # Security utilities
+│   ├── exceptions.py     # Exception handling
+│   ├── middleware.py     # Middleware
+│   ├── cache.py          # Caching
+│   ├── limiter.py        # Rate limiting
+│   └── pagination.py     # Pagination
+│
+└── main.py               # Application entry point
 ```
 
-## Key Features
+## Layer Responsibilities
 
-### ✅ Repository Pattern
-- Clean separation of data access logic
-- Generic base repository with CRUD operations
-- Type-safe async operations
+### 1. API Layer (`app/api/`)
 
-### ✅ Full Type Hinting
-- Using `Annotated` with FastAPI, SQLAlchemy, Pydantic
-- All functions, methods, and classes fully typed
-- Type parameters in docstrings
+**Purpose**: Handle HTTP requests and responses
 
-### ✅ Pydantic Semantic Types
-- `PositiveInt` instead of `int` with manual validation
-- `EmailStr` for email validation
-- Custom field validators
+**Responsibilities**:
+- Route definition and HTTP method handling
+- Request validation (via Pydantic)
+- Response formatting
+- HTTP status codes
+- OpenAPI documentation
+- Dependency injection
 
-### ✅ Composed Pydantic Models
-- Separate Base/Create/Update/InDB schemas
-- No monolithic classes
-- Reusable schema composition
+**Rules**:
+- ✅ Call service layer methods
+- ✅ Handle HTTP-specific concerns
+- ✅ Return Pydantic schemas
+- ❌ No business logic
+- ❌ No direct database access
+- ❌ No direct repository calls
 
-### ✅ SQLAlchemy Mapped Columns
-- Modern SQLAlchemy 2.0 style
-- Type-safe column definitions
-- Relationship management
+**Example**:
+```python
+@router.post("/users", response_model=UserSchema, status_code=201)
+async def create_user(
+    user_in: UserCreate,
+    db: DBSession,
+) -> User:
+    """Create new user endpoint."""
+    user_service = UserService(db)
+    return await user_service.create_user(user_in)
+```
 
-### ✅ Google-style Docstrings
-- Module docstrings with description, public classes, public functions, features
-- Function/method docstrings with Args, Returns, Raises
-- Class docstrings with Attributes
-- Type information in docstrings
+### 2. Service Layer (`app/services/`)
 
-### ✅ Settings with lru_cache
-- `get_settings()` cached globally
-- Composed settings (DatabaseSettings, SecuritySettings)
-- Environment variable loading
+**Purpose**: Implement business logic and orchestrate operations
 
-### ✅ __all__ Variables
-- Every module defines `__all__`
-- Explicit public API
+**Responsibilities**:
+- Business logic implementation
+- Transaction management
+- Validation rules
+- Complex operations across multiple repositories
+- Error handling with domain exceptions
 
-### ✅ Supabase PostgreSQL
-- Async PostgreSQL with asyncpg
+**Rules**:
+- ✅ Use repositories for data access
+- ✅ Implement business rules
+- ✅ Manage transactions
+- ✅ Raise domain exceptions
+- ❌ No HTTP concerns
+- ❌ No direct SQL queries
+- ❌ No Pydantic schemas in method signatures (use models)
+
+**Example**:
+```python
+class UserService(BaseService):
+    async def create_user(self, user_in: UserCreate) -> User:
+        """Create user with validation."""
+        # Business logic: Check uniqueness
+        if await self.user_repo.get_by_email(user_in.email):
+            raise ConflictException("Email already exists")
+        
+        # Business logic: Hash password
+        hashed_password = get_password_hash(user_in.password)
+        
+        # Data access: Create user
+        user = await self.user_repo.create({
+            **user_in.model_dump(exclude={"password"}),
+            "hashed_password": hashed_password,
+        })
+        
+        # Transaction management
+        await self.commit()
+        return user
+```
+
+### 3. Repository Layer (`app/repositories/`)
+
+**Purpose**: Data access and persistence
+
+**Responsibilities**:
+- CRUD operations
+- Custom queries
+- Data retrieval and storage
+- Query optimization
+
+**Rules**:
+- ✅ Use SQLAlchemy ORM
+- ✅ Return ORM models
+- ✅ Implement custom queries
+- ❌ No business logic
+- ❌ No validation
+- ❌ No transaction management (handled by service)
+- ❌ No password hashing or security logic
+
+**Example**:
+```python
+class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
+    async def get_by_email(self, email: str) -> User | None:
+        """Get user by email."""
+        result = await self.db.execute(
+            select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none()
+```
+
+### 4. Database Layer (`app/database/`)
+
+**Purpose**: Database configuration and connection management
+
+**Responsibilities**:
+- Database connection setup
+- Session lifecycle management
+- Engine configuration
 - Connection pooling
-- Session management
+- Database utilities
 
-### ✅ User & Session Models
-- Complete auth system foundation
-- JWT token management
-- Session tracking
+**Rules**:
+- ✅ Configure database connections
+- ✅ Manage session lifecycle
+- ✅ Provide database utilities
+- ❌ No business logic
+- ❌ No data access logic
 
-## API Endpoints
-
-### Authentication (`/api/v1/auth`)
-- `POST /register` - Register new user
-- `POST /login` - Login and get JWT token
-- `POST /logout` - Logout (deactivate session)
-- `GET /me` - Get current user info
-
-### Users (`/api/v1/users`)
-- `GET /` - List all users (superuser only)
-- `GET /{user_id}` - Get user by ID
-- `PATCH /{user_id}` - Update user
-- `DELETE /{user_id}` - Delete user (superuser only)
-
-## Setup Instructions
-
-1. Install dependencies:
-```bash
-pip install -r requirements.txt
+**Example**:
+```python
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Database session dependency."""
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 ```
 
-2. Configure environment:
-```bash
-copy .env.example .env
-# Edit .env with your Supabase credentials
+## Data Flow
+
+### Create User Flow
+
+```
+1. HTTP Request
+   POST /api/v1/users
+   Body: {"email": "user@example.com", "password": "secret"}
+   
+2. API Layer (endpoints/users.py)
+   - Validate request with Pydantic
+   - Call UserService.create_user()
+   
+3. Service Layer (services/user.py)
+   - Check email uniqueness (business rule)
+   - Hash password (business logic)
+   - Call UserRepository.create()
+   - Commit transaction
+   
+4. Repository Layer (repositories/user.py)
+   - Execute INSERT query
+   - Return User model
+   
+5. Database Layer
+   - Manage session
+   - Execute SQL
+   
+6. Response
+   - Service returns User model
+   - API converts to UserSchema
+   - Return HTTP 201 with user data
 ```
 
-3. Run the application:
-```bash
-uvicorn app.main:app --reload
+### Authentication Flow
+
+```
+1. HTTP Request
+   POST /api/v1/auth/login
+   Body: {"email": "user@example.com", "password": "secret"}
+   
+2. API Layer (endpoints/auth.py)
+   - Validate request
+   - Call AuthService.login()
+   
+3. Service Layer (services/auth.py)
+   - Authenticate user (business logic)
+   - Verify password
+   - Create JWT token
+   - Create session via SessionRepository
+   - Commit transaction
+   
+4. Repository Layer
+   - UserRepository.get_by_email()
+   - SessionRepository.create()
+   
+5. Response
+   - Return access token
 ```
 
-4. Access API documentation:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+## Benefits of This Architecture
 
-## Code Standards
+### 1. Separation of Concerns
+- Each layer has a single responsibility
+- Easy to understand and maintain
+- Changes in one layer don't affect others
 
-- **Docstrings**: Google style for all modules, classes, functions, methods
-- **Type Hints**: Full type hinting with `Annotated` types
-- **Async/Await**: All database operations are async
-- **Repository Pattern**: Data access through repositories only
-- **Dependency Injection**: FastAPI dependencies for auth and DB
-- **Error Handling**: HTTPException with proper status codes
-- **Security**: Bcrypt password hashing, JWT tokens
+### 2. Testability
+- Service layer can be tested without HTTP
+- Repository layer can be tested with test database
+- Easy to mock dependencies
+
+### 3. Reusability
+- Services can be called from multiple endpoints
+- Repositories can be used by multiple services
+- Business logic is centralized
+
+### 4. Maintainability
+- Clear structure makes code easy to find
+- Consistent patterns across the application
+- Easy to onboard new developers
+
+### 5. Scalability
+- Easy to add new features
+- Can extract services to microservices
+- Clear boundaries for refactoring
+
+## Design Patterns
+
+### Repository Pattern
+- Abstracts data access
+- Provides clean API for data operations
+- Easy to swap implementations
+
+### Service Pattern
+- Encapsulates business logic
+- Orchestrates multiple repositories
+- Manages transactions
+
+### Dependency Injection
+- Loose coupling between layers
+- Easy to test with mocks
+- FastAPI's Depends() system
+
+### Unit of Work
+- Transaction management in services
+- Commit/rollback handling
+- Ensures data consistency
+
+## Best Practices
+
+### API Layer
+```python
+# ✅ CORRECT
+@router.post("/users")
+async def create_user(user_in: UserCreate, db: DBSession):
+    service = UserService(db)
+    return await service.create_user(user_in)
+
+# ❌ WRONG - Business logic in endpoint
+@router.post("/users")
+async def create_user(user_in: UserCreate, db: DBSession):
+    if await user_repo.get_by_email(user_in.email):  # Business logic!
+        raise HTTPException(400, "Email exists")
+    hashed = get_password_hash(user_in.password)  # Business logic!
+    return await user_repo.create(...)
+```
+
+### Service Layer
+```python
+# ✅ CORRECT
+class UserService(BaseService):
+    async def create_user(self, user_in: UserCreate) -> User:
+        # Business logic here
+        if await self.user_repo.get_by_email(user_in.email):
+            raise ConflictException("Email exists")
+        user = await self.user_repo.create(...)
+        await self.commit()
+        return user
+
+# ❌ WRONG - No business logic
+class UserService(BaseService):
+    async def create_user(self, user_in: UserCreate) -> User:
+        return await self.user_repo.create(user_in)  # Just passing through!
+```
+
+### Repository Layer
+```python
+# ✅ CORRECT
+class UserRepository(BaseRepository):
+    async def get_by_email(self, email: str) -> User | None:
+        result = await self.db.execute(
+            select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none()
+
+# ❌ WRONG - Business logic in repository
+class UserRepository(BaseRepository):
+    async def create_user(self, user_in: UserCreate) -> User:
+        if await self.get_by_email(user_in.email):  # Business logic!
+            raise ValueError("Email exists")
+        hashed = get_password_hash(user_in.password)  # Business logic!
+        return await self.create(...)
+```
+
+## Migration from Old Structure
+
+### Before (Mixed Concerns)
+```python
+# Endpoint with business logic
+@router.post("/users")
+async def create_user(user_in: UserCreate, user_repo: UserRepo):
+    # Business logic in endpoint!
+    if await user_repo.get_by_email(user_in.email):
+        raise HTTPException(400, "Email exists")
+    hashed = get_password_hash(user_in.password)
+    return await user_repo.create(...)
+```
+
+### After (Proper Separation)
+```python
+# Endpoint (HTTP only)
+@router.post("/users")
+async def create_user(user_in: UserCreate, db: DBSession):
+    service = UserService(db)
+    return await service.create_user(user_in)
+
+# Service (Business logic)
+class UserService:
+    async def create_user(self, user_in: UserCreate) -> User:
+        if await self.user_repo.get_by_email(user_in.email):
+            raise ConflictException("Email exists")
+        hashed = get_password_hash(user_in.password)
+        user = await self.user_repo.create({...})
+        await self.commit()
+        return user
+
+# Repository (Data access only)
+class UserRepository:
+    async def get_by_email(self, email: str) -> User | None:
+        result = await self.db.execute(...)
+        return result.scalar_one_or_none()
+```
+
+## Testing Strategy
+
+### Unit Tests
+- Test services with mocked repositories
+- Test repositories with test database
+- Test endpoints with mocked services
+
+### Integration Tests
+- Test full flow from endpoint to database
+- Use test database
+- Verify transactions
+
+### Example
+```python
+# Test service with mocked repository
+async def test_create_user_duplicate_email():
+    mock_repo = Mock(UserRepository)
+    mock_repo.get_by_email.return_value = User(...)
+    
+    service = UserService(mock_db)
+    service.user_repo = mock_repo
+    
+    with pytest.raises(ConflictException):
+        await service.create_user(user_in)
+```
+
+## References
+
+- [Repository Pattern](https://martinfowler.com/eaaCatalog/repository.html)
+- [Service Layer Pattern](https://martinfowler.com/eaaCatalog/serviceLayer.html)
+- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [FastAPI Best Practices](https://fastapi.tiangolo.com/tutorial/)

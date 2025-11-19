@@ -6,7 +6,7 @@ This script creates the initial database migration and applies it.
 import asyncio
 import sys
 
-from app.core.database import Base, init_db
+from app.database import Base, init_db
 from app.models import *  # noqa: F401, F403
 
 

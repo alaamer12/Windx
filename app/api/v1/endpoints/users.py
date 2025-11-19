@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_cache.decorator import cache
 from pydantic import PositiveInt
 
-from app.api.types import CurrentSuperuser, CurrentUser, DBSession, UserRepo
+from app.api.types import CurrentSuperuser, CurrentUser, DBSession
 from app.core.cache import get_cache_namespace
 from app.core.limiter import rate_limit
 from app.core.pagination import Page, PaginationParams, create_pagination_params
@@ -40,7 +40,6 @@ router = APIRouter()
 
 @router.get("/", response_model=Page[UserSchema])
 async def list_users(
-    user_repo: UserRepo,
     current_superuser: CurrentSuperuser,
     params: PaginationParams,
     db: DBSession,
@@ -48,7 +47,6 @@ async def list_users(
     """List all users with pagination (superuser only).
 
     Args:
-        user_repo (UserRepository): User repository
         current_superuser (User): Current superuser
         params (PaginationParams): Pagination parameters
         db (AsyncSession): Database session
@@ -73,8 +71,8 @@ async def list_users(
 @cache(expire=300)  # Cache for 5 minutes
 async def get_user(
     user_id: PositiveInt,
-    user_repo: UserRepo,
     current_user: CurrentUser,
+    db: DBSession,
 ) -> User:
     """Get user by ID with caching.
 
@@ -83,8 +81,8 @@ async def get_user(
 
     Args:
         user_id (PositiveInt): User ID
-        user_repo (UserRepository): User repository
         current_user (User): Current authenticated user
+        db (AsyncSession): Database session
 
     Returns:
         User: User data
@@ -93,7 +91,8 @@ async def get_user(
         AuthorizationException: If user lacks permission
         NotFoundException: If user not found
     """
-    from app.core.exceptions import AuthorizationException, NotFoundException
+    from app.core.exceptions import AuthorizationException
+    from app.services.user import UserService
 
     # Users can only view their own profile unless they're superuser
     if user_id != current_user.id and not current_user.is_superuser:
@@ -102,21 +101,8 @@ async def get_user(
             details={"user_id": user_id, "current_user_id": current_user.id},
         )
 
-    try:
-        user = await user_repo.get(user_id)
-    except Exception as e:
-        # Log and wrap unexpected database errors
-        from app.core.exceptions import DatabaseException
-
-        raise DatabaseException(
-            message="Failed to fetch user",
-            details={"user_id": user_id, "error": str(e)},
-        )
-
-    if not user:
-        raise NotFoundException(resource="User", details={"user_id": user_id})
-
-    return user
+    user_service = UserService(db)
+    return await user_service.get_user(user_id)
 
 
 @router.patch(
@@ -127,46 +113,29 @@ async def get_user(
 async def update_user(
     user_id: PositiveInt,
     user_update: UserUpdate,
-    user_repo: UserRepo,
     current_user: CurrentUser,
+    db: DBSession,
 ) -> User:
     """Update user information.
 
     Args:
         user_id (PositiveInt): User ID
         user_update (UserUpdate): User update data
-        user_repo (UserRepository): User repository
         current_user (User): Current authenticated user
+        db (AsyncSession): Database session
 
     Returns:
         User: Updated user data
 
     Raises:
-        HTTPException: If user not found or no permission
+        AuthorizationException: If user lacks permission
+        NotFoundException: If user not found
+        ConflictException: If email/username conflicts
     """
-    # Users can only update their own profile unless they're superuser
-    if user_id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
-        )
+    from app.services.user import UserService
 
-    user = await user_repo.get(user_id)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    # Handle password update
-    update_data = user_update.model_dump(exclude_unset=True)
-    if "password" in update_data:
-        from app.core.security import get_password_hash
-
-        update_data["hashed_password"] = get_password_hash(update_data.pop("password"))
-
-    updated_user = await user_repo.update(user, update_data)
+    user_service = UserService(db)
+    updated_user = await user_service.update_user(user_id, user_update, current_user)
 
     # Invalidate cache for this user
     from app.core.cache import invalidate_cache
@@ -183,23 +152,21 @@ async def update_user(
 )
 async def delete_user(
     user_id: PositiveInt,
-    user_repo: UserRepo,
     current_superuser: CurrentSuperuser,
+    db: DBSession,
 ) -> None:
     """Delete user (superuser only).
 
     Args:
         user_id (PositiveInt): User ID
-        user_repo (UserRepository): User repository
         current_superuser (User): Current superuser
+        db (AsyncSession): Database session
 
     Raises:
-        HTTPException: If user not found
+        NotFoundException: If user not found
+        AuthorizationException: If user is not superuser
     """
-    user = await user_repo.delete(user_id)
+    from app.services.user import UserService
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+    user_service = UserService(db)
+    await user_service.delete_user(user_id, current_superuser)

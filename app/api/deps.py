@@ -20,7 +20,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.database import get_db
 from app.core.security import decode_access_token
 from app.models.user import User
 from app.repositories.user import UserRepository

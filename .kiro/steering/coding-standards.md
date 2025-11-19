@@ -8,23 +8,98 @@ This document defines the coding standards, patterns, and best practices for thi
 
 ## Architecture Patterns
 
+### Layered Architecture
+- **ALWAYS** follow the layered architecture pattern
+- **API Layer** → **Service Layer** → **Repository Layer** → **Database Layer**
+- Each layer has specific responsibilities
+- Never skip layers or mix concerns
+
+```
+API Layer (HTTP) → Service Layer (Business Logic) → Repository Layer (Data Access) → Database Layer
+```
+
 ### Repository Pattern
 - **ALWAYS** use repository pattern for database operations
 - **NEVER** access SQLAlchemy models directly in endpoints
 - Create custom repository methods for complex queries
 - Inherit from `BaseRepository` for standard CRUD operations
+- Repositories only handle data access, no business logic
 
 ```python
-# ✅ CORRECT
+# ✅ CORRECT - Repository with data access only
 class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
     async def get_by_email(self, email: str) -> User | None:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
-# ❌ WRONG - Don't query directly in endpoints
-@router.get("/users")
-async def get_users(db: AsyncSession):
-    result = await db.execute(select(User))  # Wrong!
+# ❌ WRONG - Business logic in repository
+class UserRepository(BaseRepository):
+    async def create_user(self, user_in: UserCreate) -> User:
+        if await self.get_by_email(user_in.email):  # Business logic!
+            raise ValueError("Email exists")
+        return await self.create(user_in)
+```
+
+### Service Pattern
+- **ALWAYS** implement business logic in service layer
+- **NEVER** put business logic in endpoints or repositories
+- Services orchestrate multiple repositories
+- Services manage transactions (commit/rollback)
+- Services raise domain exceptions
+
+```python
+# ✅ CORRECT - Business logic in service
+class UserService(BaseService):
+    async def create_user(self, user_in: UserCreate) -> User:
+        # Business logic: Check uniqueness
+        if await self.user_repo.get_by_email(user_in.email):
+            raise ConflictException("Email already exists")
+        
+        # Business logic: Hash password
+        hashed_password = get_password_hash(user_in.password)
+        
+        # Data access via repository
+        user = await self.user_repo.create({
+            **user_in.model_dump(exclude={"password"}),
+            "hashed_password": hashed_password,
+        })
+        
+        # Transaction management
+        await self.commit()
+        return user
+
+# ❌ WRONG - Business logic in endpoint
+@router.post("/users")
+async def create_user(user_in: UserCreate, user_repo: UserRepo):
+    if await user_repo.get_by_email(user_in.email):  # Business logic in endpoint!
+        raise HTTPException(400, "Email exists")
+    hashed = get_password_hash(user_in.password)  # Business logic in endpoint!
+    return await user_repo.create(...)
+```
+
+### API Layer Pattern
+- **ALWAYS** keep endpoints thin (HTTP handling only)
+- **NEVER** put business logic in endpoints
+- Call service layer methods
+- Handle HTTP-specific concerns (status codes, headers)
+- Return Pydantic schemas
+
+```python
+# ✅ CORRECT - Thin endpoint calling service
+@router.post("/users", response_model=UserSchema, status_code=201)
+async def create_user(user_in: UserCreate, db: DBSession) -> User:
+    """Create new user."""
+    user_service = UserService(db)
+    return await user_service.create_user(user_in)
+
+# ❌ WRONG - Business logic in endpoint
+@router.post("/users")
+async def create_user(user_in: UserCreate, user_repo: UserRepo):
+    # Validation, hashing, checking - all business logic!
+    if await user_repo.get_by_email(user_in.email):
+        raise HTTPException(400, "Email exists")
+    hashed = get_password_hash(user_in.password)
+    return await user_repo.create(...)
 ```
 
 ### Dependency Injection
@@ -352,7 +427,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.database import get_db
 from app.models.user import User
 ```
 

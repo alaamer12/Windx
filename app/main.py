@@ -24,10 +24,10 @@ from fastapi_pagination import add_pagination
 from app.api.v1.router import api_router
 from app.core.cache import close_cache, init_cache
 from app.core.config import Settings, get_settings
-from app.core.database import close_db, init_db
 from app.core.exceptions import setup_exception_handlers
 from app.core.limiter import close_limiter, init_limiter
 from app.core.middleware import setup_middleware
+from app.database import close_db, init_db
 
 __all__ = ["app", "root", "health_check", "lifespan"]
 

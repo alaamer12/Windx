@@ -15,7 +15,7 @@ from alembic import context
 
 # Import your models' Base
 from app.core.config import get_settings
-from app.core.database import Base
+from app.database import Base
 from app.models import *  # noqa: F401, F403
 
 # this is the Alembic Config object

@@ -25,9 +25,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_cache.decorator import cache
 from pydantic import BaseModel, Field
 
-from app.api.types import CurrentUser, DBSession, SessionRepo, UserRepo
+from app.api.types import CurrentUser, DBSession
 from app.core.limiter import rate_limit
-from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.session import SessionCreate
 from app.schemas.user import User as UserSchema
@@ -70,14 +69,12 @@ class LoginRequest(BaseModel):
 )
 async def register(
     user_in: UserCreate,
-    user_repo: UserRepo,
     db: DBSession,
 ) -> User:
     """Register a new user.
 
     Args:
         user_in (UserCreate): User registration data
-        user_repo (UserRepository): User repository
         db (AsyncSession): Database session
 
     Returns:
@@ -87,46 +84,10 @@ async def register(
         ConflictException: If username or email already exists
         DatabaseException: If database operation fails
     """
-    from app.core.exceptions import ConflictException, DatabaseException
+    from app.services.user import UserService
 
-    try:
-        # Check if user exists
-        existing_user = await user_repo.get_by_email(user_in.email)
-        if existing_user:
-            raise ConflictException(
-                message="Email already registered",
-                details={"email": user_in.email},
-            )
-
-        existing_user = await user_repo.get_by_username(user_in.username)
-        if existing_user:
-            raise ConflictException(
-                message="Username already taken",
-                details={"username": user_in.username},
-            )
-
-        # Create user with hashed password
-        user_dict = user_in.model_dump()
-        user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
-
-        # Create user
-        db_user = User(**user_dict)
-        db.add(db_user)
-        await db.commit()
-        await db.refresh(db_user)
-
-        return db_user
-
-    except ConflictException:
-        # Re-raise conflict exceptions
-        raise
-    except Exception as e:
-        # Wrap unexpected errors
-        await db.rollback()
-        raise DatabaseException(
-            message="Failed to create user",
-            details={"error": str(e)},
-        )
+    user_service = UserService(db)
+    return await user_service.create_user(user_in)
 
 
 @router.post(
@@ -136,15 +97,13 @@ async def register(
 )
 async def login(
     login_data: LoginRequest,
-    user_repo: UserRepo,
-    session_repo: SessionRepo,
+    db: DBSession,
 ) -> Token:
     """Login and get access token.
 
     Args:
         login_data (LoginRequest): Login credentials
-        user_repo (UserRepository): User repository
-        session_repo (SessionRepository): Session repository
+        db (AsyncSession): Database session
 
     Returns:
         Token: Access token
@@ -153,65 +112,29 @@ async def login(
         AuthenticationException: If credentials are invalid
         DatabaseException: If database operation fails
     """
-    from app.core.exceptions import AuthenticationException, DatabaseException
+    from app.services.auth import AuthService
 
-    try:
-        # Try to find user by username or email
-        user = await user_repo.get_by_username(login_data.username)
-        if not user:
-            user = await user_repo.get_by_email(login_data.username)
-
-        if not user or not verify_password(login_data.password, user.hashed_password):
-            raise AuthenticationException(
-                message="Incorrect username or password",
-                details={"username": login_data.username},
-            )
-
-        if not user.is_active:
-            raise AuthenticationException(
-                message="Account is inactive",
-                details={"user_id": user.id},
-            )
-
-        # Create access token
-        access_token = create_access_token(subject=user.id)
-
-        # Create session record
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
-        session_create = SessionCreate(
-            user_id=user.id,
-            token=access_token,
-            expires_at=expires_at,
-        )
-        await session_repo.create(session_create)
-
-        return Token(access_token=access_token, token_type="bearer")
-
-    except AuthenticationException:
-        # Re-raise authentication exceptions
-        raise
-    except Exception as e:
-        # Wrap unexpected errors
-        raise DatabaseException(
-            message="Login failed due to system error",
-            details={"error": str(e)},
-        )
+    auth_service = AuthService(db)
+    access_token, _ = await auth_service.login(login_data.username, login_data.password)
+    return Token(access_token=access_token, token_type="bearer")
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     current_user: CurrentUser,
-    session_repo: SessionRepo,
+    db: DBSession,
 ) -> None:
     """Logout current user (deactivate session).
 
     Args:
         current_user (User): Current authenticated user
-        session_repo (SessionRepository): Session repository
+        db (AsyncSession): Database session
     """
-    # In a real implementation, you'd deactivate the current session
-    # For now, this is a placeholder
-    pass
+    from app.services.session import SessionService
+
+    session_service = SessionService(db)
+    # Deactivate all active sessions for the user
+    await session_service.deactivate_all_user_sessions(current_user.id)
 
 
 @router.get(

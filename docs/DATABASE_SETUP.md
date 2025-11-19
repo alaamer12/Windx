@@ -365,7 +365,7 @@ SECRET_KEY=your-secret-key-here
 ```python
 # scripts/test_connection.py
 import asyncio
-from app.core.database import init_db
+from app.database import init_db
 
 async def test():
     try:

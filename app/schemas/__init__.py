@@ -23,6 +23,11 @@ Features:
 """
 
 from app.schemas.auth import LoginRequest, Token
+from app.schemas.responses import (
+    ErrorDetail,
+    ErrorResponse,
+    get_common_responses,
+)
 from app.schemas.session import Session, SessionCreate, SessionInDB
 from app.schemas.user import User, UserCreate, UserInDB, UserUpdate
 
@@ -36,4 +41,7 @@ __all__ = [
     "SessionInDB",
     "LoginRequest",
     "Token",
+    "ErrorDetail",
+    "ErrorResponse",
+    "get_common_responses",
 ]

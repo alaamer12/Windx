@@ -21,19 +21,64 @@ from app.api.types import CurrentUser, DBSession
 from app.core.limiter import rate_limit
 from app.models.user import User
 from app.schemas.auth import LoginRequest, Token
+from app.schemas.responses import get_common_responses
 from app.schemas.user import User as UserSchema
 from app.schemas.user import UserCreate
 
 __all__ = ["router"]
 
-router = APIRouter()
+router = APIRouter(
+    tags=["Authentication"],
+    responses=get_common_responses(401, 500),
+)
 
 
 @router.post(
     "/register",
     response_model=UserSchema,
     status_code=status.HTTP_201_CREATED,
+    summary="Register New User",
+    description="Create a new user account with email, username, and password.",
+    response_description="Successfully created user account",
+    operation_id="registerUser",
     dependencies=[Depends(rate_limit(times=5, seconds=3600))],  # 5 per hour
+    responses={
+        201: {
+            "description": "User successfully registered",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "email": "user@example.com",
+                        "username": "john_doe",
+                        "full_name": "John Doe",
+                        "is_active": True,
+                        "is_superuser": False,
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-01T00:00:00Z",
+                    }
+                }
+            },
+        },
+        409: {
+            "description": "Email or username already exists",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "message": "Email already registered",
+                        "details": [
+                            {
+                                "detail": "Email address is already in use",
+                                "error_code": "DUPLICATE_EMAIL",
+                                "field": "email",
+                            }
+                        ],
+                    }
+                }
+            },
+        },
+        **get_common_responses(422, 429, 500),
+    },
 )
 async def register(
     user_in: UserCreate,
@@ -61,7 +106,25 @@ async def register(
 @router.post(
     "/login",
     response_model=Token,
+    summary="User Login",
+    description="Authenticate user with username/email and password to receive access token.",
+    response_description="JWT access token for authentication",
+    operation_id="loginUser",
     dependencies=[Depends(rate_limit(times=10, seconds=300))],  # 10 per 5 minutes
+    responses={
+        200: {
+            "description": "Successfully authenticated",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "bearer",
+                    }
+                }
+            },
+        },
+        **get_common_responses(401, 422, 429, 500),
+    },
 )
 async def login(
     login_data: LoginRequest,
@@ -108,7 +171,31 @@ async def logout(
 @router.get(
     "/me",
     response_model=UserSchema,
+    summary="Get Current User Profile",
+    description="Retrieve the authenticated user's profile information.",
+    response_description="User profile with email, name, and account details",
+    operation_id="getCurrentUserProfile",
     dependencies=[Depends(rate_limit(times=30, seconds=60))],
+    responses={
+        200: {
+            "description": "Successfully retrieved user profile",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "email": "user@example.com",
+                        "username": "john_doe",
+                        "full_name": "John Doe",
+                        "is_active": True,
+                        "is_superuser": False,
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-01T00:00:00Z",
+                    }
+                }
+            },
+        },
+        **get_common_responses(401, 500),
+    },
 )
 @cache(expire=60)  # Cache for 1 minute
 async def get_current_user_info(

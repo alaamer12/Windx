@@ -1303,6 +1303,70 @@ async def endpoint():
     logger.info("Processing request")  # No correlation ID!
 ```
 
+## Separation of Concerns
+
+### Schemas Must Be in app/schemas/
+- **NEVER** define Pydantic schemas in endpoints
+- **ALWAYS** create schemas in `app/schemas/` directory
+- Import schemas from `app.schemas` in endpoints
+
+```python
+# ❌ WRONG - Schema in endpoint
+# app/api/v1/endpoints/auth.py
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# ✅ CORRECT - Schema in schemas directory
+# app/schemas/auth.py
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# app/api/v1/endpoints/auth.py
+from app.schemas.auth import LoginRequest
+```
+
+### No Business Logic in Endpoints
+- **NEVER** put business logic in endpoints
+- **ALWAYS** call service layer methods
+- Endpoints should only handle HTTP concerns
+
+```python
+# ❌ WRONG - Business logic in endpoint
+@router.post("/users")
+async def create_user(user_in: UserCreate, user_repo: UserRepo):
+    if await user_repo.get_by_email(user_in.email):  # Business logic!
+        raise HTTPException(400, "Email exists")
+    return await user_repo.create(user_in)
+
+# ✅ CORRECT - Call service
+@router.post("/users")
+async def create_user(user_in: UserCreate, db: DBSession):
+    user_service = UserService(db)
+    return await user_service.create_user(user_in)
+```
+
+### No Business Logic in Repositories
+- **NEVER** put business logic in repositories
+- **ALWAYS** keep repositories for data access only
+- Business logic belongs in services
+
+```python
+# ❌ WRONG - Business logic in repository
+class UserRepository:
+    async def create_user(self, user_in: UserCreate) -> User:
+        if await self.get_by_email(user_in.email):  # Business logic!
+            raise ValueError("Email exists")
+        return await self.create(user_in)
+
+# ✅ CORRECT - Pure data access
+class UserRepository:
+    async def get_by_email(self, email: str) -> User | None:
+        result = await self.db.execute(...)
+        return result.scalar_one_or_none()
+```
+
 ## Questions?
 
 When in doubt:
@@ -1311,7 +1375,9 @@ When in doubt:
 3. Follow FastAPI best practices
 4. Follow SQLAlchemy 2.0 patterns
 5. Follow Pydantic V2 patterns
-6. Check `docs/DATABASE_SETUP.md` for database configuration
-7. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features
-8. Check `docs/EXCEPTION_HANDLING.md` for error handling patterns
-9. Check `docs/MIDDLEWARE_SECURITY.md` for middleware and security best practices
+6. Check `docs/ARCHITECTURE.md` for architecture patterns
+7. Check `docs/SEPARATION_OF_CONCERNS.md` for layer responsibilities
+8. Check `docs/DATABASE_SETUP.md` for database configuration
+9. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features
+10. Check `docs/EXCEPTION_HANDLING.md` for error handling patterns
+11. Check `docs/MIDDLEWARE_SECURITY.md` for middleware and security best practices

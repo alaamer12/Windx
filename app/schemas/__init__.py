@@ -11,6 +11,8 @@ Public Classes:
     Session: Session response schema
     SessionCreate: Session creation schema
     SessionInDB: Session database schema with token
+    LoginRequest: Login request schema
+    Token: Token response schema
 
 Features:
     - Composed schemas (not monolithic)
@@ -20,6 +22,7 @@ Features:
     - ORM mode support
 """
 
+from app.schemas.auth import LoginRequest, Token
 from app.schemas.session import Session, SessionCreate, SessionInDB
 from app.schemas.user import User, UserCreate, UserInDB, UserUpdate
 
@@ -31,4 +34,6 @@ __all__ = [
     "Session",
     "SessionCreate",
     "SessionInDB",
+    "LoginRequest",
+    "Token",
 ]

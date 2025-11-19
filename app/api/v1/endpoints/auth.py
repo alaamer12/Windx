@@ -3,10 +3,6 @@
 This module provides REST API endpoints for user authentication including
 registration, login, logout, and current user information.
 
-Public Classes:
-    Token: Token response schema
-    LoginRequest: Login request schema
-
 Public Variables:
     router: FastAPI router for authentication endpoints
 
@@ -18,47 +14,19 @@ Features:
     - Session management
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Annotated
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from fastapi_cache.decorator import cache
-from pydantic import BaseModel, Field
 
 from app.api.types import CurrentUser, DBSession
 from app.core.limiter import rate_limit
 from app.models.user import User
-from app.schemas.session import SessionCreate
+from app.schemas.auth import LoginRequest, Token
 from app.schemas.user import User as UserSchema
 from app.schemas.user import UserCreate
 
-__all__ = ["router", "Token", "LoginRequest"]
+__all__ = ["router"]
 
 router = APIRouter()
-
-
-class Token(BaseModel):
-    """Token response schema.
-    
-    Attributes:
-        access_token: JWT access token
-        token_type: Token type (bearer)
-    """
-
-    access_token: Annotated[str, Field(description="JWT access token")]
-    token_type: Annotated[str, Field(description="Token type", examples=["bearer"])]
-
-
-class LoginRequest(BaseModel):
-    """Login request schema.
-    
-    Attributes:
-        username: Username or email
-        password: User password
-    """
-
-    username: Annotated[str, Field(description="Username or email")]
-    password: Annotated[str, Field(description="User password")]
 
 
 @router.post(

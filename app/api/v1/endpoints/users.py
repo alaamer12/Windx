@@ -53,11 +53,14 @@ async def list_users(
 
     Returns:
         Page[User]: Paginated list of users
+
+    Note:
+        This endpoint uses direct pagination for simplicity since it's
+        a straightforward query with no business logic.
     """
     from sqlalchemy import select
 
     from app.core.pagination import paginate
-    from app.models.user import User
 
     query = select(User).order_by(User.created_at.desc())
     return await paginate(query, params)
@@ -91,18 +94,10 @@ async def get_user(
         AuthorizationException: If user lacks permission
         NotFoundException: If user not found
     """
-    from app.core.exceptions import AuthorizationException
     from app.services.user import UserService
 
-    # Users can only view their own profile unless they're superuser
-    if user_id != current_user.id and not current_user.is_superuser:
-        raise AuthorizationException(
-            message="You can only view your own profile",
-            details={"user_id": user_id, "current_user_id": current_user.id},
-        )
-
     user_service = UserService(db)
-    return await user_service.get_user(user_id)
+    return await user_service.get_user_with_permission_check(user_id, current_user)
 
 
 @router.patch(

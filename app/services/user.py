@@ -289,3 +289,34 @@ class UserService(BaseService):
         await self.commit()
         await self.refresh(user)
         return user
+
+    async def get_user_with_permission_check(
+        self,
+        user_id: PositiveInt,
+        current_user: User,
+    ) -> User:
+        """Get user by ID with permission check.
+
+        Users can only view their own profile unless they're superuser.
+
+        Args:
+            user_id (PositiveInt): User ID to retrieve
+            current_user (User): Current authenticated user
+
+        Returns:
+            User: User instance
+
+        Raises:
+            AuthorizationException: If user lacks permission
+            NotFoundException: If user not found
+        """
+        from app.core.exceptions import AuthorizationException
+
+        # Check permissions
+        if user_id != current_user.id and not current_user.is_superuser:
+            raise AuthorizationException(
+                message="You can only view your own profile",
+                details={"user_id": user_id, "current_user_id": current_user.id},
+            )
+
+        return await self.get_user(user_id)

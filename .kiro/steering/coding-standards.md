@@ -1367,6 +1367,59 @@ class UserRepository:
         return result.scalar_one_or_none()
 ```
 
+## Testing Standards
+
+### Use httpx for HTTP Testing
+- **ALWAYS** use httpx AsyncClient for HTTP testing
+- **NEVER** use FastAPI TestClient
+- Use async/await for all test functions
+
+```python
+# ❌ WRONG - Using TestClient
+from fastapi.testclient import TestClient
+
+def test_endpoint():
+    client = TestClient(app)
+    response = client.get("/api/v1/users/")
+
+# ✅ CORRECT - Using httpx
+from httpx import AsyncClient
+
+async def test_endpoint(client: AsyncClient):
+    response = await client.get("/api/v1/users/")
+```
+
+### Test Organization
+- **Unit tests** in `tests/unit/` - Test services, repositories in isolation
+- **Integration tests** in `tests/integration/` - Test full HTTP → DB flow
+- **Factories** in `tests/factories/` - Test data generation
+
+### Test Naming
+- Test files: `test_*.py`
+- Test classes: `Test*`
+- Test functions: `test_*`
+- Use descriptive names: `test_login_with_invalid_password_returns_401`
+
+### Test Structure (AAA Pattern)
+```python
+async def test_something(client, test_user):
+    # Arrange - Set up test data
+    user_data = {"email": "new@example.com"}
+    
+    # Act - Perform the action
+    response = await client.post("/api/v1/users", json=user_data)
+    
+    # Assert - Verify the result
+    assert response.status_code == 201
+    assert response.json()["email"] == user_data["email"]
+```
+
+### Coverage Requirements
+- Overall: 80%+
+- Services: 90%+
+- Repositories: 85%+
+- Endpoints: 80%+
+
 ## Questions?
 
 When in doubt:
@@ -1377,7 +1430,8 @@ When in doubt:
 5. Follow Pydantic V2 patterns
 6. Check `docs/ARCHITECTURE.md` for architecture patterns
 7. Check `docs/SEPARATION_OF_CONCERNS.md` for layer responsibilities
-8. Check `docs/DATABASE_SETUP.md` for database configuration
-9. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features
-10. Check `docs/EXCEPTION_HANDLING.md` for error handling patterns
-11. Check `docs/MIDDLEWARE_SECURITY.md` for middleware and security best practices
+8. Check `docs/TESTING.md` for testing best practices
+9. Check `docs/DATABASE_SETUP.md` for database configuration
+10. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features
+11. Check `docs/EXCEPTION_HANDLING.md` for error handling patterns
+12. Check `docs/MIDDLEWARE_SECURITY.md` for middleware and security best practices

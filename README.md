@@ -11,19 +11,32 @@ Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase)
 - ✅ **Connection Pooling**: Optimized for each database provider
 - ✅ **Auto Migrations**: Alembic database migrations
 - ✅ **API Versioning**: `/api/v1/` prefix for future compatibility
+- ✅ **Modern Tooling**: `uv` for fast dependency management, `hatchling` for builds
+
+## Prerequisites
+
+- Python 3.11 or higher
+- [uv](https://github.com/astral-sh/uv) - Fast Python package installer
+
+### Install uv
+
+```bash
+# Windows
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ## Setup
 
-### 1. Create Virtual Environment
+### 1. Install Dependencies
 ```bash
-python -m venv .venv
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # Linux/Mac
-```
+# Install all dependencies
+uv sync
 
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
+# Install with dev dependencies
+uv sync --extra dev
 ```
 
 ### 3. Configure Environment
@@ -44,12 +57,18 @@ copy .env.production .env
 
 #### Development
 ```bash
+# Using uv
+uv run uvicorn app.main:app --reload --env-file .env.development
+
+# Or activate virtual environment first
+source .venv/bin/activate  # Linux/Mac
+.venv\Scripts\activate     # Windows
 uvicorn app.main:app --reload --env-file .env.development
 ```
 
 #### Production
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env.production
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --env-file .env.production
 ```
 
 ## Database Configuration

@@ -760,6 +760,226 @@ if settings.database.is_supabase:
 - Always backup before production migrations
 - Support both providers in `alembic/env.py`
 
+## Pydantic V2 Best Practices
+
+### Use SecretStr for Sensitive Data
+
+- **ALWAYS** use `SecretStr` for passwords, API keys, tokens
+- **NEVER** use plain `str` for sensitive data
+- Access with `.get_secret_value()` when needed
+
+```python
+# ✅ CORRECT
+from pydantic import SecretStr
+
+class SecuritySettings(BaseSettings):
+    secret_key: SecretStr
+    api_key: SecretStr
+
+# Usage
+secret = settings.secret_key.get_secret_value()
+
+# ❌ WRONG
+class SecuritySettings(BaseSettings):
+    secret_key: str  # Will be exposed in logs!
+```
+
+### Use Computed Fields
+
+- Use `@computed_field` for derived values
+- Mark as `@property` for read-only access
+- Include return type hint
+
+```python
+# ✅ CORRECT
+from pydantic import computed_field
+
+class DatabaseSettings(BaseSettings):
+    host: str
+    port: int
+    
+    @computed_field
+    @property
+    def url(self) -> PostgresDsn:
+        return PostgresDsn(f"postgresql://{self.host}:{self.port}")
+
+# ❌ WRONG - Don't store derived values
+class DatabaseSettings(BaseSettings):
+    host: str
+    port: int
+    url: str  # Should be computed!
+```
+
+### Use Model Validators
+
+- Use `@model_validator(mode="after")` for cross-field validation
+- Return `self` from validator
+- Raise `ValueError` for validation errors
+
+```python
+# ✅ CORRECT
+from pydantic import model_validator
+
+class Settings(BaseSettings):
+    debug: bool
+    cors_origins: list[str]
+    
+    @model_validator(mode="after")
+    def validate_settings(self) -> "Settings":
+        if not self.debug and not self.cors_origins:
+            raise ValueError("CORS origins required in production")
+        return self
+
+# ❌ WRONG - No cross-field validation
+class Settings(BaseSettings):
+    debug: bool
+    cors_origins: list[str]  # No validation!
+```
+
+### Configure SettingsConfigDict Properly
+
+- Enable `validate_default=True`
+- Enable `validate_assignment=True`
+- Enable `str_strip_whitespace=True`
+- Enable `use_attribute_docstrings=True`
+
+```python
+# ✅ CORRECT
+model_config = SettingsConfigDict(
+    env_file=".env",
+    env_file_encoding="utf-8",
+    case_sensitive=False,
+    env_nested_delimiter="__",
+    str_strip_whitespace=True,
+    validate_default=True,
+    validate_assignment=True,
+    use_attribute_docstrings=True,
+    extra="ignore",
+)
+
+# ❌ WRONG - Missing important settings
+model_config = SettingsConfigDict(
+    env_file=".env",
+)
+```
+
+### Use Semantic Types
+
+- Use Pydantic's built-in semantic types
+- Don't use plain types with manual validation
+
+```python
+# ✅ CORRECT
+from pydantic import EmailStr, PositiveInt, AnyHttpUrl
+
+class User(BaseModel):
+    email: EmailStr
+    age: PositiveInt
+    website: AnyHttpUrl
+
+# ❌ WRONG
+class User(BaseModel):
+    email: str  # Use EmailStr
+    age: Annotated[int, Field(gt=0)]  # Use PositiveInt
+    website: str  # Use AnyHttpUrl
+```
+
+## SQLAlchemy 2.0 Best Practices
+
+### Use Mapped Columns with Full Configuration
+
+- **ALWAYS** use `Mapped[T]` with `mapped_column()`
+- Add `doc` parameter for documentation
+- Add `sort_order` for important columns
+- Add indexes strategically
+
+```python
+# ✅ CORRECT
+from sqlalchemy.orm import Mapped, mapped_column
+
+class User(Base):
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+        sort_order=-100,
+        doc="Primary key identifier",
+    )
+    
+    email: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        index=True,
+        nullable=False,
+        doc="User email address (unique)",
+    )
+
+# ❌ WRONG - Legacy style
+class User(Base):
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), unique=True)
+```
+
+### Add Strategic Indexes
+
+- Index primary keys (automatic)
+- Index foreign keys
+- Index frequently filtered columns
+- Index frequently sorted columns
+
+```python
+# ✅ CORRECT
+class User(Base):
+    email: Mapped[str] = mapped_column(String(255), index=True)  # Lookups
+    is_active: Mapped[bool] = mapped_column(default=True, index=True)  # Filtering
+    created_at: Mapped[datetime] = mapped_column(default=..., index=True)  # Sorting
+
+# ❌ WRONG - No indexes
+class User(Base):
+    email: Mapped[str] = mapped_column(String(255))  # Slow lookups!
+```
+
+### Use TYPE_CHECKING for Relationships
+
+- Import related models in `if TYPE_CHECKING` block
+- Use string references in `Mapped[]`
+- Prevents circular imports
+
+```python
+# ✅ CORRECT
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.session import Session
+
+class User(Base):
+    sessions: Mapped[list["Session"]] = relationship(...)
+
+# ❌ WRONG - Circular import
+from app.models.session import Session
+
+class User(Base):
+    sessions: Mapped[list[Session]] = relationship(...)
+```
+
+### Document Columns
+
+- Add `doc` parameter to all columns
+- Describe purpose and constraints
+- Include format information
+
+```python
+# ✅ CORRECT
+email: Mapped[str] = mapped_column(
+    String(255),
+    unique=True,
+    doc="User email address (unique, max 255 chars)",
+)
+
+# ❌ WRONG - No documentation
+email: Mapped[str] = mapped_column(String(255), unique=True)
+```
+
 ## Questions?
 
 When in doubt:
@@ -769,3 +989,4 @@ When in doubt:
 4. Follow SQLAlchemy 2.0 patterns
 5. Follow Pydantic V2 patterns
 6. Check `docs/DATABASE_SETUP.md` for database configuration
+7. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features

@@ -45,21 +45,55 @@ class Session(Base):
 
     __tablename__ = "sessions"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+        sort_order=-100,
+        doc="Primary key identifier",
+    )
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+        doc="Foreign key to users table",
     )
-    token: Mapped[str] = mapped_column(String(500), unique=True, index=True, nullable=False)
-    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
+    token: Mapped[str] = mapped_column(
+        String(500),
+        unique=True,
+        index=True,
+        nullable=False,
+        doc="JWT access token (unique)",
+    )
+    ip_address: Mapped[str | None] = mapped_column(
+        String(45),
+        nullable=True,
+        default=None,
+        doc="Client IP address (IPv4 or IPv6)",
+    )
+    user_agent: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        default=None,
+        doc="Client user agent string",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        default=True,
+        nullable=False,
+        index=True,  # Index for filtering active sessions
+        doc="Session active status",
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        index=True,  # Index for expiration queries
+        doc="Session expiration timestamp (UTC)",
+    )
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
         nullable=False,
+        index=True,  # Index for sorting by creation date
+        doc="Session creation timestamp (UTC)",
     )
 
     # Relationships

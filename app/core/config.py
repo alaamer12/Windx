@@ -21,7 +21,16 @@ Features:
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, RedisDsn, computed_field, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = [
@@ -86,7 +95,7 @@ class DatabaseSettings(BaseSettings):
     ]
 
     password: Annotated[
-        str,
+        SecretStr,
         Field(
             description="Database password",
         ),
@@ -144,8 +153,9 @@ class DatabaseSettings(BaseSettings):
         Returns:
             PostgresDsn: Complete database connection URL
         """
+        password_str = self.password.get_secret_value() if isinstance(self.password, SecretStr) else self.password
         return PostgresDsn(
-            f"postgresql+asyncpg://{self.user}:{self.password}"
+            f"postgresql+asyncpg://{self.user}:{password_str}"
             f"@{self.host}:{self.port}/{self.name}"
         )
 
@@ -159,7 +169,13 @@ class DatabaseSettings(BaseSettings):
         """
         return self.provider == "supabase"
 
-    model_config = SettingsConfigDict(env_prefix="DATABASE_")
+    model_config = SettingsConfigDict(
+        env_prefix="DATABASE_",
+        str_strip_whitespace=True,
+        validate_default=True,
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+    )
 
 
 class SecuritySettings(BaseSettings):
@@ -172,7 +188,7 @@ class SecuritySettings(BaseSettings):
     """
 
     secret_key: Annotated[
-        str,
+        SecretStr,
         Field(
             min_length=32,
             description="Secret key for JWT token generation",
@@ -194,7 +210,13 @@ class SecuritySettings(BaseSettings):
         ),
     ]
 
-    model_config = SettingsConfigDict(env_prefix="")
+    model_config = SettingsConfigDict(
+        env_prefix="",
+        str_strip_whitespace=True,
+        validate_default=True,
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+    )
 
 
 class CacheSettings(BaseSettings):
@@ -235,7 +257,7 @@ class CacheSettings(BaseSettings):
     ] = 6379
 
     redis_password: Annotated[
-        str | None,
+        SecretStr | None,
         Field(
             default=None,
             description="Redis password",
@@ -278,12 +300,23 @@ class CacheSettings(BaseSettings):
             RedisDsn: Complete Redis connection URL
         """
         if self.redis_password:
+            password_str = (
+                self.redis_password.get_secret_value()
+                if isinstance(self.redis_password, SecretStr)
+                else self.redis_password
+            )
             return RedisDsn(
-                f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
+                f"redis://:{password_str}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
             )
         return RedisDsn(f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}")
 
-    model_config = SettingsConfigDict(env_prefix="CACHE_")
+    model_config = SettingsConfigDict(
+        env_prefix="CACHE_",
+        str_strip_whitespace=True,
+        validate_default=True,
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+    )
 
 
 class LimiterSettings(BaseSettings):
@@ -325,7 +358,7 @@ class LimiterSettings(BaseSettings):
     ] = 6379
 
     redis_password: Annotated[
-        str | None,
+        SecretStr | None,
         Field(
             default=None,
             description="Redis password",
@@ -377,12 +410,23 @@ class LimiterSettings(BaseSettings):
             RedisDsn: Complete Redis connection URL
         """
         if self.redis_password:
+            password_str = (
+                self.redis_password.get_secret_value()
+                if isinstance(self.redis_password, SecretStr)
+                else self.redis_password
+            )
             return RedisDsn(
-                f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
+                f"redis://:{password_str}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
             )
         return RedisDsn(f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}")
 
-    model_config = SettingsConfigDict(env_prefix="LIMITER_")
+    model_config = SettingsConfigDict(
+        env_prefix="LIMITER_",
+        str_strip_whitespace=True,
+        validate_default=True,
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+    )
 
 
 class Settings(BaseSettings):
@@ -457,11 +501,33 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
+    @model_validator(mode="after")
+    def validate_settings(self) -> "Settings":
+        """Validate settings after initialization.
+
+        Returns:
+            Settings: Validated settings instance
+
+        Raises:
+            ValueError: If validation fails
+        """
+        # Validate that at least one CORS origin is set in production
+        if not self.debug and not self.backend_cors_origins:
+            raise ValueError("CORS origins must be set in production mode")
+
+        return self
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         env_nested_delimiter="__",
+        str_strip_whitespace=True,
+        validate_default=True,
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+        extra="ignore",  # Ignore extra fields from environment
+        frozen=False,  # Allow modification after creation
     )
 
 

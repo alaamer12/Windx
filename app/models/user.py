@@ -46,23 +46,63 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    full_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
-    is_superuser: Mapped[bool] = mapped_column(default=False, nullable=False)
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+        sort_order=-100,  # Ensure ID appears first in queries
+        doc="Primary key identifier",
+    )
+    email: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        index=True,
+        nullable=False,
+        doc="User email address (unique)",
+    )
+    username: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        index=True,
+        nullable=False,
+        doc="Username (unique, 3-50 characters)",
+    )
+    hashed_password: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        doc="Bcrypt hashed password",
+    )
+    full_name: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        default=None,
+        doc="User's full name (optional)",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        default=True,
+        nullable=False,
+        index=True,  # Index for filtering active users
+        doc="Account active status",
+    )
+    is_superuser: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        index=True,  # Index for filtering superusers
+        doc="Superuser privileges flag",
+    )
     created_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
         nullable=False,
+        index=True,  # Index for sorting by creation date
+        doc="Account creation timestamp (UTC)",
     )
     updated_at: Mapped[datetime] = mapped_column(
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
         server_default=func.now(),
         nullable=False,
+        doc="Last update timestamp (UTC)",
     )
 
     # Relationships

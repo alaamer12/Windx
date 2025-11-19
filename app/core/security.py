@@ -83,9 +83,17 @@ def create_access_token(
         )
 
     to_encode = {"exp": expire, "sub": str(subject)}
+    
+    # Handle SecretStr for secret_key
+    secret_key = (
+        settings.security.secret_key.get_secret_value()
+        if hasattr(settings.security.secret_key, "get_secret_value")
+        else settings.security.secret_key
+    )
+    
     encoded_jwt = jwt.encode(
         to_encode,
-        settings.security.secret_key,
+        secret_key,
         algorithm=settings.security.algorithm,
     )
     return encoded_jwt
@@ -102,10 +110,17 @@ def decode_access_token(token: str) -> str | None:
     """
     settings = get_settings()
 
+    # Handle SecretStr for secret_key
+    secret_key = (
+        settings.security.secret_key.get_secret_value()
+        if hasattr(settings.security.secret_key, "get_secret_value")
+        else settings.security.secret_key
+    )
+
     try:
         payload = jwt.decode(
             token,
-            settings.security.secret_key,
+            secret_key,
             algorithms=[settings.security.algorithm],
         )
         return payload.get("sub")

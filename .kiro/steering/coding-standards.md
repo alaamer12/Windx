@@ -450,6 +450,124 @@ from app.models.user import User
 - Missing `__all__` in modules
 - PEP 257 style docstrings instead of Google style
 
+## Type Aliases for Dependencies
+
+### Reusable Type Aliases
+- **ALWAYS** use type aliases from `app/api/types` for common dependencies
+- **NEVER** repeat `Annotated[Type, Depends(func)]` in endpoints
+- Create new type aliases for frequently used dependencies
+- Include comprehensive docstrings with usage examples
+
+```python
+# ✅ CORRECT - Use type aliases
+from app.api.types import DBSession, CurrentUser, UserRepo
+
+@router.get("/users/{user_id}")
+async def get_user(
+    user_id: int,
+    user_repo: UserRepo,
+    current_user: CurrentUser,
+) -> User:
+    return await user_repo.get(user_id)
+
+# ❌ WRONG - Repeat dependency annotations
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+@router.get("/users/{user_id}")
+async def get_user(
+    user_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    user_repo = UserRepository(db)
+    return await user_repo.get(user_id)
+```
+
+### Available Type Aliases
+
+**Database:**
+- `DBSession`: Database session dependency
+  ```python
+  async def endpoint(db: DBSession): ...
+  ```
+
+**Authentication:**
+- `CurrentUser`: Current authenticated user
+  ```python
+  async def endpoint(current_user: CurrentUser): ...
+  ```
+- `CurrentSuperuser`: Current superuser
+  ```python
+  async def endpoint(current_superuser: CurrentSuperuser): ...
+  ```
+
+**Repositories:**
+- `UserRepo`: User repository dependency
+  ```python
+  async def endpoint(user_repo: UserRepo): ...
+  ```
+- `SessionRepo`: Session repository dependency
+  ```python
+  async def endpoint(session_repo: SessionRepo): ...
+  ```
+
+### Creating New Type Aliases
+
+When creating new type aliases in `app/api/types.py`:
+
+1. Add factory function for repository dependencies
+2. Create type alias with `Annotated`
+3. Include comprehensive docstring with:
+   - Description
+   - Usage example
+   - Available methods (for repositories)
+4. Add to `__all__`
+
+```python
+# ✅ CORRECT - New type alias
+def get_product_repository(db: DBSession) -> ProductRepository:
+    """Get product repository instance.
+    
+    Args:
+        db (AsyncSession): Database session
+    
+    Returns:
+        ProductRepository: Product repository instance
+    """
+    return ProductRepository(db)
+
+ProductRepo = Annotated[ProductRepository, Depends(get_product_repository)]
+"""Product repository dependency.
+
+Provides access to product data access layer.
+
+Usage:
+    ```python
+    @router.get("/products/{product_id}")
+    async def get_product(
+        product_id: int,
+        product_repo: ProductRepo,
+    ):
+        return await product_repo.get(product_id)
+    ```
+
+Available Methods:
+    - get(id): Get product by ID
+    - get_by_sku(sku): Get product by SKU
+    - create(obj_in): Create new product
+"""
+```
+
+### Benefits of Type Aliases
+
+1. **Reduced Boilerplate**: Less code repetition
+2. **Better Readability**: Clear, concise parameter names
+3. **IDE Support**: Full autocomplete and type checking
+4. **Consistency**: Same pattern across all endpoints
+5. **Documentation**: Docstrings provide inline help
+6. **Maintainability**: Change dependency in one place
+
 ## Database Provider Switching
 
 ### Configuration

@@ -7,10 +7,12 @@ Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase)
 - ✅ **Dual Database Support**: Seamlessly switch between Supabase (development) and PostgreSQL (production)
 - ✅ **Repository Pattern**: Clean data access layer
 - ✅ **Full Type Hints**: Type-safe with Annotated types
+- ✅ **Type Aliases**: Reusable dependency type aliases for clean code
 - ✅ **JWT Authentication**: Secure token-based auth
 - ✅ **Connection Pooling**: Optimized for each database provider
 - ✅ **Auto Migrations**: Alembic database migrations
 - ✅ **API Versioning**: `/api/v1/` prefix for future compatibility
+- ✅ **Modern Tooling**: uv for fast dependency management, hatchling for builds
 - ✅ **Modern Tooling**: `uv` for fast dependency management, `hatchling` for builds
 
 ## Prerequisites

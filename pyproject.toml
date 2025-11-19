@@ -34,6 +34,10 @@ dependencies = [
     "python-multipart>=0.0.6",
     "email-validator>=2.1.0",
     "alembic>=1.13.1",
+    "fastapi-cache2[redis]>=0.2.1",
+    "fastapi-limiter>=0.1.6",
+    "fastapi-pagination>=0.12.14",
+    "redis>=5.0.1",
 ]
 
 [project.optional-dependencies]

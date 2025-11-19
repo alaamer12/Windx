@@ -19,11 +19,14 @@ Features:
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi_cache.decorator import cache
 from pydantic import BaseModel, Field
 
 from app.api.types import CurrentUser, DBSession, SessionRepo, UserRepo
+from app.core.limiter import rate_limit
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.session import SessionCreate
@@ -59,7 +62,12 @@ class LoginRequest(BaseModel):
     password: Annotated[str, Field(description="User password")]
 
 
-@router.post("/register", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserSchema,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(times=5, seconds=3600))],  # 5 per hour
+)
 async def register(
     user_in: UserCreate,
     user_repo: UserRepo,
@@ -106,7 +114,11 @@ async def register(
     return db_user
 
 
-@router.post("/login", response_model=Token)
+@router.post(
+    "/login",
+    response_model=Token,
+    dependencies=[Depends(rate_limit(times=10, seconds=300))],  # 10 per 5 minutes
+)
 async def login(
     login_data: LoginRequest,
     user_repo: UserRepo,
@@ -174,7 +186,12 @@ async def logout(
     pass
 
 
-@router.get("/me", response_model=UserSchema)
+@router.get(
+    "/me",
+    response_model=UserSchema,
+    dependencies=[Depends(rate_limit(times=30, seconds=60))],
+)
+@cache(expire=60)  # Cache for 1 minute
 async def get_current_user_info(
     current_user: CurrentUser,
 ) -> User:

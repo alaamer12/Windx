@@ -21,10 +21,17 @@ Features:
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, computed_field, field_validator
+from pydantic import AnyHttpUrl, Field, PostgresDsn, RedisDsn, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-__all__ = ["DatabaseSettings", "SecuritySettings", "Settings", "get_settings"]
+__all__ = [
+    "DatabaseSettings",
+    "SecuritySettings",
+    "CacheSettings",
+    "LimiterSettings",
+    "Settings",
+    "get_settings",
+]
 
 
 class DatabaseSettings(BaseSettings):
@@ -190,6 +197,194 @@ class SecuritySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="")
 
 
+class CacheSettings(BaseSettings):
+    """Cache configuration settings.
+
+    Attributes:
+        enabled: Enable/disable caching
+        redis_host: Redis host
+        redis_port: Redis port
+        redis_password: Redis password (optional)
+        redis_db: Redis database number
+        prefix: Cache key prefix
+        default_ttl: Default TTL in seconds
+    """
+
+    enabled: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Enable caching",
+        ),
+    ] = True
+
+    redis_host: Annotated[
+        str,
+        Field(
+            default="localhost",
+            description="Redis host",
+        ),
+    ] = "localhost"
+
+    redis_port: Annotated[
+        int,
+        Field(
+            default=6379,
+            description="Redis port",
+        ),
+    ] = 6379
+
+    redis_password: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Redis password",
+        ),
+    ] = None
+
+    redis_db: Annotated[
+        int,
+        Field(
+            default=0,
+            ge=0,
+            le=15,
+            description="Redis database number",
+        ),
+    ] = 0
+
+    prefix: Annotated[
+        str,
+        Field(
+            default="myapi:cache",
+            description="Cache key prefix",
+        ),
+    ] = "myapi:cache"
+
+    default_ttl: Annotated[
+        int,
+        Field(
+            default=300,
+            ge=0,
+            description="Default TTL in seconds",
+        ),
+    ] = 300
+
+    @computed_field
+    @property
+    def redis_url(self) -> RedisDsn:
+        """Construct Redis URL from components.
+
+        Returns:
+            RedisDsn: Complete Redis connection URL
+        """
+        if self.redis_password:
+            return RedisDsn(
+                f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
+            )
+        return RedisDsn(f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}")
+
+    model_config = SettingsConfigDict(env_prefix="CACHE_")
+
+
+class LimiterSettings(BaseSettings):
+    """Rate limiter configuration settings.
+
+    Attributes:
+        enabled: Enable/disable rate limiting
+        redis_host: Redis host
+        redis_port: Redis port
+        redis_password: Redis password (optional)
+        redis_db: Redis database number
+        prefix: Rate limit key prefix
+        default_times: Default number of requests
+        default_seconds: Default time window in seconds
+    """
+
+    enabled: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Enable rate limiting",
+        ),
+    ] = True
+
+    redis_host: Annotated[
+        str,
+        Field(
+            default="localhost",
+            description="Redis host",
+        ),
+    ] = "localhost"
+
+    redis_port: Annotated[
+        int,
+        Field(
+            default=6379,
+            description="Redis port",
+        ),
+    ] = 6379
+
+    redis_password: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Redis password",
+        ),
+    ] = None
+
+    redis_db: Annotated[
+        int,
+        Field(
+            default=1,
+            ge=0,
+            le=15,
+            description="Redis database number",
+        ),
+    ] = 1
+
+    prefix: Annotated[
+        str,
+        Field(
+            default="myapi:limiter",
+            description="Rate limit key prefix",
+        ),
+    ] = "myapi:limiter"
+
+    default_times: Annotated[
+        int,
+        Field(
+            default=100,
+            ge=1,
+            description="Default number of requests allowed",
+        ),
+    ] = 100
+
+    default_seconds: Annotated[
+        int,
+        Field(
+            default=60,
+            ge=1,
+            description="Default time window in seconds",
+        ),
+    ] = 60
+
+    @computed_field
+    @property
+    def redis_url(self) -> RedisDsn:
+        """Construct Redis URL from components.
+
+        Returns:
+            RedisDsn: Complete Redis connection URL
+        """
+        if self.redis_password:
+            return RedisDsn(
+                f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
+            )
+        return RedisDsn(f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}")
+
+    model_config = SettingsConfigDict(env_prefix="LIMITER_")
+
+
 class Settings(BaseSettings):
     """Main application settings.
     
@@ -242,6 +437,8 @@ class Settings(BaseSettings):
     # Nested settings
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
+    cache: CacheSettings = Field(default_factory=CacheSettings)
+    limiter: LimiterSettings = Field(default_factory=LimiterSettings)
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod

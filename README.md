@@ -13,7 +13,8 @@ Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase)
 - ✅ **Auto Migrations**: Alembic database migrations
 - ✅ **API Versioning**: `/api/v1/` prefix for future compatibility
 - ✅ **Modern Tooling**: uv for fast dependency management, hatchling for builds
-- ✅ **Modern Tooling**: `uv` for fast dependency management, `hatchling` for builds
+- ✅ **Performance Optimized**: Redis caching, rate limiting, and pagination
+- ✅ **Production Ready**: Comprehensive monitoring and error handling
 
 ## Prerequisites
 
@@ -41,12 +42,24 @@ uv sync
 uv sync --extra dev
 ```
 
-### 3. Configure Environment
+### 3. Start Redis (for caching and rate limiting)
+
+```bash
+# Using Docker (recommended)
+docker-compose up -d redis
+
+# Or install Redis locally
+# Windows: https://redis.io/docs/getting-started/installation/install-redis-on-windows/
+# Mac: brew install redis
+# Linux: sudo apt install redis
+```
+
+### 4. Configure Environment
 
 #### Development (Supabase)
 ```bash
 copy .env.development .env
-# Edit .env with your Supabase credentials
+# Edit .env with your Supabase and Redis credentials
 ```
 
 #### Production (PostgreSQL)

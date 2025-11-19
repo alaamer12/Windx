@@ -20,10 +20,13 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_pagination import add_pagination
 
 from app.api.v1.router import api_router
+from app.core.cache import close_cache, init_cache
 from app.core.config import Settings, get_settings
 from app.core.database import close_db, init_db
+from app.core.limiter import close_limiter, init_limiter
 
 __all__ = ["app", "root", "health_check", "configure_cors", "lifespan"]
 
@@ -33,7 +36,7 @@ async def lifespan(application: FastAPI):
     """Application lifespan manager.
 
     Handles startup and shutdown events for the FastAPI application.
-    Initializes database connection on startup and closes it on shutdown.
+    Initializes database, cache, and rate limiter on startup.
 
     Args:
         application (FastAPI): FastAPI application instance
@@ -44,6 +47,8 @@ async def lifespan(application: FastAPI):
     # Startup
     print("🚀 Starting application...")
     await init_db()
+    await init_cache()
+    await init_limiter()
     print("✓ Application started successfully")
 
     yield
@@ -51,6 +56,8 @@ async def lifespan(application: FastAPI):
     # Shutdown
     print("🛑 Shutting down application...")
     await close_db()
+    await close_cache()
+    await close_limiter()
     print("✓ Application shutdown complete")
 
 
@@ -119,3 +126,6 @@ configure_cors(app, settings)
 
 # Include API router
 app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+# Add pagination support
+add_pagination(app)

@@ -980,6 +980,158 @@ email: Mapped[str] = mapped_column(
 email: Mapped[str] = mapped_column(String(255), unique=True)
 ```
 
+## Exception Handling
+
+### Local try/except for Business Logic
+
+- Use `try/except` in endpoints for **specific, recoverable failures**
+- Wrap unexpected errors in domain exceptions
+- Always rollback database transactions on error
+- Re-raise domain exceptions (let global handlers format them)
+
+```python
+# ✅ CORRECT - Local error handling
+from app.core.exceptions import NotFoundException, DatabaseException
+
+@router.get("/users/{user_id}")
+async def get_user(user_id: int, user_repo: UserRepo) -> User:
+    try:
+        user = await user_repo.get(user_id)
+    except Exception as e:
+        raise DatabaseException(
+            message="Failed to fetch user",
+            details={"user_id": user_id, "error": str(e)},
+        )
+    
+    if not user:
+        raise NotFoundException(resource="User", details={"user_id": user_id})
+    
+    return user
+
+# ❌ WRONG - Generic HTTPException
+@router.get("/users/{user_id}")
+async def get_user(user_id: int, user_repo: UserRepo) -> User:
+    user = await user_repo.get(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Not found")  # Too generic!
+    return user
+```
+
+### Global Exception Handlers
+
+- Global handlers are configured in `app/main.py`
+- Provide consistent error format across all endpoints
+- Automatic logging with request context
+- Never expose internal details to clients
+
+```python
+# Configured automatically
+setup_exception_handlers(app)
+
+# Handles:
+# - AppException and all subclasses
+# - RequestValidationError (Pydantic)
+# - IntegrityError (SQLAlchemy)
+# - OperationalError (SQLAlchemy)
+# - Exception (catch-all)
+```
+
+### Custom Exception Classes
+
+Use specific exception classes for different error types:
+
+```python
+# ✅ CORRECT - Specific exceptions
+from app.core.exceptions import (
+    NotFoundException,
+    ConflictException,
+    AuthenticationException,
+    AuthorizationException,
+    DatabaseException,
+)
+
+# Not found
+raise NotFoundException(resource="User", details={"user_id": 123})
+
+# Conflict (duplicate)
+raise ConflictException(message="Email already exists", details={"email": email})
+
+# Authentication failed
+raise AuthenticationException(message="Invalid credentials")
+
+# Authorization failed
+raise AuthorizationException(message="Admin access required")
+
+# Database error
+raise DatabaseException(message="Query failed", details={"query": "..."})
+
+# ❌ WRONG - Generic exceptions
+raise HTTPException(status_code=404, detail="Not found")
+raise Exception("Something went wrong")
+```
+
+### Error Response Format
+
+All errors return consistent JSON:
+
+```json
+{
+  "error": "not_found_error",
+  "message": "User not found",
+  "details": [
+    {
+      "type": "not_found_error",
+      "message": "User not found",
+      "field": null
+    }
+  ],
+  "request_id": "abc-123"
+}
+```
+
+### Exception Handling Pattern
+
+```python
+# Standard pattern for endpoints
+@router.post("/endpoint")
+async def endpoint(data: Data, repo: Repo, db: DBSession):
+    try:
+        # 1. Validate business rules
+        if not await repo.check_exists(data.id):
+            raise NotFoundException(resource="Resource")
+        
+        # 2. Check conflicts
+        if await repo.get_by_name(data.name):
+            raise ConflictException(message="Name already exists")
+        
+        # 3. Perform operation
+        result = await repo.create(data)
+        await db.commit()
+        
+        return result
+    
+    except (NotFoundException, ConflictException):
+        # Re-raise domain exceptions
+        raise
+    except Exception as e:
+        # Wrap unexpected errors
+        await db.rollback()
+        raise DatabaseException(
+            message="Operation failed",
+            details={"error": str(e)},
+        )
+```
+
+### Best Practices
+
+1. **Use specific exception classes** - Not generic HTTPException
+2. **Include context in details** - Help with debugging
+3. **Re-raise domain exceptions** - Let global handlers format
+4. **Rollback on database errors** - Maintain consistency
+5. **Don't expose internals** - Keep error messages generic
+6. **Log with context** - Include request info
+7. **Test error cases** - Verify error handling works
+
 ## Questions?
 
 When in doubt:
@@ -990,3 +1142,4 @@ When in doubt:
 5. Follow Pydantic V2 patterns
 6. Check `docs/DATABASE_SETUP.md` for database configuration
 7. Check `docs/PYDANTIC_V2_ENHANCEMENTS.md` for advanced features
+8. Check `docs/EXCEPTION_HANDLING.md` for error handling patterns

@@ -90,22 +90,31 @@ async def get_user(
         User: User data
 
     Raises:
-        HTTPException: If user not found or no permission
+        AuthorizationException: If user lacks permission
+        NotFoundException: If user not found
     """
+    from app.core.exceptions import AuthorizationException, NotFoundException
+
     # Users can only view their own profile unless they're superuser
     if user_id != current_user.id and not current_user.is_superuser:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
+        raise AuthorizationException(
+            message="You can only view your own profile",
+            details={"user_id": user_id, "current_user_id": current_user.id},
         )
 
-    user = await user_repo.get(user_id)
+    try:
+        user = await user_repo.get(user_id)
+    except Exception as e:
+        # Log and wrap unexpected database errors
+        from app.core.exceptions import DatabaseException
+
+        raise DatabaseException(
+            message="Failed to fetch user",
+            details={"user_id": user_id, "error": str(e)},
+        )
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
+        raise NotFoundException(resource="User", details={"user_id": user_id})
 
     return user
 

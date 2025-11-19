@@ -26,6 +26,7 @@ from app.api.v1.router import api_router
 from app.core.cache import close_cache, init_cache
 from app.core.config import Settings, get_settings
 from app.core.database import close_db, init_db
+from app.core.exceptions import setup_exception_handlers
 from app.core.limiter import close_limiter, init_limiter
 
 __all__ = ["app", "root", "health_check", "configure_cors", "lifespan"]
@@ -123,6 +124,9 @@ def configure_cors(application: FastAPI, settings: Settings) -> None:
 # Configure CORS
 settings = get_settings()
 configure_cors(app, settings)
+
+# Setup exception handlers
+setup_exception_handlers(app)
 
 # Include API router
 app.include_router(api_router, prefix=settings.api_v1_prefix)

@@ -84,34 +84,49 @@ async def register(
         User: Created user
 
     Raises:
-        HTTPException: If username or email already exists
+        ConflictException: If username or email already exists
+        DatabaseException: If database operation fails
     """
-    # Check if user exists
-    existing_user = await user_repo.get_by_email(user_in.email)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+    from app.core.exceptions import ConflictException, DatabaseException
+
+    try:
+        # Check if user exists
+        existing_user = await user_repo.get_by_email(user_in.email)
+        if existing_user:
+            raise ConflictException(
+                message="Email already registered",
+                details={"email": user_in.email},
+            )
+
+        existing_user = await user_repo.get_by_username(user_in.username)
+        if existing_user:
+            raise ConflictException(
+                message="Username already taken",
+                details={"username": user_in.username},
+            )
+
+        # Create user with hashed password
+        user_dict = user_in.model_dump()
+        user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
+
+        # Create user
+        db_user = User(**user_dict)
+        db.add(db_user)
+        await db.commit()
+        await db.refresh(db_user)
+
+        return db_user
+
+    except ConflictException:
+        # Re-raise conflict exceptions
+        raise
+    except Exception as e:
+        # Wrap unexpected errors
+        await db.rollback()
+        raise DatabaseException(
+            message="Failed to create user",
+            details={"error": str(e)},
         )
-
-    existing_user = await user_repo.get_by_username(user_in.username)
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken",
-        )
-
-    # Create user with hashed password
-    user_dict = user_in.model_dump()
-    user_dict["hashed_password"] = get_password_hash(user_dict.pop("password"))
-
-    # Create user directly (repository pattern would be better but this works)
-    db_user = User(**user_dict)
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-
-    return db_user
 
 
 @router.post(
@@ -135,39 +150,52 @@ async def login(
         Token: Access token
 
     Raises:
-        HTTPException: If credentials are invalid
+        AuthenticationException: If credentials are invalid
+        DatabaseException: If database operation fails
     """
-    # Try to find user by username or email
-    user = await user_repo.get_by_username(login_data.username)
-    if not user:
-        user = await user_repo.get_by_email(login_data.username)
+    from app.core.exceptions import AuthenticationException, DatabaseException
 
-    if not user or not verify_password(login_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        # Try to find user by username or email
+        user = await user_repo.get_by_username(login_data.username)
+        if not user:
+            user = await user_repo.get_by_email(login_data.username)
+
+        if not user or not verify_password(login_data.password, user.hashed_password):
+            raise AuthenticationException(
+                message="Incorrect username or password",
+                details={"username": login_data.username},
+            )
+
+        if not user.is_active:
+            raise AuthenticationException(
+                message="Account is inactive",
+                details={"user_id": user.id},
+            )
+
+        # Create access token
+        access_token = create_access_token(subject=user.id)
+
+        # Create session record
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+        session_create = SessionCreate(
+            user_id=user.id,
+            token=access_token,
+            expires_at=expires_at,
         )
+        await session_repo.create(session_create)
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user",
+        return Token(access_token=access_token, token_type="bearer")
+
+    except AuthenticationException:
+        # Re-raise authentication exceptions
+        raise
+    except Exception as e:
+        # Wrap unexpected errors
+        raise DatabaseException(
+            message="Login failed due to system error",
+            details={"error": str(e)},
         )
-
-    # Create access token
-    access_token = create_access_token(subject=user.id)
-
-    # Create session record
-    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
-    session_create = SessionCreate(
-        user_id=user.id,
-        token=access_token,
-        expires_at=expires_at,
-    )
-    await session_repo.create(session_create)
-
-    return Token(access_token=access_token, token_type="bearer")
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

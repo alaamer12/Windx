@@ -19,9 +19,9 @@ Features:
 """
 
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
-from pydantic import AnyHttpUrl, Field, PostgresDsn, field_validator
+from pydantic import AnyHttpUrl, Field, PostgresDsn, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 __all__ = ["DatabaseSettings", "SecuritySettings", "Settings", "get_settings"]
@@ -30,17 +30,127 @@ __all__ = ["DatabaseSettings", "SecuritySettings", "Settings", "get_settings"]
 class DatabaseSettings(BaseSettings):
     """Database configuration settings.
     
+    Supports both Supabase (development) and production PostgreSQL databases.
+    The connection URL is automatically constructed based on the environment.
+    
     Attributes:
-        url: PostgreSQL database URL for Supabase connection
+        provider: Database provider (supabase or postgresql)
+        host: Database host
+        port: Database port
+        user: Database user
+        password: Database password
+        name: Database name
+        pool_size: Connection pool size
+        max_overflow: Maximum overflow connections
+        pool_pre_ping: Enable connection health checks
+        echo: Echo SQL queries (debug mode)
     """
 
-    url: Annotated[
-        PostgresDsn,
+    provider: Annotated[
+        Literal["supabase", "postgresql"],
         Field(
-            description="PostgreSQL database URL for Supabase connection",
-            examples=["postgresql+asyncpg://user:pass@host:5432/db"],
+            default="supabase",
+            description="Database provider type",
+        ),
+    ] = "supabase"
+
+    host: Annotated[
+        str,
+        Field(
+            description="Database host",
+            examples=["db.xxxxx.supabase.co", "localhost"],
         ),
     ]
+
+    port: Annotated[
+        int,
+        Field(
+            default=5432,
+            description="Database port",
+        ),
+    ] = 5432
+
+    user: Annotated[
+        str,
+        Field(
+            description="Database user",
+            examples=["postgres"],
+        ),
+    ]
+
+    password: Annotated[
+        str,
+        Field(
+            description="Database password",
+        ),
+    ]
+
+    name: Annotated[
+        str,
+        Field(
+            default="postgres",
+            description="Database name",
+        ),
+    ] = "postgres"
+
+    pool_size: Annotated[
+        int,
+        Field(
+            default=5,
+            ge=1,
+            le=20,
+            description="Connection pool size",
+        ),
+    ] = 5
+
+    max_overflow: Annotated[
+        int,
+        Field(
+            default=10,
+            ge=0,
+            le=50,
+            description="Maximum overflow connections beyond pool_size",
+        ),
+    ] = 10
+
+    pool_pre_ping: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Enable connection health checks before using",
+        ),
+    ] = True
+
+    echo: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Echo SQL queries to stdout",
+        ),
+    ] = False
+
+    @computed_field
+    @property
+    def url(self) -> PostgresDsn:
+        """Construct database URL from components.
+
+        Returns:
+            PostgresDsn: Complete database connection URL
+        """
+        return PostgresDsn(
+            f"postgresql+asyncpg://{self.user}:{self.password}"
+            f"@{self.host}:{self.port}/{self.name}"
+        )
+
+    @computed_field
+    @property
+    def is_supabase(self) -> bool:
+        """Check if using Supabase provider.
+
+        Returns:
+            bool: True if provider is Supabase
+        """
+        return self.provider == "supabase"
 
     model_config = SettingsConfigDict(env_prefix="DATABASE_")
 

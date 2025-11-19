@@ -450,6 +450,50 @@ from app.models.user import User
 - Missing `__all__` in modules
 - PEP 257 style docstrings instead of Google style
 
+## Database Provider Switching
+
+### Configuration
+- Support both Supabase (development) and PostgreSQL (production)
+- Use `DATABASE_PROVIDER` environment variable to switch
+- Optimize connection pooling per provider
+- Use `@lru_cache` for engine and session maker
+
+```python
+# ✅ CORRECT - Provider-aware configuration
+class DatabaseSettings(BaseSettings):
+    provider: Literal["supabase", "postgresql"] = "supabase"
+    host: str
+    port: int = 5432
+    
+    @computed_field
+    @property
+    def is_supabase(self) -> bool:
+        return self.provider == "supabase"
+```
+
+### Connection Pooling
+- Supabase: Smaller pool (3-5 connections)
+- PostgreSQL: Larger pool (10-20 connections)
+- Always enable `pool_pre_ping` for reliability
+
+```python
+# ✅ CORRECT - Provider-specific optimization
+if settings.database.is_supabase:
+    engine_kwargs["pool_size"] = min(settings.database.pool_size, 5)
+    engine_kwargs["max_overflow"] = min(settings.database.max_overflow, 5)
+```
+
+### Environment Files
+- `.env.development` - Supabase configuration
+- `.env.production` - PostgreSQL configuration
+- `.env.example` - Template with both options
+
+### Migrations
+- Use Alembic for database migrations
+- Test migrations in development first
+- Always backup before production migrations
+- Support both providers in `alembic/env.py`
+
 ## Questions?
 
 When in doubt:
@@ -458,3 +502,4 @@ When in doubt:
 3. Follow FastAPI best practices
 4. Follow SQLAlchemy 2.0 patterns
 5. Follow Pydantic V2 patterns
+6. Check `docs/DATABASE_SETUP.md` for database configuration

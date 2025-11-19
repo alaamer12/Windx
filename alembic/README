@@ -1,0 +1,63 @@
+Generic single-database configuration with async support.
+
+This Alembic environment is configured to work with both Supabase and
+PostgreSQL databases. It automatically reads the database URL from your
+.env file through the application settings.
+
+## Usage
+
+### Create a new migration
+```bash
+alembic revision --autogenerate -m "description of changes"
+```
+
+### Apply migrations
+```bash
+alembic upgrade head
+```
+
+### Rollback one migration
+```bash
+alembic downgrade -1
+```
+
+### View migration history
+```bash
+alembic history
+```
+
+### View current revision
+```bash
+alembic current
+```
+
+## Environment Files
+
+Make sure to use the correct environment file:
+
+### Development (Supabase)
+```bash
+# Set environment variable before running alembic
+set DATABASE_PROVIDER=supabase  # Windows
+export DATABASE_PROVIDER=supabase  # Linux/Mac
+
+alembic upgrade head
+```
+
+### Production (PostgreSQL)
+```bash
+# Set environment variable before running alembic
+set DATABASE_PROVIDER=postgresql  # Windows
+export DATABASE_PROVIDER=postgresql  # Linux/Mac
+
+alembic upgrade head
+```
+
+Or use environment files:
+```bash
+# Load .env.development
+python -c "from dotenv import load_dotenv; load_dotenv('.env.development')" && alembic upgrade head
+
+# Load .env.production
+python -c "from dotenv import load_dotenv; load_dotenv('.env.production')" && alembic upgrade head
+```

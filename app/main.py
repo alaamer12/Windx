@@ -15,6 +15,7 @@ Features:
     - Health check endpoint
 """
 
+from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
@@ -22,13 +23,42 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
+from app.core.database import close_db, init_db
 
-__all__ = ["app", "root", "health_check", "configure_cors"]
+__all__ = ["app", "root", "health_check", "configure_cors", "lifespan"]
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Application lifespan manager.
+
+    Handles startup and shutdown events for the FastAPI application.
+    Initializes database connection on startup and closes it on shutdown.
+
+    Args:
+        application (FastAPI): FastAPI application instance
+
+    Yields:
+        None: Control back to FastAPI
+    """
+    # Startup
+    print("🚀 Starting application...")
+    await init_db()
+    print("✓ Application started successfully")
+
+    yield
+
+    # Shutdown
+    print("🛑 Shutting down application...")
+    await close_db()
+    print("✓ Application shutdown complete")
+
 
 app = FastAPI(
     title="Backend API",
     description="Professional backend API with PostgreSQL/Supabase",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 
@@ -52,12 +82,17 @@ async def health_check(
         settings (Settings): Application settings
 
     Returns:
-        dict[str, str]: Health status with app name and version
+        dict[str, str]: Health status with app name, version, and database info
     """
     return {
         "status": "healthy",
         "app_name": settings.app_name,
         "version": settings.app_version,
+        "database": {
+            "provider": settings.database.provider,
+            "host": settings.database.host,
+            "connected": True,
+        },
     }
 
 

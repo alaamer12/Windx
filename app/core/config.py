@@ -170,11 +170,14 @@ class DatabaseSettings(BaseSettings):
         return self.provider == "supabase"
 
     model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
         env_prefix="DATABASE_",
         str_strip_whitespace=True,
         validate_default=True,
         validate_assignment=True,
         use_attribute_docstrings=True,
+        extra="ignore",
     )
 
 
@@ -211,11 +214,14 @@ class SecuritySettings(BaseSettings):
     ]
 
     model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
         env_prefix="",
         str_strip_whitespace=True,
         validate_default=True,
         validate_assignment=True,
         use_attribute_docstrings=True,
+        extra="ignore",
     )
 
 
@@ -311,11 +317,14 @@ class CacheSettings(BaseSettings):
         return RedisDsn(f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}")
 
     model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
         env_prefix="CACHE_",
         str_strip_whitespace=True,
         validate_default=True,
         validate_assignment=True,
         use_attribute_docstrings=True,
+        extra="ignore",
     )
 
 
@@ -421,11 +430,14 @@ class LimiterSettings(BaseSettings):
         return RedisDsn(f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}")
 
     model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
         env_prefix="LIMITER_",
         str_strip_whitespace=True,
         validate_default=True,
         validate_assignment=True,
         use_attribute_docstrings=True,
+        extra="ignore",
     )
 
 

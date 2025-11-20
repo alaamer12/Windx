@@ -37,21 +37,17 @@ __all__ = ["get_engine", "get_session_maker", "get_db", "init_db", "close_db"]
 
 
 @lru_cache
-def get_engine(settings: Settings | None = None) -> AsyncEngine:
+def get_engine() -> AsyncEngine:
     """Create and return cached database engine.
 
     This function creates a single engine instance that is reused across
     the application. The engine is configured based on the database provider
     (Supabase or PostgreSQL) with appropriate connection pooling settings.
 
-    Args:
-        settings (Settings | None): Application settings. If None, fetches from get_settings()
-
     Returns:
         AsyncEngine: SQLAlchemy async engine (cached singleton)
     """
-    if settings is None:
-        settings = get_settings()
+    settings = get_settings()
 
     engine_kwargs = {
         "url": str(settings.database.url),
@@ -74,19 +70,13 @@ def get_engine(settings: Settings | None = None) -> AsyncEngine:
 
 
 @lru_cache
-def get_session_maker(settings: Settings | None = None) -> async_sessionmaker[AsyncSession]:
+def get_session_maker() -> async_sessionmaker[AsyncSession]:
     """Create and return cached session maker.
-
-    Args:
-        settings (Settings | None): Application settings. If None, fetches from get_settings()
 
     Returns:
         async_sessionmaker[AsyncSession]: Async session maker factory (cached singleton)
     """
-    if settings is None:
-        settings = get_settings()
-
-    engine = get_engine(settings)
+    engine = get_engine()
     return async_sessionmaker(
         engine,
         class_=AsyncSession,
@@ -130,7 +120,7 @@ async def init_db() -> None:
             await init_db()
     """
     settings = get_settings()
-    engine = get_engine(settings)
+    engine = get_engine()
 
     # Test connection
     async with engine.begin() as conn:
@@ -151,7 +141,6 @@ async def close_db() -> None:
         async def shutdown():
             await close_db()
     """
-    settings = get_settings()
-    engine = get_engine(settings)
+    engine = get_engine()
     await engine.dispose()
     print("✓ Database connections closed")

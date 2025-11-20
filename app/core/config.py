@@ -51,6 +51,7 @@ class DatabaseSettings(BaseSettings):
     
     Attributes:
         provider: Database provider (supabase or postgresql)
+        connection_mode: Connection mode (direct, transaction_pooler, session_pooler)
         host: Database host
         port: Database port
         user: Database user
@@ -60,6 +61,7 @@ class DatabaseSettings(BaseSettings):
         max_overflow: Maximum overflow connections
         pool_pre_ping: Enable connection health checks
         echo: Echo SQL queries (debug mode)
+        disable_pooler_warning: Disable transaction pooler warning
     """
 
     provider: Annotated[
@@ -70,11 +72,20 @@ class DatabaseSettings(BaseSettings):
         ),
     ] = "supabase"
 
+    connection_mode: Annotated[
+        Literal["direct", "transaction_pooler", "session_pooler"],
+        Field(
+            default="transaction_pooler",
+            description="Connection mode for Supabase (transaction_pooler recommended)",
+        ),
+    ] = "transaction_pooler"
+
     host: Annotated[
         str,
         Field(
             description="Database host",
             examples=["db.xxxxx.supabase.co", "localhost"],
+            json_schema_extra={"required": True},
         ),
     ]
 
@@ -91,6 +102,7 @@ class DatabaseSettings(BaseSettings):
         Field(
             description="Database user",
             examples=["postgres"],
+            json_schema_extra={"required": True},
         ),
     ]
 
@@ -98,6 +110,7 @@ class DatabaseSettings(BaseSettings):
         SecretStr,
         Field(
             description="Database password",
+            json_schema_extra={"required": True},
         ),
     ]
 
@@ -108,6 +121,14 @@ class DatabaseSettings(BaseSettings):
             description="Database name",
         ),
     ] = "postgres"
+
+    disable_pooler_warning: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Disable transaction pooler PREPARE statement warning",
+        ),
+    ] = False
 
     pool_size: Annotated[
         int,
@@ -169,6 +190,25 @@ class DatabaseSettings(BaseSettings):
         """
         return self.provider == "supabase"
 
+    @model_validator(mode="after")
+    def validate_connection_mode(self) -> "DatabaseSettings":
+        """Validate connection mode and show warnings."""
+        import warnings
+        
+        # Show warning for transaction pooler
+        if (
+            self.connection_mode == "transaction_pooler"
+            and not self.disable_pooler_warning
+        ):
+            warnings.warn(
+                "Using transaction pooler mode: PREPARE statements are not supported. "
+                "Set DATABASE_DISABLE_POOLER_WARNING=True to disable this warning.",
+                UserWarning,
+                stacklevel=2,
+            )
+        
+        return self
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -195,6 +235,7 @@ class SecuritySettings(BaseSettings):
         Field(
             min_length=32,
             description="Secret key for JWT token generation",
+            json_schema_extra={"required": True},
         ),
     ]
     algorithm: Annotated[

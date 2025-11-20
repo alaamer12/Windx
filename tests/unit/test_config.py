@@ -8,7 +8,7 @@ print(f"Current directory: {os.getcwd()}")
 print(f"Script location: {Path(__file__).parent}")
 
 # Check if .env exists
-env_path = Path(".env")
+env_path = Path("../../.env")
 print(f"\n.env exists: {env_path.exists()}")
 if env_path.exists():
     print(f".env path: {env_path.absolute()}")

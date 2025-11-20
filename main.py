@@ -47,6 +47,17 @@ async def lifespan(application: FastAPI):
     """
     # Startup
     print("🚀 Starting application...")
+    
+    # Validate environment configuration
+    try:
+        settings = get_settings()
+        print(f"✓ Configuration loaded: {settings.app_name} v{settings.app_version}")
+        print(f"  Database: {settings.database.provider} @ {settings.database.host}:{settings.database.port}")
+        print(f"  Connection mode: {settings.database.connection_mode}")
+    except Exception as e:
+        print(f"❌ Configuration error: {e}")
+        raise
+    
     await init_db()
     await init_cache()
     await init_limiter()

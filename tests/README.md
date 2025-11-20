@@ -1,217 +1,230 @@
-# Test Suite
+# Environment Consistency Tests
 
-Comprehensive test suite for the FastAPI application using modern async testing practices.
+This directory contains comprehensive tests for the environment file consistency checker.
 
-## Quick Start
+## Test Files
+
+### `test_env_consistency.py`
+Main test suite that validates the consistency checker functionality.
+
+**Tests**:
+1. **Baseline** - Verifies all files are consistent initially
+2. **Missing Key** - Detects when a key is missing from a file
+3. **Extra Key** - Detects when a file has extra keys
+4. **Multiple Issues** - Detects multiple problems at once
+5. **Comments/Empty Lines** - Ignores comments and empty lines
+
+**Features**:
+- Creates temporary backups before each test
+- Restores original files after each test
+- Handles keyboard interrupts gracefully
+- Always performs cleanup, even on errors
+
+**Run**:
+```bash
+python tests/test_env.py
+```
+
+### `test_cleanup_on_error.py`
+Tests cleanup behavior when errors occur.
+
+**Tests**:
+1. **Cleanup on Exception** - Verifies cleanup when exception is raised
+2. **Manual Interrupt Simulation** - Simulates Ctrl+C and verifies cleanup
+
+**Run**:
+```bash
+python tests/test_cleanup_on_error.py
+```
+
+### `test_interrupt_handling.py`
+Tests keyboard interrupt handling (advanced).
+
+**Run**:
+```bash
+python tests/test_interrupt_handling.py
+```
+
+## Running All Tests
+
+Run all tests at once:
 
 ```bash
-# Install test dependencies
-pip install -r requirements-test.txt
+# Run main test suite
+python tests/test_env.py
 
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app --cov-report=html
-
-# Run specific test type
-pytest -m unit          # Unit tests only
-pytest -m integration   # Integration tests only
+# Run cleanup tests
+python tests/test_cleanup_on_error.py
 ```
 
-## Structure
+## Test Results
+
+All tests should pass:
 
 ```
-tests/
-├── conftest.py              # Shared fixtures and configuration
-├── pytest.ini               # Pytest settings
-├── README.md               # This file
-│
-├── factories/              # Test data factories
-│   ├── __init__.py
-│   └── user_factory.py    # User data generation
-│
-├── unit/                   # Unit tests (fast, isolated)
-│   ├── __init__.py
-│   └── test_user_service.py
-│
-└── integration/            # Integration tests (full stack)
-    ├── __init__.py
-    ├── test_auth.py       # Authentication endpoints
-    └── test_users.py      # User management endpoints
+✅ PASS: Baseline
+✅ PASS: Missing Key
+✅ PASS: Extra Key
+✅ PASS: Multiple Issues
+✅ PASS: Comments/Empty Lines
+
+Results: 5/5 tests passed
+🎉 All tests passed!
 ```
 
-## Test Types
+## How Tests Work
 
-### Unit Tests (`tests/unit/`)
-- Test individual components in isolation
-- Mock external dependencies
-- Fast execution
-- Focus on business logic
+### 1. Setup Phase
+- Creates temporary backup directory
+- Copies all environment files to backup
+- Prints backup location
 
-### Integration Tests (`tests/integration/`)
-- Test complete request/response cycle
-- Real database operations
-- HTTP requests via httpx
-- Test API contracts
+### 2. Test Phase
+- Modifies environment files to create test scenarios
+- Runs consistency checker
+- Verifies expected results
 
-## Key Features
+### 3. Teardown Phase
+- Restores original files from backup
+- Removes backup directory
+- Verifies cleanup completed
 
-✅ **Async Testing** - Full async/await support with pytest-asyncio  
-✅ **httpx Client** - Modern async HTTP testing (not TestClient)  
-✅ **SQLite In-Memory** - Fast test database  
-✅ **Fixtures** - Reusable test setup (users, auth, database)  
-✅ **Factories** - Generate realistic test data  
-✅ **Coverage** - Track code coverage with pytest-cov  
-✅ **Markers** - Organize tests by type/feature  
+### 4. Error Handling
+- Catches KeyboardInterrupt (Ctrl+C)
+- Catches all exceptions
+- Always performs cleanup
+- Verifies files were restored
 
-## Available Fixtures
+## Safety Features
 
-### Database
-- `db_session` - Test database session
-- `test_engine` - Test database engine
-- `test_session_maker` - Session maker
+1. **Temporary Backups**: All original files are backed up before testing
+2. **Automatic Restore**: Files are restored after each test
+3. **Error Recovery**: Cleanup occurs even if tests fail
+4. **Interrupt Handling**: Ctrl+C is caught and cleanup is performed
+5. **Verification**: Tests verify cleanup was successful
 
-### HTTP Client
-- `client` - httpx AsyncClient for API testing
+## Test Scenarios
 
-### Users
-- `test_user` - Regular user in database
-- `test_superuser` - Superuser in database
-- `test_user_data` - User data dictionary
-- `test_superuser_data` - Superuser data dictionary
-
-### Authentication
-- `auth_headers` - Auth headers for test user
-- `superuser_auth_headers` - Auth headers for superuser
-
-## Running Tests
-
-### All Tests
-```bash
-pytest
-```
-
-### Specific File
-```bash
-pytest tests/integration/test_auth.py
-```
-
-### Specific Test
-```bash
-pytest tests/integration/test_auth.py::TestLoginEndpoint::test_login_with_username_success
-```
-
-### By Marker
-```bash
-pytest -m unit           # Unit tests
-pytest -m integration    # Integration tests
-pytest -m auth           # Auth tests
-pytest -m users          # User tests
-```
-
-### With Coverage
-```bash
-# Terminal report
-pytest --cov=app --cov-report=term-missing
-
-# HTML report
-pytest --cov=app --cov-report=html
-open htmlcov/index.html
-```
-
-### Parallel Execution
-```bash
-# Install pytest-xdist
-pip install pytest-xdist
-
-# Run with 4 workers
-pytest -n 4
-```
-
-## Writing Tests
-
-### Example Unit Test
+### Scenario 1: Missing Key
 ```python
-# tests/unit/test_user_service.py
-import pytest
-from app.services.user import UserService
+# .env.test before
+DATABASE_HOST=localhost
+DATABASE_USER=user
 
-pytestmark = pytest.mark.asyncio
+# .env.test after (DATABASE_HOST removed)
+DATABASE_USER=user
 
-async def test_create_user_success(db_session):
-    """Test successful user creation."""
-    user_service = UserService(db_session)
-    user_in = create_user_create_schema()
-    
-    user = await user_service.create_user(user_in)
-    
-    assert user.email == user_in.email
-    assert user.is_active is True
+# Expected: Checker detects missing key
 ```
 
-### Example Integration Test
+### Scenario 2: Extra Key
 ```python
-# tests/integration/test_auth.py
-import pytest
-from httpx import AsyncClient
+# .env.production before
+DATABASE_HOST=localhost
 
-pytestmark = pytest.mark.asyncio
+# .env.production after (EXTRA_KEY added)
+DATABASE_HOST=localhost
+EXTRA_KEY=value
 
-async def test_login_success(client: AsyncClient, test_user, test_user_data):
-    """Test successful login."""
-    response = await client.post(
-        "/api/v1/auth/login",
-        json={
-            "username": test_user_data["username"],
-            "password": test_user_data["password"],
-        },
-    )
-    
-    assert response.status_code == 200
-    data = response.json()
-    assert "access_token" in data
+# Expected: Checker detects extra key
 ```
 
-## Test Markers
+### Scenario 3: Multiple Issues
+```python
+# .env.test: Missing DATABASE_USER
+# .env.production: Extra ANOTHER_EXTRA
 
-Available markers for organizing tests:
+# Expected: Checker detects both issues
+```
 
-- `@pytest.mark.unit` - Unit tests
-- `@pytest.mark.integration` - Integration tests
-- `@pytest.mark.slow` - Slow tests
-- `@pytest.mark.auth` - Authentication tests
-- `@pytest.mark.users` - User management tests
-- `@pytest.mark.services` - Service layer tests
-- `@pytest.mark.repositories` - Repository layer tests
+### Scenario 4: Comments and Empty Lines
+```python
+# .env.test after
+DATABASE_HOST=localhost
 
-## Coverage Goals
+# This is a comment
 
-- **Overall**: 80%+
-- **Services**: 90%+
-- **Repositories**: 85%+
-- **Endpoints**: 80%+
+# Another comment
+
+# Expected: Checker ignores comments/empty lines
+```
+
+## Troubleshooting
+
+### Tests Fail
+1. Check if environment files exist
+2. Verify you're in the project root
+3. Check file permissions
+
+### Cleanup Fails
+1. Check if backup directory is accessible
+2. Verify file permissions
+3. Check disk space
+
+### Keyboard Interrupt Not Working
+1. This is expected - tests run too fast
+2. Use `test_cleanup_on_error.py` instead
+3. Manual interrupt simulation is tested
+
+## Adding New Tests
+
+To add a new test:
+
+1. Add method to `TestEnvConsistency` class:
+```python
+def test_your_scenario(self):
+    """Test your scenario."""
+    print("Test X: Your scenario")
+    print("-" * 50)
+    
+    try:
+        # Modify files
+        # Run checker
+        # Verify results
+        self.add_result("Your Test", True)
+        return True
+    except Exception as e:
+        self.add_result("Your Test", False, str(e))
+        return False
+```
+
+2. Add to `run_all_tests()`:
+```python
+self.teardown()
+self.setup()
+self.test_your_scenario()
+```
+
+3. Run tests to verify
 
 ## Best Practices
 
-1. ✅ Use httpx AsyncClient, not TestClient
-2. ✅ Use fixtures for setup
-3. ✅ Test one thing per test
-4. ✅ Use descriptive test names
-5. ✅ Test both success and error cases
-6. ✅ Follow AAA pattern (Arrange, Act, Assert)
-7. ✅ Use markers for organization
-8. ✅ Keep tests independent
+1. **Always use setup/teardown**: Ensures clean state
+2. **Verify cleanup**: Check files were restored
+3. **Handle errors**: Use try/except blocks
+4. **Add results**: Use `add_result()` for tracking
+5. **Print progress**: Help users understand what's happening
 
-## Documentation
+## CI/CD Integration
 
-For detailed testing guide, see [docs/TESTING.md](../docs/TESTING.md)
+Add to your CI/CD pipeline:
 
-## CI/CD
+```yaml
+# .github/workflows/test.yml
+- name: Test Environment Consistency
+  run: |
+    python tests/test_env_consistency.py
+    python tests/test_cleanup_on_error.py
+```
 
-Tests run automatically on:
-- Every push
-- Every pull request
-- Before deployment
+Exit codes:
+- `0` - All tests passed
+- `1` - Some tests failed
 
-Minimum coverage requirement: 80%
+## Notes
+
+- Tests use temporary directories for backups
+- Original files are never permanently modified
+- All cleanup is automatic
+- Tests are safe to run anytime
+- No manual cleanup needed

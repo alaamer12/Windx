@@ -14,7 +14,9 @@ Features:
 """
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -23,13 +25,26 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+# Load test environment variables BEFORE importing main
+from dotenv import load_dotenv
+
+project_root = Path(__file__).parent.parent
+test_env_file = project_root / ".env.test"
+if test_env_file.exists():
+    load_dotenv(test_env_file, override=True)
+
 from app.core.config import get_settings
 from app.database import Base, get_db
 from main import app
 from tests.config import TestSettings, get_test_settings
 
-# Test database URL (use in-memory SQLite for speed)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+# Import all models to register them with Base.metadata
+from app.models.user import User  # noqa: F401
+from app.models.session import Session  # noqa: F401
+
+# Test database URL (use temporary file for async compatibility)
+# In-memory databases don't work well with aiosqlite due to connection isolation
+TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
 
 @pytest.fixture(scope="session")
@@ -78,6 +93,11 @@ async def test_engine():
     Yields:
         AsyncEngine: Test database engine
     """
+    # Remove test database if it exists
+    test_db_path = project_root / "test.db"
+    if test_db_path.exists():
+        test_db_path.unlink()
+    
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
@@ -90,11 +110,15 @@ async def test_engine():
 
     yield engine
 
-    # Drop all tables
+    # Drop all tables and dispose engine
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
+    
+    # Clean up test database file
+    if test_db_path.exists():
+        test_db_path.unlink()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -128,8 +152,11 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
         AsyncSession: Test database session
     """
     async with test_session_maker() as session:
-        yield session
-        await session.rollback()
+        try:
+            yield session
+        finally:
+            await session.rollback()
+            await session.close()
 
 
 @pytest_asyncio.fixture(scope="function")

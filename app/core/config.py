@@ -168,17 +168,20 @@ class DatabaseSettings(BaseSettings):
 
     @computed_field
     @property
-    def url(self) -> PostgresDsn:
+    def url(self) -> str:
         """Construct database URL from components.
 
         Returns:
-            PostgresDsn: Complete database connection URL
+            str: Complete database connection URL
         """
         password_str = self.password.get_secret_value() if isinstance(self.password, SecretStr) else self.password
-        return PostgresDsn(
-            f"postgresql+asyncpg://{self.user}:{password_str}"
-            f"@{self.host}:{self.port}/{self.name}"
-        )
+        base_url = f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        
+        # Add statement_cache_size=0 for transaction pooler
+        if self.is_supabase and self.connection_mode == "transaction_pooler":
+            base_url += "?prepared_statement_cache_size=0"
+        
+        return base_url
 
     @computed_field
     @property

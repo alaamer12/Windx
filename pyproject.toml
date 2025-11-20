@@ -38,14 +38,17 @@ dependencies = [
     "fastapi-pagination",
     "redis",
     "jinja2",
+    "bcrypt==4.3.0"
 ]
 
 [tool.uv]
 dev-dependencies = [
     "pytest",
     "pytest-asyncio",
+    "pytest-cov",
     "ruff",
     "httpx",
+    "aiosqlite"
 ]
 
 [project.urls]

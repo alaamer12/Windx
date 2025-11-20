@@ -83,12 +83,16 @@ class UserService(BaseService):
         # Hash password
         hashed_password = get_password_hash(user_in.password)
 
-        # Create user data with hashed password
+        # Create user model instance directly (type-safe approach)
+        # We bypass the repository's create() because we need to add hashed_password
+        # which is not in the UserCreate schema
         user_data = user_in.model_dump(exclude={"password"})
-        user_data["hashed_password"] = hashed_password
-
-        # Create user
-        user = await self.user_repo.create(user_data)
+        user = User(
+            **user_data,
+            hashed_password=hashed_password,
+        )
+        
+        self.user_repo.db.add(user)
         await self.commit()
         await self.refresh(user)
 

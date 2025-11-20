@@ -1,6 +1,18 @@
-"""Test Supabase database connection."""
+"""Test Supabase database connection.
+
+Run this test from the project root with:
+    .venv/Scripts/python tests/unit/test_supabase.py
+"""
 
 import asyncio
+import os
+import sys
+from pathlib import Path
+
+# Get project root and change to it
+project_root = Path(__file__).parent.parent.parent
+os.chdir(project_root)
+sys.path.insert(0, str(project_root))
 
 from app.core.config import get_settings
 from app.database.connection import get_engine

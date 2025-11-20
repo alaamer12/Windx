@@ -1,6 +1,7 @@
 """Test Supabase connection with direct URL."""
 
 import asyncio
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 

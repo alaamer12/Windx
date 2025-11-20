@@ -50,7 +50,7 @@ def get_engine() -> AsyncEngine:
     settings = get_settings()
 
     engine_kwargs = {
-        "url": str(settings.database.url),
+        "url": settings.database.url,  # URL now includes prepared_statement_cache_size if needed
         "echo": settings.database.echo or settings.debug,
         "future": True,
         "pool_pre_ping": settings.database.pool_pre_ping,

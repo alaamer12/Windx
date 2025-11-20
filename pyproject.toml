@@ -37,6 +37,7 @@ dependencies = [
     "fastapi-limiter",
     "fastapi-pagination",
     "redis",
+    "jinja2",
 ]
 
 [project.optional-dependencies]

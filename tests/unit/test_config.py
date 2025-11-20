@@ -1,14 +1,21 @@
 """Test configuration loading."""
 
 import os
+import sys
 from pathlib import Path
+
+# Get project root and change to it
+project_root = Path(__file__).parent.parent.parent
+os.chdir(project_root)
+sys.path.insert(0, str(project_root))
 
 # Print current directory
 print(f"Current directory: {os.getcwd()}")
 print(f"Script location: {Path(__file__).parent}")
+print(f"Project root: {project_root}")
 
 # Check if .env exists
-env_path = Path("../../.env")
+env_path = Path(".env")
 print(f"\n.env exists: {env_path.exists()}")
 if env_path.exists():
     print(f".env path: {env_path.absolute()}")

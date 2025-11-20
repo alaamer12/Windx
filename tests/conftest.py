@@ -25,7 +25,7 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.database import Base, get_db
-from app.main import app
+from main import app
 from tests.config import TestSettings, get_test_settings
 
 # Test database URL (use in-memory SQLite for speed)
@@ -228,12 +228,12 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
     user_service = UserService(db_session)
     user_in = UserCreate(**test_superuser_data)
     user = await user_service.create_user(user_in)
-    
+
     # Make superuser
     user.is_superuser = True
     await db_session.commit()
     await db_session.refresh(user)
-    
+
     return user
 
 

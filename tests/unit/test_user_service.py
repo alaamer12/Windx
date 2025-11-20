@@ -11,14 +11,12 @@ Features:
 """
 
 import pytest
-from unittest.mock import AsyncMock, Mock
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import AuthorizationException, ConflictException, NotFoundException
-from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from app.schemas.user import UserUpdate
 from app.services.user import UserService
-from tests.factories.user_factory import create_user_create_schema, create_user_data
+from tests.factories.user_factory import create_user_create_schema
 
 pytestmark = pytest.mark.asyncio
 

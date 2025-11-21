@@ -14,33 +14,34 @@ Features:
 """
 
 import asyncio
-import os
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 from typing import Any
 
 import pytest
 import pytest_asyncio
+
+# Load test environment variables BEFORE importing main
+from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-# Load test environment variables BEFORE importing main
-from dotenv import load_dotenv
+from app.core.config import get_settings
+from app.database import Base, get_db
+from app.models.session import Session  # noqa: F401
+
+# Import all models to register them with Base.metadata
+from app.models.user import User  # noqa: F401
+from main import app
+from tests.config import TestSettings, get_test_settings
 
 project_root = Path(__file__).parent.parent
 test_env_file = project_root / ".env.test"
 if test_env_file.exists():
     load_dotenv(test_env_file, override=True)
 
-from app.core.config import get_settings
-from app.database import Base, get_db
-from main import app
-from tests.config import TestSettings, get_test_settings
 
-# Import all models to register them with Base.metadata
-from app.models.user import User  # noqa: F401
-from app.models.session import Session  # noqa: F401
 
 # Test database URL (use temporary file for async compatibility)
 # In-memory databases don't work well with aiosqlite due to connection isolation
@@ -69,6 +70,7 @@ def test_settings() -> TestSettings:
     return get_test_settings()
 
 
+# noinspection PyUnresolvedReferences
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_settings(test_settings: TestSettings):
     """Setup test settings globally.
@@ -97,7 +99,7 @@ async def test_engine():
     test_db_path = project_root / "test.db"
     if test_db_path.exists():
         test_db_path.unlink()
-    
+
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
@@ -115,7 +117,7 @@ async def test_engine():
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
-    
+
     # Clean up test database file
     if test_db_path.exists():
         test_db_path.unlink()
@@ -159,6 +161,7 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+# noinspection PyUnresolvedReferences
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create test HTTP client with httpx.

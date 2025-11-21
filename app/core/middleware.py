@@ -151,13 +151,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "geolocation=(), microphone=(), camera=(), "
                 "payment=(), usb=(), magnetometer=(), gyroscope=()"
             ),
-            # Content Security Policy (basic)
+            # Content Security Policy (allow Swagger UI CDN)
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline'; "
-                "style-src 'self' 'unsafe-inline'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
                 "img-src 'self' data: https:; "
-                "font-src 'self'; "
+                "font-src 'self' https://cdn.jsdelivr.net; "
                 "connect-src 'self'; "
                 "frame-ancestors 'none';"
             ),

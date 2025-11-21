@@ -175,13 +175,7 @@ class DatabaseSettings(BaseSettings):
             str: Complete database connection URL
         """
         password_str = self.password.get_secret_value() if isinstance(self.password, SecretStr) else self.password
-        base_url = f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
-        
-        # Add statement_cache_size=0 for transaction pooler
-        if self.is_supabase and self.connection_mode == "transaction_pooler":
-            base_url += "?prepared_statement_cache_size=0"
-        
-        return base_url
+        return f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
 
     @computed_field
     @property

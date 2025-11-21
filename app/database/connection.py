@@ -50,7 +50,7 @@ def get_engine() -> AsyncEngine:
     settings = get_settings()
 
     engine_kwargs = {
-        "url": settings.database.url,  # URL now includes prepared_statement_cache_size if needed
+        "url": settings.database.url,
         "echo": settings.database.echo or settings.debug,
         "future": True,
         "pool_pre_ping": settings.database.pool_pre_ping,
@@ -65,6 +65,10 @@ def get_engine() -> AsyncEngine:
         engine_kwargs["max_overflow"] = min(settings.database.max_overflow, 5)
         # Supabase connections can be flaky, enable pre-ping
         engine_kwargs["pool_pre_ping"] = True
+        
+        # Disable prepared statements for transaction pooler
+        if settings.database.connection_mode == "transaction_pooler":
+            engine_kwargs["connect_args"] = {"statement_cache_size": 0}
 
     return create_async_engine(**engine_kwargs)
 

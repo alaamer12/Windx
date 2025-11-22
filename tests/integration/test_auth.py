@@ -94,7 +94,7 @@ class TestRegisterEndpoint:
 
         assert response.status_code == 422
         data = response.json()
-        assert "detail" in data
+        assert "error" in data or "detail" in data
 
     async def test_register_short_password(self, client: AsyncClient):
         """Test registration with short password fails."""

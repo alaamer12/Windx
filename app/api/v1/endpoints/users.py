@@ -44,7 +44,7 @@ router = APIRouter(
 @router.get("/", response_model=Page[UserSchema])
 async def list_users(
     current_superuser: CurrentSuperuser,
-    params: PaginationParams,
+    params: Annotated[PaginationParams, Depends(create_pagination_params)],
     db: DBSession,
 ) -> Page[User]:
     """List all users with pagination (superuser only).
@@ -66,7 +66,7 @@ async def list_users(
     from app.core.pagination import paginate
 
     query = select(User).order_by(User.created_at.desc())
-    return await paginate(query, params)
+    return await paginate(db, query, params)
 
 
 @router.get(

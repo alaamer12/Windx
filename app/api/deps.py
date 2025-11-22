@@ -56,6 +56,18 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Check if session is active
+    from app.repositories.session import SessionRepository
+    session_repo = SessionRepository(db)
+    session = await session_repo.get_by_token(token)
+    
+    if session is None or not session.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired or invalid",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_repo = UserRepository(db)
     user = await user_repo.get(int(user_id))
 

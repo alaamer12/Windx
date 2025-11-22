@@ -19,12 +19,12 @@ Features:
     - Type-safe pagination
 """
 
-from typing import TypeVar
+from typing import Any, TypeVar
 
 from fastapi import Query
 from fastapi_pagination import Page as FastAPIPaginationPage
 from fastapi_pagination import Params
-from fastapi_pagination.ext.sqlalchemy import paginate as sqlalchemy_paginate
+from fastapi_pagination.ext.sqlalchemy import apaginate as sqlalchemy_paginate
 from pydantic import Field
 from sqlalchemy import Select
 
@@ -76,10 +76,11 @@ def create_pagination_params(
     return PaginationParams(page=page, size=size)
 
 
-async def paginate(query: Select, params: PaginationParams | None = None) -> Page[T]:
+async def paginate(db: Any, query: Select, params: PaginationParams | None = None) -> Page[T]:
     """Paginate SQLAlchemy query.
 
     Args:
+        db: Database session
         query (Select): SQLAlchemy select query
         params (PaginationParams | None): Pagination parameters
 
@@ -88,7 +89,7 @@ async def paginate(query: Select, params: PaginationParams | None = None) -> Pag
 
     Example:
         query = select(User).where(User.is_active == True)
-        result = await paginate(query, params)
+        result = await paginate(db, query, params)
 
         # Response:
         # {
@@ -102,4 +103,4 @@ async def paginate(query: Select, params: PaginationParams | None = None) -> Pag
     if params is None:
         params = PaginationParams()
 
-    return await sqlalchemy_paginate(query, params)
+    return await sqlalchemy_paginate(db, query, params=params)

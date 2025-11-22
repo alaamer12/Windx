@@ -215,7 +215,7 @@ class ValidationException(AppException):
         """
         super().__init__(
             message=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             error_type="validation_error",
             details=details,
         )
@@ -390,7 +390,7 @@ async def validation_exception_handler(
     )
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=error_response.model_dump(exclude_none=True),
     )
 

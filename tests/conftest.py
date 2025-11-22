@@ -87,7 +87,34 @@ def setup_test_settings(test_settings: TestSettings):
     """
     # Override the main get_settings to return test settings
     app.dependency_overrides[get_settings] = lambda: test_settings
+    
+    # Mock the FastAPILimiter to prevent errors when rate_limit is used
+    # This is necessary because endpoints have rate_limit dependencies
+    from fastapi_limiter import FastAPILimiter
+    from fastapi_cache import FastAPICache
+    from fastapi_cache.backends.inmemory import InMemoryBackend
+    from unittest.mock import AsyncMock
+    
+    # Create async mock for identifier
+    async def mock_identifier(request):
+        return "test_key"
+    
+    # Create async mock for callback (always allow requests in tests)
+    async def mock_callback(request, response, pexpire):
+        return  # Allow all requests
+    
+    # Mock the FastAPILimiter redis client
+    FastAPILimiter.redis = AsyncMock()
+    FastAPILimiter.lua_sha = "mock_sha"
+    FastAPILimiter.identifier = mock_identifier
+    FastAPILimiter.http_callback = mock_callback
+    FastAPILimiter.ws_callback = mock_callback
+    
+    # Initialize FastAPICache with in-memory backend for tests
+    FastAPICache.init(InMemoryBackend())
+    
     yield
+    
     # Cleanup
     app.dependency_overrides.clear()
 
@@ -167,11 +194,12 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
 
 # noinspection PyUnresolvedReferences
 @pytest_asyncio.fixture(scope="function")
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+async def client(db_session: AsyncSession, test_settings: TestSettings) -> AsyncGenerator[AsyncClient, None]:
     """Create test HTTP client with httpx.
 
     Args:
         db_session (AsyncSession): Test database session
+        test_settings (TestSettings): Test settings
 
     Yields:
         AsyncClient: HTTP client for testing
@@ -181,6 +209,10 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
+    # Store existing overrides
+    existing_overrides = app.dependency_overrides.copy()
+    
+    # Add database override
     app.dependency_overrides[get_db] = override_get_db
 
     # Create async client
@@ -190,8 +222,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     ) as ac:
         yield ac
 
-    # Clear overrides
-    app.dependency_overrides.clear()
+    # Restore original overrides (don't clear everything)
+    app.dependency_overrides = existing_overrides
 
 
 @pytest.fixture
@@ -272,11 +304,12 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
 
 
 @pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient, test_user_data: dict[str, Any]) -> dict[str, str]:
+async def auth_headers(client: AsyncClient, test_user, test_user_data: dict[str, Any]) -> dict[str, str]:
     """Get authentication headers for test user.
 
     Args:
         client (AsyncClient): HTTP client
+        test_user: Test user (ensures user is created)
         test_user_data (dict): Test user data
 
     Returns:
@@ -297,12 +330,14 @@ async def auth_headers(client: AsyncClient, test_user_data: dict[str, Any]) -> d
 @pytest_asyncio.fixture
 async def superuser_auth_headers(
     client: AsyncClient,
+    test_superuser,
     test_superuser_data: dict[str, Any],
 ) -> dict[str, str]:
     """Get authentication headers for test superuser.
 
     Args:
         client (AsyncClient): HTTP client
+        test_superuser: Test superuser (ensures user is created)
         test_superuser_data (dict): Test superuser data
 
     Returns:

@@ -89,7 +89,7 @@ def _get_current_superuser_dep():
     return get_current_active_superuser
 
 
-CurrentUser = Annotated[User, Depends(_get_current_user_dep)]
+CurrentUser = Annotated[User, Depends(_get_current_user_dep())]
 """Current authenticated user dependency.
 
 Provides the currently authenticated user from JWT token.
@@ -118,7 +118,7 @@ Example:
     ```
 """
 
-CurrentSuperuser = Annotated[User, Depends(_get_current_superuser_dep)]
+CurrentSuperuser = Annotated[User, Depends(_get_current_superuser_dep())]
 """Current superuser dependency.
 
 Provides the currently authenticated superuser.

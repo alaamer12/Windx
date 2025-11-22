@@ -13,7 +13,7 @@ Features:
     - Session management integration
 """
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -130,10 +130,15 @@ class AuthService(BaseService):
         # Create access token
         access_token = await self.create_access_token_for_user(user)
 
+        # Calculate expiration time
+        access_token_expires = timedelta(minutes=self.settings.security.access_token_expire_minutes)
+        expires_at = datetime.now(UTC) + access_token_expires
+
         # Create session
         session_data = SessionCreate(
             user_id=user.id,
             token=access_token,
+            expires_at=expires_at,
         )
         await self.session_repo.create(session_data)
         await self.commit()

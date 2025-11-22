@@ -89,3 +89,31 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "-l",
+    "-ra",
+    "--strict-markers",
+    "-W", "default",
+    "--cov=app",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+]
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, full stack)",
+    "slow: Slow tests",
+    "auth: Authentication tests",
+    "users: User management tests",
+    "services: Service layer tests",
+    "repositories: Repository layer tests",
+]
+log_cli = false
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]

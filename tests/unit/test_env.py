@@ -7,6 +7,7 @@ This test suite validates the env consistency checker by:
 - Ensuring proper cleanup even on interruption
 - Verifying all edge cases
 """
+from __future__ import annotations
 
 import importlib.util
 import shutil

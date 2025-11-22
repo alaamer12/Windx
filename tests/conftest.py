@@ -14,6 +14,7 @@ Features:
 """
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 from typing import Any
@@ -21,8 +22,18 @@ from typing import Any
 import pytest
 import pytest_asyncio
 
-# Load test environment variables BEFORE importing main
+# Load test environment variables BEFORE any imports
 from dotenv import load_dotenv
+
+project_root = Path(__file__).parent.parent
+test_env_file = project_root / ".env.test"
+if test_env_file.exists():
+    load_dotenv(test_env_file, override=True)
+
+# Set test environment marker
+os.environ["TESTING"] = "true"
+
+# Now safe to import after env is loaded
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -35,12 +46,6 @@ from app.models.session import Session  # noqa: F401
 from app.models.user import User  # noqa: F401
 from main import app
 from tests.config import TestSettings, get_test_settings
-
-project_root = Path(__file__).parent.parent
-test_env_file = project_root / ".env.test"
-if test_env_file.exists():
-    load_dotenv(test_env_file, override=True)
-
 
 # Test database URL (use temporary file for async compatibility)
 # In-memory databases don't work well with aiosqlite due to connection isolation

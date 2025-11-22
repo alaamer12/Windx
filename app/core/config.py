@@ -82,11 +82,11 @@ class DatabaseSettings(BaseSettings):
     host: Annotated[
         str,
         Field(
+            default="localhost",
             description="Database host",
             examples=["db.xxxxx.supabase.co", "localhost"],
-            json_schema_extra={"required": True},
         ),
-    ]
+    ] = "localhost"
 
     port: Annotated[
         int,
@@ -99,19 +99,19 @@ class DatabaseSettings(BaseSettings):
     user: Annotated[
         str,
         Field(
+            default="postgres",
             description="Database user",
             examples=["postgres"],
-            json_schema_extra={"required": True},
         ),
-    ]
+    ] = "postgres"
 
     password: Annotated[
         SecretStr,
         Field(
+            default="",
             description="Database password",
-            json_schema_extra={"required": True},
         ),
-    ]
+    ] = SecretStr("")
 
     name: Annotated[
         str,

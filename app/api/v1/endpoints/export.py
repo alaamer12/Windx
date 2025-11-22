@@ -17,7 +17,7 @@ import csv
 import io
 from datetime import datetime
 
-from fastapi import APIRouter, Response
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from app.api.types import CurrentSuperuser, CurrentUser, DBSession
@@ -194,29 +194,33 @@ async def export_users_csv(
     writer = csv.writer(output)
 
     # Write header
-    writer.writerow([
-        "id",
-        "email",
-        "username",
-        "full_name",
-        "is_active",
-        "is_superuser",
-        "created_at",
-        "updated_at",
-    ])
+    writer.writerow(
+        [
+            "id",
+            "email",
+            "username",
+            "full_name",
+            "is_active",
+            "is_superuser",
+            "created_at",
+            "updated_at",
+        ]
+    )
 
     # Write data
     for user in users:
-        writer.writerow([
-            user.id,
-            user.email,
-            user.username,
-            user.full_name or "",
-            user.is_active,
-            user.is_superuser,
-            user.created_at.isoformat(),
-            user.updated_at.isoformat(),
-        ])
+        writer.writerow(
+            [
+                user.id,
+                user.email,
+                user.username,
+                user.full_name or "",
+                user.is_active,
+                user.is_superuser,
+                user.created_at.isoformat(),
+                user.updated_at.isoformat(),
+            ]
+        )
 
     # Get CSV content
     output.seek(0)

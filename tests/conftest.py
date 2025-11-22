@@ -42,7 +42,6 @@ if test_env_file.exists():
     load_dotenv(test_env_file, override=True)
 
 
-
 # Test database URL (use temporary file for async compatibility)
 # In-memory databases don't work well with aiosqlite due to connection isolation
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"

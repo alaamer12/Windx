@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Test suite for environment file consistency checker.
 
 This test suite validates the env consistency checker by:
@@ -8,6 +8,7 @@ This test suite validates the env consistency checker by:
 - Verifying all edge cases
 """
 
+import importlib.util
 import shutil
 import signal
 import sys
@@ -15,19 +16,14 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Optional
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Import the check_consistency function
-import importlib.util
 check_env_path = project_root / "scripts" / "check_env.py"
-spec = importlib.util.spec_from_file_location(
-    "check_env",
-    check_env_path
-)
+spec = importlib.util.spec_from_file_location("check_env", check_env_path)
 check_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(check_module)
 parse_env_file = check_module.parse_env_file
@@ -40,7 +36,7 @@ class TestEnvConsistency:
     def __init__(self):
         """Initialize test suite."""
         self.project_root = Path(__file__).parent.parent.parent
-        
+
         # Find production file
         prod_patterns = [".env.production", ".env.example.production", ".env.prod"]
         prod_file = None
@@ -49,10 +45,10 @@ class TestEnvConsistency:
             if path.exists():
                 prod_file = (pattern, path)
                 break
-        
+
         if not prod_file:
             prod_file = (".env.production", self.project_root / ".env.production")
-        
+
         self.env_files = {
             ".env.example": self.project_root / ".env.example",
             prod_file[0]: prod_file[1],
@@ -65,55 +61,52 @@ class TestEnvConsistency:
         """Create backup of original files."""
         print("[*] Creating backup of environment files...")
         self.backup_dir = tempfile.mkdtemp(prefix="env_backup_")
-        
+
         for name, path in self.env_files.items():
             if path.exists():
                 backup_path = Path(self.backup_dir) / name
                 shutil.copy2(path, backup_path)
                 print(f"  [OK] Backed up {name}")
-        
+
         print(f"  Backup location: {self.backup_dir}\n")
 
     def teardown(self):
         """Restore original files from backup."""
         print("\n[...] Restoring original files...")
-        
+
         if self.backup_dir and Path(self.backup_dir).exists():
             for name, path in self.env_files.items():
                 backup_path = Path(self.backup_dir) / name
                 if backup_path.exists():
                     shutil.copy2(backup_path, path)
                     print(f"  [OK] Restored {name}")
-            
+
             # Clean up backup directory
             shutil.rmtree(self.backup_dir)
-            print(f"  [OK] Cleaned up backup directory")
-        
+            print("  [OK] Cleaned up backup directory")
+
         print("[PASS] Cleanup complete\n")
 
     def add_result(self, test_name: str, passed: bool, message: str = ""):
         """Record test result."""
-        self.test_results.append({
-            "name": test_name,
-            "passed": passed,
-            "message": message
-        })
+        self.test_results.append({"name": test_name, "passed": passed, "message": message})
 
     def test_baseline(self):
         """Test 1: Baseline - all files should be consistent."""
         print("Test 1: Baseline consistency check")
         print("-" * 50)
-        
+
         try:
             # Change to project root for the test
             import os
+
             original_cwd = os.getcwd()
             os.chdir(self.project_root)
-            
+
             result = check_consistency()
-            
+
             os.chdir(original_cwd)
-            
+
             if result == 0:
                 print("[PASS] PASS: All files are consistent\n")
                 self.add_result("Baseline", True)
@@ -131,30 +124,30 @@ class TestEnvConsistency:
         """Test 2: Missing key in one file."""
         print("Test 2: Missing key detection")
         print("-" * 50)
-        
+
         try:
             # Remove a key from .env.test
             test_file = self.env_files[".env.test"]
             content = test_file.read_text()
-            
+
             # Remove DATABASE_HOST line
             modified_content = "\n".join(
-                line for line in content.split("\n")
-                if not line.startswith("DATABASE_HOST=")
+                line for line in content.split("\n") if not line.startswith("DATABASE_HOST=")
             )
-            
+
             test_file.write_text(modified_content)
             print("  Modified .env.test (removed DATABASE_HOST)")
-            
+
             # Run check
             import os
+
             original_cwd = os.getcwd()
             os.chdir(self.project_root)
-            
+
             result = check_consistency()
-            
+
             os.chdir(original_cwd)
-            
+
             if result == 1:
                 print("[PASS] PASS: Missing key detected\n")
                 self.add_result("Missing Key", True)
@@ -172,7 +165,7 @@ class TestEnvConsistency:
         """Test 3: Extra key in one file."""
         print("Test 3: Extra key detection")
         print("-" * 50)
-        
+
         try:
             # Add an extra key to production file (whatever it's named)
             prod_file = None
@@ -182,28 +175,29 @@ class TestEnvConsistency:
                     prod_file = path
                     prod_name = name
                     break
-            
+
             if not prod_file:
                 print("[FAIL] No production file found")
                 self.add_result("Extra Key", False, "No production file")
                 return False
-            
+
             content = prod_file.read_text()
-            
+
             # Add extra key
             modified_content = content + "\nEXTRA_KEY=extra_value\n"
             prod_file.write_text(modified_content)
             print(f"  Modified {prod_name} (added EXTRA_KEY)")
-            
+
             # Run check
             import os
+
             original_cwd = os.getcwd()
             os.chdir(self.project_root)
-            
+
             result = check_consistency()
-            
+
             os.chdir(original_cwd)
-            
+
             if result == 1:
                 print("[PASS] PASS: Extra key detected\n")
                 self.add_result("Extra Key", True)
@@ -221,18 +215,17 @@ class TestEnvConsistency:
         """Test 4: Multiple issues at once."""
         print("Test 4: Multiple issues detection")
         print("-" * 50)
-        
+
         try:
             # Remove key from .env.test
             test_file = self.env_files[".env.test"]
             test_content = test_file.read_text()
             test_modified = "\n".join(
-                line for line in test_content.split("\n")
-                if not line.startswith("DATABASE_USER=")
+                line for line in test_content.split("\n") if not line.startswith("DATABASE_USER=")
             )
             test_file.write_text(test_modified)
             print("  Modified .env.test (removed DATABASE_USER)")
-            
+
             # Add key to production file
             prod_file = None
             prod_name = None
@@ -241,22 +234,23 @@ class TestEnvConsistency:
                     prod_file = path
                     prod_name = name
                     break
-            
+
             if prod_file:
                 prod_content = prod_file.read_text()
                 prod_modified = prod_content + "\nANOTHER_EXTRA=value\n"
                 prod_file.write_text(prod_modified)
                 print(f"  Modified {prod_name} (added ANOTHER_EXTRA)")
-            
+
             # Run check
             import os
+
             original_cwd = os.getcwd()
             os.chdir(self.project_root)
-            
+
             result = check_consistency()
-            
+
             os.chdir(original_cwd)
-            
+
             if result == 1:
                 print("[PASS] PASS: Multiple issues detected\n")
                 self.add_result("Multiple Issues", True)
@@ -274,26 +268,27 @@ class TestEnvConsistency:
         """Test 5: Empty lines and comments should be ignored."""
         print("Test 5: Empty lines and comments handling")
         print("-" * 50)
-        
+
         try:
             # Add extra comments and empty lines to .env.test
             test_file = self.env_files[".env.test"]
             content = test_file.read_text()
-            
+
             # Add comments and empty lines
             modified_content = content + "\n# This is a comment\n\n# Another comment\n\n"
             test_file.write_text(modified_content)
             print("  Modified .env.test (added comments and empty lines)")
-            
+
             # Run check
             import os
+
             original_cwd = os.getcwd()
             os.chdir(self.project_root)
-            
+
             result = check_consistency()
-            
+
             os.chdir(original_cwd)
-            
+
             if result == 0:
                 print("[PASS] PASS: Comments and empty lines ignored\n")
                 self.add_result("Comments/Empty Lines", True)
@@ -312,19 +307,19 @@ class TestEnvConsistency:
         print("\n" + "=" * 60)
         print("TEST SUMMARY")
         print("=" * 60)
-        
+
         passed = sum(1 for r in self.test_results if r["passed"])
         total = len(self.test_results)
-        
+
         for result in self.test_results:
             status = "[PASS] PASS" if result["passed"] else "[FAIL] FAIL"
             print(f"{status}: {result['name']}")
             if result["message"]:
                 print(f"         {result['message']}")
-        
+
         print("-" * 60)
         print(f"Results: {passed}/{total} tests passed")
-        
+
         if passed == total:
             print("[SUCCESS] All tests passed!")
             return 0
@@ -338,37 +333,37 @@ class TestEnvConsistency:
         print("ENVIRONMENT CONSISTENCY CHECKER TEST SUITE")
         print("=" * 60)
         print()
-        
+
         try:
             # Setup
             self.setup()
-            
+
             # Run tests
             self.test_baseline()
-            
+
             # Restore before each test
             self.teardown()
             self.setup()
             self.test_missing_key()
-            
+
             self.teardown()
             self.setup()
             self.test_extra_key()
-            
+
             self.teardown()
             self.setup()
             self.test_multiple_issues()
-            
+
             self.teardown()
             self.setup()
             self.test_empty_lines_and_comments()
-            
+
             # Final cleanup
             self.teardown()
-            
+
             # Print summary
             return self.print_summary()
-            
+
         except KeyboardInterrupt:
             print("\n\n[WARN]  Test interrupted by user (Ctrl+C)")
             print("Performing cleanup...")
@@ -391,7 +386,7 @@ def test_cleanup_on_exception():
     print()
 
     test_suite = TestEnvConsistency()
-    backup_dir: Optional[str] = None
+    backup_dir: str | None = None
     try:
         # Setup
         test_suite.setup()
@@ -446,7 +441,7 @@ def test_manual_interrupt_simulation():
     print()
 
     test_suite = TestEnvConsistency()
-    backup_dir: Optional[str] = None
+    backup_dir: str | None = None
 
     try:
         # Setup
@@ -501,6 +496,7 @@ def simulate_interrupt():
     time.sleep(2)
     print("\n\n[!] Simulating Ctrl+C interrupt...")
     import os
+
     os.kill(os.getpid(), signal.SIGINT)
 
 
@@ -522,7 +518,7 @@ def simulate_main():
     test_suite = TestEnvConsistency()
 
     try:
-        result = test_suite.run_all_tests()
+        test_suite.run_all_tests()
         print("\n[FAIL] Test should have been interrupted!")
         return 1
     except KeyboardInterrupt:
@@ -588,9 +584,6 @@ def main():
     else:
         print("\n[FAIL] Some cleanup tests FAILED!")
         return 1
-
-
-
 
 
 if __name__ == "__main__":

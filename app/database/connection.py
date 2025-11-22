@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 
 __all__ = ["get_engine", "get_session_maker", "get_db", "init_db", "close_db"]
 
@@ -65,7 +65,7 @@ def get_engine() -> AsyncEngine:
         engine_kwargs["max_overflow"] = min(settings.database.max_overflow, 5)
         # Supabase connections can be flaky, enable pre-ping
         engine_kwargs["pool_pre_ping"] = True
-        
+
         # Disable prepared statements for transaction pooler
         if settings.database.connection_mode == "transaction_pooler":
             engine_kwargs["connect_args"] = {"statement_cache_size": 0}

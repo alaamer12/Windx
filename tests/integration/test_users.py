@@ -16,8 +16,6 @@ Features:
 import pytest
 from httpx import AsyncClient
 
-from tests.factories.user_factory import create_user_data
-
 pytestmark = pytest.mark.asyncio
 
 

@@ -52,7 +52,9 @@ async def lifespan(application: FastAPI):
     try:
         settings = get_settings()
         print(f"[+] Configuration loaded: {settings.app_name} v{settings.app_version}")
-        print(f"    Database: {settings.database.provider} @ {settings.database.host}:{settings.database.port}")
+        print(
+            f"    Database: {settings.database.provider} @ {settings.database.host}:{settings.database.port}"
+        )
         print(f"    Connection mode: {settings.database.connection_mode}")
     except Exception as e:
         print(f"[-] Configuration error: {e}")

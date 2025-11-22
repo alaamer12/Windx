@@ -31,7 +31,7 @@ import logging
 import time
 import uuid
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -361,9 +361,7 @@ class RateLimitByIPMiddleware(BaseHTTPMiddleware):
 
         # Clean old entries
         self.clients[client_ip] = [
-            timestamp
-            for timestamp in self.clients[client_ip]
-            if now - timestamp < self.period
+            timestamp for timestamp in self.clients[client_ip] if now - timestamp < self.period
         ]
 
         # Check rate limit

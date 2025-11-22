@@ -23,12 +23,13 @@ if env_path.exists():
     print(env_path.read_text()[:500])
 
 # Try to load settings
-print("\n" + "="*50)
+print("\n" + "=" * 50)
 print("Attempting to load settings...")
-print("="*50)
+print("=" * 50)
 
 try:
     from app.core.config import get_settings
+
     settings = get_settings()
     print("✓ Settings loaded successfully!")
     print(f"\nApp Name: {settings.app_name}")
@@ -40,4 +41,5 @@ try:
 except Exception as e:
     print(f"✗ Failed to load settings: {e}")
     import traceback
+
     traceback.print_exc()

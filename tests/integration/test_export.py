@@ -76,7 +76,7 @@ class TestExportUsersJsonEndpoint:
         assert "users" in data
         assert isinstance(data["users"], list)
         assert data["total_users"] >= 2  # At least test_user and test_superuser
-        
+
         # Verify user data structure
         user_data = data["users"][0]
         assert "id" in user_data
@@ -126,14 +126,14 @@ class TestExportUsersCsvEndpoint:
         assert response.headers["content-type"] == "text/csv; charset=utf-8"
         assert "attachment" in response.headers["content-disposition"]
         assert "users_export_" in response.headers["content-disposition"]
-        
+
         # Parse CSV content
         csv_content = response.text
         csv_reader = csv.DictReader(io.StringIO(csv_content))
         rows = list(csv_reader)
-        
+
         assert len(rows) >= 2  # At least test_user and test_superuser
-        
+
         # Verify CSV structure
         first_row = rows[0]
         assert "id" in first_row
@@ -246,12 +246,12 @@ class TestExportDataFormats:
         )
 
         data = response.json()
-        
+
         # Verify top-level structure
         assert isinstance(data["exported_at"], str)
         assert isinstance(data["total_users"], int)
         assert isinstance(data["users"], list)
-        
+
         # Verify user data structure
         if data["users"]:
             user = data["users"][0]
@@ -276,7 +276,7 @@ class TestExportDataFormats:
         csv_content = response.text
         csv_reader = csv.DictReader(io.StringIO(csv_content))
         rows = list(csv_reader)
-        
+
         # Verify headers
         assert csv_reader.fieldnames == [
             "id",
@@ -288,7 +288,7 @@ class TestExportDataFormats:
             "created_at",
             "updated_at",
         ]
-        
+
         # Verify data types (as strings in CSV)
         if rows:
             row = rows[0]

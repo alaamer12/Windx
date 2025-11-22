@@ -14,7 +14,7 @@ Features:
     - Foreign key relationship with User model
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, String, func
@@ -30,7 +30,7 @@ __all__ = ["Session"]
 
 class Session(Base):
     """Session model for tracking user sessions.
-    
+
     Attributes:
         id: Primary key
         user_id: Foreign key to users table
@@ -89,7 +89,7 @@ class Session(Base):
         doc="Session expiration timestamp (UTC)",
     )
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
         index=True,  # Index for sorting by creation date

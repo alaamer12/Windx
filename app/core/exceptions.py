@@ -338,9 +338,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     error_response = ErrorResponse(
         error=exc.error_type,
         message=exc.message,
-        details=[
-            ErrorDetail(type=exc.error_type, message=exc.message)
-        ] if exc.details else None,
+        details=[ErrorDetail(type=exc.error_type, message=exc.message)] if exc.details else None,
         request_id=request.headers.get("X-Request-ID"),
     )
 

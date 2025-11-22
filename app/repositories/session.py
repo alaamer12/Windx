@@ -14,7 +14,7 @@ Features:
     - Session deactivation
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,7 +58,7 @@ class SessionRepository(BaseRepository[Session, SessionCreate, dict]):
         Returns:
             Session | None: Active session instance or None if not found or expired
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = await self.db.execute(
             select(Session).where(
                 Session.token == token,
@@ -85,7 +85,7 @@ class SessionRepository(BaseRepository[Session, SessionCreate, dict]):
         query = select(Session).where(Session.user_id == user_id)
 
         if active_only:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             query = query.where(
                 Session.is_active == True,
                 Session.expires_at > now,

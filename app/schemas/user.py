@@ -28,7 +28,7 @@ __all__ = ["UserBase", "UserCreate", "UserUpdate", "User", "UserInDB"]
 
 class UserBase(BaseModel):
     """Base user schema with common attributes.
-    
+
     Attributes:
         email: User email address (validated)
         username: Unique username (alphanumeric, dash, underscore)
@@ -65,7 +65,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Schema for creating a new user.
-    
+
     Attributes:
         password: Plain text password (min 8 chars)
     """
@@ -83,9 +83,9 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Schema for updating user information.
-    
+
     All fields are optional for partial updates.
-    
+
     Attributes:
         email: Optional new email address
         username: Optional new username
@@ -139,7 +139,7 @@ class UserUpdate(BaseModel):
 
 class User(UserBase):
     """Schema for user API response.
-    
+
     Attributes:
         id: User ID (positive integer)
         is_active: Account active status
@@ -174,7 +174,7 @@ class User(UserBase):
 
 class UserInDB(User):
     """Schema for user in database (includes hashed password).
-    
+
     Attributes:
         hashed_password: Bcrypt hashed password
     """

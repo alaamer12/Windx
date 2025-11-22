@@ -24,7 +24,6 @@ from typing import Annotated, Literal
 from pydantic import (
     AnyHttpUrl,
     Field,
-    PostgresDsn,
     RedisDsn,
     SecretStr,
     computed_field,
@@ -45,10 +44,10 @@ __all__ = [
 
 class DatabaseSettings(BaseSettings):
     """Database configuration settings.
-    
+
     Supports both Supabase (development) and production PostgreSQL databases.
     The connection URL is automatically constructed based on the environment.
-    
+
     Attributes:
         provider: Database provider (supabase or postgresql)
         connection_mode: Connection mode (direct, transaction_pooler, session_pooler)
@@ -174,8 +173,14 @@ class DatabaseSettings(BaseSettings):
         Returns:
             str: Complete database connection URL
         """
-        password_str = self.password.get_secret_value() if isinstance(self.password, SecretStr) else self.password
-        return f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        password_str = (
+            self.password.get_secret_value()
+            if isinstance(self.password, SecretStr)
+            else self.password
+        )
+        return (
+            f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        )
 
     @computed_field
     @property
@@ -191,19 +196,16 @@ class DatabaseSettings(BaseSettings):
     def validate_connection_mode(self) -> "DatabaseSettings":
         """Validate connection mode and show warnings."""
         import warnings
-        
+
         # Show warning for transaction pooler
-        if (
-            self.connection_mode == "transaction_pooler"
-            and not self.disable_pooler_warning
-        ):
+        if self.connection_mode == "transaction_pooler" and not self.disable_pooler_warning:
             warnings.warn(
                 "Using transaction pooler mode: PREPARE statements are not supported. "
                 "Set DATABASE_DISABLE_POOLER_WARNING=True to disable this warning.",
                 UserWarning,
                 stacklevel=2,
             )
-        
+
         return self
 
     model_config = SettingsConfigDict(
@@ -220,7 +222,7 @@ class DatabaseSettings(BaseSettings):
 
 class SecuritySettings(BaseSettings):
     """Security and authentication settings.
-    
+
     Attributes:
         secret_key: Secret key for JWT token generation
         algorithm: Algorithm for JWT encoding (default: HS256)
@@ -481,7 +483,7 @@ class LimiterSettings(BaseSettings):
 
 class Settings(BaseSettings):
     """Main application settings.
-    
+
     Attributes:
         app_name: Application name
         app_version: Application version

@@ -14,7 +14,7 @@ Features:
     - One-to-many relationship with sessions
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import String, func
@@ -30,7 +30,7 @@ __all__ = ["User"]
 
 class User(Base):
     """User model for authentication and user management.
-    
+
     Attributes:
         id: Primary key
         email: Unique email address
@@ -91,15 +91,15 @@ class User(Base):
         doc="Superuser privileges flag",
     )
     created_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
         index=True,  # Index for sorting by creation date
         doc="Account creation timestamp (UTC)",
     )
     updated_at: Mapped[datetime] = mapped_column(
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
         doc="Last update timestamp (UTC)",

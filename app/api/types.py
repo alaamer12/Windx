@@ -74,6 +74,7 @@ Example:
 # Authentication Type Aliases
 # ============================================================================
 
+
 def _get_current_user_dep():
     """Import dependency to avoid circular imports."""
     from app.api.deps import get_current_user
@@ -156,6 +157,7 @@ Example:
 # ============================================================================
 # Repository Type Aliases
 # ============================================================================
+
 
 def get_user_repository(db: DBSession) -> UserRepository:
     """Get user repository instance.

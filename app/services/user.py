@@ -14,7 +14,6 @@ Features:
     - Password management
 """
 
-from typing import Any
 
 from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -91,7 +90,7 @@ class UserService(BaseService):
             **user_data,
             hashed_password=hashed_password,
         )
-        
+
         self.user_repo.db.add(user)
         await self.commit()
         await self.refresh(user)

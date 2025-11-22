@@ -16,14 +16,14 @@ Features:
     - Secure password verification
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import Field
 
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 
 __all__ = [
     "verify_password",
@@ -76,21 +76,21 @@ def create_access_token(
     settings = get_settings()
 
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(
+        expire = datetime.now(UTC) + timedelta(
             minutes=settings.security.access_token_expire_minutes
         )
 
     to_encode = {"exp": expire, "sub": str(subject)}
-    
+
     # Handle SecretStr for secret_key
     secret_key = (
         settings.security.secret_key.get_secret_value()
         if hasattr(settings.security.secret_key, "get_secret_value")
         else settings.security.secret_key
     )
-    
+
     encoded_jwt = jwt.encode(
         to_encode,
         secret_key,

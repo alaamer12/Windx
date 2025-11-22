@@ -19,7 +19,7 @@ Features:
 
 from typing import Any
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field
 
 __all__ = [
     "ErrorDetail",
@@ -184,9 +184,7 @@ RESPONSES_403: dict[str, Any] = {
         "application/json": {
             "example": {
                 "message": "Forbidden",
-                "details": [
-                    {"detail": "You don't have permission to access this resource"}
-                ],
+                "details": [{"detail": "You don't have permission to access this resource"}],
             }
         }
     },
@@ -228,9 +226,7 @@ RESPONSES_429: dict[str, Any] = {
         "application/json": {
             "example": {
                 "message": "Too Many Requests",
-                "details": [
-                    {"detail": "Rate limit exceeded. Please try again later."}
-                ],
+                "details": [{"detail": "Rate limit exceeded. Please try again later."}],
             }
         }
     },
@@ -242,9 +238,7 @@ RESPONSES_500: dict[str, Any] = {
         "application/json": {
             "example": {
                 "message": "Internal Server Error",
-                "details": [
-                    {"detail": "An unexpected error occurred. Please try again later."}
-                ],
+                "details": [{"detail": "An unexpected error occurred. Please try again later."}],
             }
         }
     },
@@ -257,9 +251,7 @@ RESPONSES_503: dict[str, Any] = {
             "example": {
                 "message": "Service Unavailable",
                 "details": [
-                    {
-                        "detail": "The service is temporarily unavailable. Please try again later."
-                    }
+                    {"detail": "The service is temporarily unavailable. Please try again later."}
                 ],
             }
         }

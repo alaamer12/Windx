@@ -57,27 +57,25 @@ async def get_dashboard(
         HTMLResponse: Rendered dashboard HTML
     """
     user_service = UserService(db)
-    
+
     # Get statistics
     all_users = await user_service.list_users()
     active_users = [u for u in all_users if u.is_active]
-    
+
     # Calculate statistics
     stats = {
         "total_users": len(all_users),
         "active_users": len(active_users),
         "inactive_users": len(all_users) - len(active_users),
         "superusers": len([u for u in all_users if u.is_superuser]),
-        "new_users_today": len([
-            u for u in all_users 
-            if u.created_at.date() == datetime.utcnow().date()
-        ]),
-        "new_users_week": len([
-            u for u in all_users 
-            if u.created_at >= datetime.utcnow() - timedelta(days=7)
-        ]),
+        "new_users_today": len(
+            [u for u in all_users if u.created_at.date() == datetime.utcnow().date()]
+        ),
+        "new_users_week": len(
+            [u for u in all_users if u.created_at >= datetime.utcnow() - timedelta(days=7)]
+        ),
     }
-    
+
     return templates.TemplateResponse(
         "dashboard/index.jinja",
         {
@@ -158,19 +156,17 @@ async def get_dashboard_stats(
     user_service = UserService(db)
     all_users = await user_service.list_users()
     active_users = [u for u in all_users if u.is_active]
-    
+
     return {
         "total_users": len(all_users),
         "active_users": len(active_users),
         "inactive_users": len(all_users) - len(active_users),
         "superusers": len([u for u in all_users if u.is_superuser]),
-        "new_users_today": len([
-            u for u in all_users 
-            if u.created_at.date() == datetime.utcnow().date()
-        ]),
-        "new_users_week": len([
-            u for u in all_users 
-            if u.created_at >= datetime.utcnow() - timedelta(days=7)
-        ]),
+        "new_users_today": len(
+            [u for u in all_users if u.created_at.date() == datetime.utcnow().date()]
+        ),
+        "new_users_week": len(
+            [u for u in all_users if u.created_at >= datetime.utcnow() - timedelta(days=7)]
+        ),
         "timestamp": datetime.utcnow().isoformat(),
     }

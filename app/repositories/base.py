@@ -31,7 +31,7 @@ __all__ = ["BaseRepository", "ModelType", "CreateSchemaType", "UpdateSchemaType"
 
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Base repository class with common CRUD operations.
-    
+
     Attributes:
         model: SQLAlchemy model class
         db: Database session

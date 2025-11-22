@@ -27,7 +27,7 @@ __all__ = ["SessionBase", "SessionCreate", "Session", "SessionInDB"]
 
 class SessionBase(BaseModel):
     """Base session schema with common attributes.
-    
+
     Attributes:
         ip_address: Optional client IP address
         user_agent: Optional client user agent string
@@ -55,7 +55,7 @@ class SessionBase(BaseModel):
 
 class SessionCreate(SessionBase):
     """Schema for creating a new session.
-    
+
     Attributes:
         user_id: ID of the user this session belongs to
         token: JWT session token
@@ -81,7 +81,7 @@ class SessionCreate(SessionBase):
 
 class Session(SessionBase):
     """Schema for session API response.
-    
+
     Attributes:
         id: Session ID (positive integer)
         user_id: User ID
@@ -116,7 +116,7 @@ class Session(SessionBase):
 
 class SessionInDB(Session):
     """Schema for session in database (includes token).
-    
+
     Attributes:
         token: JWT session token
     """

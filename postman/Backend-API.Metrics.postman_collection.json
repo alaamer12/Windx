@@ -92,13 +92,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 403\", function () {",
-                  "    pm.response.to.have.status(403);",
+                  "pm.test(\"Status code is 401\", function () {",
+                  "    pm.response.to.have.status(401);",
                   "});",
                   "",
                   "pm.test(\"Response has error message\", function () {",
                   "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData).to.have.property('detail');",
                   "});"
                 ]
               }
@@ -153,3 +153,5 @@
     }
   ]
 }
+
+

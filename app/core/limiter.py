@@ -69,18 +69,36 @@ async def init_limiter() -> None:
     settings = get_settings()
 
     if not settings.limiter.enabled:
-        print("⚠ Rate limiter disabled")
+        print("[WARNING] Rate limiter disabled")
+        # Initialize with a mock to prevent errors in endpoints
+        from unittest.mock import AsyncMock
+        FastAPILimiter.redis = AsyncMock()
+        FastAPILimiter.lua_sha = "mock_sha"
+        FastAPILimiter.identifier = get_rate_limit_key
+        FastAPILimiter.http_callback = None
+        FastAPILimiter.ws_callback = None
         return
 
-    redis = get_limiter_redis_client(settings)
+    try:
+        redis = get_limiter_redis_client(settings)
 
-    await FastAPILimiter.init(
-        redis,
-        prefix=settings.limiter.prefix,
-        identifier=get_rate_limit_key,
-    )
+        await FastAPILimiter.init(
+            redis,
+            prefix=settings.limiter.prefix,
+            identifier=get_rate_limit_key,
+        )
 
-    print(f"✓ Rate limiter initialized: Redis @ {settings.limiter.redis_host}")
+        print(f"[OK] Rate limiter initialized: Redis @ {settings.limiter.redis_host}")
+    except Exception as e:
+        print(f"[WARNING] Rate limiter initialization failed: {e}")
+        print("[WARNING] Rate limiter will be disabled")
+        # Initialize with a mock to prevent errors in endpoints
+        from unittest.mock import AsyncMock
+        FastAPILimiter.redis = AsyncMock()
+        FastAPILimiter.lua_sha = "mock_sha"
+        FastAPILimiter.identifier = get_rate_limit_key
+        FastAPILimiter.http_callback = None
+        FastAPILimiter.ws_callback = None
 
 
 async def close_limiter() -> None:
@@ -100,7 +118,7 @@ async def close_limiter() -> None:
         return
 
     await FastAPILimiter.close()
-    print("✓ Rate limiter connections closed")
+    print("[OK] Rate limiter connections closed")
 
 
 async def get_rate_limit_key(request: Request) -> str:

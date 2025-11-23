@@ -565,4 +565,4 @@ def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
     # 8. Logging (last, to capture all request/response data)
     app.add_middleware(LoggingMiddleware)
 
-    logger.info("✓ Middleware configured successfully")
+    logger.info("[OK] Middleware configured successfully")

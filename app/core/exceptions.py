@@ -535,4 +535,4 @@ def setup_exception_handlers(app: FastAPI) -> None:
     # Generic exception handler (catch-all)
     app.add_exception_handler(Exception, generic_exception_handler)
 
-    logger.info("✓ Exception handlers configured")
+    logger.info("[OK] Exception handlers configured")

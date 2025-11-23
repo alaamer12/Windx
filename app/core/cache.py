@@ -64,18 +64,28 @@ async def init_cache() -> None:
     settings = get_settings()
 
     if not settings.cache.enabled:
-        print("⚠ Cache disabled")
+        print("[WARNING] Cache disabled")
+        # Initialize with in-memory backend to prevent errors
+        from fastapi_cache.backends.inmemory import InMemoryBackend
+        FastAPICache.init(InMemoryBackend())
         return
 
-    redis = get_redis_client(settings)
+    try:
+        redis = get_redis_client(settings)
 
-    FastAPICache.init(
-        RedisBackend(redis),
-        prefix=settings.cache.prefix,
-        expire=settings.cache.default_ttl,
-    )
+        FastAPICache.init(
+            RedisBackend(redis),
+            prefix=settings.cache.prefix,
+            expire=settings.cache.default_ttl,
+        )
 
-    print(f"✓ Cache initialized: Redis @ {settings.cache.redis_host}")
+        print(f"[OK] Cache initialized: Redis @ {settings.cache.redis_host}")
+    except Exception as e:
+        print(f"[WARNING] Cache initialization failed: {e}")
+        print("[WARNING] Falling back to in-memory cache")
+        # Fall back to in-memory cache
+        from fastapi_cache.backends.inmemory import InMemoryBackend
+        FastAPICache.init(InMemoryBackend())
 
 
 async def close_cache() -> None:
@@ -96,7 +106,7 @@ async def close_cache() -> None:
 
     redis = get_redis_client(settings)
     await redis.close()
-    print("✓ Cache connections closed")
+    print("[OK] Cache connections closed")
 
 
 def cache_key_builder(

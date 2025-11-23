@@ -96,14 +96,14 @@ async def root() -> dict[str, str]:
 @app.get("/health")
 async def health_check(
     settings: Annotated[Settings, Depends(get_settings)],
-) -> dict[str, str]:
+) -> dict[str, str | dict[str, str | bool]]:
     """Health check endpoint.
 
     Args:
         settings (Settings): Application settings
 
     Returns:
-        dict[str, str]: Health status with app name, version, and database info
+        dict: Health status with app name, version, and database info
     """
     return {
         "status": "healthy",

@@ -66,10 +66,21 @@ def get_engine() -> AsyncEngine:
         # Supabase connections can be flaky, enable pre-ping
         engine_kwargs["pool_pre_ping"] = True
 
-        # Disable prepared statements for transaction pooler
-        if settings.database.connection_mode == "transaction_pooler":
-            engine_kwargs["connect_args"] = {"statement_cache_size": 0}
+    # Disable prepared statements for transaction pooler (Supabase or pgbouncer)
+    # This is required when using transaction or statement pooling modes
+    if (
+        settings.database.is_supabase
+        and settings.database.connection_mode == "transaction_pooler"
+    ) or "pooler.supabase.com" in settings.database.host:
+        # For asyncpg, we need to set statement_cache_size in connect_args
+        print(f"[INFO] Disabling prepared statements for transaction pooler")
+        print(f"[INFO] Connection mode: {settings.database.connection_mode}")
+        print(f"[INFO] Host: {settings.database.host}")
+        engine_kwargs["connect_args"] = {
+            "statement_cache_size": 0,
+        }
 
+    print(f"[DEBUG] Engine kwargs: {engine_kwargs}")
     return create_async_engine(**engine_kwargs)
 
 
@@ -131,7 +142,7 @@ async def init_db() -> None:
         # Simple query to verify connection
         await conn.execute(text("SELECT 1"))
 
-    print(f"✓ Database connected: {settings.database.provider} @ {settings.database.host}")
+    print(f"[OK] Database connected: {settings.database.provider} @ {settings.database.host}")
 
 
 async def close_db() -> None:
@@ -147,4 +158,4 @@ async def close_db() -> None:
     """
     engine = get_engine()
     await engine.dispose()
-    print("✓ Database connections closed")
+    print("[OK] Database connections closed")

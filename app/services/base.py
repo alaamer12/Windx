@@ -46,10 +46,15 @@ class BaseService:
         except Exception as e:
             await self.db.rollback()
             from app.core.exceptions import DatabaseException
+            
+            # Log the actual error for debugging
+            print(f"[ERROR] Commit failed: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
             raise DatabaseException(
                 message="Failed to commit transaction",
-                details={"error": str(e)},
+                details={"error": str(e), "type": type(e).__name__},
             )
 
     async def rollback(self) -> None:

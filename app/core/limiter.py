@@ -72,11 +72,16 @@ async def init_limiter() -> None:
         print("[WARNING] Rate limiter disabled")
         # Initialize with a mock to prevent errors in endpoints
         from unittest.mock import AsyncMock
+        
+        # Create a no-op callback that does nothing
+        async def noop_callback(*args, **kwargs):
+            pass
+        
         FastAPILimiter.redis = AsyncMock()
         FastAPILimiter.lua_sha = "mock_sha"
         FastAPILimiter.identifier = get_rate_limit_key
-        FastAPILimiter.http_callback = None
-        FastAPILimiter.ws_callback = None
+        FastAPILimiter.http_callback = noop_callback
+        FastAPILimiter.ws_callback = noop_callback
         return
 
     try:
@@ -94,11 +99,16 @@ async def init_limiter() -> None:
         print("[WARNING] Rate limiter will be disabled")
         # Initialize with a mock to prevent errors in endpoints
         from unittest.mock import AsyncMock
+        
+        # Create a no-op callback that does nothing
+        async def noop_callback(*args, **kwargs):
+            pass
+        
         FastAPILimiter.redis = AsyncMock()
         FastAPILimiter.lua_sha = "mock_sha"
         FastAPILimiter.identifier = get_rate_limit_key
-        FastAPILimiter.http_callback = None
-        FastAPILimiter.ws_callback = None
+        FastAPILimiter.http_callback = noop_callback
+        FastAPILimiter.ws_callback = noop_callback
 
 
 async def close_limiter() -> None:
@@ -112,12 +122,18 @@ async def close_limiter() -> None:
         async def shutdown():
             await close_limiter()
     """
-    settings = get_settings()
+    try:
+        settings = get_settings()
 
-    if not settings.limiter.enabled:
-        return
+        if not settings.limiter.enabled:
+            return
 
-    await FastAPILimiter.close()
+        # Only close if FastAPILimiter was actually initialized with real Redis
+        if FastAPILimiter.redis and not isinstance(FastAPILimiter.redis, type(None)):
+            await FastAPILimiter.close()
+            print("[OK] Rate limiter connections closed")
+    except Exception as e:
+        print(f"[WARNING] Error closing rate limiter connections: {e}")
     print("[OK] Rate limiter connections closed")
 
 

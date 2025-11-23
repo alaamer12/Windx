@@ -17,7 +17,7 @@ Features:
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, func
+from sqlalchemy import String, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -91,6 +91,7 @@ class User(Base):
         doc="Superuser privileges flag",
     )
     created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
         default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,
@@ -98,6 +99,7 @@ class User(Base):
         doc="Account creation timestamp (UTC)",
     )
     updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
         server_default=func.now(),

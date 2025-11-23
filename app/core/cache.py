@@ -99,14 +99,17 @@ async def close_cache() -> None:
         async def shutdown():
             await close_cache()
     """
-    settings = get_settings()
+    try:
+        settings = get_settings()
 
-    if not settings.cache.enabled:
-        return
+        if not settings.cache.enabled:
+            return
 
-    redis = get_redis_client(settings)
-    await redis.close()
-    print("[OK] Cache connections closed")
+        redis = get_redis_client(settings)
+        await redis.close()
+        print("[OK] Cache connections closed")
+    except Exception as e:
+        print(f"[WARNING] Error closing cache connections: {e}")
 
 
 def cache_key_builder(

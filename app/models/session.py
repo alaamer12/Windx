@@ -17,7 +17,7 @@ Features:
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, String, TIMESTAMP, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -84,11 +84,13 @@ class Session(Base):
         doc="Session active status",
     )
     expires_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
         nullable=False,
         index=True,  # Index for expiration queries
         doc="Session expiration timestamp (UTC)",
     )
     created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
         default=lambda: datetime.now(UTC),
         server_default=func.now(),
         nullable=False,

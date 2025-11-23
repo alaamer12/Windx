@@ -66,21 +66,23 @@ def get_engine() -> AsyncEngine:
         # Supabase connections can be flaky, enable pre-ping
         engine_kwargs["pool_pre_ping"] = True
 
-    # Disable prepared statements for transaction pooler (Supabase or pgbouncer)
-    # This is required when using transaction or statement pooling modes
-    if (
-        settings.database.is_supabase
-        and settings.database.connection_mode == "transaction_pooler"
-    ) or "pooler.supabase.com" in settings.database.host:
-        # For asyncpg, we need to set statement_cache_size in connect_args
-        print(f"[INFO] Disabling prepared statements for transaction pooler")
+    # Disable prepared statements for transaction pooler only
+    # Session pooler and direct connections support prepared statements
+    if settings.database.connection_mode == "transaction_pooler":
+        print(f"[INFO] Using transaction pooler mode with prepared statements disabled")
         print(f"[INFO] Connection mode: {settings.database.connection_mode}")
         print(f"[INFO] Host: {settings.database.host}")
-        engine_kwargs["connect_args"] = {
-            "statement_cache_size": 0,
-        }
-
-    print(f"[DEBUG] Engine kwargs: {engine_kwargs}")
+        
+        # Disable at asyncpg level
+        engine_kwargs["connect_args"] = {"statement_cache_size": 0}
+        
+        # Disable at SQLAlchemy level
+        engine_kwargs["execution_options"] = {"prepared_statement_cache_size": 0}
+    elif settings.database.is_supabase:
+        print(f"[INFO] Using {settings.database.connection_mode} mode (prepared statements enabled)")
+        print(f"[INFO] Host: {settings.database.host}")
+    
+    print(f"[DEBUG] Final engine kwargs: {engine_kwargs}")
     return create_async_engine(**engine_kwargs)
 
 
@@ -106,8 +108,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
     This is a FastAPI dependency that provides a database session
     for each request. The session is automatically closed after use.
-    Commits on success, rolls back on exception.
-
+    
     Yields:
         AsyncSession: Database session with automatic cleanup
     """
@@ -115,7 +116,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with session_maker() as session:
         try:
             yield session
-            await session.commit()
         except Exception:
             await session.rollback()
             raise
@@ -145,6 +145,7 @@ async def init_db() -> None:
     print(f"[OK] Database connected: {settings.database.provider} @ {settings.database.host}")
 
 
+
 async def close_db() -> None:
     """Close database connections.
 
@@ -156,6 +157,9 @@ async def close_db() -> None:
         async def shutdown():
             await close_db()
     """
-    engine = get_engine()
-    await engine.dispose()
-    print("[OK] Database connections closed")
+    try:
+        engine = get_engine()
+        await engine.dispose()
+        print("[OK] Database connections closed")
+    except Exception as e:
+        print(f"[WARNING] Error closing database connections: {e}")

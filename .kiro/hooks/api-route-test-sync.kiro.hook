@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "API Route Test Synchronization",
+  "description": "Monitors API route source code changes and ensures tests reflect those changes. Automatically determines if tests need to be run and executes only the relevant tests. If the specific changed test part cannot be determined, runs all tests. Fixes any errors or warnings that arise.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "app/api/**/*.py"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The API route files have changed. Please:\n\n1. **Analyze the changes**: Review what changed in the API routes (endpoints, schemas, business logic, etc.)\n\n2. **Check test coverage**: Examine the corresponding test files in `tests/integration/` and `tests/unit/` to see if they reflect the current API implementation\n\n3. **Update tests if needed**: If tests are outdated or missing coverage for the changes:\n   - Update existing test cases\n   - Add new test cases for new functionality\n   - Ensure test schemas match API schemas\n   - Follow the testing standards (use httpx AsyncClient, AAA pattern, descriptive names)\n\n4. **Determine if tests should run**:\n   - If changes are significant (logic, validation, new endpoints): YES, run tests\n   - If changes are minor (comments, formatting, docstrings only): NO, skip tests\n   - When in doubt: run tests\n\n5. **Run appropriate tests**:\n   - If you know the specific test file/function that corresponds to the change: run only that\n   - If multiple related tests exist: run all related tests\n   - If you cannot determine which specific tests changed: run ALL tests with `pytest tests/`\n   - Use: `pytest tests/integration/test_specific.py::test_function_name` for specific tests\n   - Use: `pytest tests/integration/test_specific.py` for a test file\n   - Use: `pytest tests/` for all tests\n\n6. **Fix errors and warnings**:\n   - If tests fail: analyze the failure and fix either the test or the code\n   - If there are warnings: address them to maintain code quality\n   - Ensure all tests pass before completing\n\n7. **Report**: Summarize what was changed, what tests were updated/run, and the results"
+  }
+}

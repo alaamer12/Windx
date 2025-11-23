@@ -10,6 +10,7 @@ Public Classes:
     RequestSizeLimitMiddleware: Limit request body size
     RateLimitByIPMiddleware: Simple IP-based rate limiting
     CSRFProtectionMiddleware: CSRF token validation
+    TimeoutMiddleware: Enforce request timeout limits
 
 Public Functions:
     setup_middleware: Configure all middleware for the application
@@ -25,8 +26,10 @@ Features:
     - Request size limits
     - Rate limiting by IP
     - CSRF protection
+    - Request timeout enforcement
 """
 
+import asyncio
 import logging
 import time
 import uuid
@@ -51,6 +54,7 @@ __all__ = [
     "RequestSizeLimitMiddleware",
     "RateLimitByIPMiddleware",
     "CSRFProtectionMiddleware",
+    "TimeoutMiddleware",
     "setup_middleware",
 ]
 
@@ -471,6 +475,85 @@ class CSRFProtectionMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+class TimeoutMiddleware(BaseHTTPMiddleware):
+    """Enforce request timeout to prevent long-running requests.
+
+    Prevents requests from hanging indefinitely by enforcing a configurable
+    timeout. Returns HTTP 504 Gateway Timeout if request exceeds the limit.
+
+    This middleware helps prevent DoS attacks and resource exhaustion from
+    slow or hanging requests.
+
+    Attributes:
+        app: ASGI application instance
+        timeout: Request timeout in seconds
+    """
+
+    def __init__(self, app: ASGIApp, *, timeout: float = 30.0) -> None:
+        """Initialize timeout middleware.
+
+        Args:
+            app (ASGIApp): ASGI application
+            timeout (float): Request timeout in seconds (default: 30.0)
+        """
+        super().__init__(app)
+        self.timeout = timeout
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Process request with timeout enforcement.
+
+        Args:
+            request (Request): Incoming request
+            call_next (Callable): Next middleware/endpoint
+
+        Returns:
+            Response: Response from next middleware/endpoint or timeout error
+
+        Raises:
+            None: Returns JSONResponse with 504 status instead of raising
+        """
+        try:
+            # Enforce timeout using asyncio.wait_for
+            response = await asyncio.wait_for(
+                call_next(request),
+                timeout=self.timeout,
+            )
+            return response
+
+        except asyncio.TimeoutError:
+            # Get request ID if available for error tracking
+            request_id = getattr(request.state, "request_id", "unknown")
+
+            # Log timeout event
+            logger.warning(
+                f"Request timeout: {request.method} {request.url.path} "
+                f"exceeded {self.timeout}s limit",
+                extra={
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "timeout": self.timeout,
+                },
+            )
+
+            # Return 504 Gateway Timeout
+            return JSONResponse(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                content={
+                    "error": "request_timeout",
+                    "message": f"Request exceeded {self.timeout}s timeout",
+                    "details": [
+                        {
+                            "type": "request_timeout",
+                            "message": f"Request processing time exceeded {self.timeout} seconds",
+                            "field": None,
+                        }
+                    ],
+                    "request_id": request_id,
+                },
+            )
+
+
 # ============================================================================
 # Middleware Setup Function
 # ============================================================================
@@ -489,13 +572,14 @@ def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
     Note:
         Execution order (first to last):
         1. RequestSizeLimitMiddleware - Check request size first
-        2. TrustedHostMiddleware - Validate host headers (prod)
-        3. HTTPSRedirectMiddleware - Redirect to HTTPS (prod)
-        4. CORSMiddleware - Handle CORS preflight
-        5. SecurityHeadersMiddleware - Add security headers
-        6. GZipMiddleware - Compress responses
-        7. RequestIDMiddleware - Add request tracking
-        8. LoggingMiddleware - Log everything
+        2. TimeoutMiddleware - Prevent hanging requests
+        3. TrustedHostMiddleware - Validate host headers (prod)
+        4. HTTPSRedirectMiddleware - Redirect to HTTPS (prod)
+        5. CORSMiddleware - Handle CORS preflight
+        6. SecurityHeadersMiddleware - Add security headers
+        7. GZipMiddleware - Compress responses
+        8. RequestIDMiddleware - Add request tracking
+        9. LoggingMiddleware - Log everything
     """
     if settings is None:
         settings = get_settings()
@@ -506,7 +590,13 @@ def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
         max_size=16 * 1024 * 1024,  # 16MB
     )
 
-    # 2. Trusted host validation (security - production only)
+    # 2. Request timeout (prevent hanging requests)
+    app.add_middleware(
+        TimeoutMiddleware,
+        timeout=30.0,  # 30 seconds
+    )
+
+    # 3. Trusted host validation (security - production only)
     if not settings.debug:
         # In production, validate host headers
         allowed_hosts = ["*"]  # Configure based on your domains
@@ -522,11 +612,11 @@ def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
             allowed_hosts=allowed_hosts,
         )
 
-    # 3. HTTPS redirect (production only)
+    # 4. HTTPS redirect (production only)
     if not settings.debug:
         app.add_middleware(HTTPSRedirectMiddleware)
 
-    # 4. CORS (before security headers to handle preflight)
+    # 5. CORS (before security headers to handle preflight)
     if settings.backend_cors_origins:
         app.add_middleware(
             CORSMiddleware,
@@ -546,23 +636,23 @@ def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
             max_age=86400,  # 24 hours
         )
 
-    # 5. Security headers
+    # 6. Security headers
     app.add_middleware(
         SecurityHeadersMiddleware,
         hsts_max_age=31536000,  # 1 year
     )
 
-    # 6. Gzip compression
+    # 7. Gzip compression
     app.add_middleware(
         GZipMiddleware,
         minimum_size=1000,  # Only compress responses > 1KB
         compresslevel=6,  # Balance between speed and compression (1-9)
     )
 
-    # 7. Request ID (early for logging)
+    # 8. Request ID (early for logging)
     app.add_middleware(RequestIDMiddleware)
 
-    # 8. Logging (last, to capture all request/response data)
+    # 9. Logging (last, to capture all request/response data)
     app.add_middleware(LoggingMiddleware)
 
     logger.info("[OK] Middleware configured successfully")

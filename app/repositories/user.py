@@ -13,7 +13,7 @@ Features:
     - Type-safe async operations
 """
 
-from sqlalchemy import select
+from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
@@ -72,3 +72,67 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
             select(User).where(User.is_active == True).offset(skip).limit(limit)
         )
         return list(result.scalars().all())
+
+    def get_filtered_users(
+        self,
+        is_active: bool | None = None,
+        is_superuser: bool | None = None,
+        search: str | None = None,
+        sort_by: str = "created_at",
+        sort_order: str = "desc",
+    ) -> Select:
+        """Build filtered query for users.
+
+        Creates a SQLAlchemy Select statement with dynamic filters and sorting.
+        This method returns a Select statement that can be used with pagination
+        or executed directly.
+
+        Args:
+            is_active (bool | None): Filter by active status (None = no filter)
+            is_superuser (bool | None): Filter by superuser status (None = no filter)
+            search (str | None): Search term for username, email, or full_name (case-insensitive)
+            sort_by (str): Column name to sort by (default: "created_at")
+            sort_order (str): Sort direction "asc" or "desc" (default: "desc")
+
+        Returns:
+            Select: SQLAlchemy select statement with filters and sorting applied
+
+        Example:
+            >>> query = repo.get_filtered_users(is_active=True, search="john")
+            >>> result = await db.execute(query)
+            >>> users = result.scalars().all()
+
+        Note:
+            The returned Select statement can be passed to fastapi-pagination's
+            paginate() function for automatic pagination support.
+        """
+        # Start with base query
+        query = select(User)
+
+        # Apply is_active filter
+        if is_active is not None:
+            query = query.where(User.is_active == is_active)
+
+        # Apply is_superuser filter
+        if is_superuser is not None:
+            query = query.where(User.is_superuser == is_superuser)
+
+        # Apply search filter (case-insensitive search across username, email, full_name)
+        if search:
+            search_term = f"%{search}%"
+            query = query.where(
+                or_(
+                    User.username.ilike(search_term),
+                    User.email.ilike(search_term),
+                    User.full_name.ilike(search_term),
+                )
+            )
+
+        # Apply sorting
+        sort_column = getattr(User, sort_by, User.created_at)
+        if sort_order.lower() == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+        return query

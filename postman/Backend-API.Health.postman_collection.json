@@ -46,7 +46,7 @@
           "response": []
         },
         {
-          "name": "Health Check",
+          "name": "Health Check (Enhanced)",
           "event": [
             {
               "listen": "test",
@@ -73,13 +73,31 @@
                   "    pm.expect(jsonData).to.have.property('version');",
                   "});",
                   "",
-                  "pm.test(\"Response has database information\", function () {",
+                  "pm.test(\"Response has dependency checks\", function () {",
                   "    var jsonData = pm.response.json();",
-                  "    pm.expect(jsonData).to.have.property('database');",
-                  "    pm.expect(jsonData.database).to.have.property('provider');",
-                  "    pm.expect(jsonData.database).to.have.property('host');",
-                  "    pm.expect(jsonData.database).to.have.property('connected');",
-                  "    pm.expect(jsonData.database.connected).to.be.true;",
+                  "    pm.expect(jsonData).to.have.property('checks');",
+                  "    pm.expect(jsonData.checks).to.have.property('database');",
+                  "});",
+                  "",
+                  "pm.test(\"Database check is healthy\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.checks.database).to.have.property('status');",
+                  "    pm.expect(jsonData.checks.database.status).to.equal('healthy');",
+                  "    pm.expect(jsonData.checks.database).to.have.property('provider');",
+                  "});",
+                  "",
+                  "pm.test(\"Cache check present if enabled\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.checks.cache) {",
+                  "        pm.expect(jsonData.checks.cache).to.have.property('status');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Rate limiter check present if enabled\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.checks.rate_limiter) {",
+                  "        pm.expect(jsonData.checks.rate_limiter).to.have.property('status');",
+                  "    }",
                   "});"
                 ]
               }
@@ -93,7 +111,7 @@
               "host": ["{{base_url}}"],
               "path": ["health"]
             },
-            "description": "Health check endpoint for monitoring. Returns application status, version, and database connectivity. No authentication required."
+            "description": "Enhanced health check endpoint with comprehensive dependency verification. Returns application status, version, and checks for database, cache, and rate limiter connectivity. No authentication required."
           },
           "response": []
         }

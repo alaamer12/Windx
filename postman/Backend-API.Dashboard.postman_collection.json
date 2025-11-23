@@ -65,8 +65,8 @@
                   "    pm.response.to.have.status(200);",
                   "});",
                   "",
-                  "pm.test(\"Response time is less than 2s\", function () {",
-                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "pm.test(\"Response time is less than 100ms (optimized)\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(100);",
                   "});",
                   "",
                   "pm.test(\"Response has all statistics\", function () {",
@@ -90,6 +90,15 @@
                   "pm.test(\"Timestamp is ISO format\", function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.timestamp).to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/);",
+                  "});",
+                  "",
+                  "pm.test(\"Cache headers present\", function () {",
+                  "    pm.expect(pm.response.headers.has('cache-control') || pm.response.headers.has('x-cache')).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Statistics consistency check\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.total_users).to.equal(jsonData.active_users + jsonData.inactive_users);",
                   "});"
                 ]
               }

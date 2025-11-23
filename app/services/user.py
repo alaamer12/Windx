@@ -323,3 +323,78 @@ class UserService(BaseService):
             )
 
         return await self.get_user(user_id)
+
+    async def create_users_bulk(self, users_in: list[UserCreate]) -> list[User]:
+        """Create multiple users in a single transaction.
+
+        This method creates multiple users atomically - if any user creation
+        fails, the entire transaction is rolled back and no users are created.
+        Each user is validated individually for email and username uniqueness.
+
+        Args:
+            users_in (list[UserCreate]): List of user creation data
+
+        Returns:
+            list[User]: List of created user instances
+
+        Raises:
+            ConflictException: If any email or username already exists
+            DatabaseException: If transaction fails
+        """
+        from app.core.exceptions import DatabaseException
+
+        created_users: list[User] = []
+
+        try:
+            # Create each user using the existing create_user logic
+            # This ensures all validation and business rules are applied
+            for user_in in users_in:
+                # Check if email already exists
+                existing_user = await self.user_repo.get_by_email(user_in.email)
+                if existing_user:
+                    raise ConflictException(
+                        message="Email already registered",
+                        details={"email": user_in.email},
+                    )
+
+                # Check if username already exists
+                existing_user = await self.user_repo.get_by_username(user_in.username)
+                if existing_user:
+                    raise ConflictException(
+                        message="Username already taken",
+                        details={"username": user_in.username},
+                    )
+
+                # Hash password
+                hashed_password = get_password_hash(user_in.password)
+
+                # Create user model instance
+                user_data = user_in.model_dump(exclude={"password"})
+                user = User(
+                    **user_data,
+                    hashed_password=hashed_password,
+                )
+
+                self.user_repo.db.add(user)
+                created_users.append(user)
+
+            # Commit all users at once
+            await self.commit()
+
+            # Refresh all users to get their IDs and updated fields
+            for user in created_users:
+                await self.refresh(user)
+
+            return created_users
+
+        except ConflictException:
+            # Re-raise conflict exceptions (validation errors)
+            await self.rollback()
+            raise
+        except Exception as e:
+            # Rollback transaction on any failure
+            await self.rollback()
+            raise DatabaseException(
+                message="Failed to create users in bulk",
+                details={"error": str(e), "users_count": len(users_in)},
+            )

@@ -13,7 +13,7 @@ Features:
     - Data entry forms
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -63,21 +63,22 @@ async def get_dashboard(
     active_users = [u for u in all_users if u.is_active]
 
     # Calculate statistics
+    now = datetime.now(UTC)
     stats = {
         "total_users": len(all_users),
         "active_users": len(active_users),
         "inactive_users": len(all_users) - len(active_users),
         "superusers": len([u for u in all_users if u.is_superuser]),
         "new_users_today": len(
-            [u for u in all_users if u.created_at.date() == datetime.utcnow().date()]
+            [u for u in all_users if u.created_at.date() == now.date()]
         ),
         "new_users_week": len(
-            [u for u in all_users if u.created_at >= datetime.utcnow() - timedelta(days=7)]
+            [u for u in all_users if u.created_at >= now - timedelta(days=7)]
         ),
     }
 
     return templates.TemplateResponse(
-        "dashboard/index.jinja",
+        "dashboard/index.html.jinja",
         {
             "request": request,
             "user": current_superuser,
@@ -108,7 +109,7 @@ async def get_data_entry_form(
         HTMLResponse: Rendered data entry form HTML
     """
     return templates.TemplateResponse(
-        "dashboard/data_entry.jinja",
+        "dashboard/data_entry.html.jinja",
         {
             "request": request,
             "user": current_superuser,
@@ -157,16 +158,17 @@ async def get_dashboard_stats(
     all_users = await user_service.list_users()
     active_users = [u for u in all_users if u.is_active]
 
+    now = datetime.now(UTC)
     return {
         "total_users": len(all_users),
         "active_users": len(active_users),
         "inactive_users": len(all_users) - len(active_users),
         "superusers": len([u for u in all_users if u.is_superuser]),
         "new_users_today": len(
-            [u for u in all_users if u.created_at.date() == datetime.utcnow().date()]
+            [u for u in all_users if u.created_at.date() == now.date()]
         ),
         "new_users_week": len(
-            [u for u in all_users if u.created_at >= datetime.utcnow() - timedelta(days=7)]
+            [u for u in all_users if u.created_at >= now - timedelta(days=7)]
         ),
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": now.isoformat(),
     }

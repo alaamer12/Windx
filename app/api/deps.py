@@ -27,17 +27,17 @@ from app.repositories.user import UserRepository
 
 __all__ = ["get_current_user", "get_current_active_superuser"]
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
-    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     """Get current authenticated user from JWT token.
 
     Args:
-        credentials (HTTPAuthorizationCredentials): HTTP bearer credentials
+        credentials (HTTPAuthorizationCredentials | None): HTTP bearer credentials
         db (AsyncSession): Database session
 
     Returns:
@@ -46,6 +46,13 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     token = credentials.credentials
     user_id = decode_access_token(token)
 

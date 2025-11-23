@@ -20,7 +20,7 @@ __all__ = ["api_router"]
 
 api_router = APIRouter()
 
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
-api_router.include_router(users.router, prefix="/users", tags=["users"])
-api_router.include_router(export.router, prefix="/export", tags=["export"])
-api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
+api_router.include_router(auth.router, prefix="/auth")
+api_router.include_router(users.router, prefix="/users")
+api_router.include_router(export.router, prefix="/export")
+api_router.include_router(dashboard.router, prefix="/dashboard")

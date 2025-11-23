@@ -80,6 +80,9 @@ app = FastAPI(
     description="Professional backend API with PostgreSQL/Supabase",
     version="1.0.0",
     lifespan=lifespan,
+    swagger_ui_parameters={
+        "persistAuthorization": True,
+    },
 )
 
 

@@ -1,7 +1,8 @@
 """Test Supabase database connection.
 
-Run this test from the project root with:
-    .venv/Scripts/python tests/unit/test_supabase.py
+NOTE: This is a manual integration test for Supabase connection.
+It is skipped in automated test runs to avoid external dependencies.
+Run manually with: python tests/unit/test_supabase.py
 """
 
 import asyncio
@@ -9,6 +10,7 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -22,6 +24,7 @@ sys.path.insert(0, str(project_root))
 
 
 
+@pytest.mark.skip(reason="Manual integration test - requires live Supabase connection")
 async def test_connection():
     """Test Supabase connection."""
     settings = get_settings()
@@ -55,6 +58,7 @@ async def test_connection():
         print(f"  Error: {e}")
         return False
 
+@pytest.mark.skip(reason="Manual integration test - requires live Supabase connection")
 async def test_connection2():
     """Test different Supabase connection formats."""
 

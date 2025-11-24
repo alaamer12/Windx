@@ -6,6 +6,8 @@ This test suite validates the env consistency checker by:
 - Testing various failure scenarios
 - Ensuring proper cleanup even on interruption
 - Verifying all edge cases
+
+NOTE: These are manual tests. Run directly with: python tests/unit/test_env.py
 """
 from __future__ import annotations
 
@@ -17,6 +19,8 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
@@ -31,8 +35,8 @@ parse_env_file = check_module.parse_env_file
 check_consistency = check_module.main
 
 
-class TestEnvConsistency:
-    """Test environment file consistency checker."""
+class EnvConsistencyChecker:
+    """Environment file consistency checker for manual testing."""
 
     def __init__(self):
         """Initialize test suite."""
@@ -379,6 +383,7 @@ class TestEnvConsistency:
             return 1
 
 
+@pytest.mark.skip(reason="Manual test script - run directly with python")
 def test_cleanup_on_exception():
     """Test that cleanup occurs even when exception is raised."""
     print("=" * 60)
@@ -386,7 +391,7 @@ def test_cleanup_on_exception():
     print("=" * 60)
     print()
 
-    test_suite = TestEnvConsistency()
+    test_suite = EnvConsistencyChecker()
     backup_dir: str | None = None
     try:
         # Setup
@@ -434,6 +439,7 @@ def test_cleanup_on_exception():
             return 1
 
 
+@pytest.mark.skip(reason="Manual test script - run directly with python")
 def test_manual_interrupt_simulation():
     """Test manual interrupt handling."""
     print("\n" + "=" * 60)
@@ -441,7 +447,7 @@ def test_manual_interrupt_simulation():
     print("=" * 60)
     print()
 
-    test_suite = TestEnvConsistency()
+    test_suite = EnvConsistencyChecker()
     backup_dir: str | None = None
 
     try:
@@ -516,7 +522,7 @@ def simulate_main():
     interrupt_thread.start()
 
     # Run tests
-    test_suite = TestEnvConsistency()
+    test_suite = EnvConsistencyChecker()
 
     try:
         test_suite.run_all_tests()
@@ -548,7 +554,7 @@ def simulate_main():
 
 def main():
     """Run all cleanup tests."""
-    test_suite = TestEnvConsistency()
+    test_suite = EnvConsistencyChecker()
     test_suite.run_all_tests()
 
     print("=" * 60)

@@ -1,11 +1,18 @@
-"""Test Supabase pooler connection."""
+"""Test Supabase pooler connection.
+
+NOTE: This is a manual integration test for Supabase connection.
+It is skipped in automated test runs to avoid external dependencies.
+Run manually with: python tests/unit/test_pooler.py
+"""
 
 import asyncio
 
+import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 
+@pytest.mark.skip(reason="Manual integration test - requires live Supabase connection")
 async def test_connection():
     """Test Supabase transaction pooler connection."""
 

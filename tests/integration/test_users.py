@@ -293,6 +293,12 @@ class TestUpdateUserEndpoint:
 
         assert response.status_code == 200
 
+        # Logout first to clear the session
+        await client.post(
+            "/api/v1/auth/logout",
+            headers=auth_headers,
+        )
+
         # Verify can login with new password
         login_response = await client.post(
             "/api/v1/auth/login",
@@ -302,6 +308,7 @@ class TestUpdateUserEndpoint:
             },
         )
         assert login_response.status_code == 200
+        assert "access_token" in login_response.json()
 
     async def test_update_user_without_auth(self, client: AsyncClient, test_user):
         """Test updating user without authentication fails."""

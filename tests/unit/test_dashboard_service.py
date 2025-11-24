@@ -207,7 +207,6 @@ class TestDashboardServiceGetStats:
 
     async def test_get_stats_new_users_today(self, db_session: AsyncSession):
         """Test new users today count."""
-        from app.models.user import User
         from app.services.user import UserService
 
         user_service = UserService(db_session)

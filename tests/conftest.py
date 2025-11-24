@@ -47,9 +47,24 @@ from app.models.user import User  # noqa: F401
 from main import app
 from tests.config import TestSettings, get_test_settings
 
-# Test database URL (use temporary file for async compatibility)
-# In-memory databases don't work well with aiosqlite due to connection isolation
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+# Test database URL - Use file-based database for better compatibility
+# In-memory databases have issues with aiosqlite and connection isolation
+import tempfile
+import atexit
+
+# Create a temporary directory for test databases
+_temp_dir = tempfile.mkdtemp()
+_test_db_path = Path(_temp_dir) / "test.db"
+
+# Clean up temp directory on exit
+def _cleanup_temp_dir():
+    import shutil
+    if Path(_temp_dir).exists():
+        shutil.rmtree(_temp_dir, ignore_errors=True)
+
+atexit.register(_cleanup_temp_dir)
+
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_test_db_path}"
 
 
 @pytest.fixture(scope="session")
@@ -126,19 +141,30 @@ async def test_engine():
     Yields:
         AsyncEngine: Test database engine
     """
+    import time
+    
     # Remove test database if it exists
-    test_db_path = project_root / "test.db"
-    if test_db_path.exists():
-        test_db_path.unlink()
-
+    if _test_db_path.exists():
+        try:
+            _test_db_path.unlink()
+        except PermissionError:
+            # File is locked, wait a bit and try again
+            time.sleep(0.1)
+            try:
+                _test_db_path.unlink()
+            except Exception:
+                pass  # Ignore if still locked
+    
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,  # Disable pooling for tests
+        connect_args={"check_same_thread": False},  # Allow multi-threaded access
     )
 
     # Create all tables
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)  # Drop first to ensure clean state
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
@@ -148,10 +174,16 @@ async def test_engine():
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
-
+    
+    # Wait for connections to close
+    await asyncio.sleep(0.05)
+    
     # Clean up test database file
-    if test_db_path.exists():
-        test_db_path.unlink()
+    if _test_db_path.exists():
+        try:
+            _test_db_path.unlink()
+        except Exception:
+            pass  # Ignore cleanup errors
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -297,7 +329,8 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
 
     # Make superuser
     user.is_superuser = True
-    await db_session.commit()
+    db_session.add(user)
+    await db_session.flush()  # Flush instead of commit to keep transaction open
     await db_session.refresh(user)
 
     return user

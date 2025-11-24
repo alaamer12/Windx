@@ -17,7 +17,6 @@ import asyncio
 
 import pytest
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
 from httpx import ASGITransport, AsyncClient
 
 from app.core.middleware import TimeoutMiddleware
@@ -31,6 +30,7 @@ def timeout_app():
     app = FastAPI()
 
     # Add timeout middleware with short timeout for testing
+    # noinspection PyTypeChecker
     app.add_middleware(TimeoutMiddleware, timeout=1.0)
 
     @app.get("/fast")
@@ -58,6 +58,7 @@ def timeout_app():
     return app
 
 
+# noinspection PyTypeChecker
 class TestTimeoutMiddleware:
     """Tests for TimeoutMiddleware functionality."""
 

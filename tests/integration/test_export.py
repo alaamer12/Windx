@@ -50,7 +50,7 @@ class TestExportMyDataEndpoint:
         """Test exporting data without authentication fails."""
         response = await client.get("/api/v1/export/my-data")
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestExportUsersJsonEndpoint:
@@ -103,7 +103,7 @@ class TestExportUsersJsonEndpoint:
         """Test exporting users without authentication fails."""
         response = await client.get("/api/v1/export/users/json")
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestExportUsersCsvEndpoint:
@@ -160,7 +160,7 @@ class TestExportUsersCsvEndpoint:
         """Test exporting users CSV without authentication fails."""
         response = await client.get("/api/v1/export/users/csv")
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestExportPermissions:

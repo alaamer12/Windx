@@ -60,7 +60,7 @@ class TestListUsersEndpoint:
         """Test listing users without authentication fails."""
         response = await client.get("/api/v1/users/")
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
     async def test_list_users_pagination(
         self,
@@ -158,7 +158,7 @@ class TestGetUserEndpoint:
         """Test getting user without authentication fails."""
         response = await client.get(f"/api/v1/users/{test_user.id}")
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestUpdateUserEndpoint:

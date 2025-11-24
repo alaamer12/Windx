@@ -502,3 +502,4 @@ class TestBulkUserCreation:
 
         assert response.status_code == 201
         assert "application/json" in response.headers["content-type"]
+

@@ -394,6 +394,7 @@ class TestBulkUserCreation:
         assert response.status_code == 201
 
         # Verify password is hashed in database
+        # noinspection PyTypeChecker
         result = await db_session.execute(
             select(User).where(User.email == "hash1@example.com")
         )

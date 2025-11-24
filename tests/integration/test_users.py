@@ -310,7 +310,7 @@ class TestUpdateUserEndpoint:
             json={"full_name": "Hacked"},
         )
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestDeleteUserEndpoint:
@@ -373,7 +373,7 @@ class TestDeleteUserEndpoint:
         """Test deleting user without authentication fails."""
         response = await client.delete(f"/api/v1/users/{test_user.id}")
 
-        assert response.status_code == 403
+        assert response.status_code == 401
 
 
 class TestUserPermissions:

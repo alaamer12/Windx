@@ -275,8 +275,8 @@ class TestUserListSearch:
         db_session: AsyncSession,
     ):
         """Test searching users by full name."""
-        from app.services.user import UserService
         from app.schemas.user import UserCreate
+        from app.services.user import UserService
 
         user_service = UserService(db_session)
 
@@ -408,8 +408,9 @@ class TestUserListSorting:
         db_session: AsyncSession,
     ):
         """Test sorting users by created_at in descending order."""
-        from app.services.user import UserService
         import asyncio
+
+        from app.services.user import UserService
 
         user_service = UserService(db_session)
 

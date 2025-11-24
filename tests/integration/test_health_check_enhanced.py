@@ -344,7 +344,7 @@ class TestHealthCheckEndpoint:
             assert data["status"] in ["healthy", "unhealthy"]
 
             # Verify checks have proper structure
-            for check_name, check_data in data["checks"].items():
+            for _check_name, check_data in data["checks"].items():
                 assert isinstance(check_data, dict)
                 assert "status" in check_data
                 assert check_data["status"] in ["healthy", "unhealthy"]

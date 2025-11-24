@@ -68,14 +68,15 @@ async def get_dashboard(
     all_users = await user_service.list_users(limit=10)
 
     return templates.TemplateResponse(
+        request,
         "dashboard/index.html.jinja",
         {
-            "request": request,
             "user": current_superuser,
             "stats": stats,
-            "users": all_users,  # Latest 10 users
+            "users": all_users,
         },
     )
+
 
 
 @router.get(
@@ -99,9 +100,9 @@ async def get_data_entry_form(
         HTMLResponse: Rendered data entry form HTML
     """
     return templates.TemplateResponse(
+        request,
         "dashboard/data_entry.html.jinja",
         {
-            "request": request,
             "user": current_superuser,
         },
     )

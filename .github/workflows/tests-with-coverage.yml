@@ -1,0 +1,84 @@
+name: Tests with Coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Create test environment file
+        run: |
+          cat > .env.test << EOF
+          TESTING=true
+          DATABASE_PROVIDER=sqlite
+          DATABASE_URL=sqlite+aiosqlite:///./test.db
+          SECRET_KEY=test-secret-key-for-ci-cd-only
+          ALGORITHM=HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES=30
+          CORS_ORIGINS=["http://localhost:3000"]
+          CACHE_ENABLED=false
+          LIMITER_ENABLED=false
+          EOF
+
+      - name: Run linter
+        run: uv run ruff check app/ tests/
+
+      - name: Run formatter check
+        run: uv run ruff format --check app/ tests/
+
+      - name: Run tests with coverage
+        run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Generate coverage badge
+        if: success()
+        run: |
+          COVERAGE=$(uv run pytest tests/ --cov=app --cov-report=term | grep "TOTAL" | awk '{print $4}')
+          echo "Coverage: $COVERAGE"
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Coverage:** ${{ env.COVERAGE }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Tests failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+          fi

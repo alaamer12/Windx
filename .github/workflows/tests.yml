@@ -1,0 +1,74 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Create test environment file
+        run: |
+          cat > .env.test << EOF
+          # Test Environment Configuration
+          TESTING=true
+          
+          # Database
+          DATABASE_PROVIDER=sqlite
+          DATABASE_URL=sqlite+aiosqlite:///./test.db
+          
+          # Security
+          SECRET_KEY=test-secret-key-for-ci-cd-only
+          ALGORITHM=HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES=30
+          
+          # CORS
+          CORS_ORIGINS=["http://localhost:3000"]
+          
+          # Cache & Rate Limiting (disabled in tests)
+          CACHE_ENABLED=false
+          LIMITER_ENABLED=false
+          EOF
+
+      - name: Run linter
+        run: uv run ruff check app/ tests/
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --tb=short
+
+      - name: Test Summary
+        if: success()
+        run: |
+          echo "## ✅ Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All tests passed successfully!" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Test Failed
+        if: failure()
+        run: |
+          echo "## ❌ Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Tests failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+          exit 1

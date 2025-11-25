@@ -36,6 +36,13 @@ Public Classes:
     Quote: Quote response schema
     QuoteCreate: Quote creation schema
     QuoteUpdate: Quote update schema
+    ConfigurationTemplate: Configuration template response schema
+    ConfigurationTemplateCreate: Configuration template creation schema
+    ConfigurationTemplateUpdate: Configuration template update schema
+    ConfigurationTemplateWithSelections: Configuration template with selections
+    TemplateSelection: Template selection response schema
+    TemplateSelectionCreate: Template selection creation schema
+    TemplateSelectionUpdate: Template selection update schema
 
 Features:
     - Composed schemas (not monolithic)
@@ -67,6 +74,12 @@ from app.schemas.configuration_selection import (
     ConfigurationSelectionUpdate,
     ConfigurationSelectionValue,
 )
+from app.schemas.configuration_template import (
+    ConfigurationTemplate,
+    ConfigurationTemplateCreate,
+    ConfigurationTemplateUpdate,
+    ConfigurationTemplateWithSelections,
+)
 from app.schemas.customer import (
     Customer,
     CustomerCreate,
@@ -88,6 +101,11 @@ from app.schemas.responses import (
     get_common_responses,
 )
 from app.schemas.session import Session, SessionCreate, SessionInDB
+from app.schemas.template_selection import (
+    TemplateSelection,
+    TemplateSelectionCreate,
+    TemplateSelectionUpdate,
+)
 from app.schemas.user import User, UserCreate, UserInDB, UserUpdate
 
 __all__ = [
@@ -124,6 +142,13 @@ __all__ = [
     "Quote",
     "QuoteCreate",
     "QuoteUpdate",
+    "ConfigurationTemplate",
+    "ConfigurationTemplateCreate",
+    "ConfigurationTemplateUpdate",
+    "ConfigurationTemplateWithSelections",
+    "TemplateSelection",
+    "TemplateSelectionCreate",
+    "TemplateSelectionUpdate",
     "ErrorDetail",
     "ErrorResponse",
     "get_common_responses",

@@ -12,6 +12,8 @@ Public Classes:
     ConfigurationSelection: Individual attribute selection model
     Customer: Customer management model
     Quote: Quotation system model
+    ConfigurationTemplate: Pre-defined configuration template model
+    TemplateSelection: Pre-selected attribute in template model
 
 Features:
     - SQLAlchemy 2.0 Mapped columns
@@ -23,10 +25,12 @@ Features:
 from app.models.attribute_node import AttributeNode
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
+from app.models.configuration_template import ConfigurationTemplate
 from app.models.customer import Customer
 from app.models.manufacturing_type import ManufacturingType
 from app.models.quote import Quote
 from app.models.session import Session
+from app.models.template_selection import TemplateSelection
 from app.models.user import User
 
 __all__ = [
@@ -38,4 +42,6 @@ __all__ = [
     "ConfigurationSelection",
     "Customer",
     "Quote",
+    "ConfigurationTemplate",
+    "TemplateSelection",
 ]

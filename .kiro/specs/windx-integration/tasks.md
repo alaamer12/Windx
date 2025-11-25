@@ -78,11 +78,17 @@ check file #database/test_ltree_type.py
   - Define table with all columns and indexes
   - _Requirements: 2.1, 4.1_
 
-- [ ] 1.6 Create Template models and schemas
+- [x] 1.6 Create Template models and schemas
+
+
+
+
   - Create `app/models/configuration_template.py` and `app/models/template_selection.py`
   - Create corresponding Pydantic schemas
   - Define tables with all columns and indexes
   - _Requirements: 2.1, 4.1_
+
+
 
 - [ ] 1.7 Create Order models and schemas
   - Create `app/models/order.py` and `app/models/order_item.py`

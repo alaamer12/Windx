@@ -35,6 +35,7 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.models.attribute_node import AttributeNode
     from app.models.configuration_selection import ConfigurationSelection
+    from app.models.customer import Customer
     from app.models.manufacturing_type import ManufacturingType
 
 __all__ = ["Configuration"]
@@ -84,7 +85,7 @@ class Configuration(Base):
         doc="Manufacturing type ID",
     )
     customer_id: Mapped[int | None] = mapped_column(
-        # ForeignKey("customers.id", ondelete="SET NULL"),  # Future: when Customer model exists
+        ForeignKey("customers.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
         doc="Customer ID (optional)",
@@ -170,6 +171,10 @@ class Configuration(Base):
     # Relationships
     manufacturing_type: Mapped["ManufacturingType"] = relationship(
         "ManufacturingType",
+        back_populates="configurations",
+    )
+    customer: Mapped["Customer | None"] = relationship(
+        "Customer",
         back_populates="configurations",
     )
     selections: Mapped[list["ConfigurationSelection"]] = relationship(

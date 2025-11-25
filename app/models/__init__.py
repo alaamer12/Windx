@@ -10,6 +10,7 @@ Public Classes:
     AttributeNode: Hierarchical attribute tree node for product configuration
     Configuration: Customer product design model
     ConfigurationSelection: Individual attribute selection model
+    Customer: Customer management model
 
 Features:
     - SQLAlchemy 2.0 Mapped columns
@@ -21,6 +22,7 @@ Features:
 from app.models.attribute_node import AttributeNode
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
+from app.models.customer import Customer
 from app.models.manufacturing_type import ManufacturingType
 from app.models.session import Session
 from app.models.user import User
@@ -32,4 +34,5 @@ __all__ = [
     "AttributeNode",
     "Configuration",
     "ConfigurationSelection",
+    "Customer",
 ]

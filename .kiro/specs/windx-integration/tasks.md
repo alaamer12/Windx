@@ -58,7 +58,9 @@ check file #database/test_ltree_type.py
   - Define all tables with indexes and constraints
   - _Requirements: 2.1, 2.4, 4.1, 4.2_
 
-- [-] 1.4 Create Customer model and schema
+- [x] 1.4 Create Customer model and schema
+
+
 
 
   - Create `app/models/customer.py` with JSONB address field
@@ -66,7 +68,9 @@ check file #database/test_ltree_type.py
   - Define table with all columns and indexes
   - _Requirements: 2.1, 2.4, 4.1_
 
-- [ ] 1.5 Create Quote model and schema
+- [-] 1.5 Create Quote model and schema
+
+
   - Create `app/models/quote.py` with pricing breakdown fields
   - Create `app/schemas/quote.py` with composed schemas
   - Define table with all columns and indexes

@@ -30,6 +30,9 @@ Public Classes:
     ConfigurationSelectionCreate: Configuration selection creation schema
     ConfigurationSelectionUpdate: Configuration selection update schema
     ConfigurationSelectionValue: Flexible value container for selections
+    Customer: Customer response schema
+    CustomerCreate: Customer creation schema
+    CustomerUpdate: Customer update schema
 
 Features:
     - Composed schemas (not monolithic)
@@ -60,6 +63,11 @@ from app.schemas.configuration_selection import (
     ConfigurationSelectionCreate,
     ConfigurationSelectionUpdate,
     ConfigurationSelectionValue,
+)
+from app.schemas.customer import (
+    Customer,
+    CustomerCreate,
+    CustomerUpdate,
 )
 from app.schemas.manufacturing_type import (
     ManufacturingType,
@@ -102,6 +110,9 @@ __all__ = [
     "ConfigurationSelectionCreate",
     "ConfigurationSelectionUpdate",
     "ConfigurationSelectionValue",
+    "Customer",
+    "CustomerCreate",
+    "CustomerUpdate",
     "ErrorDetail",
     "ErrorResponse",
     "get_common_responses",

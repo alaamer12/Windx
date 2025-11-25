@@ -1,5 +1,7 @@
 # Implementation Plan: Windx Configurator Integration
 
+ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
+
 This implementation plan converts the Windx design into actionable coding tasks. The plan is organized into phases, starting with documentation and analysis, then moving to database integration, repositories, services, and API endpoints.
 
 ## Phase 1: Database Foundation
@@ -18,14 +20,20 @@ check file #database/test_ltree_type.py
   - Add SQL script to enable LTREE extension in database
   - _Requirements: 2.2, 2.6, 8.2_
 
-- [ ] 1.1 Create ManufacturingType model and schema
+- [x] 1.1 Create ManufacturingType model and schema
+
+
+
+
   - Create `app/models/manufacturing_type.py` with SQLAlchemy 2.0 Mapped columns
   - Create `app/schemas/manufacturing_type.py` with Base, Create, Update, Response schemas
   - Add model to `app/models/__init__.py` and schema to `app/schemas/__init__.py`
   - Define table with all columns, indexes, and constraints
   - _Requirements: 2.1, 4.1, 4.2, 8.1_
 
-- [ ] 1.2 Create AttributeNode model with LTREE hierarchy
+- [-] 1.2 Create AttributeNode model with LTREE hierarchy
+
+
   - Create `app/models/attribute_node.py` with hierarchical structure
   - Include ltree_path, depth, parent_node_id columns with proper types
   - Add JSONB columns for display_condition, validation_rules

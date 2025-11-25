@@ -1,5 +1,7 @@
 # Requirements Document: Windx Configurator Integration
 
+ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
+
 ## Introduction
 
 This document outlines the requirements for integrating the Windx automated window & door configurator system into the existing FastAPI backend application. The Windx system is a highly flexible, hierarchical product configuration platform that enables customers to design, customize, and order windows, doors, and other manufactured products through a dynamic attribute system.

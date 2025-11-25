@@ -6,6 +6,7 @@ using modern SQLAlchemy 2.0 with Mapped columns.
 Public Classes:
     User: User model for authentication
     Session: Session model for tracking user sessions
+    ManufacturingType: Product category model for Windx configurator
 
 Features:
     - SQLAlchemy 2.0 Mapped columns
@@ -14,7 +15,8 @@ Features:
     - Type-safe model definitions
 """
 
+from app.models.manufacturing_type import ManufacturingType
 from app.models.session import Session
 from app.models.user import User
 
-__all__ = ["User", "Session"]
+__all__ = ["User", "Session", "ManufacturingType"]

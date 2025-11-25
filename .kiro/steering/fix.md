@@ -2,6 +2,8 @@
 inclusion: always
 ---
 
+ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
+
 # Repository Pattern: Type-Safe Model Creation
 
 ## When to Use Repository.create() vs Direct Model Creation

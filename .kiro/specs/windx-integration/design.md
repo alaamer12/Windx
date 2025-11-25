@@ -1,5 +1,7 @@
 # Design Document: Windx Configurator Integration
 
+ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
+
 ## Overview
 
 This document describes the technical design for integrating the Windx automated window & door configurator system into the existing FastAPI backend application. The integration adds a complete product configuration subsystem while maintaining existing architectural patterns.

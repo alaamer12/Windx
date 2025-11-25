@@ -13,6 +13,9 @@ Public Classes:
     SessionInDB: Session database schema with token
     LoginRequest: Login request schema
     Token: Token response schema
+    ManufacturingType: Manufacturing type response schema
+    ManufacturingTypeCreate: Manufacturing type creation schema
+    ManufacturingTypeUpdate: Manufacturing type update schema
 
 Features:
     - Composed schemas (not monolithic)
@@ -23,6 +26,11 @@ Features:
 """
 
 from app.schemas.auth import LoginRequest, Token
+from app.schemas.manufacturing_type import (
+    ManufacturingType,
+    ManufacturingTypeCreate,
+    ManufacturingTypeUpdate,
+)
 from app.schemas.responses import (
     ErrorDetail,
     ErrorResponse,
@@ -41,6 +49,9 @@ __all__ = [
     "SessionInDB",
     "LoginRequest",
     "Token",
+    "ManufacturingType",
+    "ManufacturingTypeCreate",
+    "ManufacturingTypeUpdate",
     "ErrorDetail",
     "ErrorResponse",
     "get_common_responses",

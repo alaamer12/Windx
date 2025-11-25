@@ -22,6 +22,14 @@ Public Classes:
     AttributeNodeTree: Attribute node with children for tree representation
     DisplayCondition: Conditional display logic schema
     ValidationRule: Validation rule schema
+    Configuration: Configuration response schema
+    ConfigurationCreate: Configuration creation schema
+    ConfigurationUpdate: Configuration update schema
+    ConfigurationWithSelections: Configuration with selections
+    ConfigurationSelection: Configuration selection response schema
+    ConfigurationSelectionCreate: Configuration selection creation schema
+    ConfigurationSelectionUpdate: Configuration selection update schema
+    ConfigurationSelectionValue: Flexible value container for selections
 
 Features:
     - Composed schemas (not monolithic)
@@ -41,6 +49,18 @@ from app.schemas.attribute_node import (
     ValidationRule,
 )
 from app.schemas.auth import LoginRequest, Token
+from app.schemas.configuration import (
+    Configuration,
+    ConfigurationCreate,
+    ConfigurationUpdate,
+    ConfigurationWithSelections,
+)
+from app.schemas.configuration_selection import (
+    ConfigurationSelection,
+    ConfigurationSelectionCreate,
+    ConfigurationSelectionUpdate,
+    ConfigurationSelectionValue,
+)
 from app.schemas.manufacturing_type import (
     ManufacturingType,
     ManufacturingTypeCreate,
@@ -74,6 +94,14 @@ __all__ = [
     "AttributeNodeWithParent",
     "DisplayCondition",
     "ValidationRule",
+    "Configuration",
+    "ConfigurationCreate",
+    "ConfigurationUpdate",
+    "ConfigurationWithSelections",
+    "ConfigurationSelection",
+    "ConfigurationSelectionCreate",
+    "ConfigurationSelectionUpdate",
+    "ConfigurationSelectionValue",
     "ErrorDetail",
     "ErrorResponse",
     "get_common_responses",

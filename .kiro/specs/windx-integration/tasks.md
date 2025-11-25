@@ -45,7 +45,12 @@ check file #database/test_ltree_type.py
   - Define GiST index on ltree_path in model
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 4.1, 4.3, 4.4, 8.3_
 
-- [ ] 1.3 Create Configuration and ConfigurationSelection models
+- [x] 1.3 Create Configuration and ConfigurationSelection models
+
+
+
+
+
   - Create `app/models/configuration.py` with status tracking
   - Create `app/models/configuration_selection.py` with flexible value storage
   - Add calculated fields (total_price, calculated_weight, calculated_technical_data)
@@ -53,7 +58,9 @@ check file #database/test_ltree_type.py
   - Define all tables with indexes and constraints
   - _Requirements: 2.1, 2.4, 4.1, 4.2_
 
-- [ ] 1.4 Create Customer model and schema
+- [-] 1.4 Create Customer model and schema
+
+
   - Create `app/models/customer.py` with JSONB address field
   - Create `app/schemas/customer.py` with composed schemas
   - Define table with all columns and indexes

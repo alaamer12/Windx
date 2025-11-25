@@ -26,7 +26,8 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.models.attribute_node import AttributeNode
     from app.models.configuration import Configuration
-    from app.models.configuration_template import ConfigurationTemplate
+    # TODO: Add when ConfigurationTemplate model is created (Task 1.4)
+    # from app.models.configuration_template import ConfigurationTemplate
 
 __all__ = ["ManufacturingType"]
 
@@ -50,7 +51,7 @@ class ManufacturingType(Base):
         updated_at: Last update timestamp
         attribute_nodes: Related attribute hierarchy
         configurations: Related customer configurations
-        templates: Related configuration templates
+        templates: Related configuration templates (TODO: Add in Task 1.4)
     """
 
     __tablename__ = "manufacturing_types"
@@ -133,10 +134,11 @@ class ManufacturingType(Base):
         "Configuration",
         back_populates="manufacturing_type",
     )
-    templates: Mapped[list["ConfigurationTemplate"]] = relationship(
-        "ConfigurationTemplate",
-        back_populates="manufacturing_type",
-    )
+    # TODO: Add when ConfigurationTemplate model is created (Task 1.4)
+    # templates: Mapped[list["ConfigurationTemplate"]] = relationship(
+    #     "ConfigurationTemplate",
+    #     back_populates="manufacturing_type",
+    # )
 
     def __repr__(self) -> str:
         """String representation of ManufacturingType.

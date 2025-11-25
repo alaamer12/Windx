@@ -8,6 +8,8 @@ Public Classes:
     Session: Session model for tracking user sessions
     ManufacturingType: Product category model for Windx configurator
     AttributeNode: Hierarchical attribute tree node for product configuration
+    Configuration: Customer product design model
+    ConfigurationSelection: Individual attribute selection model
 
 Features:
     - SQLAlchemy 2.0 Mapped columns
@@ -17,8 +19,17 @@ Features:
 """
 
 from app.models.attribute_node import AttributeNode
+from app.models.configuration import Configuration
+from app.models.configuration_selection import ConfigurationSelection
 from app.models.manufacturing_type import ManufacturingType
 from app.models.session import Session
 from app.models.user import User
 
-__all__ = ["User", "Session", "ManufacturingType", "AttributeNode"]
+__all__ = [
+    "User",
+    "Session",
+    "ManufacturingType",
+    "AttributeNode",
+    "Configuration",
+    "ConfigurationSelection",
+]

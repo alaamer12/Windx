@@ -16,6 +16,12 @@ Public Classes:
     ManufacturingType: Manufacturing type response schema
     ManufacturingTypeCreate: Manufacturing type creation schema
     ManufacturingTypeUpdate: Manufacturing type update schema
+    AttributeNode: Attribute node response schema
+    AttributeNodeCreate: Attribute node creation schema
+    AttributeNodeUpdate: Attribute node update schema
+    AttributeNodeTree: Attribute node with children for tree representation
+    DisplayCondition: Conditional display logic schema
+    ValidationRule: Validation rule schema
 
 Features:
     - Composed schemas (not monolithic)
@@ -25,6 +31,15 @@ Features:
     - ORM mode support
 """
 
+from app.schemas.attribute_node import (
+    AttributeNode,
+    AttributeNodeCreate,
+    AttributeNodeTree,
+    AttributeNodeUpdate,
+    AttributeNodeWithParent,
+    DisplayCondition,
+    ValidationRule,
+)
 from app.schemas.auth import LoginRequest, Token
 from app.schemas.manufacturing_type import (
     ManufacturingType,
@@ -52,6 +67,13 @@ __all__ = [
     "ManufacturingType",
     "ManufacturingTypeCreate",
     "ManufacturingTypeUpdate",
+    "AttributeNode",
+    "AttributeNodeCreate",
+    "AttributeNodeUpdate",
+    "AttributeNodeTree",
+    "AttributeNodeWithParent",
+    "DisplayCondition",
+    "ValidationRule",
     "ErrorDetail",
     "ErrorResponse",
     "get_common_responses",

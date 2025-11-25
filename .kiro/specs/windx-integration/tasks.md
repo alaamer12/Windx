@@ -31,7 +31,10 @@ check file #database/test_ltree_type.py
   - Define table with all columns, indexes, and constraints
   - _Requirements: 2.1, 4.1, 4.2, 8.1_
 
-- [-] 1.2 Create AttributeNode model with LTREE hierarchy
+- [x] 1.2 Create AttributeNode model with LTREE hierarchy
+
+
+
 
 
   - Create `app/models/attribute_node.py` with hierarchical structure

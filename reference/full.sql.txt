@@ -1,0 +1,693 @@
+CREATE EXTENSION IF NOT EXISTS ltree;
+
+-- ==============================================
+-- Manufacturing Types - Defines product categories
+-- ==============================================
+
+-- Users table for system access
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL, -- admin, customer,
+    last_login TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Configuration Templates - Pre-defined common configurations
+-- ==============================================
+
+CREATE TABLE configuration_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,                    -- Template name (e.g., "Standard Casement Window")
+    description TEXT,                              -- Template description
+    manufacturing_type_id INTEGER NOT NULL REFERENCES manufacturing_types(id),
+    
+    -- Template metadata
+    template_type VARCHAR(50) DEFAULT 'standard',  -- standard, premium, economy, custom
+    is_public BOOLEAN DEFAULT true,               -- Whether customers can see this template
+    usage_count INTEGER DEFAULT 0,                -- How many times this template was used
+    success_rate NUMERIC(5,2) DEFAULT 0,          -- Conversion rate from template to order
+    
+    -- Template pricing (for quick reference)
+    estimated_price NUMERIC(12,2) DEFAULT 0,
+    estimated_weight NUMERIC(10,2) DEFAULT 0,
+    
+    created_by INTEGER REFERENCES users(id),      -- Which data entry person created this
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Template attribute selections (the pre-defined choices)
+CREATE TABLE template_selections (
+    id SERIAL PRIMARY KEY,
+    template_id INTEGER NOT NULL REFERENCES configuration_templates(id) ON DELETE CASCADE,
+    attribute_node_id INTEGER NOT NULL REFERENCES attribute_nodes(id),
+    
+    -- Pre-selected values
+    string_value TEXT,
+    numeric_value NUMERIC(15,6),
+    boolean_value BOOLEAN,
+    json_value JSONB,
+    
+    -- Hierarchy context
+    selection_path LTREE,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(template_id, attribute_node_id)
+);
+
+-- Template usage tracking
+CREATE TABLE template_usage (
+    id SERIAL PRIMARY KEY,
+    template_id INTEGER NOT NULL REFERENCES configuration_templates(id),
+    configuration_id INTEGER NOT NULL REFERENCES configurations(id), -- The configuration created from template
+    customer_id INTEGER REFERENCES customers(id),
+    used_by INTEGER REFERENCES users(id),         -- Which user applied the template
+    
+    -- Usage context
+    usage_type VARCHAR(50) DEFAULT 'customer_start', -- customer_start, sales_assist, quick_quote
+    converted_to_quote BOOLEAN DEFAULT false,
+    converted_to_order BOOLEAN DEFAULT false,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Template categories for organization
+CREATE TABLE template_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    parent_category_id INTEGER REFERENCES template_categories(id), -- For nested categories
+    sort_order INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Junction table: templates can belong to multiple categories
+CREATE TABLE template_category_assignments (
+    template_id INTEGER NOT NULL REFERENCES configuration_templates(id) ON DELETE CASCADE,
+    category_id INTEGER NOT NULL REFERENCES template_categories(id) ON DELETE CASCADE,
+    assigned_by INTEGER REFERENCES users(id),
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (template_id, category_id)
+);
+
+CREATE TABLE manufacturing_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,              -- Product category name (Window, Door, Table)
+    description TEXT,                               -- Detailed description of the product type
+    base_category VARCHAR(50),                      -- High-level grouping (window, furniture, door)
+    image_url VARCHAR(255),                         -- Product category image
+    base_price NUMERIC(10,2) DEFAULT 0,            -- Starting price for this product type
+    base_weight NUMERIC(10,2) DEFAULT 0,           -- Base weight in kg for shipping/logistics
+    is_active BOOLEAN DEFAULT true,                -- Whether this product type is available
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Attribute Nodes - Hierarchical product configuration system
+-- ==============================================
+
+CREATE TABLE attribute_nodes (
+    id SERIAL PRIMARY KEY,
+    manufacturing_type_id INTEGER REFERENCES manufacturing_types(id) ON DELETE CASCADE,
+    parent_node_id INTEGER REFERENCES attribute_nodes(id) ON DELETE CASCADE,
+    name VARCHAR(200) NOT NULL,                     -- Display name of this attribute
+    node_type VARCHAR(20) NOT NULL CHECK (node_type IN ('category', 'attribute', 'option', 'component', 'technical_spec')),
+    data_type VARCHAR(20) CHECK (data_type IN ('string', 'number', 'boolean', 'formula', 'dimension', 'selection')),
+    
+    -- Dynamic behavior controls
+    display_condition JSONB,                        -- Rules for when to show this attribute
+    validation_rules JSONB,                         -- Input validation requirements
+    required BOOLEAN DEFAULT false,                 -- Whether this attribute must be selected
+    
+    -- Universal pricing impacts
+    price_impact_type VARCHAR(20) DEFAULT 'fixed',  -- fixed, percentage, or formula
+    price_impact_value NUMERIC(10,2),               -- Fixed price adjustment
+    price_formula TEXT,                             -- Dynamic price calculation formula
+    
+    -- Universal weight impacts (all physical products have weight)
+    weight_impact NUMERIC(10,2) DEFAULT 0,          -- Fixed weight addition in kg
+    weight_formula TEXT,                            -- Dynamic weight calculation formula
+    
+    -- Specialized technical properties (product-specific)
+    technical_property_type VARCHAR(50),            -- Type of technical property (u_value, load_capacity, etc.)
+    technical_impact_formula TEXT,                  -- How this affects technical calculations
+    
+    -- Hierarchy and organization
+    ltree_path LTREE,                               -- Efficient path storage for tree operations
+    depth INTEGER DEFAULT 0,                        -- Nesting level in the hierarchy
+    
+    -- User interface configuration
+    sort_order INTEGER DEFAULT 0,                   -- Display order within siblings
+    ui_component VARCHAR(50),                       -- UI control type (dropdown, checkbox, etc.)
+    description TEXT,                               -- Help text for users
+    help_text TEXT,                                 -- Additional guidance
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Customer Configurations - Individual product designs
+-- ==============================================
+
+CREATE TABLE configurations (
+    id SERIAL PRIMARY KEY,
+    manufacturing_type_id INTEGER NOT NULL REFERENCES manufacturing_types(id),
+    customer_id INTEGER,                            -- Optional: linked customer account
+    name VARCHAR(200) NOT NULL,                    -- Configuration name (e.g., "Living Room Window")
+    description TEXT,                               -- Customer notes or description
+    
+    -- Configuration status and tracking
+    status VARCHAR(20) DEFAULT 'draft',            -- draft, saved, quoted, ordered
+    reference_code VARCHAR(100) UNIQUE,            -- Unique identifier for this configuration
+    
+    -- Universal calculated properties
+    base_price NUMERIC(12,2) DEFAULT 0,            -- Base price from manufacturing type
+    total_price NUMERIC(12,2) DEFAULT 0,           -- Final price including all options
+    calculated_weight NUMERIC(10,2) DEFAULT 0,     -- Total weight for shipping
+    
+    -- Flexible technical specifications
+    calculated_technical_data JSONB DEFAULT '{}',  -- Product-specific specs {u_value: 1.2, load_capacity: 200}
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Configuration Selections - Individual attribute choices
+-- ==============================================
+
+CREATE TABLE configuration_selections (
+    id SERIAL PRIMARY KEY,
+    configuration_id INTEGER NOT NULL REFERENCES configurations(id) ON DELETE CASCADE,
+    attribute_node_id INTEGER NOT NULL REFERENCES attribute_nodes(id),
+    
+    -- Flexible value storage based on attribute data type
+    string_value TEXT,                              -- For text selections
+    numeric_value NUMERIC(15,6),                    -- For numerical inputs
+    boolean_value BOOLEAN,                          -- For true/false choices
+    json_value JSONB,                               -- For complex structured data
+    
+    -- Impact calculations
+    calculated_price_impact NUMERIC(10,2),          -- Price effect of this selection
+    calculated_weight_impact NUMERIC(10,2),         -- Weight effect of this selection
+    calculated_technical_impact JSONB,              -- Technical property effects {u_value_impact: -0.3}
+    
+    -- Hierarchy context for efficient querying
+    selection_path LTREE,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(configuration_id, attribute_node_id)
+);
+
+-- ==============================================
+-- Customer Management
+-- ==============================================
+
+CREATE TABLE customers (
+    id SERIAL PRIMARY KEY,
+    company_name VARCHAR(200),                      -- Business name if applicable
+    contact_person VARCHAR(100),                    -- Primary contact name
+    email VARCHAR(255) UNIQUE,                      -- Contact email
+    phone VARCHAR(50),                              -- Contact phone number
+    
+    -- Flexible address storage
+    address JSONB,                                  -- {street: "123 Main St", city: "Boston", ...}
+    
+    -- Business information
+    customer_type VARCHAR(50),                      -- residential, commercial, contractor
+    tax_id VARCHAR(100),                            -- Tax identification number
+    payment_terms VARCHAR(100),                     -- Payment agreement terms
+    
+    is_active BOOLEAN DEFAULT true,                 -- Whether customer is active
+    notes TEXT,                                     -- Internal notes about customer
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Quotation System
+-- ==============================================
+
+CREATE TABLE quotes (
+    id SERIAL PRIMARY KEY,
+    configuration_id INTEGER NOT NULL REFERENCES configurations(id),
+    customer_id INTEGER REFERENCES customers(id),
+    quote_number VARCHAR(100) UNIQUE NOT NULL,      -- Unique quote identifier
+    
+    -- Pricing breakdown
+    subtotal NUMERIC(12,2) DEFAULT 0,               -- Price before tax and discounts
+    tax_rate NUMERIC(5,2) DEFAULT 0,                -- Applicable tax rate
+    tax_amount NUMERIC(12,2) DEFAULT 0,             -- Calculated tax amount
+    discount_amount NUMERIC(12,2) DEFAULT 0,        -- Any applied discounts
+    total_amount NUMERIC(12,2) DEFAULT 0,           -- Final amount due
+    
+    -- Technical requirements
+    technical_requirements JSONB,                   -- Customer-specific technical needs
+    
+    -- Quote validity
+    valid_until DATE,                               -- Quote expiration date
+    status VARCHAR(20) DEFAULT 'draft',             -- draft, sent, accepted, expired
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Order Management
+-- ==============================================
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    quote_id INTEGER NOT NULL REFERENCES quotes(id),
+    order_number VARCHAR(100) UNIQUE NOT NULL,      -- Unique order identifier
+    
+    -- Order timeline
+    order_date DATE DEFAULT CURRENT_DATE,           -- When order was placed
+    required_date DATE,                             -- Requested delivery/installation date
+    status VARCHAR(20) DEFAULT 'confirmed',         -- confirmed, production, shipped, installed
+    
+    -- Order details
+    special_instructions TEXT,                      -- Customer special requests
+    installation_address JSONB,                     -- Delivery/installation location
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Price and Weight History Tracking
+-- ==============================================
+
+CREATE TABLE manufacturing_type_price_history (
+    id SERIAL PRIMARY KEY,
+    manufacturing_type_id INTEGER NOT NULL REFERENCES manufacturing_types(id),
+    
+    -- Price change tracking
+    old_base_price NUMERIC(10,2) NOT NULL,          -- Previous base price
+    new_base_price NUMERIC(10,2) NOT NULL,          -- New base price
+    
+    -- Weight change tracking
+    old_base_weight NUMERIC(10,2),                  -- Previous base weight
+    new_base_weight NUMERIC(10,2),                  -- New base weight
+    
+    change_reason VARCHAR(200),                     -- Reason for the change
+    effective_date DATE NOT NULL DEFAULT CURRENT_DATE, -- When change took effect
+    changed_by VARCHAR(100),                        -- Who made the change
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE attribute_node_history (
+    id SERIAL PRIMARY KEY,
+    attribute_node_id INTEGER NOT NULL REFERENCES attribute_nodes(id),
+    
+    -- Universal property changes
+    old_price_impact NUMERIC(10,2),                 -- Previous price impact
+    new_price_impact NUMERIC(10,2),                 -- New price impact
+    old_weight_impact NUMERIC(10,2),                -- Previous weight impact
+    new_weight_impact NUMERIC(10,2),                -- New weight impact
+    
+    -- Formula changes
+    old_price_formula TEXT,                         -- Previous price formula
+    new_price_formula TEXT,                         -- New price formula
+    old_weight_formula TEXT,                        -- Previous weight formula
+    new_weight_formula TEXT,                        -- New weight formula
+    
+    -- Technical impact changes
+    old_technical_impact_formula TEXT,              -- Previous technical formula
+    new_technical_impact_formula TEXT,              -- New technical formula
+    
+    change_reason VARCHAR(200),                     -- Reason for the change
+    effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    changed_by VARCHAR(100),
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Orders can have multiple configurations
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    configuration_id INTEGER NOT NULL REFERENCES configurations(id),
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price NUMERIC(10,2) NOT NULL,
+    total_price NUMERIC(12,2) NOT NULL,
+    production_status VARCHAR(50) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ==============================================
+-- Configuration Snapshots - Historical records
+-- ==============================================
+
+CREATE TABLE configuration_snapshots (
+    id SERIAL PRIMARY KEY,
+    configuration_id INTEGER NOT NULL REFERENCES configurations(id),
+    quote_id INTEGER,                               -- Optional: related quote
+    
+    -- Universal property snapshots
+    base_price NUMERIC(12,2) NOT NULL,              -- Base price at snapshot time
+    total_price NUMERIC(12,2) NOT NULL,             -- Total price at snapshot time
+    calculated_weight NUMERIC(10,2) NOT NULL,       -- Weight at snapshot time
+    
+    -- Detailed breakdowns
+    price_breakdown JSONB NOT NULL,                 -- Cost component details
+    weight_breakdown JSONB NOT NULL,                -- Weight component details
+    
+    -- Technical specifications snapshot
+    technical_snapshot JSONB NOT NULL,              -- Complete technical data
+    
+    -- Snapshot context
+    snapshot_type VARCHAR(50) NOT NULL,             -- price_quote, technical_calculation, order_confirmation
+    snapshot_reason VARCHAR(200),                   -- Why snapshot was created
+    valid_until DATE,                               -- Snapshot expiration for quotes
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- ==============================================
+-- Calculation Functions
+-- ==============================================
+
+CREATE OR REPLACE FUNCTION calculate_universal_properties(p_configuration_id INTEGER)
+RETURNS TABLE (total_price NUMERIC(12,2), total_weight NUMERIC(10,2)) AS $$
+DECLARE
+    v_base_price NUMERIC(12,2);
+    v_base_weight NUMERIC(10,2);
+    v_options_price NUMERIC(12,2) := 0;
+    v_options_weight NUMERIC(10,2) := 0;
+BEGIN
+    -- Get base price and weight from manufacturing type
+    SELECT mt.base_price, mt.base_weight
+    INTO v_base_price, v_base_weight
+    FROM configurations c
+    JOIN manufacturing_types mt ON c.manufacturing_type_id = mt.id
+    WHERE c.id = p_configuration_id;
+
+    -- Calculate options price and weight impacts
+    SELECT 
+        COALESCE(SUM(an.price_impact_value), 0),
+        COALESCE(SUM(an.weight_impact), 0)
+    INTO v_options_price, v_options_weight
+    FROM configuration_selections cs
+    JOIN attribute_nodes an ON cs.attribute_node_id = an.id
+    WHERE cs.configuration_id = p_configuration_id
+    AND an.node_type = 'option';
+
+    total_price := v_base_price + v_options_price;
+    total_weight := v_base_weight + v_options_weight;
+
+    RETURN NEXT;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Track manufacturing type price changes
+CREATE OR REPLACE FUNCTION log_manufacturing_price_change()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.base_price != NEW.base_price OR OLD.base_weight != NEW.base_weight THEN
+        INSERT INTO manufacturing_type_price_history 
+        (manufacturing_type_id, old_base_price, new_base_price, old_base_weight, new_base_weight, changed_by)
+        VALUES (NEW.id, OLD.base_price, NEW.base_price, OLD.base_weight, NEW.base_weight, CURRENT_USER);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_manufacturing_price_change
+    BEFORE UPDATE ON manufacturing_types
+    FOR EACH ROW EXECUTE FUNCTION log_manufacturing_price_change();
+
+-- Function to create quotes with price snapshots
+CREATE OR REPLACE FUNCTION create_quote_with_snapshot(
+    p_configuration_id INTEGER,
+    p_customer_id INTEGER,
+    p_valid_until DATE
+) RETURNS INTEGER AS $$
+DECLARE
+    v_quote_id INTEGER;
+    v_snapshot_id INTEGER;
+    v_total_price NUMERIC(12,2);
+    v_total_weight NUMERIC(10,2);
+BEGIN
+    -- Calculate current pricing
+    SELECT total_price, total_weight 
+    INTO v_total_price, v_total_weight
+    FROM calculate_universal_properties(p_configuration_id);
+    
+    -- Create quote
+    INSERT INTO quotes (configuration_id, customer_id, quote_number, subtotal, total_amount, valid_until)
+    VALUES (p_configuration_id, p_customer_id, 'Q-' || EXTRACT(EPOCH FROM NOW())::INT, v_total_price, v_total_price, p_valid_until)
+    RETURNING id INTO v_quote_id;
+    
+    -- Create snapshot
+    INSERT INTO configuration_snapshots 
+    (configuration_id, quote_id, base_price, total_price, calculated_weight, 
+     price_breakdown, weight_breakdown, technical_snapshot, snapshot_type)
+    SELECT 
+        p_configuration_id, v_quote_id, c.base_price, v_total_price, v_total_weight,
+        jsonb_build_object('base', c.base_price, 'options', v_total_price - c.base_price),
+        jsonb_build_object('base', c.calculated_weight - COALESCE(SUM(an.weight_impact), 0), 'options', COALESCE(SUM(an.weight_impact), 0)),
+        c.calculated_technical_data,
+        'price_quote'
+    FROM configurations c
+    LEFT JOIN configuration_selections cs ON c.id = cs.configuration_id
+    LEFT JOIN attribute_nodes an ON cs.attribute_node_id = an.id AND an.node_type = 'option'
+    WHERE c.id = p_configuration_id
+    GROUP BY c.id, c.base_price, c.calculated_technical_data
+    RETURNING id INTO v_snapshot_id;
+    
+    RETURN v_quote_id;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+-- Auto-update configuration when selections change
+CREATE OR REPLACE FUNCTION update_configuration_calculations()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Recalculate when selections are added/updated
+    UPDATE configurations 
+    SET 
+        total_price = (SELECT total_price FROM calculate_universal_properties(NEW.configuration_id)),
+        calculated_weight = (SELECT total_weight FROM calculate_universal_properties(NEW.configuration_id)),
+        calculated_technical_data = calculate_technical_properties(NEW.configuration_id),
+        updated_at = NOW()
+    WHERE id = NEW.configuration_id;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_configuration
+    AFTER INSERT OR UPDATE ON configuration_selections
+    FOR EACH ROW EXECUTE FUNCTION update_configuration_calculations();
+
+
+-- Function to create a configuration from a template
+CREATE OR REPLACE FUNCTION create_configuration_from_template(
+    p_template_id INTEGER,
+    p_customer_id INTEGER DEFAULT NULL,
+    p_config_name VARCHAR(200) DEFAULT NULL
+) RETURNS INTEGER AS $$
+DECLARE
+    v_template_record RECORD;
+    v_new_config_id INTEGER;
+    v_config_name VARCHAR(200);
+BEGIN
+    -- Get template details
+    SELECT * INTO v_template_record 
+    FROM configuration_templates 
+    WHERE id = p_template_id AND is_active = true;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Template not found or inactive';
+    END IF;
+    
+    -- Determine configuration name
+    IF p_config_name IS NOT NULL THEN
+        v_config_name := p_config_name;
+    ELSE
+        v_config_name := v_template_record.name || ' - ' || TO_CHAR(NOW(), 'YYYY-MM-DD');
+    END IF;
+    
+    -- Create new configuration
+    INSERT INTO configurations (
+        manufacturing_type_id,
+        customer_id,
+        name,
+        description,
+        base_price,
+        status
+    ) VALUES (
+        v_template_record.manufacturing_type_id,
+        p_customer_id,
+        v_config_name,
+        v_template_record.description,
+        v_template_record.estimated_price,
+        'draft'
+    ) RETURNING id INTO v_new_config_id;
+    
+    -- Copy template selections to configuration
+    INSERT INTO configuration_selections (
+        configuration_id,
+        attribute_node_id,
+        string_value,
+        numeric_value,
+        boolean_value,
+        json_value,
+        selection_path
+    )
+    SELECT 
+        v_new_config_id,
+        attribute_node_id,
+        string_value,
+        numeric_value,
+        boolean_value,
+        json_value,
+        selection_path
+    FROM template_selections 
+    WHERE template_id = p_template_id;
+    
+    -- Record template usage
+    INSERT INTO template_usage (template_id, configuration_id, customer_id)
+    VALUES (p_template_id, v_new_config_id, p_customer_id);
+    
+    -- Update template usage count
+    UPDATE configuration_templates 
+    SET usage_count = usage_count + 1 
+    WHERE id = p_template_id;
+    
+    RETURN v_new_config_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to update template success metrics
+CREATE OR REPLACE FUNCTION update_template_success_metrics()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- When a configuration from a template becomes an order
+    IF NEW.converted_to_order = true AND OLD.converted_to_order = false THEN
+        UPDATE configuration_templates 
+        SET success_rate = (
+            SELECT 
+                (COUNT(*) FILTER (WHERE converted_to_order = true) * 100.0 / 
+                 GREATEST(COUNT(*), 1))
+            FROM template_usage 
+            WHERE template_id = NEW.template_id
+        )
+        WHERE id = NEW.template_id;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_template_metrics
+    AFTER UPDATE ON template_usage
+    FOR EACH ROW EXECUTE FUNCTION update_template_success_metrics();
+
+-- Auto-update template estimated price/weight when selections change
+CREATE OR REPLACE FUNCTION update_template_estimates()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_template_id INTEGER;
+    v_total_price NUMERIC(12,2);
+    v_total_weight NUMERIC(10,2);
+BEGIN
+    -- Get template ID from the trigger context
+    IF TG_OP = 'DELETE' THEN
+        v_template_id := OLD.template_id;
+    ELSE
+        v_template_id := NEW.template_id;
+    END IF;
+    
+    -- Calculate new estimates based on template selections
+    SELECT 
+        COALESCE(SUM(an.price_impact_value), 0) + 
+        (SELECT base_price FROM manufacturing_types mt 
+         JOIN configuration_templates ct ON mt.id = ct.manufacturing_type_id 
+         WHERE ct.id = v_template_id),
+        COALESCE(SUM(an.weight_impact), 0) + 
+        (SELECT base_weight FROM manufacturing_types mt 
+         JOIN configuration_templates ct ON mt.id = ct.manufacturing_type_id 
+         WHERE ct.id = v_template_id)
+    INTO v_total_price, v_total_weight
+    FROM template_selections ts
+    JOIN attribute_nodes an ON ts.attribute_node_id = an.id
+    WHERE ts.template_id = v_template_id
+    AND an.node_type = 'option';
+    
+    -- Update template estimates
+    UPDATE configuration_templates 
+    SET 
+        estimated_price = COALESCE(v_total_price, 0),
+        estimated_weight = COALESCE(v_total_weight, 0),
+        updated_at = NOW()
+    WHERE id = v_template_id;
+    
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_template_estimates
+    AFTER INSERT OR UPDATE OR DELETE ON template_selections
+    FOR EACH ROW EXECUTE FUNCTION update_template_estimates();
+
+
+-- Attribute hierarchy indexes
+CREATE INDEX idx_attribute_nodes_manufacturing_type ON attribute_nodes(manufacturing_type_id);
+CREATE INDEX idx_attribute_nodes_parent ON attribute_nodes(parent_node_id);
+CREATE INDEX idx_attribute_nodes_ltree ON attribute_nodes USING GIST (ltree_path);
+CREATE INDEX idx_attribute_nodes_tech_type ON attribute_nodes(technical_property_type) WHERE technical_property_type IS NOT NULL;
+
+-- Configuration and selection indexes
+CREATE INDEX idx_config_selections_config ON configuration_selections(configuration_id);
+CREATE INDEX idx_config_selections_attr ON configuration_selections(attribute_node_id);
+CREATE INDEX idx_config_selections_path ON configuration_selections USING GIST (selection_path);
+CREATE INDEX idx_configurations_type ON configurations(manufacturing_type_id);
+CREATE INDEX idx_configurations_tech_data ON configurations USING GIN (calculated_technical_data);
+
+-- Customer and order indexes
+CREATE INDEX idx_quotes_configuration ON quotes(configuration_id);
+CREATE INDEX idx_orders_quote ON orders(quote_id);
+
+-- History and snapshot indexes
+CREATE INDEX idx_price_history_manufacturing ON manufacturing_type_price_history(manufacturing_type_id, effective_date);
+CREATE INDEX idx_price_history_attribute ON attribute_node_history(attribute_node_id, effective_date);
+CREATE INDEX idx_snapshots_config ON configuration_snapshots(configuration_id, created_at);
+
+-- Customer and search indexes
+CREATE INDEX idx_customers_email ON customers(email);
+CREATE INDEX idx_customers_company ON customers(company_name);
+CREATE INDEX idx_quotes_customer ON quotes(customer_id);
+CREATE INDEX idx_quotes_number ON quotes(quote_number);
+CREATE INDEX idx_orders_number ON orders(order_number);
+CREATE INDEX idx_order_items_order ON order_items(order_id);
+
+-- Template performance indexes
+CREATE INDEX idx_config_templates_type ON configuration_templates(manufacturing_type_id);
+CREATE INDEX idx_config_templates_public ON configuration_templates(is_public) WHERE is_public = true;
+CREATE INDEX idx_config_templates_active ON configuration_templates(is_active) WHERE is_active = true;
+CREATE INDEX idx_template_selections_template ON template_selections(template_id);
+CREATE INDEX idx_template_selections_attr ON template_selections(attribute_node_id);
+CREATE INDEX idx_template_selections_path ON template_selections USING GIST (selection_path);
+CREATE INDEX idx_template_usage_template ON template_usage(template_id);
+CREATE INDEX idx_template_usage_config ON template_usage(configuration_id);
+CREATE INDEX idx_template_usage_converted ON template_usage(converted_to_order) WHERE converted_to_order = true;
+CREATE INDEX idx_template_categories_parent ON template_categories(parent_category_id);

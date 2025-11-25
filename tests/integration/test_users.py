@@ -278,6 +278,7 @@ class TestUpdateUserEndpoint:
         test_user,
         test_user_data: dict,
         auth_headers: dict,
+        db_session,
     ):
         """Test updating password."""
         new_password = "NewPassword123!"
@@ -293,11 +294,21 @@ class TestUpdateUserEndpoint:
 
         assert response.status_code == 200
 
-        # Logout first to clear the session
-        await client.post(
+        # Logout to clear the session
+        logout_response = await client.post(
             "/api/v1/auth/logout",
             headers=auth_headers,
         )
+        assert logout_response.status_code == 204
+
+        # Clean up any remaining sessions to avoid conflicts
+        from app.models.session import Session
+        from sqlalchemy import delete
+        
+        await db_session.execute(
+            delete(Session).where(Session.user_id == test_user.id)
+        )
+        await db_session.commit()
 
         # Verify can login with new password
         login_response = await client.post(

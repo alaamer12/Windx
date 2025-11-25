@@ -6,22 +6,91 @@ This document describes the technical design for integrating the Windx automated
 
 ### System Purpose
 
-The Windx system enables customers to:
-- Configure custom manufactured products (windows, doors, furniture)
-- Navigate dynamic hierarchical attribute trees
-- Receive real-time pricing and technical specifications
-- Save configurations as templates
-- Generate quotes with price snapshots
-- Place orders with full traceability
+The Windx system is an automated window & door configurator that enables:
+- **Customer Empowerment**: Self-service product configuration with full transparency
+- **Dynamic Hierarchical Attributes**: Type → Options → Sub-options → Sub-sub-options (unlimited depth)
+- **Automated Pricing**: Real-time price calculation based on selections
+- **Template System**: Pre-defined configurations for common use cases
+- **Quote Generation**: Price snapshots with validity periods
+- **Order Processing**: Full order lifecycle management
+
+### Business Context
+
+**Business Drivers:**
+- Customer autonomy in product selection
+- Operational efficiency through automation
+- Scalability to new product lines and markets
+- Reduced sales cycle time
+
+**Business Objectives:**
+- Enhance customer satisfaction through clarity and personalization
+- Reduce manual overhead and errors
+- Improve profit margins
+- Enable strategic growth
 
 ### Design Principles
 
 1. **Maintain Existing Architecture**: Follow repository pattern, service layer, SQLAlchemy 2.0, Pydantic V2
-2. **Hybrid Database Approach**: Use relational structure + LTREE for hierarchies + JSONB for flexibility
+2. **Hybrid Database Approach**: Relational structure + LTREE for hierarchies + JSONB for flexibility
 3. **Type Safety**: Full type hints, Pydantic validation, SQLAlchemy Mapped columns
-4. **Pragmatic Performance**: Essential indexes only, simple caching where needed
+4. **Pragmatic Performance**: Essential indexes only, optimize for current scale (800 users)
 5. **Testability**: Clear separation of concerns, dependency injection
-6. **Keep It Simple**: Optimize for 800 users, not 100k users - avoid premature optimization
+6. **No Over-Engineering**: Build for current needs, not hypothetical future scale
+7. **Documentation First**: Understand the system before coding
+
+## Documentation Requirements (Phase 0 - PRIORITY)
+
+Before any code implementation, comprehensive documentation must be created to ensure full understanding of the system:
+
+### 1. Global README.md Update
+- Add Windx system overview
+- Explain business purpose and objectives
+- Document key features and capabilities
+- Provide architecture overview
+- Link to detailed documentation
+
+### 2. docs/windx-overview.md (NEW FILE)
+- Complete system overview understandable without code
+- Business drivers and objectives
+- Hierarchical attribute system explanation
+- Type → Options → Sub-options concept
+- Hybrid database approach (Relational + LTREE + JSONB)
+- Pricing calculation system
+- Template system workflow
+- Quote and order workflow
+- Diagrams and visual aids
+
+### 3. docs/windx-sql-traits.md (NEW FILE)
+- What is UNIQUE in our SQL design
+- What is STANDARD SQL patterns
+- LTREE usage and rationale
+- JSONB usage for flexibility
+- Trigger functions for automation
+- Calculated fields approach
+- Assessment: What is good
+- Assessment: What could be better
+- Assessment: What could be optimized
+- Future steps and recommendations
+
+### 4. docs/windx-sql-explanations.md (NEW FILE)
+- High-level ERD explanation
+- Each table's purpose and design rationale
+- Why manufacturing_types table exists
+- Why attribute_nodes uses LTREE
+- Why configuration vs configuration_selections separation
+- Template system tables design
+- Quote snapshot approach
+- Column purposes for key tables
+- Data flow through the system
+- Relationship diagrams
+
+### 5. Full Integration Plan
+- All SQLAlchemy models to create
+- All repositories to implement
+- All services to implement
+- All API endpoints to create
+- Testing strategy
+- No migrations needed (fresh database)
 
 ## Architecture
 

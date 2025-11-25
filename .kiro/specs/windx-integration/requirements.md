@@ -8,18 +8,19 @@ The integration will add a complete product configuration subsystem to the exist
 
 ## Requirements
 
-### Requirement 1: Documentation and Analysis
+### Requirement 1: Documentation Creation
 
-**User Story:** As a developer, I want clear documentation of the Windx system, so that I can understand the architecture and integration approach.
+**User Story:** As a developer, I want comprehensive documentation of the Windx system, so that I can understand the architecture, SQL design, and integration approach.
 
 #### Acceptance Criteria
 
-1. WHEN reviewing the project THEN the README.md SHALL accurately describe the Windx configurator system
-2. WHEN a new developer joins THEN an overview.md file SHALL provide system understanding
-3. WHEN analyzing the SQL schema THEN a "sql-traits.md" file SHALL document key patterns and design decisions
-4. WHEN understanding data flow THEN a "sql-explanations.md" file SHALL provide ERD and table relationship explanations
+1. WHEN reviewing the project THEN the global README.md SHALL accurately describe the Windx configurator system
+2. WHEN a new developer joins THEN a `docs/windx-overview.md` file SHALL provide complete system understanding without needing to see code
+3. WHEN analyzing the SQL schema THEN a `docs/windx-sql-traits.md` file SHALL document what is unique in our SQL code, what is standard, assessments of good/bad patterns, optimization opportunities, and future steps
+4. WHEN understanding data flow THEN a `docs/windx-sql-explanations.md` file SHALL provide high-level ERD explanations of why we designed tables this way, what columns are for, and how data flows
+5. WHEN planning integration THEN a complete integration plan SHALL exist showing all steps needed to integrate SQL with SQLAlchemy and Pydantic v2
 
-**Note**: Focus on essential documentation, not exhaustive documentation.
+**Note**: These are NEW files to be created, not updates to existing spec files.
 
 ### Requirement 2: Database Schema Integration
 

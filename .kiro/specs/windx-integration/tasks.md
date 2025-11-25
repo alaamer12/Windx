@@ -90,6 +90,8 @@ check file #database/test_ltree_type.py
 
 
 
+
+
 - [ ] 1.7 Create Order models and schemas
   - Create `app/models/order.py` and `app/models/order_item.py`
   - Create corresponding Pydantic schemas

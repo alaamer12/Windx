@@ -38,6 +38,7 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.models.configuration import Configuration
     from app.models.customer import Customer
+    from app.models.order import Order
 
 __all__ = ["Quote"]
 
@@ -189,6 +190,11 @@ class Quote(Base):
         "Customer",
         back_populates="quotes",
         doc="Related customer",
+    )
+    orders: Mapped[list["Order"]] = relationship(
+        "Order",
+        back_populates="quote",
+        doc="Related orders",
     )
 
     # Indexes

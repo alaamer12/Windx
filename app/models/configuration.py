@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from app.models.configuration_selection import ConfigurationSelection
     from app.models.customer import Customer
     from app.models.manufacturing_type import ManufacturingType
+    from app.models.order_item import OrderItem
     from app.models.quote import Quote
 
 __all__ = ["Configuration"]
@@ -189,6 +190,11 @@ class Configuration(Base):
         "Quote",
         back_populates="configuration",
         doc="Related quotes",
+    )
+    order_items: Mapped[list["OrderItem"]] = relationship(
+        "OrderItem",
+        back_populates="configuration",
+        doc="Related order items",
     )
 
     # Indexes

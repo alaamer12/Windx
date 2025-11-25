@@ -68,7 +68,9 @@ check file #database/test_ltree_type.py
   - Define table with all columns and indexes
   - _Requirements: 2.1, 2.4, 4.1_
 
-- [-] 1.5 Create Quote model and schema
+- [x] 1.5 Create Quote model and schema
+
+
 
 
   - Create `app/models/quote.py` with pricing breakdown fields

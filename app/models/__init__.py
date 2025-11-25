@@ -11,6 +11,7 @@ Public Classes:
     Configuration: Customer product design model
     ConfigurationSelection: Individual attribute selection model
     Customer: Customer management model
+    Quote: Quotation system model
 
 Features:
     - SQLAlchemy 2.0 Mapped columns
@@ -24,6 +25,7 @@ from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
 from app.models.customer import Customer
 from app.models.manufacturing_type import ManufacturingType
+from app.models.quote import Quote
 from app.models.session import Session
 from app.models.user import User
 
@@ -35,4 +37,5 @@ __all__ = [
     "Configuration",
     "ConfigurationSelection",
     "Customer",
+    "Quote",
 ]

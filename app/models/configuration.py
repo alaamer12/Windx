@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from app.models.configuration_selection import ConfigurationSelection
     from app.models.customer import Customer
     from app.models.manufacturing_type import ManufacturingType
+    from app.models.quote import Quote
 
 __all__ = ["Configuration"]
 
@@ -64,6 +65,7 @@ class Configuration(Base):
         updated_at: Last update timestamp
         manufacturing_type: Related manufacturing type
         selections: Related configuration selections
+        quotes: Related quotes
     """
 
     __tablename__ = "configurations"
@@ -182,6 +184,11 @@ class Configuration(Base):
         back_populates="configuration",
         cascade="all, delete-orphan",
         doc="Related configuration selections",
+    )
+    quotes: Mapped[list["Quote"]] = relationship(
+        "Quote",
+        back_populates="configuration",
+        doc="Related quotes",
     )
 
     # Indexes

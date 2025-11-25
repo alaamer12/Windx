@@ -33,6 +33,9 @@ Public Classes:
     Customer: Customer response schema
     CustomerCreate: Customer creation schema
     CustomerUpdate: Customer update schema
+    Quote: Quote response schema
+    QuoteCreate: Quote creation schema
+    QuoteUpdate: Quote update schema
 
 Features:
     - Composed schemas (not monolithic)
@@ -74,6 +77,11 @@ from app.schemas.manufacturing_type import (
     ManufacturingTypeCreate,
     ManufacturingTypeUpdate,
 )
+from app.schemas.quote import (
+    Quote,
+    QuoteCreate,
+    QuoteUpdate,
+)
 from app.schemas.responses import (
     ErrorDetail,
     ErrorResponse,
@@ -113,6 +121,9 @@ __all__ = [
     "Customer",
     "CustomerCreate",
     "CustomerUpdate",
+    "Quote",
+    "QuoteCreate",
+    "QuoteUpdate",
     "ErrorDetail",
     "ErrorResponse",
     "get_common_responses",

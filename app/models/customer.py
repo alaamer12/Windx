@@ -26,8 +26,7 @@ from app.database.base import Base
 
 if TYPE_CHECKING:
     from app.models.configuration import Configuration
-    # TODO: Add when Quote model is created (Task 1.5)
-    # from app.models.quote import Quote
+    from app.models.quote import Quote
 
 __all__ = ["Customer"]
 
@@ -54,7 +53,7 @@ class Customer(Base):
         created_at: Record creation timestamp
         updated_at: Last update timestamp
         configurations: Related customer configurations
-        quotes: Related customer quotes (TODO: Add in Task 1.5)
+        quotes: Related customer quotes
     """
 
     __tablename__ = "customers"
@@ -165,12 +164,11 @@ class Customer(Base):
         back_populates="customer",
         doc="Related customer configurations",
     )
-    # TODO: Add when Quote model is created (Task 1.5)
-    # quotes: Mapped[list["Quote"]] = relationship(
-    #     "Quote",
-    #     back_populates="customer",
-    #     doc="Related customer quotes",
-    # )
+    quotes: Mapped[list["Quote"]] = relationship(
+        "Quote",
+        back_populates="customer",
+        doc="Related customer quotes",
+    )
 
     # Indexes
     __table_args__ = (

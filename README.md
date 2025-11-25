@@ -1,6 +1,116 @@
 # Backend API Project
 
-Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase), and repository pattern.
+Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase), and repository pattern with integrated Windx automated product configurator.
+
+## Overview
+
+This backend application provides a robust foundation for user authentication and management, enhanced with the **Windx Configurator System** - a sophisticated, hierarchical product configuration platform for automated window, door, and custom manufacturing solutions.
+
+### Windx Configurator System
+
+**Windx** is an automated product configurator that empowers customers to design, customize, and order manufactured products through a dynamic, hierarchical attribute system. The system provides full transparency in pricing, real-time configuration validation, and seamless quote-to-order workflows.
+
+#### Business Purpose
+
+The Windx system addresses key business challenges in custom manufacturing:
+
+- **Customer Empowerment**: Self-service product configuration with complete transparency
+- **Operational Efficiency**: Automated pricing calculations and quote generation
+- **Scalability**: Easily extend to new product lines and markets
+- **Reduced Errors**: Validation rules prevent invalid configurations
+- **Faster Sales Cycles**: Instant quotes and streamlined ordering
+
+#### Hierarchical Attribute System
+
+Windx uses a flexible, unlimited-depth hierarchy for product attributes:
+
+```
+Manufacturing Type (e.g., Window)
+  └─ Category (e.g., Frame Options)
+      └─ Attribute (e.g., Frame Material)
+          └─ Option (e.g., Aluminum)
+              └─ Sub-option (e.g., Anodized Finish)
+                  └─ Sub-sub-option (e.g., Color: Bronze)
+```
+
+**Key Concepts:**
+- **Manufacturing Types**: Top-level product categories (Window, Door, Table)
+- **Attribute Nodes**: Hierarchical tree structure using PostgreSQL LTREE extension
+- **Dynamic Behavior**: Conditional display and validation based on selections
+- **Price Impacts**: Fixed amounts, percentages, or formula-based calculations
+- **Weight Impacts**: Automatic weight calculation for shipping
+- **Technical Specifications**: Computed properties (U-value, dimensions, etc.)
+
+#### Key Features
+
+1. **Dynamic Configuration**
+   - Unlimited hierarchy depth for product attributes
+   - Conditional display logic (show/hide based on selections)
+   - Real-time validation rules
+   - Flexible value types (string, number, boolean, formula, dimension)
+
+2. **Automated Pricing**
+   - Base price + option price impacts
+   - Fixed, percentage, and formula-based pricing
+   - Real-time price calculation
+   - Price history tracking
+
+3. **Template System**
+   - Pre-defined configurations for common use cases
+   - Public templates for customer use
+   - Usage tracking and success metrics
+   - Quick-start configurations
+
+4. **Quote Generation**
+   - Immutable configuration snapshots
+   - Price validity periods
+   - Tax and discount calculations
+   - Technical requirements documentation
+
+5. **Order Processing**
+   - Quote-to-order conversion
+   - Order item management
+   - Installation address tracking
+   - Special instructions support
+
+#### Architecture Overview
+
+Windx follows a **hybrid database approach** combining:
+
+- **Relational Structure**: Standard tables for entities (types, configurations, quotes)
+- **LTREE Hierarchies**: PostgreSQL LTREE extension for efficient tree queries
+- **JSONB Flexibility**: Dynamic attributes, validation rules, and technical data
+
+**Data Flow:**
+```
+Customer → Configuration → Selections → Price Calculation → Quote → Order
+                ↓
+         Template System (optional)
+```
+
+**Technology Stack:**
+- **PostgreSQL LTREE**: Hierarchical path queries (ancestors, descendants)
+- **JSONB**: Flexible attribute storage and validation rules
+- **SQLAlchemy 2.0**: Type-safe ORM with Mapped columns
+- **Pydantic V2**: Request/response validation
+- **Repository Pattern**: Clean data access layer
+- **Service Layer**: Business logic and price calculations
+
+#### Domain Models
+
+- **ManufacturingType**: Product categories with base pricing
+- **AttributeNode**: Hierarchical attribute tree with LTREE paths
+- **Configuration**: Customer product designs with selections
+- **ConfigurationSelection**: Individual attribute choices
+- **ConfigurationTemplate**: Pre-defined common configurations
+- **Customer**: Customer management (extends user system)
+- **Quote**: Price quotes with immutable snapshots
+- **Order**: Order processing and fulfillment
+
+For detailed Windx documentation, see:
+- [Windx System Overview](docs/windx-overview.md) - Complete system understanding
+- [Windx SQL Design](docs/windx-sql-traits.md) - Database design analysis
+- [Windx SQL Explanations](docs/windx-sql-explanations.md) - ERD and data flow
 
 ## Features
 
@@ -15,6 +125,10 @@ Professional backend API-first architecture using FastAPI, PostgreSQL (Supabase)
 - ✅ **Modern Tooling**: uv for fast dependency management, hatchling for builds
 - ✅ **Performance Optimized**: Redis caching, rate limiting, and pagination
 - ✅ **Production Ready**: Comprehensive monitoring and error handling
+- ✅ **Windx Configurator**: Hierarchical product configuration system
+- ✅ **LTREE Hierarchies**: Efficient tree queries with PostgreSQL LTREE
+- ✅ **Dynamic Pricing**: Formula-based price calculations
+- ✅ **Template System**: Pre-defined configurations for quick start
 
 ## Prerequisites
 

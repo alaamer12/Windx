@@ -1,6 +1,100 @@
 # Implementation Plan: Windx Configurator Integration
 
-This implementation plan converts the Windx design into actionable coding tasks. Each task builds incrementally on previous work, following test-driven development where appropriate. The plan focuses exclusively on code implementation tasks that can be executed by a coding agent.
+This implementation plan converts the Windx design into actionable coding tasks. The plan is organized into phases, starting with documentation and analysis, then moving to database integration, repositories, services, and API endpoints.
+
+## Phase 0: Documentation and Analysis (PRIORITY)
+
+- [x] 1.1.1 Update global README.md to reflect Windx system
+
+
+
+
+
+  - Add Windx project overview section
+  - Document the business purpose (automated window & door configurator)
+  - Explain the hierarchical attribute system
+  - Document key features (dynamic configuration, pricing, templates, quotes)
+  - Add architecture overview
+  - _Requirements: 1.1_
+
+- [x] 1.1.2 Create docs/windx-overview.md
+
+
+
+
+
+  - Read files '#reference/full.sql.txt' and '#reference/database patterns.md' and `#reference/result.md`
+  - Provide complete system overview that anyone can understand without seeing code
+  - Explain business drivers and objectives
+  - Document the hierarchical attribute system concept
+  - Explain how type → options → sub-options → sub-sub-options works
+  - Document the hybrid database approach (relational + LTREE + JSONB)
+  - Explain pricing calculation system
+  - Explain template system
+  - Explain quote and order workflow
+  - Include diagrams if helpful
+  - _Requirements: 1.2_
+
+- [x] 1.1.3 Create docs/windx-sql-traits.md
+
+
+
+
+
+
+  - Read files '#reference/full.sql.txt' and '#reference/database patterns.md' and `#reference/result.md`
+  - Document what is UNIQUE in our SQL code vs standard patterns
+  - Explain LTREE usage and why we chose it
+  - Explain JSONB usage for flexible attributes
+  - Explain trigger functions for path maintenance
+  - Explain calculated fields approach
+  - Assessment: What is good about our design
+  - Assessment: What could be better
+  - Assessment: What could be optimized
+  - Future steps and recommendations
+
+
+  - _Requirements: 1.3_
+
+
+
+
+- [x] 1.1.4 Create docs/windx-sql-explanations.md
+
+
+
+
+
+
+
+  - Read files '#reference/full.sql.txt' and '#reference/database patterns.md' and `#reference/result.md`
+  - Provide high-level ERD explanation
+  - Explain each table's purpose
+  - Explain why we have manufacturing_types table
+  - Explain why attribute_nodes uses LTREE
+  - Explain configuration vs configuration_selections separation
+  - Explain template system tables
+  - Explain quote snapshot approach
+  - Document column purposes for key tables
+  - Show how data flows through the system
+  - _Requirements: 1.4_
+
+
+- [x] 1.1.5 Create full integration plan
+
+
+
+
+
+  - Read files '#reference/full.sql.txt' and '#reference/database patterns.md' and `#reference/result.md`
+  - Document all steps needed to integrate SQL with SQLAlchemy
+  - List all models that need to be created
+  - List all repositories that need to be created
+  - List all services that need to be created
+  - List all API endpoints that need to be created
+  - Document testing approach
+  - Note: NO MIGRATIONS needed (fresh database)
+  - _Requirements: 1.5_
 
 ## Phase 1: Database Foundation
 
@@ -357,6 +451,7 @@ This implementation plan converts the Windx design into actionable coding tasks.
   - Aim for 80%+ endpoint coverage
   - _Requirements: 7.3_
 
+
 - [ ]* 10.4 Write price calculation tests
   - Test fixed price impacts
   - Test percentage price impacts
@@ -370,7 +465,7 @@ This implementation plan converts the Windx design into actionable coding tasks.
   - Test snapshot is immutable
   - _Requirements: 7.5_
 
-## Phase 11: Documentation
+## Phase 11: API Documentation
 
 - [ ] 11. Create API documentation examples
   - Add request/response examples to all endpoints
@@ -379,37 +474,13 @@ This implementation plan converts the Windx design into actionable coding tasks.
   - Document authorization rules
   - _Requirements: 6.5_
 
-- [ ] 11.1 Update README with Windx integration
-  - Add Windx system overview to README.md
-  - Document new API endpoints
-  - Document environment variables
-  - Add usage examples
-  - _Requirements: 1.1_
-
-- [ ] 11.2 Create Windx overview documentation
-  - Create `docs/WINDX_OVERVIEW.md` with system description
-  - Document the hierarchical attribute system
-  - Document pricing calculation approach
-  - Document template system
-  - _Requirements: 1.2_
-
-- [ ] 11.3 Document SQL schema patterns
-  - Create `docs/WINDX_SQL_PATTERNS.md` documenting LTREE usage
-  - Document trigger functions
-  - Document indexing strategy
-  - _Requirements: 1.3_
-
-- [ ] 11.4 Create ERD and relationship documentation
-  - Create `docs/WINDX_ERD.md` with table relationships
-  - Document foreign key relationships
-  - Document LTREE hierarchy structure
-  - _Requirements: 1.4_
-
 ## Notes
 
+- **Phase 0 (Documentation) is PRIORITY** - Must be completed FIRST to understand the system
 - **Optional tasks** (marked with *) focus on testing and can be skipped for MVP
 - **Core tasks** must be completed for functional system
 - Each task builds incrementally on previous tasks
 - All tasks reference specific requirements from requirements.md
 - Focus on working software over comprehensive documentation
 - Optimize for current scale (800 users), not hypothetical future scale
+- **NO MIGRATIONS NEEDED** - This is a fresh database setup, not a migration from existing schema

@@ -109,9 +109,32 @@ class PricingService(BaseService):
 
         # Calculate impacts for each selection
         for selection in selections:
-            impact = await self.calculate_selection_impact(selection)
-            total_price += impact["price_impact"]
-            total_weight += impact["weight_impact"]
+            try:
+                impact = await self.calculate_selection_impact(selection)
+                total_price += impact["price_impact"]
+                total_weight += impact["weight_impact"]
+            except InvalidFormulaException as e:
+                # Re-raise with configuration context
+                raise InvalidFormulaException(
+                    message=f"Error calculating price for configuration {config_id}: {e.message}",
+                    formula=e.details.get("formula"),
+                    details={
+                        **e.details,
+                        "configuration_id": config_id,
+                        "selection_id": selection.id,
+                    },
+                )
+            except Exception as e:
+                # Catch any other unexpected errors during calculation
+                raise InvalidFormulaException(
+                    message=f"Unexpected error calculating price for configuration {config_id}: {str(e)}",
+                    details={
+                        "configuration_id": config_id,
+                        "selection_id": selection.id,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    },
+                )
 
         return {
             "total_price": total_price,

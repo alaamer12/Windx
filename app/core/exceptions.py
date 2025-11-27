@@ -12,6 +12,9 @@ Public Classes:
     NotFoundException: Resource not found exceptions
     ConflictException: Resource conflict exceptions
     RateLimitException: Rate limit exceeded exceptions
+    InvalidConfigurationException: Invalid configuration exceptions (Windx)
+    InvalidFormulaException: Invalid formula exceptions (Windx)
+    InvalidHierarchyException: Invalid hierarchy exceptions (Windx)
 
 Public Functions:
     setup_exception_handlers: Setup global exception handlers
@@ -43,6 +46,9 @@ __all__ = [
     "NotFoundException",
     "ConflictException",
     "RateLimitException",
+    "InvalidConfigurationException",
+    "InvalidFormulaException",
+    "InvalidHierarchyException",
     "setup_exception_handlers",
 ]
 
@@ -303,6 +309,92 @@ class RateLimitException(AppException):
             message=message,
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             error_type="rate_limit_error",
+            details=details,
+        )
+
+
+# ============================================================================
+# Windx Domain Exceptions
+# ============================================================================
+
+
+class InvalidConfigurationException(AppException):
+    """Invalid configuration exceptions.
+
+    Raised when a configuration is invalid or incomplete.
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid configuration",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize invalid configuration exception.
+
+        Args:
+            message (str): Error message
+            details (dict | None): Additional error details
+        """
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            error_type="invalid_configuration_error",
+            details=details,
+        )
+
+
+class InvalidFormulaException(AppException):
+    """Invalid formula exceptions.
+
+    Raised when formula evaluation fails or formula syntax is invalid.
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid formula",
+        formula: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize invalid formula exception.
+
+        Args:
+            message (str): Error message
+            formula (str | None): The invalid formula
+            details (dict | None): Additional error details
+        """
+        if formula:
+            details = details or {}
+            details["formula"] = formula
+
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            error_type="invalid_formula_error",
+            details=details,
+        )
+
+
+class InvalidHierarchyException(AppException):
+    """Invalid hierarchy exceptions.
+
+    Raised when hierarchical operations fail or create invalid structures.
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid hierarchy operation",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize invalid hierarchy exception.
+
+        Args:
+            message (str): Error message
+            details (dict | None): Additional error details
+        """
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            error_type="invalid_hierarchy_error",
             details=details,
         )
 

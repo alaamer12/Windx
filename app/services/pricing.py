@@ -21,7 +21,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ValidationException
+from app.core.exceptions import InvalidFormulaException, ValidationException
 from app.models.attribute_node import AttributeNode
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
@@ -165,18 +165,44 @@ class PricingService(BaseService):
         elif attr_node.price_impact_type == "formula":
             # Formula-based calculation
             if attr_node.price_formula:
-                context = self._build_formula_context(selection)
-                price_impact = await self.evaluate_price_formula(
-                    attr_node.price_formula, context
-                )
+                try:
+                    context = self._build_formula_context(selection)
+                    price_impact = await self.evaluate_price_formula(
+                        attr_node.price_formula, context
+                    )
+                except InvalidFormulaException as e:
+                    # Re-raise with additional context
+                    raise InvalidFormulaException(
+                        message=f"Error calculating price impact for attribute node {attr_node.id}: {e.message}",
+                        formula=attr_node.price_formula,
+                        details={
+                            **e.details,
+                            "attribute_node_id": attr_node.id,
+                            "attribute_node_name": attr_node.name,
+                            "selection_id": selection.id,
+                        },
+                    )
 
         # Calculate weight impact
         if attr_node.weight_formula:
             # Formula-based weight calculation
-            context = self._build_formula_context(selection)
-            weight_impact = await self.evaluate_price_formula(
-                attr_node.weight_formula, context
-            )
+            try:
+                context = self._build_formula_context(selection)
+                weight_impact = await self.evaluate_price_formula(
+                    attr_node.weight_formula, context
+                )
+            except InvalidFormulaException as e:
+                # Re-raise with additional context
+                raise InvalidFormulaException(
+                    message=f"Error calculating weight impact for attribute node {attr_node.id}: {e.message}",
+                    formula=attr_node.weight_formula,
+                    details={
+                        **e.details,
+                        "attribute_node_id": attr_node.id,
+                        "attribute_node_name": attr_node.name,
+                        "selection_id": selection.id,
+                    },
+                )
         elif attr_node.weight_impact:
             # Fixed weight impact
             weight_impact = attr_node.weight_impact
@@ -202,7 +228,7 @@ class PricingService(BaseService):
             Decimal: Calculated result
 
         Raises:
-            ValidationException: If formula is invalid or unsafe
+            InvalidFormulaException: If formula is invalid, unsafe, or evaluation fails
         """
         try:
             # Clean and validate formula
@@ -211,18 +237,76 @@ class PricingService(BaseService):
                 return Decimal("0")
 
             # Parse the formula into an AST
-            tree = ast.parse(formula, mode="eval")
+            try:
+                tree = ast.parse(formula, mode="eval")
+            except SyntaxError as e:
+                raise InvalidFormulaException(
+                    message=f"Formula syntax error: {str(e)}",
+                    formula=formula,
+                    details={"error": str(e), "error_type": "syntax_error"},
+                )
 
             # Evaluate the AST safely
-            result = self._eval_node(tree.body, context)
+            try:
+                result = self._eval_node(tree.body, context)
+            except ZeroDivisionError:
+                raise InvalidFormulaException(
+                    message="Division by zero in formula",
+                    formula=formula,
+                    details={
+                        "error": "Division by zero",
+                        "error_type": "division_by_zero",
+                        "context": context,
+                    },
+                )
+            except KeyError as e:
+                raise InvalidFormulaException(
+                    message=f"Unknown variable in formula: {str(e)}",
+                    formula=formula,
+                    details={
+                        "error": str(e),
+                        "error_type": "unknown_variable",
+                        "available_variables": list(context.keys()),
+                    },
+                )
+            except (ValueError, OverflowError) as e:
+                raise InvalidFormulaException(
+                    message=f"Calculation error in formula: {str(e)}",
+                    formula=formula,
+                    details={
+                        "error": str(e),
+                        "error_type": "calculation_error",
+                        "context": context,
+                    },
+                )
+
+            # Validate result is finite and reasonable
+            if not isinstance(result, (int, float)) or not (-1e10 < result < 1e10):
+                raise InvalidFormulaException(
+                    message="Formula result is invalid or out of range",
+                    formula=formula,
+                    details={
+                        "result": str(result),
+                        "error_type": "invalid_result",
+                    },
+                )
 
             # Convert to Decimal
             return Decimal(str(result))
 
-        except (SyntaxError, ValueError, KeyError, ZeroDivisionError) as e:
-            raise ValidationException(
-                message=f"Invalid formula: {formula}",
-                details={"formula": formula, "error": str(e)},
+        except InvalidFormulaException:
+            # Re-raise our custom exceptions
+            raise
+        except Exception as e:
+            # Catch any other unexpected errors
+            raise InvalidFormulaException(
+                message=f"Unexpected error evaluating formula: {str(e)}",
+                formula=formula,
+                details={
+                    "error": str(e),
+                    "error_type": "unexpected_error",
+                    "exception_type": type(e).__name__,
+                },
             )
 
     def _eval_node(self, node: ast.AST, context: dict[str, Any]) -> float:
@@ -236,44 +320,66 @@ class PricingService(BaseService):
             float: Evaluated result
 
         Raises:
-            ValidationException: If node type is not allowed
+            InvalidFormulaException: If node type is not allowed
+            ZeroDivisionError: If division by zero occurs
+            KeyError: If variable not found in context
         """
         if isinstance(node, ast.Constant):
             # Numeric constant
-            return float(node.value)
+            value = float(node.value)
+            if not (-1e10 < value < 1e10):
+                raise ValueError(f"Constant value out of range: {value}")
+            return value
 
         elif isinstance(node, ast.Name):
             # Variable lookup
             if node.id not in context:
-                raise ValidationException(
-                    message=f"Unknown variable in formula: {node.id}",
-                    details={"variable": node.id, "available": list(context.keys())},
-                )
-            return float(context[node.id])
+                raise KeyError(node.id)
+            value = float(context[node.id])
+            if not (-1e10 < value < 1e10):
+                raise ValueError(f"Variable value out of range: {node.id}={value}")
+            return value
 
         elif isinstance(node, ast.BinOp):
             # Binary operation (e.g., a + b, a * b)
             if type(node.op) not in SAFE_OPERATORS:
-                raise ValidationException(
+                raise InvalidFormulaException(
                     message=f"Unsafe operator: {type(node.op).__name__}",
                     details={"operator": type(node.op).__name__},
                 )
             left = self._eval_node(node.left, context)
             right = self._eval_node(node.right, context)
-            return SAFE_OPERATORS[type(node.op)](left, right)
+            
+            # Special handling for division to provide better error messages
+            if isinstance(node.op, ast.Div):
+                if right == 0:
+                    raise ZeroDivisionError("Division by zero")
+            
+            result = SAFE_OPERATORS[type(node.op)](left, right)
+            
+            # Check for overflow or invalid results
+            if not isinstance(result, (int, float)) or not (-1e10 < result < 1e10):
+                raise ValueError(f"Operation result out of range: {result}")
+            
+            return result
 
         elif isinstance(node, ast.UnaryOp):
             # Unary operation (e.g., -a, +a)
             if type(node.op) not in SAFE_OPERATORS:
-                raise ValidationException(
+                raise InvalidFormulaException(
                     message=f"Unsafe operator: {type(node.op).__name__}",
                     details={"operator": type(node.op).__name__},
                 )
             operand = self._eval_node(node.operand, context)
-            return SAFE_OPERATORS[type(node.op)](operand)
+            result = SAFE_OPERATORS[type(node.op)](operand)
+            
+            if not isinstance(result, (int, float)) or not (-1e10 < result < 1e10):
+                raise ValueError(f"Operation result out of range: {result}")
+            
+            return result
 
         else:
-            raise ValidationException(
+            raise InvalidFormulaException(
                 message=f"Unsafe node type: {type(node).__name__}",
                 details={"node_type": type(node).__name__},
             )

@@ -439,19 +439,28 @@ check file #database/test_ltree_type.py
 
 ## Phase 9: Error Handling and Validation
 
-- [ ] 9. Add domain exceptions for Windx operations
+- [x] 9. Add domain exceptions for Windx operations
+
+
+
+
+
   - Add InvalidConfigurationException to `app/core/exceptions.py`
   - Add InvalidFormulaException for formula evaluation errors
   - Add InvalidHierarchyException for path validation errors
   - Update exception handlers if needed
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 9.1 Add validation for hierarchical operations
+- [x] 9.1 Add validation for hierarchical operations
+
+
   - Validate ltree_path format in schemas
   - Validate parent_node_id doesn't create cycles
   - Validate formula syntax before storage
   - Add validation to service layer methods
   - _Requirements: 12.2, 12.3_
+
+
 
 - [ ] 9.2 Add error handling for price calculations
   - Wrap formula evaluation in try/except

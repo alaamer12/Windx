@@ -4,6 +4,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
+import re
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
@@ -79,6 +81,40 @@ class AttributeNodeBase(BaseModel):
         allowed = {"fixed", "percentage", "formula"}
         if v not in allowed:
             raise ValueError(f"price_impact_type must be one of {allowed}, got '{v}'")
+        return v
+
+    @field_validator("price_formula", "weight_formula", "technical_impact_formula")
+    @classmethod
+    def validate_formula_syntax(cls, v: str | None) -> str | None:
+        """Validate formula syntax is safe and well-formed."""
+        if v is None or v.strip() == "":
+            return v
+
+        # Check for dangerous operations
+        dangerous_patterns = [
+            r"__",  # Dunder methods
+            r"import\s",  # Import statements
+            r"exec\s*\(",  # Exec function
+            r"eval\s*\(",  # Eval function
+            r"compile\s*\(",  # Compile function
+            r"open\s*\(",  # File operations
+            r"os\.",  # OS module
+            r"sys\.",  # Sys module
+            r"subprocess",  # Subprocess module
+        ]
+
+        for pattern in dangerous_patterns:
+            if re.search(pattern, v, re.IGNORECASE):
+                raise ValueError(f"Formula contains forbidden operation: {pattern}")
+
+        # Check for balanced parentheses
+        if v.count("(") != v.count(")"):
+            raise ValueError("Formula has unbalanced parentheses")
+
+        # Check for valid characters (alphanumeric, operators, parentheses, dots, underscores)
+        if not re.match(r'^[a-zA-Z0-9_\s\+\-\*\/\(\)\.\,\>\<\=\&\|\!]+$', v):
+            raise ValueError("Formula contains invalid characters")
+
         return v
 
 
@@ -157,6 +193,34 @@ class AttributeNode(AttributeNodeBase):
     depth: Annotated[int, Field(ge=0, description="Nesting level in the tree")]
     created_at: Annotated[datetime, Field(description="Creation timestamp")]
     updated_at: Annotated[datetime, Field(description="Last update timestamp")]
+
+    @field_validator("ltree_path")
+    @classmethod
+    def validate_ltree_path(cls, v: str) -> str:
+        """Validate ltree_path format.
+        
+        LTREE paths must consist of labels separated by dots.
+        Each label must be alphanumeric with underscores, max 256 chars per label.
+        """
+        if not v or v.strip() == "":
+            raise ValueError("ltree_path cannot be empty")
+
+        # Split by dots
+        labels = v.split(".")
+
+        # Validate each label
+        for label in labels:
+            if not label:
+                raise ValueError("ltree_path cannot have empty labels")
+            
+            if len(label) > 256:
+                raise ValueError(f"ltree_path label '{label}' exceeds 256 characters")
+            
+            # Labels must be alphanumeric with underscores
+            if not re.match(r'^[a-zA-Z0-9_]+$', label):
+                raise ValueError(f"ltree_path label '{label}' contains invalid characters (only alphanumeric and underscore allowed)")
+
+        return v
 
     model_config = ConfigDict(from_attributes=True)
 

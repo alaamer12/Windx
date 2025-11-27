@@ -341,3 +341,52 @@ class AttributeNodeRepository(
             )
         )
         return result.scalar_one_or_none()
+
+    async def would_create_cycle(
+        self, node_id: int, new_parent_id: int
+    ) -> bool:
+        """Check if setting a new parent would create a cycle.
+
+        Validates that moving a node to a new parent would not create
+        a circular reference in the hierarchy.
+
+        Args:
+            node_id (int): Node to be moved
+            new_parent_id (int): Proposed new parent ID
+
+        Returns:
+            bool: True if cycle would be created, False otherwise
+
+        Example:
+            ```python
+            # Check if moving node 5 under node 10 would create cycle
+            has_cycle = await repo.would_create_cycle(5, 10)
+            if has_cycle:
+                raise InvalidHierarchyException("Cannot create cycle")
+            ```
+
+        Note:
+            A cycle occurs when a node becomes its own ancestor.
+            For example: A → B → C → A (cycle)
+        """
+        # A node cannot be its own parent
+        if node_id == new_parent_id:
+            return True
+
+        # Get the proposed parent node
+        parent = await self.get(new_parent_id)
+        if not parent:
+            return False  # Parent doesn't exist, no cycle
+
+        # Check if the node is an ancestor of the proposed parent
+        # If the parent's path contains the node, it would create a cycle
+        node = await self.get(node_id)
+        if not node:
+            return False  # Node doesn't exist, no cycle
+
+        # Check if parent's ltree_path starts with node's ltree_path
+        # This means the parent is a descendant of the node
+        if parent.ltree_path.startswith(node.ltree_path + "."):
+            return True
+
+        return False

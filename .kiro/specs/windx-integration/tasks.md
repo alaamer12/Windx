@@ -92,7 +92,11 @@ check file #database/test_ltree_type.py
 
 
 
-- [ ] 1.7 Create Order models and schemas
+- [x] 1.7 Create Order models and schemas
+
+
+
+
   - Create `app/models/order.py` and `app/models/order_item.py`
   - Create corresponding Pydantic schemas
   - Define tables with all columns and indexes
@@ -100,7 +104,12 @@ check file #database/test_ltree_type.py
 
 ## Phase 2: Repository Layer
 
-- [ ] 2. Create HierarchicalRepository base class
+- [x] 2. Create HierarchicalRepository base class
+
+
+
+
+
   - Create `app/repositories/windx_base.py` extending BaseRepository
   - Implement get_descendants() using LTREE descendant_of operator
   - Implement get_ancestors() using LTREE ancestor_of operator
@@ -108,7 +117,9 @@ check file #database/test_ltree_type.py
   - Implement get_tree() for full tree structure
   - _Requirements: 3.2, 3.8, 3.9_
 
-- [ ] 2.1 Create ManufacturingTypeRepository
+- [x] 2.1 Create ManufacturingTypeRepository
+
+
   - Create `app/repositories/manufacturing_type.py` extending BaseRepository
   - Implement get_by_name() method
   - Implement get_active() method for active types only
@@ -116,7 +127,9 @@ check file #database/test_ltree_type.py
   - Add to `app/repositories/__init__.py`
   - _Requirements: 3.1, 3.9_
 
-- [ ] 2.2 Create AttributeNodeRepository with hierarchy support
+- [x] 2.2 Create AttributeNodeRepository with hierarchy support
+
+
   - Create `app/repositories/attribute_node.py` extending HierarchicalRepository
   - Implement get_by_manufacturing_type() method
   - Implement get_root_nodes() for top-level nodes
@@ -124,7 +137,9 @@ check file #database/test_ltree_type.py
   - Add to `app/repositories/__init__.py`
   - _Requirements: 3.2, 3.8, 3.9_
 
-- [ ] 2.3 Create ConfigurationRepository
+- [x] 2.3 Create ConfigurationRepository
+
+
   - Create `app/repositories/configuration.py` extending BaseRepository
   - Implement get_by_customer() with optional status filter
   - Implement get_by_status() method
@@ -132,14 +147,18 @@ check file #database/test_ltree_type.py
   - Add to `app/repositories/__init__.py`
   - _Requirements: 3.3, 3.9_
 
-- [ ] 2.4 Create CustomerRepository
+- [x] 2.4 Create CustomerRepository
+
+
   - Create `app/repositories/customer.py` extending BaseRepository
   - Implement get_by_email() method
   - Implement get_active() method
   - Add to `app/repositories/__init__.py`
   - _Requirements: 3.5, 3.9_
 
-- [ ] 2.5 Create QuoteRepository
+- [x] 2.5 Create QuoteRepository
+
+
   - Create `app/repositories/quote.py` extending BaseRepository
   - Implement get_by_quote_number() method
   - Implement get_by_customer() method
@@ -147,7 +166,9 @@ check file #database/test_ltree_type.py
   - Add to `app/repositories/__init__.py`
   - _Requirements: 3.6, 3.9_
 
-- [ ] 2.6 Create TemplateRepository
+- [x] 2.6 Create TemplateRepository
+
+
   - Create `app/repositories/configuration_template.py` extending BaseRepository
   - Implement get_public_templates() method
   - Implement get_by_manufacturing_type() method
@@ -155,7 +176,9 @@ check file #database/test_ltree_type.py
   - Add to `app/repositories/__init__.py`
   - _Requirements: 3.4, 3.9_
 
-- [ ] 2.7 Create OrderRepository
+- [x] 2.7 Create OrderRepository
+
+
   - Create `app/repositories/order.py` extending BaseRepository
   - Implement get_by_order_number() method
   - Implement get_by_quote() method

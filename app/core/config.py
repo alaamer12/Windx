@@ -37,6 +37,7 @@ __all__ = [
     "SecuritySettings",
     "CacheSettings",
     "LimiterSettings",
+    "WindxSettings",
     "Settings",
     "get_settings",
 ]
@@ -479,6 +480,152 @@ class LimiterSettings(BaseSettings):
     )
 
 
+class WindxSettings(BaseSettings):
+    """Windx configurator system settings.
+
+    Configuration for the Windx product configuration system including
+    formula evaluation safety, snapshot retention, and template tracking.
+
+    Attributes:
+        formula_max_length: Maximum length for price/weight formulas
+        formula_timeout_seconds: Maximum execution time for formula evaluation
+        formula_allowed_functions: Comma-separated list of allowed formula functions
+        formula_max_variables: Maximum number of variables in a formula
+        snapshot_retention_days: Days to retain configuration snapshots
+        snapshot_auto_cleanup: Enable automatic cleanup of old snapshots
+        template_track_usage: Enable template usage tracking
+        template_success_threshold: Minimum success rate for template recommendations (0-100)
+        template_popular_limit: Number of templates to show in popular list
+        price_calculation_precision: Decimal precision for price calculations
+        weight_calculation_precision: Decimal precision for weight calculations
+    """
+
+    formula_max_length: Annotated[
+        int,
+        Field(
+            default=500,
+            ge=100,
+            le=2000,
+            description="Maximum length for price/weight formulas",
+        ),
+    ] = 500
+
+    formula_timeout_seconds: Annotated[
+        int,
+        Field(
+            default=5,
+            ge=1,
+            le=30,
+            description="Maximum execution time for formula evaluation in seconds",
+        ),
+    ] = 5
+
+    formula_allowed_functions: Annotated[
+        str,
+        Field(
+            default="abs,min,max,round,ceil,floor,sqrt,pow",
+            description="Comma-separated list of allowed formula functions",
+        ),
+    ] = "abs,min,max,round,ceil,floor,sqrt,pow"
+
+    formula_max_variables: Annotated[
+        int,
+        Field(
+            default=20,
+            ge=5,
+            le=100,
+            description="Maximum number of variables allowed in a formula",
+        ),
+    ] = 20
+
+    snapshot_retention_days: Annotated[
+        int,
+        Field(
+            default=365,
+            ge=30,
+            le=3650,
+            description="Number of days to retain configuration snapshots",
+        ),
+    ] = 365
+
+    snapshot_auto_cleanup: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Enable automatic cleanup of old snapshots",
+        ),
+    ] = True
+
+    template_track_usage: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="Enable template usage tracking and analytics",
+        ),
+    ] = True
+
+    template_success_threshold: Annotated[
+        int,
+        Field(
+            default=20,
+            ge=0,
+            le=100,
+            description="Minimum success rate percentage for template recommendations",
+        ),
+    ] = 20
+
+    template_popular_limit: Annotated[
+        int,
+        Field(
+            default=10,
+            ge=5,
+            le=50,
+            description="Number of templates to show in popular templates list",
+        ),
+    ] = 10
+
+    price_calculation_precision: Annotated[
+        int,
+        Field(
+            default=2,
+            ge=0,
+            le=6,
+            description="Decimal places for price calculations",
+        ),
+    ] = 2
+
+    weight_calculation_precision: Annotated[
+        int,
+        Field(
+            default=2,
+            ge=0,
+            le=6,
+            description="Decimal places for weight calculations",
+        ),
+    ] = 2
+
+    @computed_field
+    @property
+    def allowed_functions_list(self) -> list[str]:
+        """Get list of allowed formula functions.
+
+        Returns:
+            list[str]: List of allowed function names
+        """
+        return [f.strip() for f in self.formula_allowed_functions.split(",") if f.strip()]
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_prefix="WINDX_",
+        str_strip_whitespace=True,
+        validate_default=True,
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+        extra="ignore",
+    )
+
+
 class Settings(BaseSettings):
     """Main application settings.
 
@@ -490,6 +637,9 @@ class Settings(BaseSettings):
         backend_cors_origins: List of allowed CORS origins
         database: Database configuration settings
         security: Security configuration settings
+        cache: Cache configuration settings
+        limiter: Rate limiter configuration settings
+        windx: Windx configurator system settings
     """
 
     app_name: Annotated[
@@ -533,6 +683,7 @@ class Settings(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     cache: CacheSettings = Field(default_factory=CacheSettings)
     limiter: LimiterSettings = Field(default_factory=LimiterSettings)
+    windx: WindxSettings = Field(default_factory=WindxSettings)
 
     @field_validator("backend_cors_origins", mode="before")
     @classmethod

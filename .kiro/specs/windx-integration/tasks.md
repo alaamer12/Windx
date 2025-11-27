@@ -388,10 +388,15 @@ check file #database/test_ltree_type.py
 
 
 
+
+
+
 - [ ] 7. Add Windx configuration settings
   - Add WindxSettings class to `app/core/config.py`
   - Add environment variables for formula evaluation safety
   - Add snapshot retention policy settings
+
+
   - Add template usage tracking settings
   - Update Settings class to include WindxSettings
   - _Requirements: 9.1, 9.3, 9.4, 9.5_

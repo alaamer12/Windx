@@ -315,14 +315,21 @@ check file #database/test_ltree_type.py
   - _Requirements: 6.5, 6.6_
 
 
+
+
+
 - [ ] 4.6 Create Order endpoints
   - Create `app/api/v1/endpoints/orders.py`
   - Implement GET /orders (list user's orders with pagination)
   - Implement GET /orders/{id} (get order with items)
   - Implement POST /orders (create order from quote)
+
+
   - Add authorization checks (users see only their own)
   - Add router to `app/api/v1/router.py`
   - _Requirements: 6.5, 6.6, 11.6_
+
+
 
 ## Phase 5: Database Triggers and Functions
 

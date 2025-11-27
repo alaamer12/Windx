@@ -188,7 +188,12 @@ check file #database/test_ltree_type.py
 
 ## Phase 3: Service Layer
 
-- [ ] 3. Create PricingService for price calculations
+- [x] 3. Create PricingService for price calculations
+
+
+
+
+
   - Create `app/services/pricing.py` extending BaseService
   - Implement calculate_configuration_price() method
   - Implement calculate_selection_impact() for individual selections
@@ -196,7 +201,9 @@ check file #database/test_ltree_type.py
   - Handle fixed, percentage, and formula-based pricing
   - _Requirements: 5.1, 5.3_
 
-- [ ] 3.1 Create ConfigurationService
+- [x] 3.1 Create ConfigurationService
+
+
   - Create `app/services/configuration.py` extending BaseService
   - Inject ConfigurationRepository, ConfigurationSelectionRepository, PricingService
   - Implement create_configuration() with initial selections
@@ -205,7 +212,9 @@ check file #database/test_ltree_type.py
   - Implement get_configuration_with_details() with full selection data
   - _Requirements: 5.1, 5.3, 5.4_
 
-- [ ] 3.2 Create QuoteService
+- [x] 3.2 Create QuoteService
+
+
   - Create `app/services/quote.py` extending BaseService
   - Inject QuoteRepository, ConfigurationRepository
   - Implement generate_quote() with price snapshot
@@ -213,7 +222,9 @@ check file #database/test_ltree_type.py
   - Implement calculate_quote_totals() with tax and discounts
   - _Requirements: 5.2, 5.3, 5.4_
 
-- [ ] 3.3 Create TemplateService
+- [x] 3.3 Create TemplateService
+
+
   - Create `app/services/template.py` extending BaseService
   - Inject TemplateRepository, ConfigurationService
   - Implement create_template_from_configuration()

@@ -430,3 +430,104 @@ class TemplateService(BaseService):
         await self.refresh(template)
 
         return template
+
+
+    async def create_template(
+        self, template_in: ConfigurationTemplateCreate, user: Any
+    ) -> ConfigurationTemplate:
+        """Create template with user association.
+
+        Args:
+            template_in (ConfigurationTemplateCreate): Template creation data
+            user: Current user
+
+        Returns:
+            ConfigurationTemplate: Created template
+
+        Raises:
+            NotFoundException: If manufacturing type not found
+        """
+        from app.core.exceptions import NotFoundException
+        from app.repositories.manufacturing_type import ManufacturingTypeRepository
+
+        mfg_type_repo = ManufacturingTypeRepository(self.db)
+
+        # Validate manufacturing type exists
+        mfg_type = await mfg_type_repo.get(template_in.manufacturing_type_id)
+        if not mfg_type:
+            raise NotFoundException(
+                resource="ManufacturingType",
+                details={"manufacturing_type_id": template_in.manufacturing_type_id},
+            )
+
+        # Create template
+        template_data = template_in.model_dump()
+        template_data["created_by"] = user.id
+
+        template = ConfigurationTemplate(**template_data)
+        self.template_repo.db.add(template)
+        await self.db.commit()
+        await self.db.refresh(template)
+
+        return template
+
+    async def apply_template(
+        self, template_id: PositiveInt, user: Any, configuration_name: str | None = None
+    ) -> Configuration:
+        """Apply template to create new configuration.
+
+        Args:
+            template_id (PositiveInt): Template ID
+            user: Current user
+            configuration_name (str | None): Name for new configuration
+
+        Returns:
+            Configuration: Created configuration
+
+        Raises:
+            NotFoundException: If template not found
+        """
+        from app.core.exceptions import NotFoundException
+        from app.services.configuration import ConfigurationService
+
+        # Get template with selections
+        template = await self.template_repo.get_with_selections(template_id)
+        if not template:
+            raise NotFoundException(
+                resource="ConfigurationTemplate",
+                details={"template_id": template_id},
+            )
+
+        # Create configuration from template
+        config_service = ConfigurationService(self.db)
+
+        # Build configuration data
+        from app.schemas.configuration import ConfigurationCreate
+        from app.schemas.configuration_selection import ConfigurationSelectionCreate
+
+        # Convert template selections to configuration selections
+        selections = []
+        for ts in template.selections:
+            selection = ConfigurationSelectionCreate(
+                attribute_node_id=ts.attribute_node_id,
+                string_value=ts.string_value,
+                numeric_value=ts.numeric_value,
+                boolean_value=ts.boolean_value,
+                json_value=ts.json_value,
+            )
+            selections.append(selection)
+
+        config_in = ConfigurationCreate(
+            manufacturing_type_id=template.manufacturing_type_id,
+            customer_id=user.id,
+            name=configuration_name or f"{template.name} - Copy",
+            description=f"Created from template: {template.name}",
+            selections=selections,
+        )
+
+        config = await config_service.create_configuration(config_in, user)
+
+        # Track template usage
+        await self.track_template_usage(template_id, config.id, user.id)
+
+        return config

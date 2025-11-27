@@ -234,7 +234,12 @@ check file #database/test_ltree_type.py
 
 ## Phase 4: API Endpoints
 
-- [ ] 4. Create ManufacturingType endpoints
+- [x] 4. Create ManufacturingType endpoints
+
+
+
+
+
   - Create `app/api/v1/endpoints/manufacturing_types.py`
   - Implement GET /manufacturing-types (list with pagination)
   - Implement GET /manufacturing-types/{id} (get single)
@@ -245,7 +250,9 @@ check file #database/test_ltree_type.py
   - Include OpenAPI documentation with examples
   - _Requirements: 6.1, 6.5, 6.6, 11.2_
 
-- [ ] 4.1 Create AttributeNode endpoints
+- [x] 4.1 Create AttributeNode endpoints
+
+
   - Create `app/api/v1/endpoints/attribute_nodes.py`
   - Implement GET /attribute-nodes (list with manufacturing_type_id filter)
   - Implement GET /attribute-nodes/{id} (get single)
@@ -257,6 +264,8 @@ check file #database/test_ltree_type.py
   - Add router to `app/api/v1/router.py`
   - _Requirements: 6.2, 6.5, 6.6, 11.3_
 
+
+
 - [ ] 4.2 Create Configuration endpoints
   - Create `app/api/v1/endpoints/configurations.py`
   - Implement GET /configurations (list user's configurations with pagination)
@@ -267,6 +276,8 @@ check file #database/test_ltree_type.py
   - Implement DELETE /configurations/{id} (delete configuration)
   - Add authorization checks (users see only their own)
   - Add router to `app/api/v1/router.py`
+
+
   - _Requirements: 6.3, 6.5, 6.6, 11.1_
 
 - [ ] 4.3 Create Quote endpoints
@@ -274,6 +285,8 @@ check file #database/test_ltree_type.py
   - Implement GET /quotes (list user's quotes with pagination)
   - Implement GET /quotes/{id} (get single quote)
   - Implement POST /quotes (generate quote from configuration)
+
+
   - Add authorization checks (users see only their own)
   - Add router to `app/api/v1/router.py`
   - _Requirements: 6.4, 6.5, 6.6, 11.5_
@@ -282,13 +295,17 @@ check file #database/test_ltree_type.py
   - Create `app/api/v1/endpoints/templates.py`
   - Implement GET /templates (list public templates with pagination)
   - Implement GET /templates/{id} (get template with selections)
+
+
   - Implement POST /templates (create from configuration - data entry users)
   - Implement POST /templates/{id}/apply (apply template to new configuration)
   - Add authorization checks (public read, restricted write)
   - Add router to `app/api/v1/router.py`
   - _Requirements: 6.5, 6.6, 11.4_
 
-- [ ] 4.5 Create Customer endpoints
+- [x] 4.5 Create Customer endpoints
+
+
   - Create `app/api/v1/endpoints/customers.py`
   - Implement GET /customers (list - superuser only)
   - Implement GET /customers/{id} (get single - superuser only)
@@ -296,6 +313,7 @@ check file #database/test_ltree_type.py
   - Implement PATCH /customers/{id} (update - superuser only)
   - Add router to `app/api/v1/router.py`
   - _Requirements: 6.5, 6.6_
+
 
 - [ ] 4.6 Create Order endpoints
   - Create `app/api/v1/endpoints/orders.py`
@@ -309,6 +327,7 @@ check file #database/test_ltree_type.py
 ## Phase 5: Database Triggers and Functions
 
 - [ ] 5. Create LTREE path maintenance trigger
+
   - Create PostgreSQL function to update ltree_path when parent_node_id changes
   - Create trigger on attribute_nodes table for INSERT and UPDATE
   - Update all descendant paths when node is moved

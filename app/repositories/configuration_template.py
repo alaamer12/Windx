@@ -122,3 +122,62 @@ class ConfigurationTemplateRepository(
             .values(usage_count=ConfigurationTemplate.usage_count + 1)
         )
         await self.db.commit()
+
+
+    def get_filtered(
+        self,
+        is_public: bool | None = None,
+        manufacturing_type_id: int | None = None,
+        template_type: str | None = None,
+        is_active: bool | None = None,
+    ):
+        """Build filtered query for templates.
+
+        Args:
+            is_public (bool | None): Filter by public visibility
+            manufacturing_type_id (int | None): Filter by manufacturing type
+            template_type (str | None): Filter by template type
+            is_active (bool | None): Filter by active status
+
+        Returns:
+            Select: SQLAlchemy select statement
+        """
+        from sqlalchemy import Select, select
+
+        query: Select = select(ConfigurationTemplate)
+
+        if is_public is not None:
+            query = query.where(ConfigurationTemplate.is_public == is_public)
+
+        if manufacturing_type_id is not None:
+            query = query.where(
+                ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id
+            )
+
+        if template_type:
+            query = query.where(ConfigurationTemplate.template_type == template_type)
+
+        if is_active is not None:
+            query = query.where(ConfigurationTemplate.is_active == is_active)
+
+        query = query.order_by(ConfigurationTemplate.usage_count.desc())
+
+        return query
+
+    async def get_with_selections(self, template_id: int) -> ConfigurationTemplate | None:
+        """Get template with selections loaded.
+
+        Args:
+            template_id (int): Template ID
+
+        Returns:
+            ConfigurationTemplate | None: Template with selections or None
+        """
+        from sqlalchemy.orm import selectinload
+
+        result = await self.db.execute(
+            select(ConfigurationTemplate)
+            .where(ConfigurationTemplate.id == template_id)
+            .options(selectinload(ConfigurationTemplate.selections))
+        )
+        return result.scalar_one_or_none()

@@ -115,3 +115,52 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
             )
         )
         return result.scalar_one_or_none()
+
+
+    def get_filtered(
+        self,
+        status: str | None = None,
+    ):
+        """Build filtered query for orders.
+
+        Args:
+            status (str | None): Filter by status
+
+        Returns:
+            Select: SQLAlchemy select statement
+        """
+        from sqlalchemy import Select, select
+
+        query: Select = select(Order)
+
+        if status:
+            query = query.where(Order.status == status)
+
+        query = query.order_by(Order.created_at.desc())
+
+        return query
+
+    def get_filtered_by_quotes(
+        self,
+        quote_ids: list[int],
+        status: str | None = None,
+    ):
+        """Build filtered query for orders by quote IDs.
+
+        Args:
+            quote_ids (list[int]): List of quote IDs
+            status (str | None): Filter by status
+
+        Returns:
+            Select: SQLAlchemy select statement
+        """
+        from sqlalchemy import Select, select
+
+        query: Select = select(Order).where(Order.quote_id.in_(quote_ids))
+
+        if status:
+            query = query.where(Order.status == status)
+
+        query = query.order_by(Order.created_at.desc())
+
+        return query

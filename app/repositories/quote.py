@@ -108,3 +108,20 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
             .order_by(Quote.created_at.desc())
         )
         return list(result.scalars().all())
+
+
+    async def get_user_quote_ids(self, customer_id: int) -> list[int]:
+        """Get list of quote IDs for a customer.
+
+        Args:
+            customer_id (int): Customer ID
+
+        Returns:
+            list[int]: List of quote IDs
+        """
+        from sqlalchemy import select
+
+        result = await self.db.execute(
+            select(Quote.id).where(Quote.customer_id == customer_id)
+        )
+        return list(result.scalars().all())

@@ -12,14 +12,19 @@ Features:
     - Get root nodes
     - LTREE pattern matching
     - Efficient tree traversal
+    - Tree building utilities
 """
 
-from sqlalchemy import select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.attribute_node import AttributeNode
 from app.repositories.windx_base import HierarchicalRepository
-from app.schemas.attribute_node import AttributeNodeCreate, AttributeNodeUpdate
+from app.schemas.attribute_node import (
+    AttributeNodeCreate,
+    AttributeNodeTree,
+    AttributeNodeUpdate,
+)
 
 __all__ = ["AttributeNodeRepository"]
 
@@ -146,3 +151,129 @@ class AttributeNodeRepository(
             .order_by(AttributeNode.ltree_path)
         )
         return list(result.scalars().all())
+
+    def get_filtered(
+        self,
+        manufacturing_type_id: int | None = None,
+        parent_node_id: int | None = None,
+        node_type: str | None = None,
+    ) -> Select:
+        """Build filtered query for attribute nodes.
+
+        Creates a SQLAlchemy Select statement with optional filters.
+        This method returns a query that can be paginated.
+
+        Args:
+            manufacturing_type_id (int | None): Filter by manufacturing type
+            parent_node_id (int | None): Filter by parent node
+            node_type (str | None): Filter by node type
+
+        Returns:
+            Select: SQLAlchemy select statement
+
+        Example:
+            ```python
+            query = repo.get_filtered(
+                manufacturing_type_id=1,
+                node_type="option"
+            )
+            result = await db.execute(query)
+            nodes = result.scalars().all()
+            ```
+        """
+        query = select(AttributeNode)
+
+        # Apply filters
+        if manufacturing_type_id is not None:
+            query = query.where(
+                AttributeNode.manufacturing_type_id == manufacturing_type_id
+            )
+
+        if parent_node_id is not None:
+            query = query.where(AttributeNode.parent_node_id == parent_node_id)
+        elif parent_node_id is None and "parent_node_id" in locals():
+            # Explicitly filter for root nodes if parent_node_id is None
+            query = query.where(AttributeNode.parent_node_id.is_(None))
+
+        if node_type:
+            query = query.where(AttributeNode.node_type == node_type)
+
+        # Order by ltree_path for hierarchical display
+        query = query.order_by(AttributeNode.ltree_path)
+
+        return query
+
+    def build_tree(self, nodes: list[AttributeNode]) -> list[AttributeNodeTree]:
+        """Build hierarchical tree structure from flat list of nodes.
+
+        Converts a flat list of attribute nodes into a nested tree structure
+        based on parent-child relationships.
+
+        Args:
+            nodes (list[AttributeNode]): Flat list of nodes
+
+        Returns:
+            list[AttributeNodeTree]: Hierarchical tree structure
+
+        Example:
+            ```python
+            # Get all nodes for a manufacturing type
+            nodes = await repo.get_by_manufacturing_type(1)
+            
+            # Build tree structure
+            tree = repo.build_tree(nodes)
+            ```
+
+        Note:
+            - Nodes should be ordered by ltree_path for optimal performance
+            - Root nodes (parent_node_id is None) become top-level items
+            - Children are nested under their parents recursively
+        """
+        # Create a mapping of node_id to node with children list
+        node_map: dict[int, AttributeNodeTree] = {}
+        
+        for node in nodes:
+            node_tree = AttributeNodeTree(
+                id=node.id,
+                manufacturing_type_id=node.manufacturing_type_id,
+                parent_node_id=node.parent_node_id,
+                name=node.name,
+                node_type=node.node_type,
+                data_type=node.data_type,
+                display_condition=node.display_condition,
+                validation_rules=node.validation_rules,
+                required=node.required,
+                price_impact_type=node.price_impact_type,
+                price_impact_value=node.price_impact_value,
+                price_formula=node.price_formula,
+                weight_impact=node.weight_impact,
+                weight_formula=node.weight_formula,
+                technical_property_type=node.technical_property_type,
+                technical_impact_formula=node.technical_impact_formula,
+                ltree_path=node.ltree_path,
+                depth=node.depth,
+                sort_order=node.sort_order,
+                ui_component=node.ui_component,
+                description=node.description,
+                help_text=node.help_text,
+                created_at=node.created_at,
+                updated_at=node.updated_at,
+                children=[],
+            )
+            node_map[node.id] = node_tree
+
+        # Build tree by linking children to parents
+        root_nodes: list[AttributeNodeTree] = []
+        
+        for node in nodes:
+            node_tree = node_map[node.id]
+            
+            if node.parent_node_id is None:
+                # Root node
+                root_nodes.append(node_tree)
+            elif node.parent_node_id in node_map:
+                # Add to parent's children
+                parent = node_map[node.parent_node_id]
+                parent.children.append(node_tree)
+
+        return root_nodes

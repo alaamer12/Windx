@@ -11,9 +11,12 @@ Features:
     - Get by name lookup
     - Get active manufacturing types
     - Get by category filtering
+    - Filtered queries with sorting
 """
 
-from sqlalchemy import select
+from typing import Literal
+
+from sqlalchemy import Select, asc, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.manufacturing_type import ManufacturingType
@@ -111,3 +114,66 @@ class ManufacturingTypeRepository(
             .order_by(ManufacturingType.name)
         )
         return list(result.scalars().all())
+
+    def get_filtered(
+        self,
+        is_active: bool | None = None,
+        base_category: str | None = None,
+        search: str | None = None,
+        sort_by: Literal["created_at", "name", "base_price"] = "created_at",
+        sort_order: Literal["asc", "desc"] = "desc",
+    ) -> Select:
+        """Build filtered query for manufacturing types.
+
+        Creates a SQLAlchemy Select statement with optional filters and sorting.
+        This method returns a query that can be paginated.
+
+        Args:
+            is_active (bool | None): Filter by active status
+            base_category (str | None): Filter by base category
+            search (str | None): Search in name or description
+            sort_by (Literal): Column to sort by
+            sort_order (Literal): Sort direction
+
+        Returns:
+            Select: SQLAlchemy select statement
+
+        Example:
+            ```python
+            query = repo.get_filtered(
+                is_active=True,
+                base_category="window",
+                search="casement",
+                sort_by="name",
+                sort_order="asc"
+            )
+            result = await db.execute(query)
+            types = result.scalars().all()
+            ```
+        """
+        query = select(ManufacturingType)
+
+        # Apply filters
+        if is_active is not None:
+            query = query.where(ManufacturingType.is_active == is_active)
+
+        if base_category:
+            query = query.where(ManufacturingType.base_category == base_category)
+
+        if search:
+            search_term = f"%{search}%"
+            query = query.where(
+                or_(
+                    ManufacturingType.name.ilike(search_term),
+                    ManufacturingType.description.ilike(search_term),
+                )
+            )
+
+        # Apply sorting
+        sort_column = getattr(ManufacturingType, sort_by)
+        if sort_order == "asc":
+            query = query.order_by(asc(sort_column))
+        else:
+            query = query.order_by(desc(sort_column))
+
+        return query

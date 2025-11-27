@@ -14,7 +14,20 @@ Features:
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, dashboard, export, metrics, users
+from app.api.v1.endpoints import (
+    attribute_nodes,
+    auth,
+    configurations,
+    customers,
+    dashboard,
+    export,
+    manufacturing_types,
+    metrics,
+    orders,
+    quotes,
+    templates,
+    users,
+)
 
 __all__ = ["api_router"]
 
@@ -25,3 +38,10 @@ api_router.include_router(users.router, prefix="/users")
 api_router.include_router(export.router, prefix="/export")
 api_router.include_router(dashboard.router, prefix="/dashboard")
 api_router.include_router(metrics.router, prefix="/metrics")
+api_router.include_router(manufacturing_types.router, prefix="/manufacturing-types")
+api_router.include_router(attribute_nodes.router, prefix="/attribute-nodes")
+api_router.include_router(configurations.router, prefix="/configurations")
+api_router.include_router(quotes.router, prefix="/quotes")
+api_router.include_router(templates.router, prefix="/templates")
+api_router.include_router(customers.router, prefix="/customers")
+api_router.include_router(orders.router, prefix="/orders")

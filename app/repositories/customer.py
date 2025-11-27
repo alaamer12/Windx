@@ -80,3 +80,32 @@ class CustomerRepository(BaseRepository[Customer, CustomerCreate, CustomerUpdate
             .order_by(Customer.company_name, Customer.email)
         )
         return list(result.scalars().all())
+
+
+    def get_filtered(
+        self,
+        is_active: bool | None = None,
+        customer_type: str | None = None,
+    ):
+        """Build filtered query for customers.
+
+        Args:
+            is_active (bool | None): Filter by active status
+            customer_type (str | None): Filter by customer type
+
+        Returns:
+            Select: SQLAlchemy select statement
+        """
+        from sqlalchemy import Select, select
+
+        query: Select = select(Customer)
+
+        if is_active is not None:
+            query = query.where(Customer.is_active == is_active)
+
+        if customer_type:
+            query = query.where(Customer.customer_type == customer_type)
+
+        query = query.order_by(Customer.company_name)
+
+        return query

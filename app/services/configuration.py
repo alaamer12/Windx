@@ -434,3 +434,226 @@ class ConfigurationService(BaseService):
 
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+
+    def get_user_configurations_query(
+        self,
+        user: Any,
+        manufacturing_type_id: int | None = None,
+        status: str | None = None,
+    ):
+        """Build query for user's configurations with authorization.
+
+        Regular users see only their own configurations.
+        Superusers see all configurations.
+
+        Args:
+            user: Current user
+            manufacturing_type_id (int | None): Filter by manufacturing type
+            status (str | None): Filter by status
+
+        Returns:
+            Select: SQLAlchemy select statement
+        """
+        from sqlalchemy import Select, select
+
+        query: Select = select(Configuration)
+
+        # Authorization: regular users see only their own
+        if not user.is_superuser:
+            query = query.where(Configuration.customer_id == user.id)
+
+        # Apply filters
+        if manufacturing_type_id is not None:
+            query = query.where(
+                Configuration.manufacturing_type_id == manufacturing_type_id
+            )
+
+        if status:
+            query = query.where(Configuration.status == status)
+
+        # Order by most recent first
+        query = query.order_by(Configuration.created_at.desc())
+
+        return query
+
+    async def get_configuration_with_auth(
+        self, config_id: PositiveInt, user: Any
+    ) -> Configuration:
+        """Get configuration with authorization check.
+
+        Users can only access their own configurations unless they are superusers.
+
+        Args:
+            config_id (PositiveInt): Configuration ID
+            user: Current user
+
+        Returns:
+            Configuration: Configuration with selections
+
+        Raises:
+            NotFoundException: If configuration not found
+            AuthorizationException: If user lacks permission
+        """
+        from app.core.exceptions import AuthorizationException
+
+        config = await self.get_configuration_with_details(config_id)
+
+        # Authorization check
+        if not user.is_superuser and config.customer_id != user.id:
+            raise AuthorizationException(
+                "You do not have permission to access this configuration"
+            )
+
+        return config
+
+    async def update_configuration(
+        self, config_id: PositiveInt, config_update: ConfigurationUpdate, user: Any
+    ) -> Configuration:
+        """Update configuration with authorization check.
+
+        Args:
+            config_id (PositiveInt): Configuration ID
+            config_update (ConfigurationUpdate): Update data
+            user: Current user
+
+        Returns:
+            Configuration: Updated configuration
+
+        Raises:
+            NotFoundException: If configuration not found
+            AuthorizationException: If user lacks permission
+        """
+        from app.core.exceptions import AuthorizationException
+
+        config = await self.get_configuration(config_id)
+
+        # Authorization check
+        if not user.is_superuser and config.customer_id != user.id:
+            raise AuthorizationException(
+                "You do not have permission to update this configuration"
+            )
+
+        # Update configuration fields
+        update_data = config_update.model_dump(exclude_unset=True, exclude={"selections"})
+        for field, value in update_data.items():
+            setattr(config, field, value)
+
+        await self.commit()
+        await self.refresh(config)
+
+        return config
+
+    async def update_selections(
+        self, config_id: PositiveInt, selections: list[ConfigurationSelectionCreate], user: Any
+    ) -> Configuration:
+        """Update selections with authorization check.
+
+        Args:
+            config_id (PositiveInt): Configuration ID
+            selections (list[ConfigurationSelectionCreate]): New selections
+            user: Current user
+
+        Returns:
+            Configuration: Updated configuration
+
+        Raises:
+            NotFoundException: If configuration not found
+            AuthorizationException: If user lacks permission
+        """
+        from app.core.exceptions import AuthorizationException
+
+        config = await self.get_configuration(config_id)
+
+        # Authorization check
+        if not user.is_superuser and config.customer_id != user.id:
+            raise AuthorizationException(
+                "You do not have permission to update this configuration"
+            )
+
+        # Delete existing selections
+        await self.selection_repo.delete_by_configuration(config_id)
+
+        # Add new selections
+        for selection_value in selections:
+            await self._add_selection_internal(config_id, selection_value)
+
+        # Recalculate totals
+        await self.calculate_totals(config_id)
+
+        await self.refresh(config)
+        return config
+
+    async def delete_configuration(self, config_id: PositiveInt, user: Any) -> None:
+        """Delete configuration with authorization check.
+
+        Args:
+            config_id (PositiveInt): Configuration ID
+            user: Current user
+
+        Raises:
+            NotFoundException: If configuration not found
+            AuthorizationException: If user lacks permission
+        """
+        from app.core.exceptions import AuthorizationException
+
+        config = await self.get_configuration(config_id)
+
+        # Authorization check
+        if not user.is_superuser and config.customer_id != user.id:
+            raise AuthorizationException(
+                "You do not have permission to delete this configuration"
+            )
+
+        await self.config_repo.delete(config_id)
+        await self.commit()
+
+    async def create_configuration(
+        self, config_in: ConfigurationCreate, user: Any
+    ) -> Configuration:
+        """Create new configuration with user association.
+
+        Args:
+            config_in (ConfigurationCreate): Configuration creation data
+            user: Current user
+
+        Returns:
+            Configuration: Created configuration
+
+        Raises:
+            NotFoundException: If manufacturing type not found
+        """
+        # Validate manufacturing type exists
+        mfg_type = await self.mfg_type_repo.get(config_in.manufacturing_type_id)
+        if not mfg_type:
+            raise NotFoundException(
+                resource="ManufacturingType",
+                details={"manufacturing_type_id": config_in.manufacturing_type_id},
+            )
+
+        # Create configuration with base price from manufacturing type
+        # Associate with current user if customer_id not provided
+        config_data = config_in.model_dump(exclude={"selections"})
+        if not config_data.get("customer_id"):
+            config_data["customer_id"] = user.id
+
+        config = Configuration(
+            **config_data,
+            base_price=mfg_type.base_price,
+            total_price=mfg_type.base_price,
+            calculated_weight=mfg_type.base_weight,
+        )
+
+        self.config_repo.db.add(config)
+        await self.commit()
+        await self.refresh(config)
+
+        # Add initial selections if provided
+        if config_in.selections:
+            for selection_value in config_in.selections:
+                await self._add_selection_internal(config.id, selection_value)
+
+            # Recalculate totals after adding selections
+            await self.calculate_totals(config.id)
+
+        return config

@@ -400,3 +400,108 @@ class QuoteService(BaseService):
         # 4. Store technical specifications
         # 5. Link to quote for price protection
         pass
+
+
+    def get_user_quotes_query(
+        self,
+        user: Any,
+        status: str | None = None,
+    ):
+        """Build query for user's quotes with authorization.
+
+        Regular users see only their own quotes.
+        Superusers see all quotes.
+
+        Args:
+            user: Current user
+            status (str | None): Filter by status
+
+        Returns:
+            Select: SQLAlchemy select statement
+        """
+        from sqlalchemy import Select, select
+
+        query: Select = select(Quote)
+
+        # Authorization: regular users see only their own
+        if not user.is_superuser:
+            query = query.where(Quote.customer_id == user.id)
+
+        # Apply filters
+        if status:
+            query = query.where(Quote.status == status)
+
+        # Order by most recent first
+        query = query.order_by(Quote.created_at.desc())
+
+        return query
+
+    async def get_quote_with_auth(
+        self, quote_id: PositiveInt, user: Any
+    ) -> Quote:
+        """Get quote with authorization check.
+
+        Users can only access their own quotes unless they are superusers.
+
+        Args:
+            quote_id (PositiveInt): Quote ID
+            user: Current user
+
+        Returns:
+            Quote: Quote details
+
+        Raises:
+            NotFoundException: If quote not found
+            AuthorizationException: If user lacks permission
+        """
+        from app.core.exceptions import AuthorizationException
+
+        quote = await self.quote_repo.get(quote_id)
+        if not quote:
+            raise NotFoundException(
+                resource="Quote",
+                details={"quote_id": quote_id},
+            )
+
+        # Authorization check
+        if not user.is_superuser and quote.customer_id != user.id:
+            raise AuthorizationException(
+                "You do not have permission to access this quote"
+            )
+
+        return quote
+
+    async def generate_quote(
+        self, quote_in: QuoteCreate, user: Any
+    ) -> Quote:
+        """Generate quote with authorization check.
+
+        Args:
+            quote_in (QuoteCreate): Quote creation data
+            user: Current user
+
+        Returns:
+            Quote: Created quote
+
+        Raises:
+            NotFoundException: If configuration not found
+            AuthorizationException: If user lacks permission
+        """
+        from app.core.exceptions import AuthorizationException
+
+        # Get configuration and check authorization
+        config = await self.config_repo.get(quote_in.configuration_id)
+        if not config:
+            raise NotFoundException(
+                resource="Configuration",
+                details={"configuration_id": quote_in.configuration_id},
+            )
+
+        # Authorization check
+        if not user.is_superuser and config.customer_id != user.id:
+            raise AuthorizationException(
+                "You do not have permission to create a quote for this configuration"
+            )
+
+        # Generate quote with snapshot
+        return await self.create_quote(quote_in)

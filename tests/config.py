@@ -8,7 +8,8 @@ Public Classes:
 
 Features:
     - Loads from .env.test file
-    - Uses SQLite in-memory database
+    - Uses PostgreSQL database (Supabase or local)
+    - Supports LTREE and JSONB PostgreSQL types
     - Disables caching and rate limiting
     - Safe test credentials
 """
@@ -49,9 +50,9 @@ class TestSettings(Settings):
     debug: bool = Field(default=True, description="Debug mode (always True in tests)")
 
     # Override database settings for testing
-    # These will be further overridden in conftest.py to use SQLite in-memory
+    # Now uses PostgreSQL with asyncpg for LTREE and JSONB support
     database_provider: str = Field(
-        default="sqlite",
+        default="postgresql",
         description="Database provider for tests",
     )
 

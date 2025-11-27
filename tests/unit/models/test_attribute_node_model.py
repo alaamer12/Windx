@@ -7,10 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.attribute_node import AttributeNode
 from app.models.manufacturing_type import ManufacturingType
 
-# Mark all tests in this module as requiring PostgreSQL
-pytestmark = pytest.mark.skip(
-    reason="AttributeNode model requires PostgreSQL (LTREE, JSONB types not supported in SQLite)"
-)
+# Tests now run with PostgreSQL (asyncpg) which supports LTREE and JSONB
 
 
 @pytest.mark.asyncio

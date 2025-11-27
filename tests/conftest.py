@@ -35,6 +35,7 @@ os.environ["TESTING"] = "true"
 
 # Now safe to import after env is loaded
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -47,24 +48,26 @@ from app.models.user import User  # noqa: F401
 from main import app
 from tests.config import TestSettings, get_test_settings
 
-# Test database URL - Use file-based database for better compatibility
-# In-memory databases have issues with aiosqlite and connection isolation
-import tempfile
-import atexit
+# Test database URL - Use PostgreSQL with asyncpg
+# Get database URL from test settings
+def get_test_database_url() -> str:
+    """Get test database URL from settings."""
+    test_settings = get_test_settings()
+    
+    # Access database settings from the nested database object
+    db = test_settings.database
+    
+    # Build PostgreSQL connection string with asyncpg
+    # Note: password is a SecretStr, so we need to get its value
+    password = db.password.get_secret_value() if db.password else ""
+    
+    return (
+        f"postgresql+asyncpg://{db.user}:"
+        f"{password}@{db.host}:"
+        f"{db.port}/{db.name}"
+    )
 
-# Create a temporary directory for test databases
-_temp_dir = tempfile.mkdtemp()
-_test_db_path = Path(_temp_dir) / "test.db"
-
-# Clean up temp directory on exit
-def _cleanup_temp_dir():
-    import shutil
-    if Path(_temp_dir).exists():
-        shutil.rmtree(_temp_dir, ignore_errors=True)
-
-atexit.register(_cleanup_temp_dir)
-
-TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_test_db_path}"
+TEST_DATABASE_URL = get_test_database_url()
 
 
 @pytest.fixture(scope="session")
@@ -141,29 +144,17 @@ async def test_engine():
     Yields:
         AsyncEngine: Test database engine
     """
-    import time
-    
-    # Remove test database if it exists
-    if _test_db_path.exists():
-        try:
-            _test_db_path.unlink()
-        except PermissionError:
-            # File is locked, wait a bit and try again
-            time.sleep(0.1)
-            try:
-                _test_db_path.unlink()
-            except Exception:
-                pass  # Ignore if still locked
-    
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,  # Disable pooling for tests
-        connect_args={"check_same_thread": False},  # Allow multi-threaded access
+        # No connect_args needed for asyncpg
     )
 
     # Create all tables
     async with engine.begin() as conn:
+        # Enable LTREE extension for PostgreSQL
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
         await conn.run_sync(Base.metadata.drop_all)  # Drop first to ensure clean state
         await conn.run_sync(Base.metadata.create_all)
 
@@ -177,13 +168,6 @@ async def test_engine():
     
     # Wait for connections to close
     await asyncio.sleep(0.05)
-    
-    # Clean up test database file
-    if _test_db_path.exists():
-        try:
-            _test_db_path.unlink()
-        except Exception:
-            pass  # Ignore cleanup errors
 
 
 @pytest_asyncio.fixture(scope="function")

@@ -258,6 +258,51 @@ alembic upgrade head
 alembic downgrade -1
 ```
 
+## Testing
+
+### ⚠️ Important: PostgreSQL Required for Tests
+
+The test suite uses **PostgreSQL** (not SQLite) to support Windx features like LTREE and JSONB.
+
+### Quick Setup
+
+1. **Update `.env.test`** with your Supabase credentials:
+   ```env
+   SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   SUPABASE_ANON_KEY=your_actual_anon_key
+   SUPABASE_DB_PASSWORD=your_actual_db_password
+   ```
+
+2. **Run tests**:
+   ```bash
+   .venv\scripts\python -m pytest tests/ -v
+   ```
+
+### Test Commands
+
+```bash
+# Run all tests
+.venv\scripts\python -m pytest tests/
+
+# Run with coverage
+.venv\scripts\python -m pytest tests/ --cov=app --cov-report=html
+
+# Run specific test file
+.venv\scripts\python -m pytest tests/integration/test_auth.py
+
+# Run only unit tests
+.venv\scripts\python -m pytest tests/unit/
+
+# Run only integration tests
+.venv\scripts\python -m pytest tests/integration/
+```
+
+### Documentation
+
+- **Quick Start**: See `TESTING_QUICKSTART.md`
+- **Detailed Setup**: See `docs/TEST_DATABASE_SETUP.md`
+- **Migration Info**: See `docs/TEST_MIGRATION_SUMMARY.md`
+
 ## Switching Between Databases
 
 Simply change the `DATABASE_PROVIDER` in your `.env` file:

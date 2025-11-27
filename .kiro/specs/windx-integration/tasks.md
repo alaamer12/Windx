@@ -532,6 +532,18 @@ check file #database/test_ltree_type.py
   - Document authorization rules
   - _Requirements: 6.5_
 
+- [x] 12. Migrate from aiosqlite in test code to use asyncpg
+
+
+
+
+
+  - Run all tests first at the begining and identify which is failing and which is passing, and their count
+  - Migrate the aioslqite with asyncpg, use supabase url and configuration from .env.test
+  - Remove .env.test from .gitignore and clean cache
+  - Add the needed configuration for supabase to work with asyncpg
+  - Ensure asyncpg works in the end
+
 ## Notes
 
 - **Phase 0 (Documentation) is PRIORITY** - Must be completed FIRST to understand the system

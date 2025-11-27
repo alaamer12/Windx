@@ -27,7 +27,8 @@ venv/
 ENV/
 env/
 .env.local
-
+*.env
+.env.test
 # IDEs
 .vscode/
 .idea/
@@ -41,7 +42,6 @@ env/
 .env.development
 .env.production
 !.env.example
-!.env.test
 !.env.local
 
 # Database

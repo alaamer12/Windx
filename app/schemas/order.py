@@ -26,8 +26,10 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
 __all__ = [
     "OrderBase",
     "OrderCreate",
+    "OrderCreateRequest",
     "OrderUpdate",
     "Order",
+    "OrderWithItems",
 ]
 
 
@@ -98,6 +100,86 @@ class OrderBase(BaseModel):
         if v is not None and "order_date" in info.data:
             order_date = info.data["order_date"]
             if v < order_date:
+                raise ValueError("required_date cannot be before order_date")
+        return v
+
+
+class OrderCreateRequest(BaseModel):
+    """Schema for API request to create an order from a quote.
+
+    Attributes:
+        quote_id: Quote ID to create order from
+        order_date: When order was placed (defaults to today)
+        required_date: Requested delivery date
+        special_instructions: Customer requests
+        installation_address: Delivery location
+    """
+
+    quote_id: Annotated[
+        PositiveInt,
+        Field(
+            description="Quote ID to create order from",
+            examples=[501, 789],
+        ),
+    ]
+    order_date: Annotated[
+        date | None,
+        Field(
+            default=None,
+            description="When order was placed (defaults to today)",
+            examples=["2025-01-25", "2025-02-15"],
+        ),
+    ] = None
+    required_date: Annotated[
+        date | None,
+        Field(
+            default=None,
+            description="Requested delivery date",
+            examples=["2025-02-15", "2025-03-01"],
+        ),
+    ] = None
+    special_instructions: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Customer requests and special instructions",
+            examples=[
+                "Call before delivery",
+                "Deliver to back entrance",
+                "Installation required on weekends only",
+            ],
+        ),
+    ] = None
+    installation_address: Annotated[
+        dict | None,
+        Field(
+            default=None,
+            description="Delivery location (flexible format)",
+            examples=[
+                {
+                    "street": "123 Main St",
+                    "city": "Springfield",
+                    "state": "IL",
+                    "zip": "62701",
+                    "country": "USA",
+                },
+                {
+                    "line1": "456 Oak Avenue",
+                    "line2": "Apt 3B",
+                    "city": "Portland",
+                    "postal_code": "97201",
+                },
+            ],
+        ),
+    ] = None
+
+    @field_validator("required_date")
+    @classmethod
+    def validate_required_date(cls, v: date | None, info) -> date | None:
+        """Validate that required_date is not before order_date."""
+        if v is not None and "order_date" in info.data:
+            order_date = info.data["order_date"]
+            if order_date is not None and v < order_date:
                 raise ValueError("required_date cannot be before order_date")
         return v
 
@@ -237,3 +319,30 @@ class Order(OrderBase):
     ]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class OrderWithItems(Order):
+    """Schema for order API response with items.
+
+    Includes all order fields plus the list of order items.
+
+    Attributes:
+        items: List of order items
+    """
+
+    items: Annotated[
+        list["OrderItem"],
+        Field(
+            default_factory=list,
+            description="List of order items",
+        ),
+    ]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Import OrderItem for forward reference
+from app.schemas.order_item import OrderItem  # noqa: E402
+
+# Update forward references
+OrderWithItems.model_rebuild()

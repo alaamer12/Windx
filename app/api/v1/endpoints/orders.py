@@ -7,7 +7,7 @@ Public Variables:
 
 Features:
     - List user's orders with pagination
-    - Get order with items
+    - Get order by ID with items
     - Create order from quote
     - Authorization checks (users see only their own)
     - OpenAPI documentation with examples
@@ -22,7 +22,7 @@ from app.api.types import CurrentUser, DBSession
 from app.core.pagination import Page, PaginationParams, create_pagination_params
 from app.models.order import Order
 from app.schemas.order import Order as OrderSchema
-from app.schemas.order import OrderCreate, OrderWithItems
+from app.schemas.order import OrderCreateRequest, OrderWithItems
 from app.schemas.responses import get_common_responses
 
 __all__ = ["router"]
@@ -43,6 +43,35 @@ router = APIRouter(
     responses={
         200: {
             "description": "Successfully retrieved orders",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "items": [
+                            {
+                                "id": 1,
+                                "quote_id": 501,
+                                "order_number": "O-2025-001",
+                                "order_date": "2025-01-25",
+                                "required_date": "2025-02-15",
+                                "status": "production",
+                                "special_instructions": "Call before delivery",
+                                "installation_address": {
+                                    "street": "123 Main St",
+                                    "city": "Springfield",
+                                    "state": "IL",
+                                    "zip": "62701",
+                                },
+                                "created_at": "2025-01-25T00:00:00Z",
+                                "updated_at": "2025-01-25T00:00:00Z",
+                            }
+                        ],
+                        "total": 3,
+                        "page": 1,
+                        "size": 50,
+                        "pages": 1,
+                    }
+                }
+            },
         },
         **get_common_responses(401, 500),
     },
@@ -53,12 +82,15 @@ async def list_orders(
     db: DBSession,
     status_filter: Annotated[
         str | None,
-        Query(alias="status", description="Filter by status (confirmed, production, shipped, installed)"),
+        Query(
+            alias="status",
+            description="Filter by status (confirmed, production, shipped, installed)",
+        ),
     ] = None,
 ) -> Page[Order]:
     """List user's orders with filtering.
 
-    Regular users see only their own orders.
+    Regular users see only their own orders (via quote ownership).
     Superusers can see all orders.
 
     Args:
@@ -74,22 +106,15 @@ async def list_orders(
         GET /api/v1/orders?status=production
     """
     from app.core.pagination import paginate
-    from app.repositories.order import OrderRepository
-    from app.repositories.quote import QuoteRepository
+    from app.services.order import OrderService
 
-    order_repo = OrderRepository(db)
-    quote_repo = QuoteRepository(db)
+    order_service = OrderService(db)
 
     # Build filtered query with authorization
-    if current_user.is_superuser:
-        query = order_repo.get_filtered(status=status_filter)
-    else:
-        # Get user's quotes to filter orders
-        user_quote_ids = await quote_repo.get_user_quote_ids(current_user.id)
-        query = order_repo.get_filtered_by_quotes(
-            quote_ids=user_quote_ids,
-            status=status_filter,
-        )
+    query = order_service.get_user_orders_query(
+        user=current_user,
+        status=status_filter,
+    )
 
     return await paginate(db, query, params)
 
@@ -98,12 +123,46 @@ async def list_orders(
     "/{order_id}",
     response_model=OrderWithItems,
     summary="Get Order",
-    description="Get an order with all its items",
-    response_description="Order with items",
+    description="Get a single order by ID with all items",
+    response_description="Order details with items",
     operation_id="getOrder",
     responses={
         200: {
             "description": "Successfully retrieved order",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "quote_id": 501,
+                        "order_number": "O-2025-001",
+                        "order_date": "2025-01-25",
+                        "required_date": "2025-02-15",
+                        "status": "production",
+                        "special_instructions": "Call before delivery",
+                        "installation_address": {
+                            "street": "123 Main St",
+                            "city": "Springfield",
+                            "state": "IL",
+                            "zip": "62701",
+                        },
+                        "created_at": "2025-01-25T00:00:00Z",
+                        "updated_at": "2025-01-25T00:00:00Z",
+                        "items": [
+                            {
+                                "id": 1,
+                                "order_id": 1,
+                                "configuration_id": 123,
+                                "quantity": 3,
+                                "unit_price": "525.00",
+                                "total_price": "1575.00",
+                                "production_status": "in_production",
+                                "created_at": "2025-01-25T00:00:00Z",
+                                "updated_at": "2025-01-25T00:00:00Z",
+                            }
+                        ],
+                    }
+                }
+            },
         },
         403: {
             "description": "Not authorized to access this order",
@@ -119,7 +178,7 @@ async def get_order(
     current_user: CurrentUser,
     db: DBSession,
 ) -> Order:
-    """Get order with items.
+    """Get order by ID with items.
 
     Users can only access their own orders unless they are superusers.
 
@@ -129,32 +188,16 @@ async def get_order(
         db (AsyncSession): Database session
 
     Returns:
-        Order: Order with items
+        Order: Order details with items
 
     Raises:
         NotFoundException: If order not found
         AuthorizationException: If user lacks permission
     """
-    from app.core.exceptions import AuthorizationException, NotFoundException
-    from app.repositories.order import OrderRepository
-    from app.repositories.quote import QuoteRepository
+    from app.services.order import OrderService
 
-    order_repo = OrderRepository(db)
-    quote_repo = QuoteRepository(db)
-
-    order = await order_repo.get_with_items(order_id)
-    if not order:
-        raise NotFoundException("Order not found")
-
-    # Authorization check
-    if not current_user.is_superuser:
-        quote = await quote_repo.get(order.quote_id)
-        if not quote or quote.customer_id != current_user.id:
-            raise AuthorizationException(
-                "You do not have permission to access this order"
-            )
-
-    return order
+    order_service = OrderService(db)
+    return await order_service.get_order_with_items_auth(order_id, current_user)
 
 
 @router.post(
@@ -162,12 +205,33 @@ async def get_order(
     response_model=OrderSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Create Order",
-    description="Create an order from a quote",
+    description="Create an order from an accepted quote",
     response_description="Created order",
     operation_id="createOrder",
     responses={
         201: {
             "description": "Order successfully created",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "quote_id": 501,
+                        "order_number": "O-20250127-001",
+                        "order_date": "2025-01-27",
+                        "required_date": "2025-02-15",
+                        "status": "confirmed",
+                        "special_instructions": "Call before delivery",
+                        "installation_address": {
+                            "street": "123 Main St",
+                            "city": "Springfield",
+                            "state": "IL",
+                            "zip": "62701",
+                        },
+                        "created_at": "2025-01-27T00:00:00Z",
+                        "updated_at": "2025-01-27T00:00:00Z",
+                    }
+                }
+            },
         },
         403: {
             "description": "Not authorized to create order for this quote",
@@ -175,20 +239,26 @@ async def get_order(
         404: {
             "description": "Quote not found",
         },
+        422: {
+            "description": "Quote not accepted or order already exists",
+        },
         **get_common_responses(401, 422, 500),
     },
 )
 async def create_order(
-    order_in: OrderCreate,
+    order_in: OrderCreateRequest,
     current_user: CurrentUser,
     db: DBSession,
 ) -> Order:
-    """Create an order from a quote.
+    """Create an order from an accepted quote.
+
+    Creates an order from a quote that has been accepted. The quote must be
+    in 'accepted' status and must not already have an order.
 
     Users can only create orders for their own quotes unless they are superusers.
 
     Args:
-        order_in (OrderCreate): Order creation data
+        order_in (OrderCreateRequest): Order creation data
         current_user (User): Current authenticated user
         db (AsyncSession): Database session
 
@@ -198,42 +268,17 @@ async def create_order(
     Raises:
         NotFoundException: If quote not found
         AuthorizationException: If user lacks permission
+        ValidationException: If quote is not accepted or order already exists
 
     Example:
         POST /api/v1/orders
         {
-            "quote_id": 1,
-            "required_date": "2024-02-15",
-            "special_instructions": "Call before delivery",
-            "installation_address": {
-                "street": "123 Main St",
-                "city": "Springfield",
-                "state": "IL",
-                "zip": "62701"
-            }
+            "quote_id": 501,
+            "required_date": "2025-02-15",
+            "special_instructions": "Call before delivery"
         }
     """
-    from app.core.exceptions import AuthorizationException, NotFoundException
-    from app.repositories.order import OrderRepository
-    from app.repositories.quote import QuoteRepository
+    from app.services.order import OrderService
 
-    order_repo = OrderRepository(db)
-    quote_repo = QuoteRepository(db)
-
-    # Get quote and check authorization
-    quote = await quote_repo.get(order_in.quote_id)
-    if not quote:
-        raise NotFoundException("Quote not found")
-
-    # Authorization check
-    if not current_user.is_superuser and quote.customer_id != current_user.id:
-        raise AuthorizationException(
-            "You do not have permission to create an order for this quote"
-        )
-
-    # Create order
-    order = await order_repo.create(order_in)
-    await db.commit()
-    await db.refresh(order)
-
-    return order
+    order_service = OrderService(db)
+    return await order_service.create_order_with_auth(order_in, current_user)

@@ -401,12 +401,7 @@ class QuoteService(BaseService):
         # 5. Link to quote for price protection
         pass
 
-
-    def get_user_quotes_query(
-        self,
-        user: Any,
-        status: str | None = None,
-    ):
+    def get_user_quotes_query(self, user, status: str | None = None):
         """Build query for user's quotes with authorization.
 
         Regular users see only their own quotes.
@@ -419,9 +414,9 @@ class QuoteService(BaseService):
         Returns:
             Select: SQLAlchemy select statement
         """
-        from sqlalchemy import Select, select
+        from sqlalchemy import select
 
-        query: Select = select(Quote)
+        query = select(Quote)
 
         # Authorization: regular users see only their own
         if not user.is_superuser:
@@ -436,9 +431,7 @@ class QuoteService(BaseService):
 
         return query
 
-    async def get_quote_with_auth(
-        self, quote_id: PositiveInt, user: Any
-    ) -> Quote:
+    async def get_quote_with_auth(self, quote_id: PositiveInt, user) -> Quote:
         """Get quote with authorization check.
 
         Users can only access their own quotes unless they are superusers.
@@ -471,13 +464,11 @@ class QuoteService(BaseService):
 
         return quote
 
-    async def generate_quote(
-        self, quote_in: QuoteCreate, user: Any
-    ) -> Quote:
+    async def create_quote_with_auth(self, quote_request, user) -> Quote:
         """Generate quote with authorization check.
 
         Args:
-            quote_in (QuoteCreate): Quote creation data
+            quote_request: Quote creation request data
             user: Current user
 
         Returns:
@@ -487,14 +478,16 @@ class QuoteService(BaseService):
             NotFoundException: If configuration not found
             AuthorizationException: If user lacks permission
         """
+        from datetime import timedelta
+
         from app.core.exceptions import AuthorizationException
 
         # Get configuration and check authorization
-        config = await self.config_repo.get(quote_in.configuration_id)
+        config = await self.config_repo.get(quote_request.configuration_id)
         if not config:
             raise NotFoundException(
                 resource="Configuration",
-                details={"configuration_id": quote_in.configuration_id},
+                details={"configuration_id": quote_request.configuration_id},
             )
 
         # Authorization check
@@ -503,5 +496,40 @@ class QuoteService(BaseService):
                 "You do not have permission to create a quote for this configuration"
             )
 
-        # Generate quote with snapshot
-        return await self.create_quote(quote_in)
+        # Calculate quote totals
+        totals = self.calculate_quote_totals(
+            subtotal=config.total_price,
+            tax_rate=quote_request.tax_rate,
+            discount_amount=quote_request.discount_amount,
+        )
+
+        # Generate unique quote number
+        quote_number = await self._generate_quote_number()
+
+        # Set valid_until if not provided (default 30 days)
+        valid_until = quote_request.valid_until
+        if valid_until is None:
+            valid_until = date.today() + timedelta(days=30)
+
+        # Create quote with calculated values
+        quote_data = QuoteCreate(
+            configuration_id=quote_request.configuration_id,
+            customer_id=quote_request.customer_id or user.id,
+            quote_number=quote_number,
+            subtotal=totals["subtotal"],
+            tax_rate=quote_request.tax_rate,
+            tax_amount=totals["tax_amount"],
+            discount_amount=quote_request.discount_amount,
+            total_amount=totals["total_amount"],
+            technical_requirements=quote_request.technical_requirements,
+            valid_until=valid_until,
+        )
+
+        quote = await self.quote_repo.create(quote_data)
+        await self.commit()
+        await self.refresh(quote)
+
+        # TODO: Create configuration snapshot for price protection
+        # await self.create_configuration_snapshot(quote.id, config)
+
+        return quote

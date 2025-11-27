@@ -22,7 +22,7 @@ from app.api.types import CurrentUser, DBSession
 from app.core.pagination import Page, PaginationParams, create_pagination_params
 from app.models.quote import Quote
 from app.schemas.quote import Quote as QuoteSchema
-from app.schemas.quote import QuoteCreate
+from app.schemas.quote import QuoteCreateRequest
 from app.schemas.responses import get_common_responses
 
 __all__ = ["router"]
@@ -166,12 +166,32 @@ async def get_quote(
     response_model=QuoteSchema,
     status_code=status.HTTP_201_CREATED,
     summary="Generate Quote",
-    description="Generate a quote from a configuration",
+    description="Generate a quote from a configuration with automatic price calculation",
     response_description="Created quote with snapshot",
     operation_id="createQuote",
     responses={
         201: {
             "description": "Quote successfully created",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "configuration_id": 123,
+                        "customer_id": 42,
+                        "quote_number": "Q-20250127-001",
+                        "subtotal": "525.00",
+                        "tax_rate": "8.50",
+                        "tax_amount": "44.63",
+                        "discount_amount": "0.00",
+                        "total_amount": "569.63",
+                        "technical_requirements": None,
+                        "valid_until": "2025-02-26",
+                        "status": "draft",
+                        "created_at": "2025-01-27T00:00:00Z",
+                        "updated_at": "2025-01-27T00:00:00Z",
+                    }
+                }
+            },
         },
         403: {
             "description": "Not authorized to create quote for this configuration",
@@ -183,38 +203,40 @@ async def get_quote(
     },
 )
 async def create_quote(
-    quote_in: QuoteCreate,
+    quote_in: QuoteCreateRequest,
     current_user: CurrentUser,
     db: DBSession,
 ) -> Quote:
     """Generate a quote from a configuration.
 
-    Creates a quote with a configuration snapshot to preserve pricing.
+    Creates a quote with automatic price calculation and configuration snapshot
+    to preserve pricing. The subtotal is taken from the configuration's total_price,
+    and tax/discount are applied to calculate the final total.
+
     Users can only create quotes for their own configurations unless they are superusers.
 
     Args:
-        quote_in (QuoteCreate): Quote creation data
+        quote_in (QuoteCreateRequest): Quote creation data
         current_user (User): Current authenticated user
         db (AsyncSession): Database session
 
     Returns:
-        Quote: Created quote with snapshot
+        Quote: Created quote with calculated pricing
 
     Raises:
         NotFoundException: If configuration not found
         AuthorizationException: If user lacks permission
+        ValidationException: If tax rate or discount amount is invalid
 
     Example:
         POST /api/v1/quotes
         {
             "configuration_id": 123,
-            "customer_id": 42,
             "tax_rate": "8.50",
-            "discount_amount": "0.00",
-            "valid_until": "2024-02-15"
+            "discount_amount": "0.00"
         }
     """
     from app.services.quote import QuoteService
 
     quote_service = QuoteService(db)
-    return await quote_service.generate_quote(quote_in, current_user)
+    return await quote_service.create_quote_with_auth(quote_in, current_user)

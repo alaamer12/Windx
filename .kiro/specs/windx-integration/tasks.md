@@ -266,7 +266,11 @@ check file #database/test_ltree_type.py
 
 
 
-- [ ] 4.2 Create Configuration endpoints
+- [x] 4.2 Create Configuration endpoints
+
+
+
+
   - Create `app/api/v1/endpoints/configurations.py`
   - Implement GET /configurations (list user's configurations with pagination)
   - Implement GET /configurations/{id} (get with selections)
@@ -280,7 +284,11 @@ check file #database/test_ltree_type.py
 
   - _Requirements: 6.3, 6.5, 6.6, 11.1_
 
-- [ ] 4.3 Create Quote endpoints
+
+- [x] 4.3 Create Quote endpoints
+
+
+
   - Create `app/api/v1/endpoints/quotes.py`
   - Implement GET /quotes (list user's quotes with pagination)
   - Implement GET /quotes/{id} (get single quote)
@@ -289,9 +297,14 @@ check file #database/test_ltree_type.py
 
   - Add authorization checks (users see only their own)
   - Add router to `app/api/v1/router.py`
+
   - _Requirements: 6.4, 6.5, 6.6, 11.5_
 
-- [ ] 4.4 Create Template endpoints
+
+
+- [x] 4.4 Create Template endpoints
+
+
   - Create `app/api/v1/endpoints/templates.py`
   - Implement GET /templates (list public templates with pagination)
   - Implement GET /templates/{id} (get template with selections)
@@ -318,7 +331,12 @@ check file #database/test_ltree_type.py
 
 
 
-- [ ] 4.6 Create Order endpoints
+
+
+- [x] 4.6 Create Order endpoints
+
+
+
   - Create `app/api/v1/endpoints/orders.py`
   - Implement GET /orders (list user's orders with pagination)
   - Implement GET /orders/{id} (get order with items)
@@ -333,7 +351,7 @@ check file #database/test_ltree_type.py
 
 ## Phase 5: Database Triggers and Functions
 
-- [ ] 5. Create LTREE path maintenance trigger
+- [x] 5. Create LTREE path maintenance trigger
 
   - Create PostgreSQL function to update ltree_path when parent_node_id changes
   - Create trigger on attribute_nodes table for INSERT and UPDATE
@@ -341,13 +359,13 @@ check file #database/test_ltree_type.py
   - Add SQL script in `app/database/sql/` directory
   - _Requirements: 2.2, 8.4_
 
-- [ ] 5.1 Create depth calculation trigger
+- [x] 5.1 Create depth calculation trigger
   - Create PostgreSQL function to calculate depth from ltree_path
   - Create trigger on attribute_nodes table for INSERT and UPDATE
   - Add SQL script in `app/database/sql/` directory
   - _Requirements: 8.4_
 
-- [ ] 5.2 Create price history trigger
+- [x] 5.2 Create price history trigger
   - Create PostgreSQL function to log price changes
   - Create trigger on configurations table for UPDATE
   - Add SQL script in `app/database/sql/` directory

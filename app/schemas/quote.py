@@ -27,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
 __all__ = [
     "QuoteBase",
     "QuoteCreate",
+    "QuoteCreateRequest",
     "QuoteUpdate",
     "Quote",
 ]
@@ -117,8 +118,86 @@ class QuoteBase(BaseModel):
         return v
 
 
+class QuoteCreateRequest(BaseModel):
+    """Schema for creating a new quote via API.
+
+    This schema is used for API requests where calculated fields
+    are not required from the user.
+
+    Attributes:
+        configuration_id: Configuration ID
+        customer_id: Optional customer ID
+        tax_rate: Tax rate percentage
+        discount_amount: Discount amount to apply
+        technical_requirements: Customer-specific needs
+        valid_until: Quote expiration date
+    """
+
+    configuration_id: Annotated[
+        PositiveInt,
+        Field(
+            description="Configuration ID",
+            examples=[123, 456],
+        ),
+    ]
+    customer_id: Annotated[
+        PositiveInt | None,
+        Field(
+            default=None,
+            description="Customer ID (optional, defaults to current user)",
+            examples=[42, 123],
+        ),
+    ] = None
+    tax_rate: Annotated[
+        Decimal,
+        Field(
+            ge=0,
+            le=100,
+            decimal_places=2,
+            description="Applicable tax rate percentage",
+            examples=[8.50, 10.00, 0.00],
+        ),
+    ] = Decimal("0.00")
+    discount_amount: Annotated[
+        Decimal,
+        Field(
+            ge=0,
+            decimal_places=2,
+            description="Applied discounts",
+            examples=[0.00, 25.00, 50.00],
+        ),
+    ] = Decimal("0.00")
+    technical_requirements: Annotated[
+        dict | None,
+        Field(
+            default=None,
+            description="Customer-specific technical needs",
+            examples=[{"installation": "professional", "delivery": "white_glove"}],
+        ),
+    ] = None
+    valid_until: Annotated[
+        date | None,
+        Field(
+            default=None,
+            description="Quote expiration date (optional, defaults to 30 days from now)",
+            examples=["2025-02-24", "2025-03-15"],
+        ),
+    ] = None
+
+    @field_validator("valid_until")
+    @classmethod
+    def validate_valid_until(cls, v: date | None) -> date | None:
+        """Validate that valid_until is not in the past."""
+        if v is not None and v < date.today():
+            raise ValueError("valid_until cannot be in the past")
+        return v
+
+
 class QuoteCreate(QuoteBase):
-    """Schema for creating a new quote.
+    """Schema for creating a new quote (internal use).
+
+    This schema is used internally by the service layer where
+    all calculated fields are provided.
 
     Attributes:
         configuration_id: Configuration ID

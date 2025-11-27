@@ -129,13 +129,57 @@ class ConfigurationRepository(
                     print(f"{selection.attribute_node.name}: {selection.string_value}")
             ```
         """
+        from app.models.configuration_selection import ConfigurationSelection
+
         result = await self.db.execute(
             select(Configuration)
             .where(Configuration.id == config_id)
             .options(
                 selectinload(Configuration.selections).selectinload(
-                    Configuration.selections.property.mapper.class_.attribute_node
+                    ConfigurationSelection.attribute_node
                 )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_with_full_details(self, config_id: int) -> Configuration | None:
+        """Get configuration with all related data eager-loaded.
+
+        Loads the configuration along with:
+        - Manufacturing type
+        - Customer
+        - All selections with their attribute nodes
+        - All quotes
+
+        Args:
+            config_id (int): Configuration ID
+
+        Returns:
+            Configuration | None: Configuration with full details or None if not found
+
+        Example:
+            ```python
+            # Get configuration with all related data
+            config = await repo.get_with_full_details(42)
+            if config:
+                print(f"Type: {config.manufacturing_type.name}")
+                print(f"Customer: {config.customer.email}")
+                print(f"Selections: {len(config.selections)}")
+                print(f"Quotes: {len(config.quotes)}")
+            ```
+        """
+        from app.models.configuration_selection import ConfigurationSelection
+
+        result = await self.db.execute(
+            select(Configuration)
+            .where(Configuration.id == config_id)
+            .options(
+                selectinload(Configuration.manufacturing_type),
+                selectinload(Configuration.customer),
+                selectinload(Configuration.selections).selectinload(
+                    ConfigurationSelection.attribute_node
+                ),
+                selectinload(Configuration.quotes),
             )
         )
         return result.scalar_one_or_none()

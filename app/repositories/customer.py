@@ -109,3 +109,66 @@ class CustomerRepository(BaseRepository[Customer, CustomerCreate, CustomerUpdate
         query = query.order_by(Customer.company_name)
 
         return query
+
+    async def get_with_configurations(self, customer_id: int) -> Customer | None:
+        """Get customer with configurations eager-loaded.
+
+        Loads the customer along with all their configurations
+        in a single query to prevent N+1 query problems.
+
+        Args:
+            customer_id (int): Customer ID
+
+        Returns:
+            Customer | None: Customer with configurations or None if not found
+
+        Example:
+            ```python
+            # Get customer with all configurations loaded
+            customer = await repo.get_with_configurations(42)
+            if customer:
+                print(f"Configurations: {len(customer.configurations)}")
+            ```
+        """
+        from sqlalchemy.orm import selectinload
+
+        result = await self.db.execute(
+            select(Customer)
+            .where(Customer.id == customer_id)
+            .options(selectinload(Customer.configurations))
+        )
+        return result.scalar_one_or_none()
+
+    async def get_with_full_details(self, customer_id: int) -> Customer | None:
+        """Get customer with all related data eager-loaded.
+
+        Loads the customer along with:
+        - All configurations
+        - All quotes
+
+        Args:
+            customer_id (int): Customer ID
+
+        Returns:
+            Customer | None: Customer with full details or None if not found
+
+        Example:
+            ```python
+            # Get customer with all related data
+            customer = await repo.get_with_full_details(42)
+            if customer:
+                print(f"Configurations: {len(customer.configurations)}")
+                print(f"Quotes: {len(customer.quotes)}")
+            ```
+        """
+        from sqlalchemy.orm import selectinload
+
+        result = await self.db.execute(
+            select(Customer)
+            .where(Customer.id == customer_id)
+            .options(
+                selectinload(Customer.configurations),
+                selectinload(Customer.quotes),
+            )
+        )
+        return result.scalar_one_or_none()

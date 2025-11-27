@@ -391,7 +391,7 @@ check file #database/test_ltree_type.py
 
 
 
-- [ ] 7. Add Windx configuration settings
+- [x] 7. Add Windx configuration settings
   - Add WindxSettings class to `app/core/config.py`
   - Add environment variables for formula evaluation safety
   - Add snapshot retention policy settings
@@ -401,7 +401,7 @@ check file #database/test_ltree_type.py
   - Update Settings class to include WindxSettings
   - _Requirements: 9.1, 9.3, 9.4, 9.5_
 
-- [ ] 7.1 Update environment files
+- [x] 7.1 Update environment files
   - Add Windx settings to `.env.example`
   - Add Windx settings to `.env.example.production`
   - Document all new environment variables
@@ -409,20 +409,29 @@ check file #database/test_ltree_type.py
 
 ## Phase 8: Performance Optimization
 
-- [ ] 8. Add essential indexes
+- [x] 8. Add essential indexes
+
+
+
+
+
   - Review all foreign key columns and add indexes in model definitions
   - Add indexes on frequently filtered columns (status, is_active, customer_id)
   - Add indexes on frequently sorted columns (created_at, sort_order)
   - Define indexes in SQLAlchemy models using index=True or Index()
   - _Requirements: 10.1, 10.2_
 
-- [ ] 8.1 Implement eager loading for relationships
+- [x] 8.1 Implement eager loading for relationships
+
+
   - Update repository methods to use joinedload() for common relationships
   - Add get_with_selections() methods with eager loading
   - Add get_with_items() methods with eager loading
   - _Requirements: 10.4_
 
-- [ ] 8.2 Add pagination to list endpoints
+- [x] 8.2 Add pagination to list endpoints
+
+
   - Apply pagination to all list endpoints using fastapi-pagination
   - Set reasonable default and maximum page sizes
   - Update response models to use Page[T]

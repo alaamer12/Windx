@@ -105,13 +105,49 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
                     print(f"{item.configuration.name}: {item.quantity}x @ ${item.unit_price}")
             ```
         """
+        from app.models.order_item import OrderItem
+
         result = await self.db.execute(
             select(Order)
             .where(Order.id == order_id)
             .options(
-                selectinload(Order.items).selectinload(
-                    Order.items.property.mapper.class_.configuration
-                )
+                selectinload(Order.items).selectinload(OrderItem.configuration)
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_with_full_details(self, order_id: int) -> Order | None:
+        """Get order with all related data eager-loaded.
+
+        Loads the order along with:
+        - Quote (with configuration and customer)
+        - All items with their configurations
+        
+        Args:
+            order_id (int): Order ID
+
+        Returns:
+            Order | None: Order with full details or None if not found
+
+        Example:
+            ```python
+            # Get order with all related data
+            order = await repo.get_with_full_details(42)
+            if order:
+                print(f"Quote: {order.quote.quote_number}")
+                print(f"Customer: {order.quote.customer.email}")
+                print(f"Items: {len(order.items)}")
+            ```
+        """
+        from app.models.order_item import OrderItem
+
+        result = await self.db.execute(
+            select(Order)
+            .where(Order.id == order_id)
+            .options(
+                selectinload(Order.quote).selectinload(Quote.configuration),
+                selectinload(Order.quote).selectinload(Quote.customer),
+                selectinload(Order.items).selectinload(OrderItem.configuration),
             )
         )
         return result.scalar_one_or_none()

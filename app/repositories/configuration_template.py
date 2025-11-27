@@ -164,20 +164,81 @@ class ConfigurationTemplateRepository(
 
         return query
 
-    async def get_with_selections(self, template_id: int) -> ConfigurationTemplate | None:
+    async def get_with_selections(
+        self, template_id: int
+    ) -> ConfigurationTemplate | None:
         """Get template with selections loaded.
+
+        Loads the template along with all its selections and their
+        attribute nodes in a single query to prevent N+1 problems.
 
         Args:
             template_id (int): Template ID
 
         Returns:
             ConfigurationTemplate | None: Template with selections or None
+
+        Example:
+            ```python
+            # Get template with all selections loaded
+            template = await repo.get_with_selections(42)
+            if template:
+                for selection in template.selections:
+                    print(f"{selection.attribute_node.name}: {selection.string_value}")
+            ```
         """
         from sqlalchemy.orm import selectinload
+        from app.models.template_selection import TemplateSelection
 
         result = await self.db.execute(
             select(ConfigurationTemplate)
             .where(ConfigurationTemplate.id == template_id)
-            .options(selectinload(ConfigurationTemplate.selections))
+            .options(
+                selectinload(ConfigurationTemplate.selections).selectinload(
+                    TemplateSelection.attribute_node
+                )
+            )
+        )
+        return result.scalar_one_or_none()
+
+    async def get_with_full_details(
+        self, template_id: int
+    ) -> ConfigurationTemplate | None:
+        """Get template with all related data eager-loaded.
+
+        Loads the template along with:
+        - Manufacturing type
+        - Creator user
+        - All selections with their attribute nodes
+
+        Args:
+            template_id (int): Template ID
+
+        Returns:
+            ConfigurationTemplate | None: Template with full details or None
+
+        Example:
+            ```python
+            # Get template with all related data
+            template = await repo.get_with_full_details(42)
+            if template:
+                print(f"Type: {template.manufacturing_type.name}")
+                print(f"Creator: {template.creator.email}")
+                print(f"Selections: {len(template.selections)}")
+            ```
+        """
+        from sqlalchemy.orm import selectinload
+        from app.models.template_selection import TemplateSelection
+
+        result = await self.db.execute(
+            select(ConfigurationTemplate)
+            .where(ConfigurationTemplate.id == template_id)
+            .options(
+                selectinload(ConfigurationTemplate.manufacturing_type),
+                selectinload(ConfigurationTemplate.creator),
+                selectinload(ConfigurationTemplate.selections).selectinload(
+                    TemplateSelection.attribute_node
+                ),
+            )
         )
         return result.scalar_one_or_none()

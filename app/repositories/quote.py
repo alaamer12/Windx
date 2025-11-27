@@ -125,3 +125,43 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
             select(Quote.id).where(Quote.customer_id == customer_id)
         )
         return list(result.scalars().all())
+
+    async def get_with_details(self, quote_id: int) -> Quote | None:
+        """Get quote with eager-loaded related data.
+
+        Loads the quote along with:
+        - Configuration (with selections and attribute nodes)
+        - Customer
+        - Orders
+
+        Args:
+            quote_id (int): Quote ID
+
+        Returns:
+            Quote | None: Quote with details or None if not found
+
+        Example:
+            ```python
+            # Get quote with all related data
+            quote = await repo.get_with_details(42)
+            if quote:
+                print(f"Config: {quote.configuration.name}")
+                print(f"Customer: {quote.customer.email}")
+                print(f"Orders: {len(quote.orders)}")
+            ```
+        """
+        from sqlalchemy.orm import selectinload
+        from app.models.configuration_selection import ConfigurationSelection
+
+        result = await self.db.execute(
+            select(Quote)
+            .where(Quote.id == quote_id)
+            .options(
+                selectinload(Quote.configuration).selectinload(
+                    Configuration.selections
+                ).selectinload(ConfigurationSelection.attribute_node),
+                selectinload(Quote.customer),
+                selectinload(Quote.orders),
+            )
+        )
+        return result.scalar_one_or_none()

@@ -277,3 +277,67 @@ class AttributeNodeRepository(
                 parent.children.append(node_tree)
 
         return root_nodes
+
+    async def get_with_children(self, node_id: int) -> AttributeNode | None:
+        """Get attribute node with immediate children eager-loaded.
+
+        Loads the node along with its direct children in a single query
+        to prevent N+1 query problems.
+
+        Args:
+            node_id (int): Attribute node ID
+
+        Returns:
+            AttributeNode | None: Node with children or None if not found
+
+        Example:
+            ```python
+            # Get node with children loaded
+            node = await repo.get_with_children(42)
+            if node:
+                for child in node.children:
+                    print(f"Child: {child.name}")
+            ```
+        """
+        from sqlalchemy.orm import selectinload
+
+        result = await self.db.execute(
+            select(AttributeNode)
+            .where(AttributeNode.id == node_id)
+            .options(selectinload(AttributeNode.children))
+        )
+        return result.scalar_one_or_none()
+
+    async def get_with_full_tree(self, node_id: int) -> AttributeNode | None:
+        """Get attribute node with full subtree eager-loaded.
+
+        Loads the node along with all descendants (children, grandchildren, etc.)
+        in optimized queries to prevent N+1 problems.
+
+        Args:
+            node_id (int): Attribute node ID
+
+        Returns:
+            AttributeNode | None: Node with full subtree or None if not found
+
+        Example:
+            ```python
+            # Get node with entire subtree loaded
+            node = await repo.get_with_full_tree(42)
+            if node:
+                descendants = await repo.get_descendants(node.id)
+                print(f"Total descendants: {len(descendants)}")
+            ```
+        """
+        from sqlalchemy.orm import selectinload
+
+        result = await self.db.execute(
+            select(AttributeNode)
+            .where(AttributeNode.id == node_id)
+            .options(
+                selectinload(AttributeNode.children).selectinload(
+                    AttributeNode.children
+                )
+            )
+        )
+        return result.scalar_one_or_none()

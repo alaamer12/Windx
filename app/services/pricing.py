@@ -22,8 +22,6 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidFormulaException, ValidationException
-from app.models.attribute_node import AttributeNode
-from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
 from app.repositories.attribute_node import AttributeNodeRepository
 from app.repositories.configuration import ConfigurationRepository
@@ -372,18 +370,18 @@ class PricingService(BaseService):
                 )
             left = self._eval_node(node.left, context)
             right = self._eval_node(node.right, context)
-            
+
             # Special handling for division to provide better error messages
             if isinstance(node.op, ast.Div):
                 if right == 0:
                     raise ZeroDivisionError("Division by zero")
-            
+
             result = SAFE_OPERATORS[type(node.op)](left, right)
-            
+
             # Check for overflow or invalid results
             if not isinstance(result, (int, float)) or not (-1e10 < result < 1e10):
                 raise ValueError(f"Operation result out of range: {result}")
-            
+
             return result
 
         elif isinstance(node, ast.UnaryOp):
@@ -395,10 +393,10 @@ class PricingService(BaseService):
                 )
             operand = self._eval_node(node.operand, context)
             result = SAFE_OPERATORS[type(node.op)](operand)
-            
+
             if not isinstance(result, (int, float)) or not (-1e10 < result < 1e10):
                 raise ValueError(f"Operation result out of range: {result}")
-            
+
             return result
 
         else:

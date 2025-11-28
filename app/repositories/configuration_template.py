@@ -188,6 +188,7 @@ class ConfigurationTemplateRepository(
             ```
         """
         from sqlalchemy.orm import selectinload
+
         from app.models.template_selection import TemplateSelection
 
         result = await self.db.execute(
@@ -228,6 +229,7 @@ class ConfigurationTemplateRepository(
             ```
         """
         from sqlalchemy.orm import selectinload
+
         from app.models.template_selection import TemplateSelection
 
         result = await self.db.execute(

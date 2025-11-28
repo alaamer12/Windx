@@ -17,7 +17,6 @@ Features:
 from typing import Generic
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.base import (
     BaseRepository,

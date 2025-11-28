@@ -7,31 +7,31 @@ Usage:
 
 import asyncio
 import sys
-from pathlib import Path
+
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.security import get_password_hash
 from app.database.connection import get_engine
 from app.models.user import User
-from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 async def create_superuser():
     """Create a new superuser account."""
     print("=== Create Superuser ===\n")
-    
+
     email = input("Email: ").strip()
     username = input("Username: ").strip()
     full_name = input("Full name (optional): ").strip()
     password = input("Password: ").strip()
-    
+
     if not all([email, username, password]):
         print("\n❌ Error: Email, username, and password are required!")
         sys.exit(1)
-    
+
     engine = get_engine()
     session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    
+
     async with session_maker() as session:
         try:
             # Check if user exists
@@ -39,9 +39,9 @@ async def create_superuser():
                 select(User).where((User.email == email) | (User.username == username))
             )
             if result.scalar_one_or_none():
-                print(f"\n❌ Error: User already exists!")
+                print("\n❌ Error: User already exists!")
                 sys.exit(1)
-            
+
             # Create superuser
             superuser = User(
                 email=email,
@@ -51,29 +51,29 @@ async def create_superuser():
                 is_active=True,
                 is_superuser=True,
             )
-            
+
             session.add(superuser)
             await session.commit()
             await session.refresh(superuser)
-            
-            print(f"\n✅ Superuser created!")
+
+            print("\n✅ Superuser created!")
             print(f"   Email: {superuser.email}")
             print(f"   Username: {superuser.username}")
-            
+
         except Exception as e:
             await session.rollback()
             print(f"\n❌ Error: {e}")
             sys.exit(1)
         finally:
             await session.close()
-    
+
     await engine.dispose()
 
 
 async def promote_user(username: str):
     """Promote an existing user to superuser."""
     engine = get_engine()
-    
+
     async with engine.begin() as conn:
         # First check if user exists and their current status
         check_result = await conn.execute(
@@ -81,17 +81,17 @@ async def promote_user(username: str):
             {"username": username}
         )
         existing_user = check_result.fetchone()
-        
+
         if not existing_user:
             print(f"❌ User '{username}' not found!")
             sys.exit(1)
-        
+
         if existing_user.is_superuser:
             print(f"⚠️  User '{username}' is already a superuser!")
             print(f"   ID: {existing_user.id}")
             print(f"   Email: {existing_user.email}")
             return
-        
+
         # Promote to superuser
         result = await conn.execute(
             text(
@@ -102,11 +102,11 @@ async def promote_user(username: str):
             {"username": username}
         )
         user = result.fetchone()
-        
+
         print(f"✅ User '{username}' promoted to superuser!")
         print(f"   ID: {user.id}")
         print(f"   Email: {user.email}")
-    
+
     await engine.dispose()
 
 
@@ -130,9 +130,9 @@ def main():
     if len(sys.argv) < 2:
         print_help()
         sys.exit(1)
-    
+
     command = sys.argv[1]
-    
+
     if command == "createsuperuser":
         asyncio.run(create_superuser())
     elif command == "promote":

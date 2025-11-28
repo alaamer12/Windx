@@ -21,7 +21,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import PositiveInt
 
-from app.api.types import CurrentSuperuser, CurrentUser, DBSession
+from app.api.types import CurrentUser, DBSession
 from app.core.pagination import Page, PaginationParams, create_pagination_params
 from app.models.configuration import Configuration
 from app.schemas.configuration import (

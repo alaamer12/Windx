@@ -520,7 +520,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             )
             return response
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             # Get request ID if available for error tracking
             request_id = getattr(request.state, "request_id", "unknown")
 

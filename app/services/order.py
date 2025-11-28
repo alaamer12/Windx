@@ -15,7 +15,6 @@ Features:
 """
 
 from datetime import date, datetime
-from decimal import Decimal
 
 from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession

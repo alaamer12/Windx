@@ -22,11 +22,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import ConflictException, NotFoundException, ValidationException
-from app.models.attribute_node import AttributeNode
+from app.core.exceptions import NotFoundException, ValidationException
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
-from app.models.manufacturing_type import ManufacturingType
 from app.repositories.attribute_node import AttributeNodeRepository
 from app.repositories.configuration import ConfigurationRepository
 from app.repositories.configuration_selection import ConfigurationSelectionRepository
@@ -34,7 +32,6 @@ from app.repositories.manufacturing_type import ManufacturingTypeRepository
 from app.schemas.configuration import ConfigurationCreate, ConfigurationUpdate
 from app.schemas.configuration_selection import (
     ConfigurationSelectionCreate,
-    ConfigurationSelectionUpdate,
     ConfigurationSelectionValue,
 )
 from app.services.base import BaseService

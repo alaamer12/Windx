@@ -1,7 +1,8 @@
 """Unit tests for AttributeNode model."""
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.attribute_node import AttributeNode

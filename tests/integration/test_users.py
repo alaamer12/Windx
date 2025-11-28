@@ -302,9 +302,11 @@ class TestUpdateUserEndpoint:
         assert logout_response.status_code == 204
 
         # Clean up any remaining sessions to avoid conflicts
-        from app.models.session import Session
         from sqlalchemy import delete
-        
+
+        from app.models.session import Session
+
+        # noinspection PyTypeChecker
         await db_session.execute(
             delete(Session).where(Session.user_id == test_user.id)
         )

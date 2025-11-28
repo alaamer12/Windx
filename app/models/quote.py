@@ -21,13 +21,12 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    TIMESTAMP,
     Date,
     ForeignKey,
     Index,
     Numeric,
     String,
-    Text,
-    TIMESTAMP,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB

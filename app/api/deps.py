@@ -52,7 +52,7 @@ async def get_current_user(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     token = credentials.credentials
     user_id = decode_access_token(token)
 
@@ -67,7 +67,7 @@ async def get_current_user(
     from app.repositories.session import SessionRepository
     session_repo = SessionRepository(db)
     session = await session_repo.get_by_token(token)
-    
+
     if session is None or not session.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

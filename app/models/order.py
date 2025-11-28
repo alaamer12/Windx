@@ -20,12 +20,12 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    TIMESTAMP,
     Date,
     ForeignKey,
     Index,
     String,
     Text,
-    TIMESTAMP,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB

@@ -1,14 +1,15 @@
 """Unit tests for AttributeNode schemas."""
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from pydantic import ValidationError
 
 from app.schemas.attribute_node import (
     AttributeNode,
     AttributeNodeCreate,
-    AttributeNodeUpdate,
     AttributeNodeTree,
+    AttributeNodeUpdate,
     DisplayCondition,
     ValidationRule,
 )

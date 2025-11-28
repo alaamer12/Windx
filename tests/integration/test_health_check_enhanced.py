@@ -14,9 +14,10 @@ Features:
     - Service availability testing
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, patch
 
 pytestmark = pytest.mark.asyncio
 

@@ -17,7 +17,7 @@ Features:
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base

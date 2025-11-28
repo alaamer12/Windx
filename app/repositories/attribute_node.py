@@ -231,7 +231,7 @@ class AttributeNodeRepository(
         """
         # Create a mapping of node_id to node with children list
         node_map: dict[int, AttributeNodeTree] = {}
-        
+
         for node in nodes:
             node_tree = AttributeNodeTree(
                 id=node.id,
@@ -264,10 +264,10 @@ class AttributeNodeRepository(
 
         # Build tree by linking children to parents
         root_nodes: list[AttributeNodeTree] = []
-        
+
         for node in nodes:
             node_tree = node_map[node.id]
-            
+
             if node.parent_node_id is None:
                 # Root node
                 root_nodes.append(node_tree)

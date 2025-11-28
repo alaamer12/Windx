@@ -140,14 +140,14 @@ async def enable_ltree_extension() -> bool:
         async with engine.begin() as conn:
             # Enable LTREE extension
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
-            
+
             # Verify extension is installed
             result = await conn.execute(
                 text("SELECT 1 FROM pg_extension WHERE extname = 'ltree'")
             )
             if not result.scalar():
                 raise Exception("LTREE extension failed to install")
-            
+
             print("[OK] LTREE extension enabled")
             return True
     except Exception as e:
@@ -171,12 +171,12 @@ async def execute_sql_file(file_path: str | Path) -> None:
         ```
     """
     file_path = Path(file_path)
-    
+
     if not file_path.exists():
         raise FileNotFoundError(f"SQL file not found: {file_path}")
-    
+
     sql_content = file_path.read_text()
-    
+
     engine = get_engine()
     async with engine.begin() as conn:
         # Split by semicolon and execute each statement
@@ -184,5 +184,5 @@ async def execute_sql_file(file_path: str | Path) -> None:
         for statement in statements:
             if statement:
                 await conn.execute(text(statement))
-    
+
     print(f"[OK] Executed SQL file: {file_path}")

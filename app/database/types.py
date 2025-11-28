@@ -64,7 +64,6 @@ Usage with queries:
 from typing import Any
 
 from sqlalchemy import Text
-from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import expression
 from sqlalchemy.types import TypeDecorator, UserDefinedType
@@ -90,9 +89,9 @@ class LTREE(UserDefinedType):
     Attributes:
         cache_ok: Enables SQLAlchemy caching for this type
     """
-    
+
     cache_ok = True
-    
+
     def get_col_spec(self, **kw: Any) -> str:
         """Return the column specification for DDL.
         
@@ -100,7 +99,7 @@ class LTREE(UserDefinedType):
             str: The PostgreSQL type name 'LTREE'
         """
         return "LTREE"
-    
+
     def bind_processor(self, dialect: Any) -> Any:
         """Process values before sending to database.
         
@@ -124,7 +123,7 @@ class LTREE(UserDefinedType):
                 return str(value)
             return None
         return process
-    
+
     def result_processor(self, dialect: Any, coltype: Any) -> Any:
         """Process values received from database.
         
@@ -148,7 +147,7 @@ class LTREE(UserDefinedType):
                 return str(value)
             return None
         return process
-    
+
     class comparator_factory(UserDefinedType.Comparator):
         """Custom comparator for LTREE operators.
         
@@ -157,7 +156,7 @@ class LTREE(UserDefinedType):
         - descendant_of: Check if path is descendant of another
         - lquery: Pattern matching with lquery syntax
         """
-        
+
         def ancestor_of(self, other: Any) -> Any:
             """Check if this path is an ancestor of another path.
             
@@ -179,7 +178,7 @@ class LTREE(UserDefinedType):
                 ```
             """
             return self.op("@>")(other)
-        
+
         def descendant_of(self, other: Any) -> Any:
             """Check if this path is a descendant of another path.
             
@@ -201,7 +200,7 @@ class LTREE(UserDefinedType):
                 ```
             """
             return self.op("<@")(other)
-        
+
         def lquery(self, pattern: str) -> Any:
             """Match path against lquery pattern.
             
@@ -250,10 +249,10 @@ class LtreeType(TypeDecorator):
             path: Mapped[str] = mapped_column(LtreeType, nullable=False)
         ```
     """
-    
+
     impl = Text
     cache_ok = True
-    
+
     def load_dialect_impl(self, dialect: Any) -> Any:
         """Load the appropriate type for the dialect.
         
@@ -267,7 +266,7 @@ class LtreeType(TypeDecorator):
             return dialect.type_descriptor(LTREE())
         else:
             return dialect.type_descriptor(Text())
-    
+
     def process_bind_param(self, value: str | None, dialect: Any) -> str | None:
         """Process value before binding to database.
         
@@ -281,7 +280,7 @@ class LtreeType(TypeDecorator):
         if value is not None:
             return str(value)
         return None
-    
+
     def process_result_value(self, value: str | None, dialect: Any) -> str | None:
         """Process value received from database.
         

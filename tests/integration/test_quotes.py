@@ -7,16 +7,17 @@ Tests the complete quote workflow including:
 - Authorization checks
 """
 
-import pytest
-from decimal import Decimal
 from datetime import date, timedelta
+from decimal import Decimal
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
-from app.models.manufacturing_type import ManufacturingType
 from app.models.configuration import Configuration
+from app.models.manufacturing_type import ManufacturingType
 from app.models.quote import Quote
+from app.models.user import User
 
 
 @pytest.fixture

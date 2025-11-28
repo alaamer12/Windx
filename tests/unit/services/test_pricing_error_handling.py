@@ -8,8 +8,9 @@ Tests error handling for price calculations including:
 - Out of range values
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import InvalidFormulaException, NotFoundException

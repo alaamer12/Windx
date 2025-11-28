@@ -18,12 +18,12 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    TIMESTAMP,
     Boolean,
     ForeignKey,
     Index,
     Numeric,
     Text,
-    TIMESTAMP,
     UniqueConstraint,
     func,
 )

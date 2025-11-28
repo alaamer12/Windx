@@ -151,6 +151,7 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
             ```
         """
         from sqlalchemy.orm import selectinload
+
         from app.models.configuration_selection import ConfigurationSelection
 
         result = await self.db.execute(

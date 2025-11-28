@@ -1,10 +1,9 @@
 """Pydantic schemas for AttributeNode model."""
 
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
-
-import re
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -212,10 +211,10 @@ class AttributeNode(AttributeNodeBase):
         for label in labels:
             if not label:
                 raise ValueError("ltree_path cannot have empty labels")
-            
+
             if len(label) > 256:
                 raise ValueError(f"ltree_path label '{label}' exceeds 256 characters")
-            
+
             # Labels must be alphanumeric with underscores
             if not re.match(r'^[a-zA-Z0-9_]+$', label):
                 raise ValueError(f"ltree_path label '{label}' contains invalid characters (only alphanumeric and underscore allowed)")

@@ -69,19 +69,19 @@ def get_engine() -> AsyncEngine:
     # Disable prepared statements for transaction pooler only
     # Session pooler and direct connections support prepared statements
     if settings.database.connection_mode == "transaction_pooler":
-        print(f"[INFO] Using transaction pooler mode with prepared statements disabled")
+        print("[INFO] Using transaction pooler mode with prepared statements disabled")
         print(f"[INFO] Connection mode: {settings.database.connection_mode}")
         print(f"[INFO] Host: {settings.database.host}")
-        
+
         # Disable at asyncpg level
         engine_kwargs["connect_args"] = {"statement_cache_size": 0}
-        
+
         # Disable at SQLAlchemy level
         engine_kwargs["execution_options"] = {"prepared_statement_cache_size": 0}
     elif settings.database.is_supabase:
         print(f"[INFO] Using {settings.database.connection_mode} mode (prepared statements enabled)")
         print(f"[INFO] Host: {settings.database.host}")
-    
+
     print(f"[DEBUG] Final engine kwargs: {engine_kwargs}")
     return create_async_engine(**engine_kwargs)
 

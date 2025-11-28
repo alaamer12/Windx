@@ -19,12 +19,12 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    TIMESTAMP,
     ForeignKey,
     Index,
     Numeric,
     String,
     Text,
-    TIMESTAMP,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -33,7 +33,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 if TYPE_CHECKING:
-    from app.models.attribute_node import AttributeNode
     from app.models.configuration_selection import ConfigurationSelection
     from app.models.customer import Customer
     from app.models.manufacturing_type import ManufacturingType

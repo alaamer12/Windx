@@ -65,14 +65,14 @@ def get_test_database_url() -> str:
         LTREE extension and JSONB types required by the Windx schema.
     """
     test_settings = get_test_settings()
-    
+
     # Access database settings from the nested database object
     db = test_settings.database
-    
+
     # Build PostgreSQL connection string with asyncpg driver
     # Note: password is a SecretStr, so we need to get its value
     password = db.password.get_secret_value() if db.password else ""
-    
+
     return (
         f"postgresql+asyncpg://{db.user}:"
         f"{password}@{db.host}:"
@@ -117,7 +117,7 @@ def setup_test_settings(test_settings: TestSettings):
     """
     # Override the main get_settings to return test settings
     app.dependency_overrides[get_settings] = lambda: test_settings
-    
+
     # Mock the FastAPILimiter to prevent errors when rate_limit is used
     # This is necessary because endpoints have rate_limit dependencies
     from unittest.mock import AsyncMock
@@ -125,27 +125,27 @@ def setup_test_settings(test_settings: TestSettings):
     from fastapi_cache import FastAPICache
     from fastapi_cache.backends.inmemory import InMemoryBackend
     from fastapi_limiter import FastAPILimiter
-    
+
     # Create async mock for identifier
     async def mock_identifier(request):
         return "test_key"
-    
+
     # Create async mock for callback (always allow requests in tests)
     async def mock_callback(request, response, pexpire):
         return  # Allow all requests
-    
+
     # Mock the FastAPILimiter redis client
     FastAPILimiter.redis = AsyncMock()
     FastAPILimiter.lua_sha = "mock_sha"
     FastAPILimiter.identifier = mock_identifier
     FastAPILimiter.http_callback = mock_callback
     FastAPILimiter.ws_callback = mock_callback
-    
+
     # Initialize FastAPICache with in-memory backend for tests
     FastAPICache.init(InMemoryBackend())
-    
+
     yield
-    
+
     # Cleanup
     app.dependency_overrides.clear()
 
@@ -183,10 +183,10 @@ async def test_engine():
         # Enable LTREE extension for hierarchical attribute nodes
         # This is required by the Windx schema for efficient tree queries
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
-        
+
         # Drop first to ensure clean state between tests
         await conn.run_sync(Base.metadata.drop_all)
-        
+
         # Create all tables from SQLAlchemy models
         await conn.run_sync(Base.metadata.create_all)
 
@@ -197,7 +197,7 @@ async def test_engine():
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
-    
+
     # Wait for connections to close gracefully
     await asyncio.sleep(0.05)
 
@@ -259,7 +259,7 @@ async def client(db_session: AsyncSession, test_settings: TestSettings) -> Async
 
     # Store existing overrides
     existing_overrides = app.dependency_overrides.copy()
-    
+
     # Add database override
     app.dependency_overrides[get_db] = override_get_db
 

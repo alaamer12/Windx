@@ -34,14 +34,19 @@ jobs:
         run: |
           # Copy the example file
           cp .env.test.example .env.test
-          
+
           # Replace placeholders with actual secrets from GitHub
-          sed -i "s|SUPABASE_URL=.*|SUPABASE_URL=${{ secrets.TEST_SUPABASE_URL }}|g" .env.test
-          sed -i "s|SUPABASE_ANON_KEY=.*|SUPABASE_ANON_KEY=${{ secrets.TEST_SUPABASE_ANON_KEY }}|g" .env.test
-          sed -i "s|SUPABASE_DB_PASSWORD=.*|SUPABASE_DB_PASSWORD=${{ secrets.TEST_SUPABASE_DB_PASSWORD }}|g" .env.test
-          
+          sed -i "s|DATABASE_HOST=.*|DATABASE_HOST=${{ secrets.WINDX_TEST_DATABASE_HOST }}|g" .env.test
+          sed -i "s|DATABASE_PASSWORD=.*|DATABASE_PASSWORD=${{ secrets.WINDX_TEST_DATABASE_PASSWORD }}|g" .env.test
+          sed -i "s|SUPABASE_URL=.*|SUPABASE_URL=${{ secrets.WINDX_TEST_SUPABASE_URL }}|g" .env.test
+          sed -i "s|SUPABASE_ANON_KEY=.*|SUPABASE_ANON_KEY=${{ secrets.WINDX_TEST_SUPABASE_ANON_KEY }}|g" .env.test
+
+          # (Optional) if your example file uses different placeholder names like `SUPABASE_DB_PASSWORD`
+          sed -i "s|SUPABASE_DB_PASSWORD=.*|SUPABASE_DB_PASSWORD=${{ secrets.WINDX_TEST_DATABASE_PASSWORD }}|g" .env.test
+
           # Verify the file was created
           echo "✅ .env.test created successfully"
+      
 
       - name: Run tests with coverage
         run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term

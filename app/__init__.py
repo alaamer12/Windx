@@ -20,4 +20,4 @@ Features:
     - Async/await support
 """
 
-__all__ = ["core", "models", "schemas", "repositories", "api", "main"]
+__all__ = ["core", "models", "schemas", "repositories", "api"]

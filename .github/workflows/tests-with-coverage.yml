@@ -30,6 +30,19 @@ jobs:
       - name: Install dev dependencies
         run: uv sync --dev
 
+      - name: Create .env.test from example
+        run: |
+          # Copy the example file
+          cp .env.test.example .env.test
+          
+          # Replace placeholders with actual secrets from GitHub
+          sed -i "s|SUPABASE_URL=.*|SUPABASE_URL=${{ secrets.TEST_SUPABASE_URL }}|g" .env.test
+          sed -i "s|SUPABASE_ANON_KEY=.*|SUPABASE_ANON_KEY=${{ secrets.TEST_SUPABASE_ANON_KEY }}|g" .env.test
+          sed -i "s|SUPABASE_DB_PASSWORD=.*|SUPABASE_DB_PASSWORD=${{ secrets.TEST_SUPABASE_DB_PASSWORD }}|g" .env.test
+          
+          # Verify the file was created
+          echo "✅ .env.test created successfully"
+
       - name: Run tests with coverage
         run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term
 

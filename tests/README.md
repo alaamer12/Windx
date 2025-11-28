@@ -1,230 +1,403 @@
-# Environment Consistency Tests
+# Test Suite Documentation
 
-This directory contains comprehensive tests for the environment file consistency checker.
+## Overview
 
-## Test Files
+This test suite uses **asyncpg** with PostgreSQL (Supabase) for all database operations. The tests are designed to work with the Windx product configuration system which requires PostgreSQL-specific features.
 
-### `test_env_consistency.py`
-Main test suite that validates the consistency checker functionality.
+## Database Configuration
 
-**Tests**:
-1. **Baseline** - Verifies all files are consistent initially
-2. **Missing Key** - Detects when a key is missing from a file
-3. **Extra Key** - Detects when a file has extra keys
-4. **Multiple Issues** - Detects multiple problems at once
-5. **Comments/Empty Lines** - Ignores comments and empty lines
+### Why asyncpg?
 
-**Features**:
-- Creates temporary backups before each test
-- Restores original files after each test
-- Handles keyboard interrupts gracefully
-- Always performs cleanup, even on errors
+The test suite uses `asyncpg` instead of `aiosqlite` or `psycopg` for several important reasons:
 
-**Run**:
-```bash
-python tests/test_env.py
-```
+1. **LTREE Extension Support**: The Windx schema uses PostgreSQL's LTREE extension for efficient hierarchical attribute queries
+2. **JSONB Native Support**: Better performance for JSONB operations used in flexible metadata storage
+3. **Full Async/Await**: Native async support without blocking operations
+4. **Supabase Compatibility**: Works seamlessly with Supabase PostgreSQL instances
+5. **Performance**: Faster than psycopg for async operations
 
-### `test_cleanup_on_error.py`
-Tests cleanup behavior when errors occur.
+### Connection String Format
 
-**Tests**:
-1. **Cleanup on Exception** - Verifies cleanup when exception is raised
-2. **Manual Interrupt Simulation** - Simulates Ctrl+C and verifies cleanup
-
-**Run**:
-```bash
-python tests/test_cleanup_on_error.py
-```
-
-### `test_interrupt_handling.py`
-Tests keyboard interrupt handling (advanced).
-
-**Run**:
-```bash
-python tests/test_interrupt_handling.py
-```
-
-## Running All Tests
-
-Run all tests at once:
-
-```bash
-# Run main test suite
-python tests/test_env.py
-
-# Run cleanup tests
-python tests/test_cleanup_on_error.py
-```
-
-## Test Results
-
-All tests should pass:
-
-```
-✅ PASS: Baseline
-✅ PASS: Missing Key
-✅ PASS: Extra Key
-✅ PASS: Multiple Issues
-✅ PASS: Comments/Empty Lines
-
-Results: 5/5 tests passed
-🎉 All tests passed!
-```
-
-## How Tests Work
-
-### 1. Setup Phase
-- Creates temporary backup directory
-- Copies all environment files to backup
-- Prints backup location
-
-### 2. Test Phase
-- Modifies environment files to create test scenarios
-- Runs consistency checker
-- Verifies expected results
-
-### 3. Teardown Phase
-- Restores original files from backup
-- Removes backup directory
-- Verifies cleanup completed
-
-### 4. Error Handling
-- Catches KeyboardInterrupt (Ctrl+C)
-- Catches all exceptions
-- Always performs cleanup
-- Verifies files were restored
-
-## Safety Features
-
-1. **Temporary Backups**: All original files are backed up before testing
-2. **Automatic Restore**: Files are restored after each test
-3. **Error Recovery**: Cleanup occurs even if tests fail
-4. **Interrupt Handling**: Ctrl+C is caught and cleanup is performed
-5. **Verification**: Tests verify cleanup was successful
-
-## Test Scenarios
-
-### Scenario 1: Missing Key
 ```python
-# .env.test before
-DATABASE_HOST=localhost
-DATABASE_USER=user
-
-# .env.test after (DATABASE_HOST removed)
-DATABASE_USER=user
-
-# Expected: Checker detects missing key
+postgresql+asyncpg://user:password@host:port/database
 ```
 
-### Scenario 2: Extra Key
+Example:
 ```python
-# .env.production before
-DATABASE_HOST=localhost
-
-# .env.production after (EXTRA_KEY added)
-DATABASE_HOST=localhost
-EXTRA_KEY=value
-
-# Expected: Checker detects extra key
+postgresql+asyncpg://postgres:password@db.example.supabase.co:5432/postgres
 ```
 
-### Scenario 3: Multiple Issues
-```python
-# .env.test: Missing DATABASE_USER
-# .env.production: Extra ANOTHER_EXTRA
+## Test Database Setup
 
-# Expected: Checker detects both issues
+### Configuration Files
+
+1. **`.env.test`**: Contains test database credentials
+   - Uses Supabase PostgreSQL instance
+   - Separate from production database
+   - Credentials are safe for testing
+
+2. **`tests/config.py`**: Test-specific settings
+   - Overrides main application settings
+   - Disables caching and rate limiting
+   - Forces debug mode
+
+3. **`tests/conftest.py`**: Pytest fixtures
+   - Database engine creation
+   - Session management
+   - Test client setup
+   - Authentication helpers
+
+### Database Initialization
+
+Each test gets a fresh database state:
+
+```python
+@pytest_asyncio.fixture(scope="function")
+async def test_engine():
+    # 1. Create engine with asyncpg
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        poolclass=NullPool  # No pooling for test isolation
+    )
+    
+    # 2. Enable LTREE extension
+    await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
+    
+    # 3. Drop and recreate all tables
+    await conn.run_sync(Base.metadata.drop_all)
+    await conn.run_sync(Base.metadata.create_all)
+    
+    yield engine
+    
+    # 4. Cleanup after test
+    await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 ```
 
-### Scenario 4: Comments and Empty Lines
+## Required PostgreSQL Extensions
+
+The test database must have these extensions enabled:
+
+### LTREE Extension
+
+```sql
+CREATE EXTENSION IF NOT EXISTS ltree;
+```
+
+**Purpose**: Hierarchical data storage for attribute nodes
+
+**Usage in Windx**:
+- Stores attribute paths like `window.frame.material.aluminum`
+- Enables fast descendant/ancestor queries
+- Supports pattern matching on paths
+
+**Example Query**:
+```sql
+-- Get all descendants of "frame" node
+SELECT * FROM attribute_nodes 
+WHERE ltree_path <@ 'window.frame'::ltree;
+```
+
+### JSONB Support
+
+PostgreSQL's native JSONB type is used for:
+- Display conditions (conditional attribute visibility)
+- Validation rules (input validation logic)
+- Technical specifications (product-specific data)
+- Price breakdowns (detailed cost components)
+
+**Example**:
 ```python
-# .env.test after
-DATABASE_HOST=localhost
+display_condition = {
+    "operator": "equals",
+    "field": "parent.material",
+    "value": "wood"
+}
+```
 
-# This is a comment
+## Running Tests
 
-# Another comment
+### Run All Tests
 
-# Expected: Checker ignores comments/empty lines
+```bash
+# Using pytest directly
+.venv\scripts\python -m pytest
+
+# Using uv
+uv run pytest
+
+# With coverage
+.venv\scripts\python -m pytest --cov=app --cov-report=html
+```
+
+### Run Specific Test Categories
+
+```bash
+# Unit tests only
+.venv\scripts\python -m pytest tests/unit -v
+
+# Integration tests only
+.venv\scripts\python -m pytest tests/integration -v
+
+# Specific test file
+.venv\scripts\python -m pytest tests/unit/test_supabase.py -v
+
+# Tests with specific marker
+.venv\scripts\python -m pytest -m auth -v
+```
+
+### Test Markers
+
+Available markers defined in `pyproject.toml`:
+
+- `unit`: Fast, isolated unit tests
+- `integration`: Full stack integration tests
+- `slow`: Tests that take longer to run
+- `auth`: Authentication-related tests
+- `users`: User management tests
+- `services`: Service layer tests
+- `repositories`: Repository layer tests
+
+## Test Structure
+
+```
+tests/
+├── conftest.py              # Shared fixtures
+├── config.py                # Test settings
+├── README.md                # This file
+├── unit/                    # Unit tests
+│   ├── test_supabase.py    # Database connection tests
+│   ├── models/             # Model tests
+│   ├── repositories/       # Repository tests
+│   └── services/           # Service tests
+└── integration/            # Integration tests
+    └── api/                # API endpoint tests
+```
+
+## Common Test Patterns
+
+### Testing with Database Session
+
+```python
+@pytest.mark.asyncio
+async def test_create_user(db_session: AsyncSession):
+    """Test user creation."""
+    user_service = UserService(db_session)
+    user_in = UserCreate(
+        email="test@example.com",
+        username="testuser",
+        password="Password123!"
+    )
+    
+    user = await user_service.create_user(user_in)
+    
+    assert user.email == "test@example.com"
+    assert user.username == "testuser"
+```
+
+### Testing API Endpoints
+
+```python
+@pytest.mark.asyncio
+async def test_login_endpoint(client: AsyncClient, test_user):
+    """Test login endpoint."""
+    response = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "testuser",
+            "password": "Password123!"
+        }
+    )
+    
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+```
+
+### Testing with Authentication
+
+```python
+@pytest.mark.asyncio
+async def test_protected_endpoint(
+    client: AsyncClient,
+    auth_headers: dict[str, str]
+):
+    """Test protected endpoint."""
+    response = await client.get(
+        "/api/v1/users/me",
+        headers=auth_headers
+    )
+    
+    assert response.status_code == 200
 ```
 
 ## Troubleshooting
 
-### Tests Fail
-1. Check if environment files exist
-2. Verify you're in the project root
-3. Check file permissions
+### Connection Issues
 
-### Cleanup Fails
-1. Check if backup directory is accessible
-2. Verify file permissions
-3. Check disk space
+**Problem**: `asyncpg.exceptions.InvalidCatalogNameError`
 
-### Keyboard Interrupt Not Working
-1. This is expected - tests run too fast
-2. Use `test_cleanup_on_error.py` instead
-3. Manual interrupt simulation is tested
+**Solution**: Ensure the database exists in your Supabase project
 
-## Adding New Tests
+---
 
-To add a new test:
+**Problem**: `asyncpg.exceptions.UndefinedObjectError: type "ltree" does not exist`
 
-1. Add method to `TestEnvConsistency` class:
-```python
-def test_your_scenario(self):
-    """Test your scenario."""
-    print("Test X: Your scenario")
-    print("-" * 50)
-    
-    try:
-        # Modify files
-        # Run checker
-        # Verify results
-        self.add_result("Your Test", True)
-        return True
-    except Exception as e:
-        self.add_result("Your Test", False, str(e))
-        return False
+**Solution**: Enable LTREE extension:
+```sql
+CREATE EXTENSION IF NOT EXISTS ltree;
 ```
 
-2. Add to `run_all_tests()`:
-```python
-self.teardown()
-self.setup()
-self.test_your_scenario()
-```
+---
 
-3. Run tests to verify
+**Problem**: Tests hang or timeout
+
+**Solution**: 
+1. Check database connection in `.env.test`
+2. Verify Supabase instance is running
+3. Check firewall/network settings
+
+### Performance Issues
+
+**Problem**: Tests are slow
+
+**Solutions**:
+1. Use `NullPool` to avoid connection pooling overhead
+2. Run unit tests separately from integration tests
+3. Use test markers to run specific test categories
+4. Consider using `pytest-xdist` for parallel execution
+
+### Fixture Issues
+
+**Problem**: `fixture 'db_session' not found`
+
+**Solution**: Ensure `conftest.py` is in the correct location and pytest can discover it
+
+---
+
+**Problem**: Database state persists between tests
+
+**Solution**: Each test should get a fresh database. Check that:
+1. `test_engine` fixture has `scope="function"`
+2. Tables are dropped and recreated in fixture
+3. Session is properly rolled back in `db_session` fixture
 
 ## Best Practices
 
-1. **Always use setup/teardown**: Ensures clean state
-2. **Verify cleanup**: Check files were restored
-3. **Handle errors**: Use try/except blocks
-4. **Add results**: Use `add_result()` for tracking
-5. **Print progress**: Help users understand what's happening
+### Test Isolation
 
-## CI/CD Integration
-
-Add to your CI/CD pipeline:
-
-```yaml
-# .github/workflows/test.yml
-- name: Test Environment Consistency
-  run: |
-    python tests/test_env_consistency.py
-    python tests/test_cleanup_on_error.py
+✅ **DO**: Use function-scoped fixtures for database tests
+```python
+@pytest_asyncio.fixture(scope="function")
+async def db_session(test_session_maker):
+    async with test_session_maker() as session:
+        yield session
+        await session.rollback()  # Ensure cleanup
 ```
 
-Exit codes:
-- `0` - All tests passed
-- `1` - Some tests failed
+❌ **DON'T**: Use session-scoped fixtures for mutable state
+```python
+# This will cause tests to interfere with each other
+@pytest_asyncio.fixture(scope="session")
+async def db_session():
+    ...
+```
 
-## Notes
+### Async Testing
 
-- Tests use temporary directories for backups
-- Original files are never permanently modified
-- All cleanup is automatic
-- Tests are safe to run anytime
-- No manual cleanup needed
+✅ **DO**: Use `@pytest.mark.asyncio` for async tests
+```python
+@pytest.mark.asyncio
+async def test_async_operation():
+    result = await some_async_function()
+    assert result is not None
+```
+
+❌ **DON'T**: Mix sync and async without proper handling
+```python
+def test_async_operation():  # Missing @pytest.mark.asyncio
+    result = await some_async_function()  # Will fail
+```
+
+### Database Cleanup
+
+✅ **DO**: Let fixtures handle cleanup automatically
+```python
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    user = await create_user(db_session)
+    yield user
+    # Cleanup happens automatically via session rollback
+```
+
+❌ **DON'T**: Manually delete test data
+```python
+@pytest_asyncio.fixture
+async def test_user(db_session):
+    user = await create_user(db_session)
+    yield user
+    await db_session.delete(user)  # Unnecessary
+    await db_session.commit()
+```
+
+## Migration from aiosqlite
+
+If you're migrating from aiosqlite to asyncpg:
+
+### Changes Required
+
+1. **Update connection string**:
+   ```python
+   # Old (aiosqlite)
+   sqlite+aiosqlite:///./test.db
+   
+   # New (asyncpg)
+   postgresql+asyncpg://user:pass@host:port/db
+   ```
+
+2. **Remove SQLite-specific code**:
+   ```python
+   # Old (aiosqlite)
+   connect_args={"check_same_thread": False}
+   
+   # New (asyncpg)
+   # No connect_args needed
+   ```
+
+3. **Enable PostgreSQL extensions**:
+   ```python
+   # New requirement for asyncpg
+   await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
+   ```
+
+4. **Update dependencies**:
+   ```toml
+   # Remove
+   dev-dependencies = ["aiosqlite"]
+   
+   # Already included in main dependencies
+   dependencies = ["asyncpg"]
+   ```
+
+### Benefits of Migration
+
+- ✅ Full PostgreSQL feature support (LTREE, JSONB)
+- ✅ Better performance for complex queries
+- ✅ Production-like test environment
+- ✅ Supabase compatibility
+- ✅ No SQLite limitations
+
+## Additional Resources
+
+- [asyncpg Documentation](https://magicstack.github.io/asyncpg/)
+- [PostgreSQL LTREE](https://www.postgresql.org/docs/current/ltree.html)
+- [Supabase Documentation](https://supabase.com/docs)
+- [pytest-asyncio](https://pytest-asyncio.readthedocs.io/)
+- [SQLAlchemy Async](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html)
+
+## Support
+
+For issues or questions:
+1. Check this documentation
+2. Review test examples in `tests/unit/` and `tests/integration/`
+3. Check the main project README
+4. Review Windx integration plan documentation

@@ -48,7 +48,6 @@ dev-dependencies = [
     "pytest-cov",
     "ruff",
     "httpx",
-    "aiosqlite"
 ]
 
 [project.urls]

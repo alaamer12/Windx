@@ -48,16 +48,28 @@ from app.models.user import User  # noqa: F401
 from main import app
 from tests.config import TestSettings, get_test_settings
 
-# Test database URL - Use PostgreSQL with asyncpg
-# Get database URL from test settings
+
+# Test database URL - Use PostgreSQL with asyncpg (Supabase compatible)
+# asyncpg is required for:
+# - LTREE extension support (hierarchical data)
+# - JSONB native support (flexible metadata)
+# - Better async performance than psycopg
 def get_test_database_url() -> str:
-    """Get test database URL from settings."""
+    """Get test database URL from settings.
+    
+    Returns:
+        str: PostgreSQL connection string with asyncpg driver
+        
+    Note:
+        Uses asyncpg driver for full PostgreSQL feature support including
+        LTREE extension and JSONB types required by the Windx schema.
+    """
     test_settings = get_test_settings()
     
     # Access database settings from the nested database object
     db = test_settings.database
     
-    # Build PostgreSQL connection string with asyncpg
+    # Build PostgreSQL connection string with asyncpg driver
     # Note: password is a SecretStr, so we need to get its value
     password = db.password.get_secret_value() if db.password else ""
     
@@ -108,10 +120,11 @@ def setup_test_settings(test_settings: TestSettings):
     
     # Mock the FastAPILimiter to prevent errors when rate_limit is used
     # This is necessary because endpoints have rate_limit dependencies
-    from fastapi_limiter import FastAPILimiter
+    from unittest.mock import AsyncMock
+
     from fastapi_cache import FastAPICache
     from fastapi_cache.backends.inmemory import InMemoryBackend
-    from unittest.mock import AsyncMock
+    from fastapi_limiter import FastAPILimiter
     
     # Create async mock for identifier
     async def mock_identifier(request):
@@ -139,34 +152,53 @@ def setup_test_settings(test_settings: TestSettings):
 
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
-    """Create test database engine.
+    """Create test database engine with asyncpg driver.
+    
+    This fixture:
+    - Creates a fresh database engine for each test
+    - Enables LTREE extension (required for hierarchical attributes)
+    - Drops and recreates all tables for isolation
+    - Uses NullPool to prevent connection pooling issues in tests
+    - Properly disposes of connections after test completion
 
     Yields:
-        AsyncEngine: Test database engine
+        AsyncEngine: Test database engine with asyncpg driver
+        
+    Note:
+        asyncpg driver is used instead of psycopg for:
+        - Native LTREE support
+        - Better JSONB performance
+        - Full async/await support
+        - Supabase compatibility
     """
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        poolclass=NullPool,  # Disable pooling for tests
-        # No connect_args needed for asyncpg
+        poolclass=NullPool,  # Disable pooling for test isolation
+        # No connect_args needed for asyncpg (unlike aiosqlite)
     )
 
-    # Create all tables
+    # Create all tables with LTREE extension
     async with engine.begin() as conn:
-        # Enable LTREE extension for PostgreSQL
+        # Enable LTREE extension for hierarchical attribute nodes
+        # This is required by the Windx schema for efficient tree queries
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
-        await conn.run_sync(Base.metadata.drop_all)  # Drop first to ensure clean state
+        
+        # Drop first to ensure clean state between tests
+        await conn.run_sync(Base.metadata.drop_all)
+        
+        # Create all tables from SQLAlchemy models
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
 
-    # Drop all tables and dispose engine
+    # Cleanup: Drop all tables and dispose engine
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
     await engine.dispose()
     
-    # Wait for connections to close
+    # Wait for connections to close gracefully
     await asyncio.sleep(0.05)
 
 

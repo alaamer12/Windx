@@ -142,7 +142,9 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Raise ValidationException for invalid types
   - _Requirements: 5.4_
 
-- [-] 3. Batch Hierarchy Creation
+- [x] 3. Batch Hierarchy Creation
+
+
 
 
 
@@ -427,6 +429,52 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Link to HIERARCHY_ADMIN_DASHBOARD.md
   - Mention key features (automatic path calculation, tree visualization)
   - _Requirements: 11.5_
+
+- [ ] 5. Tree Visualization
+
+
+
+  - Generate human-readable **graphical tree representations** 
+  - Can leverage `pydantify` output from Task 4.2 for node information  
+  - _Requirements: 3.1–3.13_
+    
+- [ ] 11.1 Implement `generate_tree_plot()` or `plot_tree` method in `HierarchyBuilderService`    
+    - Accept `manufacturing_type_id` and optional `root_node_id` 
+    - Retrieve all nodes for the given manufacturing type  
+    - Build hierarchical tree structure (parent → children map)
+    - Call `_plot_tree_recursive()` or equivalent to draw the nodes   
+    - Return **Matplotlib figure object**   
+    -   _Requirements: 3.1, 3.2_
+        
+- [ ] 11.2 Implement `_plot_tree_recursive()` helper (or plotting logic)
+    - Use **Matplotlib** for plotting nodes and edges
+    - Optionally, if **Graphviz** is available on the platform:
+      - Use **NetworkX** + `pygraphviz` layout for nicer automatic tree positioning    
+    - Draw node labels with `node_type` and `price_impact_value`  
+    - Recursively plot children nodes according to hierarchy  
+    - Return the Matplotlib figure object   
+    -   _Requirements: 3.2, 3.3_
+        
+- [ ] 11.3 Add node data formatting on plot
+    
+    -   Display `price_impact_value` as `[+$50.00]` if present
+        
+    -   Include `node_type` in brackets `[category]`, `[option]`
+        
+    -   Optional: show depth/level indicators for clarity
+        
+    -   _Requirements: 3.3, 3.4_
+        
+- [ ]* 11.4 Optional enhancements
+    
+  - Customize node colors, shapes, or sizes based on type or price impact
+        
+  - Improve layout readability for large hierarchies    
+  - Add interactive zoom/pan if using `matplotlib` with `mplcursors` or `plotly` backend
+        
+  - _Requirements: 3.5_
+
+
 
 ## Notes
 

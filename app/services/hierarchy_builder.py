@@ -670,6 +670,7 @@ class HierarchyBuilderService(BaseService):
         manufacturing_type_id: int,
         hierarchy_data: dict,
         parent: AttributeNode | None = None,
+        _is_root_call: bool = True,
     ) -> AttributeNode:
         """Create a hierarchy from nested dictionary structure.
         
@@ -684,6 +685,7 @@ class HierarchyBuilderService(BaseService):
             manufacturing_type_id: Manufacturing type ID
             hierarchy_data: Dictionary containing node data and optional children
             parent: Optional parent node (None for root level)
+            _is_root_call: Internal flag to track root call (do not set manually)
             
         Returns:
             AttributeNode: The root node of the created hierarchy
@@ -746,7 +748,7 @@ class HierarchyBuilderService(BaseService):
             ... )
             >>> # Creates: Frame Material → Material Type → [Aluminum, Vinyl]
         """
-        from app.core.exceptions import DatabaseException
+        from app.core.exceptions import DatabaseException, NotFoundException, ValidationException, ConflictException
         
         # Validate hierarchy_data is a dictionary
         if not isinstance(hierarchy_data, dict):
@@ -760,6 +762,9 @@ class HierarchyBuilderService(BaseService):
         
         if "node_type" not in hierarchy_data:
             raise ValueError("hierarchy_data must contain 'node_type' field")
+        
+        # Make a copy to avoid modifying the original dict
+        hierarchy_data = hierarchy_data.copy()
         
         # Extract children before creating node (we'll process them after)
         children_data = hierarchy_data.pop("children", [])
@@ -785,9 +790,59 @@ class HierarchyBuilderService(BaseService):
             if "weight_impact" in node_data and node_data["weight_impact"] is not None:
                 node_data["weight_impact"] = Decimal(str(node_data["weight_impact"]))
             
-            # Create the node using create_node method
-            # This handles all validation, path calculation, and duplicate checking
-            node = await self.create_node(**node_data)
+            # Create the node - but don't commit yet if we're in a batch operation
+            # We'll commit at the end of the root call
+            from app.models.attribute_node import AttributeNode as AttributeNodeModel
+            from sqlalchemy import select
+            
+            # Perform all the same validations as create_node
+            name = node_data["name"]
+            node_type = node_data["node_type"]
+            
+            # Validate manufacturing type exists
+            mfg_type = await self.mfg_type_repo.get(manufacturing_type_id)
+            if mfg_type is None:
+                raise NotFoundException(
+                    f"Manufacturing type with id {manufacturing_type_id} not found"
+                )
+            
+            # Validate node_type
+            valid_node_types = {"category", "attribute", "option", "component", "technical_spec"}
+            if node_type not in valid_node_types:
+                raise ValidationException(
+                    f"Invalid node_type '{node_type}'. Must be one of: {', '.join(valid_node_types)}"
+                )
+            
+            # Check for duplicate names at the same level
+            siblings_query = select(AttributeNodeModel).where(
+                AttributeNodeModel.manufacturing_type_id == manufacturing_type_id,
+                AttributeNodeModel.parent_node_id == (parent.id if parent else None),
+                AttributeNodeModel.name == name,
+            )
+            result = await self.attr_node_repo.db.execute(siblings_query)
+            existing_sibling = result.scalar_one_or_none()
+            
+            if existing_sibling is not None:
+                parent_desc = f"parent node {parent.id if parent else None}" if parent else "root level"
+                raise ConflictException(
+                    f"A node with name '{name}' already exists at {parent_desc} "
+                    f"in manufacturing type {manufacturing_type_id}"
+                )
+            
+            # Calculate ltree_path and depth
+            ltree_path = self._calculate_ltree_path(parent, name)
+            depth = self._calculate_depth(parent)
+            
+            # Create the node model
+            node = AttributeNodeModel(
+                ltree_path=ltree_path,
+                depth=depth,
+                **node_data
+            )
+            
+            # Add to session but don't commit yet
+            self.attr_node_repo.db.add(node)
+            await self.attr_node_repo.db.flush()  # Flush to get the ID
             
             # Recursively process children
             if children_data:
@@ -799,23 +854,33 @@ class HierarchyBuilderService(BaseService):
                             f"for child of node '{node.name}'"
                         )
                     
-                    # Recursively create child hierarchy
-                    # Pass the newly created node as parent
+                    # Recursively create child hierarchy (not a root call)
                     await self.create_hierarchy_from_dict(
                         manufacturing_type_id=manufacturing_type_id,
                         hierarchy_data=child_data,
-                        parent=node
+                        parent=node,
+                        _is_root_call=False,
                     )
+            
+            # Only commit if this is the root call
+            if _is_root_call:
+                await self.commit()
+                await self.refresh(node)
             
             return node
             
         except Exception as e:
-            # Rollback transaction on any error
-            await self.rollback()
+            # Only rollback if this is the root call
+            if _is_root_call:
+                await self.rollback()
             
             # Re-raise with additional context about which node failed
             node_name = hierarchy_data.get("name", "<unknown>")
             parent_name = parent.name if parent else "<root>"
+            
+            # For validation errors, preserve the original exception type
+            if isinstance(e, (NotFoundException, ValidationException, ConflictException, ValueError)):
+                raise
             
             raise DatabaseException(
                 f"Failed to create node '{node_name}' under parent '{parent_name}': {str(e)}"

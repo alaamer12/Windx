@@ -331,7 +331,9 @@ not only for this function but common global like AttributeNodeCreate had almost
   - _Requirements: 2.1, 2.4, 2.5_
 
 
-- [-] 7.3 Implement GET `/admin/hierarchy/node/create` (create form)
+- [x] 7.3 Implement GET `/admin/hierarchy/node/create` (create form)
+
+
 
 
 
@@ -345,7 +347,10 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Render node_form.html.jinja template with context
   - _Requirements: 4.1, 4.2_
 
-- [ ] 7.4 Implement POST `/admin/hierarchy/node/save` (create/update)
+
+
+
+- [x] 7.4 Implement POST `/admin/hierarchy/node/save` (create/update)
   - Dependency: current_superuser: CurrentSuperuser
   - Accept form data using Form(...) for each field
   - If node_id present (hidden field), update existing node
@@ -366,7 +371,12 @@ not only for this function but common global like AttributeNodeCreate had almost
   - _Requirements: 2.6, 4.5_
 
 
-- [ ] 7.6 Implement POST `/admin/hierarchy/node/{node_id}/delete` (delete)
+- [x] 7.6 Implement POST `/admin/hierarchy/node/{node_id}/delete` (delete)
+
+
+
+
+
   - Dependency: current_superuser: CurrentSuperuser
 
 

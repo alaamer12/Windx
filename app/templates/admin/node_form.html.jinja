@@ -44,6 +44,9 @@
                     {% if node %}Edit Node{% else %}Create Node{% endif %}
                 </h1>
                 <p class="text-muted mb-0">
+                    Manufacturing Type: <strong>{{ manufacturing_type.name }}</strong>
+                </p>
+                <p class="text-muted mb-0">
                     {% if node %}
                         Update attribute node: <strong>{{ node.name }}</strong>
                     {% else %}
@@ -51,7 +54,7 @@
                     {% endif %}
                 </p>
             </div>
-            <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type_id }}" 
+            <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
                class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Back to Dashboard
             </a>
@@ -62,7 +65,7 @@
             {% if node %}
             <input type="hidden" name="node_id" value="{{ node.id }}">
             {% endif %}
-            <input type="hidden" name="manufacturing_type_id" value="{{ manufacturing_type_id }}">
+            <input type="hidden" name="manufacturing_type_id" value="{{ manufacturing_type.id }}">
 
             <!-- Basic Information -->
             <div class="form-section">
@@ -108,9 +111,9 @@
                         <label for="parent_node_id" class="form-label">Parent Node</label>
                         <select class="form-select" id="parent_node_id" name="parent_node_id">
                             <option value="">-- None (Root Node) --</option>
-                            {% for parent in available_parents %}
+                            {% for parent in all_nodes %}
                             <option value="{{ parent.id }}" 
-                                    {% if node and node.parent_node_id == parent.id %}selected{% endif %}>
+                                    {% if (parent_node and parent.id == parent_node.id) or (node and node.parent_node_id == parent.id) %}selected{% endif %}>
                                 {{ parent.ltree_path }} - {{ parent.name }}
                             </option>
                             {% endfor %}
@@ -314,7 +317,7 @@
             <!-- Form Actions -->
             <div class="form-actions">
                 <div class="d-flex justify-content-between">
-                    <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type_id }}" 
+                    <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
                        class="btn btn-outline-secondary btn-lg">
                         <i class="bi bi-x-circle"></i> Cancel
                     </a>

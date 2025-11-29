@@ -1,0 +1,172 @@
+{# Recursive macro for rendering tree nodes #}
+{% macro render_tree_node(node, level=0) %}
+<li class="tree-node" data-node-id="{{ node.id }}" data-level="{{ level }}">
+    <div class="node-content d-flex align-items-center justify-content-between py-2 px-2 mb-1 bg-white rounded border">
+        <div class="node-info flex-grow-1">
+            <!-- Toggle button for nodes with children -->
+            {% if node.children %}
+            <button class="btn btn-sm btn-link p-0 me-2 toggle-btn" 
+                    type="button" 
+                    onclick="toggleNode(this)">
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            {% else %}
+            <span class="me-2" style="width: 24px; display: inline-block;"></span>
+            {% endif %}
+            
+            <!-- Node icon based on type -->
+            <i class="bi 
+                {% if node.node_type == 'category' %}bi-folder
+                {% elif node.node_type == 'attribute' %}bi-sliders
+                {% elif node.node_type == 'option' %}bi-check-circle
+                {% elif node.node_type == 'component' %}bi-puzzle
+                {% elif node.node_type == 'technical_spec' %}bi-gear
+                {% else %}bi-circle
+                {% endif %}
+                me-2"></i>
+            
+            <!-- Node name -->
+            <strong>{{ node.name }}</strong>
+            
+            <!-- Node type badge -->
+            <span class="badge 
+                {% if node.node_type == 'category' %}bg-primary
+                {% elif node.node_type == 'attribute' %}bg-info
+                {% elif node.node_type == 'option' %}bg-success
+                {% elif node.node_type == 'component' %}bg-warning
+                {% elif node.node_type == 'technical_spec' %}bg-secondary
+                {% else %}bg-light text-dark
+                {% endif %}
+                ms-2">
+                {{ node.node_type }}
+            </span>
+            
+            <!-- Price impact -->
+            {% if node.price_impact_value %}
+            <span class="badge bg-danger ms-1">
+                {% if node.price_impact_value > 0 %}+{% endif %}${{ "%.2f"|format(node.price_impact_value) }}
+            </span>
+            {% endif %}
+            
+            <!-- Weight impact -->
+            {% if node.weight_impact and node.weight_impact != 0 %}
+            <span class="badge bg-info ms-1">
+                {% if node.weight_impact > 0 %}+{% endif %}{{ "%.2f"|format(node.weight_impact) }}kg
+            </span>
+            {% endif %}
+            
+            <!-- Path info (small) -->
+            <small class="text-muted ms-2">
+                <i class="bi bi-diagram-3"></i> {{ node.ltree_path }}
+            </small>
+        </div>
+        
+        <!-- Action buttons -->
+        <div class="node-actions btn-group btn-group-sm">
+            <a href="/admin/hierarchy/node/create?manufacturing_type_id={{ node.manufacturing_type_id }}&parent_id={{ node.id }}" 
+               class="btn btn-outline-success" 
+               title="Add Child Node">
+                <i class="bi bi-plus"></i>
+            </a>
+            <a href="/admin/hierarchy/node/{{ node.id }}/edit" 
+               class="btn btn-outline-primary" 
+               title="Edit Node">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <form method="POST" 
+                  action="/admin/hierarchy/node/{{ node.id }}/delete" 
+                  style="display: inline;"
+                  onsubmit="return confirm('Are you sure you want to delete this node? {% if node.children %}This will also delete all child nodes.{% endif %}');">
+                <button type="submit" 
+                        class="btn btn-outline-danger" 
+                        title="Delete Node">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Render children recursively -->
+    {% if node.children %}
+    <ul class="tree-children list-unstyled ms-4">
+        {% for child in node.children %}
+            {{ render_tree_node(child, level + 1) }}
+        {% endfor %}
+    </ul>
+    {% endif %}
+</li>
+{% endmacro %}
+
+{# Main tree rendering #}
+<style>
+    .tree-node {
+        list-style: none;
+    }
+    
+    .node-content {
+        transition: all 0.2s ease;
+    }
+    
+    .node-content:hover {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .tree-children {
+        margin-top: 0.5rem;
+        padding-left: 1rem;
+        border-left: 2px solid #dee2e6;
+    }
+    
+    .tree-children.collapsed {
+        display: none;
+    }
+    
+    .toggle-btn {
+        text-decoration: none;
+        color: #6c757d;
+        transition: transform 0.2s ease;
+    }
+    
+    .toggle-btn.collapsed i {
+        transform: rotate(-90deg);
+    }
+    
+    .node-actions .btn {
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+
+<ul class="tree-root list-unstyled">
+    {% for node in tree_nodes %}
+        {{ render_tree_node(node) }}
+    {% endfor %}
+</ul>
+
+<script>
+    function toggleNode(button) {
+        const nodeContent = button.closest('.node-content');
+        const treeNode = nodeContent.closest('.tree-node');
+        const children = treeNode.querySelector('.tree-children');
+        
+        if (children) {
+            children.classList.toggle('collapsed');
+            button.classList.toggle('collapsed');
+        }
+    }
+    
+    // Collapse all nodes by default except root level
+    document.addEventListener('DOMContentLoaded', function() {
+        const allNodes = document.querySelectorAll('.tree-node[data-level]');
+        allNodes.forEach(function(node) {
+            const level = parseInt(node.getAttribute('data-level'));
+            if (level > 1) {
+                const children = node.querySelector('.tree-children');
+                const toggleBtn = node.querySelector('.toggle-btn');
+                if (children && toggleBtn) {
+                    children.classList.add('collapsed');
+                    toggleBtn.classList.add('collapsed');
+                }
+            }
+        });
+    });
+</script>

@@ -15,6 +15,7 @@ Features:
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin_hierarchy,
     attribute_nodes,
     auth,
     configurations,
@@ -45,3 +46,4 @@ api_router.include_router(quotes.router, prefix="/quotes")
 api_router.include_router(templates.router, prefix="/templates")
 api_router.include_router(customers.router, prefix="/customers")
 api_router.include_router(orders.router, prefix="/orders")
+api_router.include_router(admin_hierarchy.router, prefix="/admin/hierarchy", tags=["Admin Hierarchy"])

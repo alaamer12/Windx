@@ -234,23 +234,34 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Include depth information if helpful
   - _Requirements: 3.3_
 
-- [ ] 6. Backend Admin Dashboard - Jinja2 Templates
+- [x] 6. Backend Admin Dashboard - Jinja2 Templates
+
+
+
+
+
   - Create server-rendered HTML interface
   - _Requirements: 2.1-2.10, 4.1-4.10_
-- [ ] 6.1 Create `app/templates/admin/base.html.jinja` template
+- [x] 6.1 Create `app/templates/admin/base.html.jinja` template
+
+
   - Base layout with navigation
   - Include Bootstrap 5 CSS CDN
   - Define blocks for title, content, scripts
   - Add navigation menu with links to hierarchy dashboard
   - _Requirements: 2.2, 2.3_
-- [ ] 6.2 Create `app/templates/admin/hierarchy_dashboard.html.jinja` template
+- [x] 6.2 Create `app/templates/admin/hierarchy_dashboard.html.jinja` template
+
+
   - Extend base.html.jinja
   - Manufacturing type selector dropdown (form with GET method)
   - Two-column layout: left for tree view, right for ASCII visualization
   - Display selected manufacturing type name
   - Show "Create Node" button
   - _Requirements: 2.1, 2.4, 2.5, 4.1-4.10_
-- [ ] 6.3 Create `app/templates/admin/node_form.html.jinja` template
+
+- [x] 6.3 Create `app/templates/admin/node_form.html.jinja` template
+
   - Extend base.html.jinja
   - Form for creating/editing nodes (POST method)
   - Fields: name, node_type (dropdown), parent_node_id (dropdown), data_type (dropdown)
@@ -262,7 +273,9 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Submit and cancel buttons
   - Pre-fill form if editing existing node
   - _Requirements: 4.2-4.9_
-- [ ] 6.4 Create `app/templates/admin/components/tree_view.html.jinja` component
+- [x] 6.4 Create `app/templates/admin/components/tree_view.html.jinja` component
+
+
   - Recursive tree rendering with <ul>/<li> structure
   - Show node name, type badge, price impact
   - Edit link: /admin/hierarchy/node/{id}/edit
@@ -270,22 +283,33 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Use Jinja2 recursive macro for nested children
   - Add CSS classes for styling (collapsible tree)
   - _Requirements: 2.5, 2.6_
-- [ ] 6.5 Create `app/templates/admin/components/ascii_tree.html.jinja` component
+- [x] 6.5 Create `app/templates/admin/components/ascii_tree.html.jinja` component
+
+
   - Display ASCII tree in <pre> tag with monospace font
   - Preserve formatting and box-drawing characters
   - Add CSS for proper spacing and readability
   - _Requirements: 3.1-3.9_
 
-- [ ] 6.6 Create `app/templates/admin/components/diagram_tree.html.jinja` component
+- [x] 6.6 Create `app/templates/admin/components/diagram_tree.html.jinja` component
+
+
   - Display ASCII tree in <pre> tag with monospace font
   - Preserve formatting and box-drawing characters
   - Add CSS for proper spacing and readability
   - _Requirements: 11.1-11.9_
 
-- [ ] 7. Backend Admin Dashboard - FastAPI Routes
+
+- [x] 7. Backend Admin Dashboard - FastAPI Routes
+
+
+
+
   - Create API endpoints for dashboard
   - _Requirements: 2.1-2.10, 4.1-4.10_
-- [ ] 7.1 Create `app/api/v1/endpoints/admin_hierarchy.py` router file
+- [x] 7.1 Create `app/api/v1/endpoints/admin_hierarchy.py` router file
+
+
   - Import FastAPI (APIRouter, Request, Form, status)
   - Import HTMLResponse, RedirectResponse
   - Import Jinja2Templates (configure with app/templates directory)
@@ -294,7 +318,8 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Import ManufacturingTypeRepository, AttributeNodeRepository
   - Create router with prefix="" (will be added in router.py)
   - _Requirements: 2.1_
-- [ ] 7.2 Implement GET `/admin/hierarchy` (dashboard view)
+- [x] 7.2 Implement GET `/admin/hierarchy` (dashboard view)
+
   - Dependency: current_superuser: CurrentSuperuser
   - Accept optional manufacturing_type_id query param (int | None)
   - Get all manufacturing types using ManufacturingTypeRepository
@@ -304,31 +329,43 @@ not only for this function but common global like AttributeNodeCreate had almost
     - Convert tree to dict for template
   - Render hierarchy_dashboard.html.jinja template with context
   - _Requirements: 2.1, 2.4, 2.5_
+
+
 - [ ] 7.3 Implement GET `/admin/hierarchy/node/create` (create form)
   - Dependency: current_superuser: CurrentSuperuser
   - Accept manufacturing_type_id (required) and optional parent_id query params
   - Get manufacturing type by ID
   - If parent_id provided, get parent node
   - Get all nodes for manufacturing type (for parent selector)
+
+
   - Render node_form.html.jinja template with context
   - _Requirements: 4.1, 4.2_
 - [ ] 7.4 Implement POST `/admin/hierarchy/node/save` (create/update)
   - Dependency: current_superuser: CurrentSuperuser
   - Accept form data using Form(...) for each field
   - If node_id present (hidden field), update existing node
+
+
   - Otherwise, create new node using HierarchyBuilderService.create_node()
   - Handle validation errors and display in form
   - Redirect to /admin/hierarchy?manufacturing_type_id={id} with success message
   - _Requirements: 4.3, 4.4, 2.7, 2.8_
-- [ ] 7.5 Implement GET `/admin/hierarchy/node/{node_id}/edit` (edit form)
+- [x] 7.5 Implement GET `/admin/hierarchy/node/{node_id}/edit` (edit form)
+
+
   - Dependency: current_superuser: CurrentSuperuser
   - Get node by ID using AttributeNodeRepository
   - Get all nodes for same manufacturing type (for parent selector, excluding node and descendants)
   - Pre-fill form with current values
   - Render node_form.html.jinja template with node data
   - _Requirements: 2.6, 4.5_
+
+
 - [ ] 7.6 Implement POST `/admin/hierarchy/node/{node_id}/delete` (delete)
   - Dependency: current_superuser: CurrentSuperuser
+
+
   - Get node by ID
   - Check for children using AttributeNodeRepository.get_children()
   - If has children, return error (cannot delete node with children)

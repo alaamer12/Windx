@@ -11,3 +11,5 @@ email-validator
 alembic
 jinja2
 fastapi-pagination
+matplotlib
+networkx

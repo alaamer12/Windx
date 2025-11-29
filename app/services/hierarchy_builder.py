@@ -1009,3 +1009,525 @@ class HierarchyBuilderService(BaseService):
             tree = self.attr_node_repo.build_tree(nodes)
             
             return tree
+
+    async def asciify(
+        self,
+        manufacturing_type_id: int,
+        root_node_id: int | None = None,
+    ) -> str:
+        """Generate ASCII tree representation of the hierarchy.
+        
+        Creates a human-readable ASCII tree visualization using box-drawing
+        characters (├──, └──, │) to show the hierarchical structure.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            root_node_id: Optional root node ID to visualize subtree only
+            
+        Returns:
+            str: Formatted ASCII tree string
+            
+        Raises:
+            NotFoundException: If manufacturing type or root node not found
+            
+        Example:
+            >>> tree_str = await service.asciify(manufacturing_type_id=1)
+            >>> print(tree_str)
+            Material [category]
+            ├── uPVC [category]
+            │   ├── System [category]
+            │   │   ├── Aluplast [option]
+            │   │   │   └── Profile [attribute]
+            │   │   │       └── IDEAL 4000 [option] [+$50.00]
+            │   │   └── Kommerling [option]
+            │   └── Size [category]
+            └── Aluminium [category]
+        """
+        from app.core.exceptions import NotFoundException
+        
+        # Validate manufacturing type exists
+        mfg_type = await self.mfg_type_repo.get(manufacturing_type_id)
+        if mfg_type is None:
+            raise NotFoundException(
+                f"Manufacturing type with id {manufacturing_type_id} not found"
+            )
+        
+        # Get the tree structure using pydantify
+        tree = await self.pydantify(manufacturing_type_id, root_node_id)
+        
+        if not tree:
+            return "(Empty tree)"
+        
+        # Build ASCII representation
+        lines = []
+        for i, root_node in enumerate(tree):
+            is_last_root = (i == len(tree) - 1)
+            lines.append(self._generate_ascii_tree_recursive(
+                node=root_node,
+                prefix="",
+                is_last=is_last_root,
+            ))
+        
+        return "\n".join(lines)
+
+    def _generate_ascii_tree_recursive(
+        self,
+        node: AttributeNodeTree,
+        prefix: str = "",
+        is_last: bool = True,
+    ) -> str:
+        """Recursively generate ASCII tree representation.
+        
+        Helper method that recursively builds the ASCII tree string using
+        box-drawing characters to show hierarchy structure.
+        
+        Args:
+            node: Current node to render
+            prefix: Prefix string for indentation (accumulated from parents)
+            is_last: Whether this is the last child of its parent
+            
+        Returns:
+            str: Formatted ASCII tree string for this node and its descendants
+            
+        Example:
+            >>> # Internal method, called by asciify()
+            >>> result = service._generate_ascii_tree_recursive(
+            ...     node=node,
+            ...     prefix="",
+            ...     is_last=True
+            ... )
+        """
+        lines = []
+        
+        # Determine connector based on whether this is the last child
+        connector = "└── " if is_last else "├── "
+        
+        # Format node name with type indicator
+        node_display = f"{node.name} [{node.node_type}]"
+        
+        # Add price impact if present
+        if node.price_impact_value is not None and node.price_impact_value != 0:
+            # Format with 2 decimal places
+            price_str = f"[+${node.price_impact_value:.2f}]"
+            node_display += f" {price_str}"
+        
+        # Add depth indicator if helpful (for debugging)
+        # Uncomment if you want to show depth: node_display += f" (depth: {node.depth})"
+        
+        # Build the current line
+        current_line = f"{prefix}{connector}{node_display}"
+        lines.append(current_line)
+        
+        # Process children
+        if node.children:
+            # Determine the prefix for children
+            # If this is the last child, use spaces; otherwise use vertical bar
+            child_prefix = prefix + ("    " if is_last else "│   ")
+            
+            for i, child in enumerate(node.children):
+                is_last_child = (i == len(node.children) - 1)
+                child_tree = self._generate_ascii_tree_recursive(
+                    node=child,
+                    prefix=child_prefix,
+                    is_last=is_last_child,
+                )
+                lines.append(child_tree)
+        
+        return "\n".join(lines)
+
+    async def plot_tree(
+        self,
+        manufacturing_type_id: int,
+        root_node_id: int | None = None,
+    ):
+        """Generate graphical tree plot using Matplotlib.
+        
+        Creates a visual tree representation with nodes and edges, displaying
+        node names, types, and price impacts. Uses NetworkX for automatic
+        tree layout if available, otherwise falls back to manual positioning.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            root_node_id: Optional root node ID to visualize subtree only
+            
+        Returns:
+            matplotlib.figure.Figure: Matplotlib figure object containing the tree plot
+            
+        Raises:
+            NotFoundException: If manufacturing type or root node not found
+            ImportError: If matplotlib is not installed
+            
+        Example:
+            >>> # Generate tree plot
+            >>> fig = await service.plot_tree(manufacturing_type_id=1)
+            >>> 
+            >>> # Save to file
+            >>> fig.savefig('hierarchy_tree.png', dpi=300, bbox_inches='tight')
+            >>> 
+            >>> # Display in Jupyter notebook
+            >>> import matplotlib.pyplot as plt
+            >>> plt.show()
+            >>> 
+            >>> # Get subtree plot
+            >>> fig = await service.plot_tree(
+            ...     manufacturing_type_id=1,
+            ...     root_node_id=42
+            ... )
+        """
+        try:
+            import matplotlib.pyplot as plt
+            import matplotlib.patches as mpatches
+        except ImportError:
+            raise ImportError(
+                "matplotlib is required for tree plotting. "
+                "Install it with: pip install matplotlib"
+            )
+        
+        from app.core.exceptions import NotFoundException
+        
+        # Validate manufacturing type exists
+        mfg_type = await self.mfg_type_repo.get(manufacturing_type_id)
+        if mfg_type is None:
+            raise NotFoundException(
+                f"Manufacturing type with id {manufacturing_type_id} not found"
+            )
+        
+        # Get all nodes for the manufacturing type
+        if root_node_id is not None:
+            root_node = await self.attr_node_repo.get(root_node_id)
+            if root_node is None:
+                raise NotFoundException(f"Root node with id {root_node_id} not found")
+            
+            # Validate root node belongs to the manufacturing type
+            if root_node.manufacturing_type_id != manufacturing_type_id:
+                raise ValueError(
+                    f"Root node {root_node_id} belongs to manufacturing type "
+                    f"{root_node.manufacturing_type_id}, not {manufacturing_type_id}"
+                )
+            
+            # Get all descendants of the root node
+            descendants = await self.attr_node_repo.get_descendants(root_node_id)
+            nodes = [root_node] + descendants
+        else:
+            nodes = await self.attr_node_repo.get_by_manufacturing_type(
+                manufacturing_type_id
+            )
+        
+        if not nodes:
+            # Create empty figure with message
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.text(0.5, 0.5, 'No nodes found', 
+                   ha='center', va='center', fontsize=14)
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.axis('off')
+            return fig
+        
+        # Build parent → children map
+        children_map: dict[int | None, list[AttributeNode]] = {}
+        for node in nodes:
+            parent_id = node.parent_node_id
+            if parent_id not in children_map:
+                children_map[parent_id] = []
+            children_map[parent_id].append(node)
+        
+        # Sort children by sort_order
+        for children in children_map.values():
+            children.sort(key=lambda n: n.sort_order)
+        
+        # Try to use NetworkX for better layout
+        try:
+            import networkx as nx
+            use_networkx = True
+        except ImportError:
+            use_networkx = False
+        
+        if use_networkx:
+            # Use NetworkX for automatic tree layout
+            fig = self._plot_tree_with_networkx(nodes, children_map, mfg_type.name)
+        else:
+            # Fall back to manual recursive layout
+            fig = self._plot_tree_manual(nodes, children_map, mfg_type.name)
+        
+        return fig
+
+    def _plot_tree_with_networkx(
+        self,
+        nodes: list[AttributeNode],
+        children_map: dict[int | None, list[AttributeNode]],
+        title: str,
+    ):
+        """Plot tree using NetworkX for automatic layout.
+        
+        Uses NetworkX's hierarchical layout algorithm for better positioning
+        of nodes in the tree visualization.
+        
+        Args:
+            nodes: List of all nodes to plot
+            children_map: Mapping of parent_id to list of children
+            title: Title for the plot (manufacturing type name)
+            
+        Returns:
+            matplotlib.figure.Figure: Matplotlib figure object
+        """
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        import networkx as nx
+        
+        # Create directed graph
+        G = nx.DiGraph()
+        
+        # Add nodes with attributes
+        node_labels = {}
+        node_colors_map = {}
+        node_type_colors = {
+            'category': '#FFE5B4',      # Peach
+            'attribute': '#B4D7FF',     # Light blue
+            'option': '#B4FFB4',        # Light green
+            'component': '#FFB4E5',     # Light pink
+            'technical_spec': '#E5B4FF', # Light purple
+        }
+        
+        # Create a set of node IDs for quick lookup
+        node_ids = {node.id for node in nodes}
+        
+        for node in nodes:
+            G.add_node(node.id)
+            
+            # Format node label with name, type, and price
+            label = f"{node.name}\n[{node.node_type}]"
+            if node.price_impact_value is not None and node.price_impact_value != 0:
+                label += f"\n[+${node.price_impact_value:.2f}]"
+            
+            node_labels[node.id] = label
+            node_colors_map[node.id] = node_type_colors.get(node.node_type, '#CCCCCC')
+        
+        # Add edges (parent → child relationships)
+        # Only add edges where both parent and child are in our node set
+        for node in nodes:
+            if node.parent_node_id is not None and node.parent_node_id in node_ids:
+                G.add_edge(node.parent_node_id, node.id)
+        
+        # Use hierarchical layout
+        # Find root nodes (nodes with no parent or parent not in graph)
+        root_nodes = [n.id for n in nodes if n.parent_node_id is None or n.parent_node_id not in G]
+        
+        # Create hierarchical layout
+        try:
+            # Try to use graphviz layout if available (best for trees)
+            pos = nx.nx_agraph.graphviz_layout(G, prog='dot')
+        except:
+            # Fall back to spring layout with hierarchical hints
+            try:
+                pos = nx.spring_layout(G, k=2, iterations=50)
+            except:
+                # Last resort: use shell layout
+                pos = nx.shell_layout(G)
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(16, 12))
+        
+        # Draw edges
+        nx.draw_networkx_edges(
+            G, pos, ax=ax,
+            edge_color='#666666',
+            arrows=True,
+            arrowsize=20,
+            arrowstyle='->',
+            width=2,
+            alpha=0.6,
+        )
+        
+        # Draw nodes - get colors in the same order as nodes in G
+        node_colors = [node_colors_map[node_id] for node_id in G.nodes()]
+        nx.draw_networkx_nodes(
+            G, pos, ax=ax,
+            node_color=node_colors,
+            node_size=3000,
+            node_shape='o',
+            alpha=0.9,
+            edgecolors='#333333',
+            linewidths=2,
+        )
+        
+        # Draw labels
+        nx.draw_networkx_labels(
+            G, pos, ax=ax,
+            labels=node_labels,
+            font_size=8,
+            font_weight='bold',
+            font_family='sans-serif',
+        )
+        
+        # Add title
+        ax.set_title(f'Attribute Hierarchy: {title}', fontsize=16, fontweight='bold', pad=20)
+        
+        # Add legend
+        legend_elements = [
+            mpatches.Patch(facecolor=color, edgecolor='#333333', label=node_type.capitalize())
+            for node_type, color in node_type_colors.items()
+        ]
+        ax.legend(handles=legend_elements, loc='upper left', fontsize=10)
+        
+        ax.axis('off')
+        plt.tight_layout()
+        
+        return fig
+
+    def _plot_tree_manual(
+        self,
+        nodes: list[AttributeNode],
+        children_map: dict[int | None, list[AttributeNode]],
+        title: str,
+    ):
+        """Plot tree using manual recursive layout.
+        
+        Fallback method when NetworkX is not available. Uses a simple
+        recursive algorithm to position nodes in the tree.
+        
+        Args:
+            nodes: List of all nodes to plot
+            children_map: Mapping of parent_id to list of children
+            title: Title for the plot (manufacturing type name)
+            
+        Returns:
+            matplotlib.figure.Figure: Matplotlib figure object
+        """
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as mpatches
+        
+        # Node type colors
+        node_type_colors = {
+            'category': '#FFE5B4',      # Peach
+            'attribute': '#B4D7FF',     # Light blue
+            'option': '#B4FFB4',        # Light green
+            'component': '#FFB4E5',     # Light pink
+            'technical_spec': '#E5B4FF', # Light purple
+        }
+        
+        # Calculate positions using recursive layout
+        positions = {}
+        node_info = {node.id: node for node in nodes}
+        
+        # Find root nodes
+        root_nodes = children_map.get(None, [])
+        
+        if not root_nodes:
+            # No root nodes found, create empty figure
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.text(0.5, 0.5, 'No root nodes found', 
+                   ha='center', va='center', fontsize=14)
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.axis('off')
+            return fig
+        
+        # Calculate tree width for each node (number of leaf descendants)
+        def calculate_width(node_id: int) -> int:
+            """Calculate the width (number of leaves) under a node."""
+            children = children_map.get(node_id, [])
+            if not children:
+                return 1
+            return sum(calculate_width(child.id) for child in children)
+        
+        # Position nodes recursively
+        def position_node(node_id: int, x: float, y: float, width: float) -> float:
+            """Position a node and its children, return the next x position."""
+            positions[node_id] = (x, y)
+            
+            children = children_map.get(node_id, [])
+            if not children:
+                return x + 1
+            
+            # Calculate widths for children
+            child_widths = [calculate_width(child.id) for child in children]
+            total_width = sum(child_widths)
+            
+            # Position children
+            child_x = x - (total_width - 1) / 2
+            for child, child_width in zip(children, child_widths):
+                child_center = child_x + (child_width - 1) / 2
+                child_x = position_node(child.id, child_center, y - 1, child_width)
+            
+            return x + width
+        
+        # Position root nodes
+        total_width = sum(calculate_width(root.id) for root in root_nodes)
+        x_pos = -(total_width - 1) / 2
+        max_depth = max(node.depth for node in nodes)
+        
+        for root in root_nodes:
+            root_width = calculate_width(root.id)
+            root_center = x_pos + (root_width - 1) / 2
+            x_pos = position_node(root.id, root_center, max_depth, root_width)
+        
+        # Create figure
+        fig, ax = plt.subplots(figsize=(16, 12))
+        
+        # Draw edges
+        for node in nodes:
+            if node.parent_node_id is not None and node.parent_node_id in positions:
+                parent_pos = positions[node.parent_node_id]
+                child_pos = positions[node.id]
+                ax.plot(
+                    [parent_pos[0], child_pos[0]],
+                    [parent_pos[1], child_pos[1]],
+                    'k-', linewidth=2, alpha=0.6, zorder=1
+                )
+        
+        # Draw nodes
+        for node in nodes:
+            if node.id in positions:
+                x, y = positions[node.id]
+                color = node_type_colors.get(node.node_type, '#CCCCCC')
+                
+                # Draw node circle
+                circle = plt.Circle(
+                    (x, y), 0.3, 
+                    facecolor=color, 
+                    edgecolor='#333333', 
+                    linewidth=2, 
+                    alpha=0.9,
+                    zorder=2
+                )
+                ax.add_patch(circle)
+                
+                # Format label
+                label = f"{node.name}\n[{node.node_type}]"
+                if node.price_impact_value is not None and node.price_impact_value != 0:
+                    label += f"\n[+${node.price_impact_value:.2f}]"
+                
+                # Draw label
+                ax.text(
+                    x, y, label,
+                    ha='center', va='center',
+                    fontsize=8, fontweight='bold',
+                    zorder=3
+                )
+        
+        # Add title
+        ax.set_title(f'Attribute Hierarchy: {title}', fontsize=16, fontweight='bold', pad=20)
+        
+        # Add legend
+        legend_elements = [
+            mpatches.Patch(facecolor=color, edgecolor='#333333', label=node_type.capitalize())
+            for node_type, color in node_type_colors.items()
+        ]
+        ax.legend(handles=legend_elements, loc='upper left', fontsize=10)
+        
+        # Set axis properties
+        ax.set_aspect('equal')
+        ax.axis('off')
+        
+        # Auto-scale with padding
+        if positions:
+            x_coords = [pos[0] for pos in positions.values()]
+            y_coords = [pos[1] for pos in positions.values()]
+            x_margin = (max(x_coords) - min(x_coords)) * 0.1 + 1
+            y_margin = (max(y_coords) - min(y_coords)) * 0.1 + 1
+            ax.set_xlim(min(x_coords) - x_margin, max(x_coords) + x_margin)
+            ax.set_ylim(min(y_coords) - y_margin, max(y_coords) + y_margin)
+        
+        plt.tight_layout()
+        
+        return fig

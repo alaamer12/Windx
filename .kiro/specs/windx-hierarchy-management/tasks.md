@@ -198,29 +198,38 @@ not only for this function but common global like AttributeNodeCreate had almost
   - AttributeNodeRepository.build_tree() handles this
   - _Requirements: 1.12_
 
-- [ ] 5. ASCII Tree Visualization
+- [x] 5. ASCII Tree Visualization
+
+
+
+
   - Generate human-readable tree representations
   - Task 4.2 has been finished and with working function pydantify, which mean it could be easy to use this function to generate the visualization
   - _Requirements: 3.1-3.13_
-- [ ] 5.1 Implement `generate_ascii_tree()` or `asciify` <simple better name> method in HierarchyBuilderService
+- [x] 5.1 Implement `generate_ascii_tree()` or `asciify` <simple better name> method in HierarchyBuilderService
+
+
   - Accept manufacturing_type_id and optional root_node_id
   - Get all nodes for manufacturing type
   - Build tree structure
   - Call _generate_ascii_tree_recursive()
   - Return formatted string
   - _Requirements: 3.1, 3.2_
-- [ ] 5.2 Implement `_generate_ascii_tree_recursive()` helper
+- [x] 5.2 Implement `_generate_ascii_tree_recursive()` helper
+
   - Accept node, children_map, prefix, is_last
   - Use box-drawing characters (├──, └──, │)
   - Format current node with connector
   - Recursively process children
   - Return formatted string
   - _Requirements: 3.2, 3.3_
-- [ ] 5.3 Add price display formatting
+- [x] 5.3 Add price display formatting
+
   - Show price_impact_value as [+$50.00] if present
   - Format with 2 decimal places
   - _Requirements: 3.4_
-- [ ] 5.4 Add node type and depth indicators
+- [x] 5.4 Add node type and depth indicators
+
   - Show node_type in brackets [category], [option]
   - Include depth information if helpful
   - _Requirements: 3.3_
@@ -266,6 +275,12 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Preserve formatting and box-drawing characters
   - Add CSS for proper spacing and readability
   - _Requirements: 3.1-3.9_
+
+- [ ] 6.6 Create `app/templates/admin/components/diagram_tree.html.jinja` component
+  - Display ASCII tree in <pre> tag with monospace font
+  - Preserve formatting and box-drawing characters
+  - Add CSS for proper spacing and readability
+  - _Requirements: 11.1-11.9_
 
 - [ ] 7. Backend Admin Dashboard - FastAPI Routes
   - Create API endpoints for dashboard
@@ -430,7 +445,9 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Mention key features (automatic path calculation, tree visualization)
   - _Requirements: 11.5_
 
-- [ ] 5. Tree Visualization
+
+- [x] 11. Tree Visualization
+
 
 
 
@@ -438,7 +455,9 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Can leverage `pydantify` output from Task 4.2 for node information  
   - _Requirements: 3.1–3.13_
     
-- [ ] 11.1 Implement `generate_tree_plot()` or `plot_tree` method in `HierarchyBuilderService`    
+- [x] 11.1 Implement `generate_tree_plot()` or `plot_tree` method in `HierarchyBuilderService`    
+
+
     - Accept `manufacturing_type_id` and optional `root_node_id` 
     - Retrieve all nodes for the given manufacturing type  
     - Build hierarchical tree structure (parent → children map)
@@ -446,7 +465,8 @@ not only for this function but common global like AttributeNodeCreate had almost
     - Return **Matplotlib figure object**   
     -   _Requirements: 3.1, 3.2_
         
-- [ ] 11.2 Implement `_plot_tree_recursive()` helper (or plotting logic)
+- [x] 11.2 Implement `_plot_tree_recursive()` helper (or plotting logic)
+
     - Use **Matplotlib** for plotting nodes and edges
     - Optionally, if **Graphviz** is available on the platform:
       - Use **NetworkX** + `pygraphviz` layout for nicer automatic tree positioning    
@@ -455,7 +475,8 @@ not only for this function but common global like AttributeNodeCreate had almost
     - Return the Matplotlib figure object   
     -   _Requirements: 3.2, 3.3_
         
-- [ ] 11.3 Add node data formatting on plot
+- [x] 11.3 Add node data formatting on plot
+
     
     -   Display `price_impact_value` as `[+$50.00]` if present
         
@@ -465,14 +486,6 @@ not only for this function but common global like AttributeNodeCreate had almost
         
     -   _Requirements: 3.3, 3.4_
         
-- [ ]* 11.4 Optional enhancements
-    
-  - Customize node colors, shapes, or sizes based on type or price impact
-        
-  - Improve layout readability for large hierarchies    
-  - Add interactive zoom/pan if using `matplotlib` with `mplcursors` or `plotly` backend
-        
-  - _Requirements: 3.5_
 
 
 
@@ -512,3 +525,12 @@ not only for this function but common global like AttributeNodeCreate had almost
 4. **Phase 4**: Admin Dashboard Routes (Tasks 7-8) - API endpoints
 5. **Phase 5**: Integration Testing (Task 9) - Validation
 6. **Phase 6**: Documentation (Task 10) - User guides
+
+- [ ]* 11.4 Optional enhancements
+    
+  - Customize node colors, shapes, or sizes based on type or price impact
+        
+  - Improve layout readability for large hierarchies    
+  - Add interactive zoom/pan if using `matplotlib` with `mplcursors` or `plotly` backend
+        
+  - _Requirements: 3.5_

@@ -26,6 +26,7 @@ from app.api.types import (
     OptionalIntForm,
     OptionalIntQuery,
     OptionalStrForm,
+    OptionalStrQuery,
     RequiredIntForm,
     RequiredIntQuery,
     RequiredStrForm,
@@ -47,6 +48,10 @@ async def hierarchy_dashboard(
     mfg_repo: ManufacturingTypeRepo,
     attr_repo: AttributeNodeRepo,
     manufacturing_type_id: OptionalIntQuery = None,
+    success: OptionalStrQuery = None,
+    error: OptionalStrQuery = None,
+    warning: OptionalStrQuery = None,
+    info: OptionalStrQuery = None,
 ):
     """Render hierarchy management dashboard.
     
@@ -57,6 +62,10 @@ async def hierarchy_dashboard(
         mfg_repo: Manufacturing type repository
         attr_repo: Attribute node repository
         manufacturing_type_id: Optional manufacturing type ID to display
+        success: Optional success message from query params
+        error: Optional error message from query params
+        warning: Optional warning message from query params
+        info: Optional info message from query params
         
     Returns:
         HTMLResponse: Rendered dashboard template
@@ -73,6 +82,11 @@ async def hierarchy_dashboard(
         "tree_nodes": None,
         "ascii_tree": None,
         "diagram_tree": None,
+        # Flash messages
+        "success": success,
+        "error": error,
+        "warning": warning,
+        "info": info,
     }
     
     # If manufacturing type selected, get tree data

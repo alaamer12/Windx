@@ -386,13 +386,23 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Otherwise, delete node using AttributeNodeRepository.delete()
   - Redirect to /admin/hierarchy?manufacturing_type_id={id} with success message
   - _Requirements: 2.9_
-- [ ] 7.7 Add flash message support
+  
+
+
+- [x] 7.7 Add flash message support
+
+
   - Use query parameters for success/error messages
   - Display messages in templates using Bootstrap alerts
+
   - _Requirements: 2.10_
-- [ ] 7.8 Register admin_hierarchy router in `app/api/v1/router.py`
+
+- [x] 7.8 Register admin_hierarchy router in `app/api/v1/router.py`
+
+
   - Import admin_hierarchy from endpoints
   - Include router with prefix="/admin/hierarchy" and tags=["Admin Hierarchy"]
+
 
 - [ ] 8. Dashboard Form Handling and Validation
   - Handle form submissions and validation

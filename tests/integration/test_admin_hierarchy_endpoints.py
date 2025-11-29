@@ -807,3 +807,175 @@ async def test_delete_node_requires_superuser(
     
     # Verify unauthorized
     assert response.status_code == 401
+
+
+
+@pytest.mark.asyncio
+async def test_flash_message_success_displayed(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that success flash messages are displayed in the dashboard."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    response = await client.get(
+        f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&success=Node created successfully",
+        headers=superuser_auth_headers,
+        follow_redirects=True,
+    )
+    
+    assert response.status_code == 200
+    assert b"Node created successfully" in response.content
+    assert b"alert-success" in response.content
+    assert b"bi-check-circle" in response.content
+
+
+@pytest.mark.asyncio
+async def test_flash_message_error_displayed(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that error flash messages are displayed in the dashboard."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    response = await client.get(
+        f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&error=Node not found",
+        headers=superuser_auth_headers,
+        follow_redirects=True,
+    )
+    
+    assert response.status_code == 200
+    assert b"Node not found" in response.content
+    assert b"alert-danger" in response.content
+    assert b"bi-exclamation-triangle" in response.content
+
+
+@pytest.mark.asyncio
+async def test_flash_message_warning_displayed(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that warning flash messages are displayed in the dashboard."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    response = await client.get(
+        f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&warning=This is a warning",
+        headers=superuser_auth_headers,
+        follow_redirects=True,
+    )
+    
+    assert response.status_code == 200
+    assert b"This is a warning" in response.content
+    assert b"alert-warning" in response.content
+    assert b"bi-exclamation-circle" in response.content
+
+
+@pytest.mark.asyncio
+async def test_flash_message_info_displayed(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that info flash messages are displayed in the dashboard."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    response = await client.get(
+        f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&info=This is information",
+        headers=superuser_auth_headers,
+        follow_redirects=True,
+    )
+    
+    assert response.status_code == 200
+    assert b"This is information" in response.content
+    assert b"alert-info" in response.content
+    assert b"bi-info-circle" in response.content
+
+
+@pytest.mark.asyncio
+async def test_create_node_redirects_with_success_message(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that creating a node redirects with success message."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data={
+            "manufacturing_type_id": str(mfg_type.id),
+            "name": "Test Node",
+            "node_type": "category",
+            "price_impact_type": "fixed",
+            "weight_impact": "0",
+            "sort_order": "0",
+            "required": "false",
+        },
+    )
+    
+    assert response.status_code == 303
+    # Check for URL-encoded version of the message
+    assert "success=" in response.headers["location"]
+    assert ("Node created successfully" in response.headers["location"] or 
+            "Node%20created%20successfully" in response.headers["location"])
+
+
+@pytest.mark.asyncio
+async def test_delete_node_redirects_with_success_message(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that deleting a node redirects with success message."""
+    # Create manufacturing type and node
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    node = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Test Node",
+        node_type="category",
+    )
+    
+    response = await client.post(
+        f"/api/v1/admin/hierarchy/node/{node.id}/delete",
+        headers=superuser_auth_headers,
+    )
+    
+    assert response.status_code == 303
+    # Check for URL-encoded version of the message
+    assert "success=" in response.headers["location"]
+    assert ("Node deleted successfully" in response.headers["location"] or 
+            "Node%20deleted%20successfully" in response.headers["location"])

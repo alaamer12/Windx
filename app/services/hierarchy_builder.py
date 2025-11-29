@@ -24,7 +24,7 @@ from app.models.attribute_node import AttributeNode
 from app.models.manufacturing_type import ManufacturingType
 from app.repositories.attribute_node import AttributeNodeRepository
 from app.repositories.manufacturing_type import ManufacturingTypeRepository
-from app.schemas.attribute_node import AttributeNodeCreate
+from app.schemas.attribute_node import AttributeNodeCreate, AttributeNodeTree
 from app.schemas.manufacturing_type import ManufacturingTypeCreate
 from app.services.base import BaseService
 
@@ -664,3 +664,283 @@ class HierarchyBuilderService(BaseService):
         await self.refresh(node)
         
         return node
+
+    async def create_hierarchy_from_dict(
+        self,
+        manufacturing_type_id: int,
+        hierarchy_data: dict,
+        parent: AttributeNode | None = None,
+    ) -> AttributeNode:
+        """Create a hierarchy from nested dictionary structure.
+        
+        Creates an entire attribute hierarchy from a nested dictionary,
+        recursively processing children. This enables batch creation of
+        complex hierarchies with a single method call.
+        
+        The operation is transactional - either all nodes are created
+        successfully, or none are created (all-or-nothing).
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            hierarchy_data: Dictionary containing node data and optional children
+            parent: Optional parent node (None for root level)
+            
+        Returns:
+            AttributeNode: The root node of the created hierarchy
+            
+        Raises:
+            ValueError: If hierarchy_data is invalid or missing required fields
+            NotFoundException: If manufacturing type or parent not found
+            ConflictException: If duplicate names exist at same level
+            DatabaseException: If creation fails (triggers rollback)
+            
+        Dictionary Structure:
+            {
+                "name": "Node Name",  # Required
+                "node_type": "category",  # Required
+                "data_type": "string",  # Optional
+                "price_impact_value": 50.00,  # Optional
+                "weight_impact": 2.0,  # Optional
+                "description": "Description",  # Optional
+                # ... any other node fields ...
+                "children": [  # Optional - list of child dictionaries
+                    {
+                        "name": "Child Node",
+                        "node_type": "option",
+                        # ... child fields ...
+                        "children": [...]  # Nested children
+                    }
+                ]
+            }
+            
+        Example:
+            >>> hierarchy = {
+            ...     "name": "Frame Material",
+            ...     "node_type": "category",
+            ...     "children": [
+            ...         {
+            ...             "name": "Material Type",
+            ...             "node_type": "attribute",
+            ...             "data_type": "selection",
+            ...             "children": [
+            ...                 {
+            ...                     "name": "Aluminum",
+            ...                     "node_type": "option",
+            ...                     "price_impact_value": 50.00,
+            ...                     "weight_impact": 2.0
+            ...                 },
+            ...                 {
+            ...                     "name": "Vinyl",
+            ...                     "node_type": "option",
+            ...                     "price_impact_value": 30.00,
+            ...                     "weight_impact": 1.5
+            ...                 }
+            ...             ]
+            ...         }
+            ...     ]
+            ... }
+            >>> 
+            >>> root = await service.create_hierarchy_from_dict(
+            ...     manufacturing_type_id=1,
+            ...     hierarchy_data=hierarchy
+            ... )
+            >>> # Creates: Frame Material → Material Type → [Aluminum, Vinyl]
+        """
+        from app.core.exceptions import DatabaseException
+        
+        # Validate hierarchy_data is a dictionary
+        if not isinstance(hierarchy_data, dict):
+            raise ValueError(
+                f"hierarchy_data must be a dictionary, got {type(hierarchy_data).__name__}"
+            )
+        
+        # Validate required fields
+        if "name" not in hierarchy_data:
+            raise ValueError("hierarchy_data must contain 'name' field")
+        
+        if "node_type" not in hierarchy_data:
+            raise ValueError("hierarchy_data must contain 'node_type' field")
+        
+        # Extract children before creating node (we'll process them after)
+        children_data = hierarchy_data.pop("children", [])
+        
+        # Validate children is a list if provided
+        if children_data is not None and not isinstance(children_data, list):
+            raise ValueError(
+                f"'children' must be a list, got {type(children_data).__name__}"
+            )
+        
+        try:
+            # Extract node data from dictionary
+            node_data = {
+                "manufacturing_type_id": manufacturing_type_id,
+                "parent_node_id": parent.id if parent else None,
+                **hierarchy_data  # Spread all other fields from dict
+            }
+            
+            # Convert Decimal fields if they're provided as strings or floats
+            if "price_impact_value" in node_data and node_data["price_impact_value"] is not None:
+                node_data["price_impact_value"] = Decimal(str(node_data["price_impact_value"]))
+            
+            if "weight_impact" in node_data and node_data["weight_impact"] is not None:
+                node_data["weight_impact"] = Decimal(str(node_data["weight_impact"]))
+            
+            # Create the node using create_node method
+            # This handles all validation, path calculation, and duplicate checking
+            node = await self.create_node(**node_data)
+            
+            # Recursively process children
+            if children_data:
+                for child_data in children_data:
+                    # Validate each child is a dictionary
+                    if not isinstance(child_data, dict):
+                        raise ValueError(
+                            f"Each child must be a dictionary, got {type(child_data).__name__} "
+                            f"for child of node '{node.name}'"
+                        )
+                    
+                    # Recursively create child hierarchy
+                    # Pass the newly created node as parent
+                    await self.create_hierarchy_from_dict(
+                        manufacturing_type_id=manufacturing_type_id,
+                        hierarchy_data=child_data,
+                        parent=node
+                    )
+            
+            return node
+            
+        except Exception as e:
+            # Rollback transaction on any error
+            await self.rollback()
+            
+            # Re-raise with additional context about which node failed
+            node_name = hierarchy_data.get("name", "<unknown>")
+            parent_name = parent.name if parent else "<root>"
+            
+            raise DatabaseException(
+                f"Failed to create node '{node_name}' under parent '{parent_name}': {str(e)}"
+            ) from e
+
+    async def pydantify(
+        self,
+        manufacturing_type_id: int,
+        root_node_id: int | None = None,
+    ) -> list[AttributeNodeTree]:
+        """Get hierarchy as Pydantic models (serializable to JSON).
+        
+        Retrieves the attribute tree for a manufacturing type and converts
+        it to a nested Pydantic structure suitable for JSON serialization
+        and tree visualization.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            root_node_id: Optional root node ID to get subtree only
+            
+        Returns:
+            list[AttributeNodeTree]: List of root nodes with nested children
+            
+        Raises:
+            NotFoundException: If manufacturing type or root node not found
+            
+        Example:
+            >>> # Get full tree for manufacturing type
+            >>> tree = await service.pydantify(manufacturing_type_id=1)
+            >>> 
+            >>> # Get subtree starting from specific node
+            >>> subtree = await service.pydantify(
+            ...     manufacturing_type_id=1,
+            ...     root_node_id=42
+            ... )
+            >>> 
+            >>> # Serialize to JSON
+            >>> import json
+            >>> tree_json = json.dumps([node.model_dump() for node in tree], indent=2)
+        """
+        from app.core.exceptions import NotFoundException
+        from app.schemas.attribute_node import AttributeNodeTree
+        
+        # Validate manufacturing type exists
+        mfg_type = await self.mfg_type_repo.get(manufacturing_type_id)
+        if mfg_type is None:
+            raise NotFoundException(
+                f"Manufacturing type with id {manufacturing_type_id} not found"
+            )
+        
+        # If root_node_id is provided, validate it exists and build subtree
+        if root_node_id is not None:
+            root_node = await self.attr_node_repo.get(root_node_id)
+            if root_node is None:
+                raise NotFoundException(f"Root node with id {root_node_id} not found")
+            
+            # Validate root node belongs to the manufacturing type
+            if root_node.manufacturing_type_id != manufacturing_type_id:
+                raise ValueError(
+                    f"Root node {root_node_id} belongs to manufacturing type "
+                    f"{root_node.manufacturing_type_id}, not {manufacturing_type_id}"
+                )
+            
+            # Get all descendants of the root node
+            descendants = await self.attr_node_repo.get_descendants(root_node_id)
+            # Include the root node itself at the beginning
+            nodes = [root_node] + descendants
+            
+            # For subtree, we need to build the tree treating the specified node as root
+            # Create a mapping of node_id to node with children list
+            node_map: dict[int, AttributeNodeTree] = {}
+            
+            for node in nodes:
+                node_tree = AttributeNodeTree(
+                    id=node.id,
+                    manufacturing_type_id=node.manufacturing_type_id,
+                    parent_node_id=node.parent_node_id,
+                    name=node.name,
+                    node_type=node.node_type,
+                    data_type=node.data_type,
+                    display_condition=node.display_condition,
+                    validation_rules=node.validation_rules,
+                    required=node.required,
+                    price_impact_type=node.price_impact_type,
+                    price_impact_value=node.price_impact_value,
+                    price_formula=node.price_formula,
+                    weight_impact=node.weight_impact,
+                    weight_formula=node.weight_formula,
+                    technical_property_type=node.technical_property_type,
+                    technical_impact_formula=node.technical_impact_formula,
+                    ltree_path=node.ltree_path,
+                    depth=node.depth,
+                    sort_order=node.sort_order,
+                    ui_component=node.ui_component,
+                    description=node.description,
+                    help_text=node.help_text,
+                    created_at=node.created_at,
+                    updated_at=node.updated_at,
+                    children=[],
+                )
+                node_map[node.id] = node_tree
+            
+            # Build tree by linking children to parents
+            # The root of the subtree is the specified root_node_id
+            for node in nodes:
+                if node.id == root_node_id:
+                    # This is the root of our subtree
+                    continue
+                    
+                node_tree = node_map[node.id]
+                
+                # Add to parent's children if parent is in our subtree
+                if node.parent_node_id in node_map:
+                    parent = node_map[node.parent_node_id]
+                    parent.children.append(node_tree)
+            
+            # Return the root node as a single-item list
+            return [node_map[root_node_id]]
+        else:
+            # Get all nodes for the manufacturing type
+            nodes = await self.attr_node_repo.get_by_manufacturing_type(
+                manufacturing_type_id
+            )
+            
+            # Build tree structure using repository method
+            tree = self.attr_node_repo.build_tree(nodes)
+            
+            return tree

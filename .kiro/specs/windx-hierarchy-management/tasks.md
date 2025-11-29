@@ -108,6 +108,7 @@ not only for this function but common global like AttributeNodeCreate had almost
 - [x] 2. Node Validation and Error Handling
 
 
+
   - Add validation to prevent invalid hierarchies
   - _Requirements: 5.1-5.10_
 - [x] 2.1 Add validation for parent node existence in `create_node()`
@@ -141,26 +142,34 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Raise ValidationException for invalid types
   - _Requirements: 5.4_
 
-- [ ] 3. Batch Hierarchy Creation
+- [-] 3. Batch Hierarchy Creation
+
+
+
   - Enable creating entire hierarchies from nested dictionaries
   - _Requirements: 1.7, 1.8_
-- [ ] 3.1 Implement `create_hierarchy_from_dict()` method
+- [x] 3.1 Implement `create_hierarchy_from_dict()` method
+
+
   - Accept manufacturing_type_id, hierarchy_data dict, optional parent
   - Extract node data from dict
   - Create node using create_node()
   - Return root node
   - _Requirements: 1.7_
-- [ ] 3.2 Add recursive processing for nested children
+- [x] 3.2 Add recursive processing for nested children
+
   - Check for 'children' key in hierarchy_data
   - Recursively call create_hierarchy_from_dict() for each child
   - Pass created node as parent
   - _Requirements: 1.7_
-- [ ] 3.3 Add transaction handling (all-or-nothing)
+- [x] 3.3 Add transaction handling (all-or-nothing)
+
   - Wrap entire operation in try/except
   - Rollback on any error
   - Commit only if all nodes created successfully
   - _Requirements: 1.8_
-- [ ] 3.4 Add error handling for batch operations
+- [x] 3.4 Add error handling for batch operations
+
   - Catch and re-raise exceptions with context
   - Include which node failed in error message
   - _Requirements: 1.8_
@@ -172,7 +181,11 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Located in `app/schemas/attribute_node.py`
   - Has children field for nested structure
   - _Requirements: 1.11_
-- [ ] 4.2 Implement `get_tree_as_pydantic()` or "pydantify" <for simplicity> method in HierarchyBuilderService
+
+- [x] 4.2 Implement `get_tree_as_pydantic()` or "pydantify" <for simplicity> method in HierarchyBuilderService
+
+
+
 
   - Accept manufacturing_type_id and optional root_node_id
   - Use AttributeNodeRepository.get_by_manufacturing_type() to get all nodes
@@ -185,8 +198,9 @@ not only for this function but common global like AttributeNodeCreate had almost
 
 - [ ] 5. ASCII Tree Visualization
   - Generate human-readable tree representations
+  - Task 4.2 has been finished and with working function pydantify, which mean it could be easy to use this function to generate the visualization
   - _Requirements: 3.1-3.13_
-- [ ] 5.1 Implement `generate_ascii_tree()` method in HierarchyBuilderService
+- [ ] 5.1 Implement `generate_ascii_tree()` or `asciify` <simple better name> method in HierarchyBuilderService
   - Accept manufacturing_type_id and optional root_node_id
   - Get all nodes for manufacturing type
   - Build tree structure

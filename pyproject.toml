@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "windx-configurator"
+name = "Windx"
 version = "1.0.0"
 description = "Automated product configurator for custom manufacturing - windows, doors, furniture, and more"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-    { name = "WindX Team", email = "team@windx.example.com" }
+    { name = "alaamer12", email = "ahmedmuhmmed239@gmail.com" }
 ]
 keywords = [
     "product-configurator",
@@ -58,7 +58,11 @@ dependencies = [
     "fastapi-pagination",
     "redis",
     "jinja2",
-    "bcrypt==4.3.0"
+    "bcrypt==4.3.0", # Must be version 4
+    "python-multipart",
+    "matplotlib",
+    "networkx",
+    # "pygraphviz",
 ]
 
 [dependency-groups]
@@ -66,16 +70,17 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
+    "pytest-mock",
     "ruff",
     "httpx",
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/windx-configurator"
-Documentation = "https://github.com/yourusername/windx-configurator#readme"
-Repository = "https://github.com/yourusername/windx-configurator"
-Issues = "https://github.com/yourusername/windx-configurator/issues"
-Changelog = "https://github.com/yourusername/windx-configurator/releases"
+Homepage = "https://github.com/alaamer12/Windx"
+Documentation = "https://github.com/alaamer12/Windx#readme"
+Repository = "https://github.com/alaamer12/Windx"
+Issues = "https://github.com/alaamer12/Windx/issues"
+Changelog = "https://github.com/alaamer12/Windx/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

@@ -12,13 +12,24 @@ Endpoints:
 """
 
 from decimal import Decimal
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Query, Request, status
+from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from app.api.types import AttributeNodeRepo, CurrentSuperuser, DBSession, ManufacturingTypeRepo
+from app.api.types import (
+    AttributeNodeRepo,
+    CurrentSuperuser,
+    DBSession,
+    ManufacturingTypeRepo,
+    OptionalBoolForm,
+    OptionalIntForm,
+    OptionalIntQuery,
+    OptionalStrForm,
+    RequiredIntForm,
+    RequiredIntQuery,
+    RequiredStrForm,
+)
 from app.services.hierarchy_builder import HierarchyBuilderService
 
 # Configure Jinja2 templates
@@ -35,7 +46,7 @@ async def hierarchy_dashboard(
     db: DBSession,
     mfg_repo: ManufacturingTypeRepo,
     attr_repo: AttributeNodeRepo,
-    manufacturing_type_id: Annotated[int | None, Query()] = None,
+    manufacturing_type_id: OptionalIntQuery = None,
 ):
     """Render hierarchy management dashboard.
     
@@ -58,6 +69,7 @@ async def hierarchy_dashboard(
         "request": request,
         "manufacturing_types": manufacturing_types,
         "selected_type_id": manufacturing_type_id,
+        "selected_manufacturing_type": None,
         "tree_nodes": None,
         "ascii_tree": None,
         "diagram_tree": None,
@@ -65,24 +77,29 @@ async def hierarchy_dashboard(
     
     # If manufacturing type selected, get tree data
     if manufacturing_type_id:
-        hierarchy_service = HierarchyBuilderService(db)
-        
-        # Get tree as Pydantic models
-        tree = await hierarchy_service.pydantify(manufacturing_type_id)
-        
-        # Convert to dict for template
-        if tree:
-            context["tree_nodes"] = [node.model_dump() for node in tree]
-        
-        # Get ASCII tree visualization
-        context["ascii_tree"] = await hierarchy_service.asciify(manufacturing_type_id)
-        
-        # Get diagram tree visualization (base64 encoded image)
-        try:
-            context["diagram_tree"] = await hierarchy_service.plot_tree(manufacturing_type_id)
-        except Exception:
-            # If diagram generation fails, just skip it
-            context["diagram_tree"] = None
+        # Get the selected manufacturing type
+        selected_mfg_type = await mfg_repo.get(manufacturing_type_id)
+        if selected_mfg_type:
+            context["selected_manufacturing_type"] = selected_mfg_type
+            
+            hierarchy_service = HierarchyBuilderService(db)
+            
+            # Get tree as Pydantic models
+            tree = await hierarchy_service.pydantify(manufacturing_type_id)
+            
+            # Convert to dict for template
+            if tree:
+                context["tree_nodes"] = [node.model_dump() for node in tree]
+            
+            # Get ASCII tree visualization
+            context["ascii_tree"] = await hierarchy_service.asciify(manufacturing_type_id)
+            
+            # Get diagram tree visualization (base64 encoded image)
+            try:
+                context["diagram_tree"] = await hierarchy_service.plot_tree(manufacturing_type_id)
+            except Exception:
+                # If diagram generation fails, just skip it
+                context["diagram_tree"] = None
     
     return templates.TemplateResponse("admin/hierarchy_dashboard.html.jinja", context)
 
@@ -94,8 +111,8 @@ async def create_node_form(
     db: DBSession,
     mfg_repo: ManufacturingTypeRepo,
     attr_repo: AttributeNodeRepo,
-    manufacturing_type_id: Annotated[int, Query()],
-    parent_id: Annotated[int | None, Query()] = None,
+    manufacturing_type_id: RequiredIntQuery,
+    parent_id: OptionalIntQuery = None,
 ):
     """Render node creation form.
     

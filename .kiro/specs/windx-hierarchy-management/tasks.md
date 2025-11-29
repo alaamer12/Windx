@@ -331,7 +331,10 @@ not only for this function but common global like AttributeNodeCreate had almost
   - _Requirements: 2.1, 2.4, 2.5_
 
 
-- [ ] 7.3 Implement GET `/admin/hierarchy/node/create` (create form)
+- [-] 7.3 Implement GET `/admin/hierarchy/node/create` (create form)
+
+
+
   - Dependency: current_superuser: CurrentSuperuser
   - Accept manufacturing_type_id (required) and optional parent_id query params
   - Get manufacturing type by ID
@@ -341,6 +344,7 @@ not only for this function but common global like AttributeNodeCreate had almost
 
   - Render node_form.html.jinja template with context
   - _Requirements: 4.1, 4.2_
+
 - [ ] 7.4 Implement POST `/admin/hierarchy/node/save` (create/update)
   - Dependency: current_superuser: CurrentSuperuser
   - Accept form data using Form(...) for each field

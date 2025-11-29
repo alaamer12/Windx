@@ -101,7 +101,7 @@ async def hierarchy_dashboard(
                 # If diagram generation fails, just skip it
                 context["diagram_tree"] = None
     
-    return templates.TemplateResponse("admin/hierarchy_dashboard.html.jinja", context)
+    return templates.TemplateResponse(request=request, name="admin/hierarchy_dashboard.html.jinja", context=context)
 
 
 @router.get("/node/create", response_class=HTMLResponse)
@@ -159,7 +159,7 @@ async def create_node_form(
         "is_edit": False,
     }
     
-    return templates.TemplateResponse("admin/node_form.html.jinja", context)
+    return templates.TemplateResponse(request=request, name="admin/node_form.html.jinja", context=context)
 
 
 @router.post("/node/save")
@@ -168,24 +168,24 @@ async def save_node(
     current_superuser: CurrentSuperuser,
     db: DBSession,
     attr_repo: AttributeNodeRepo,
-    node_id: Annotated[int | None, Form()] = None,
-    manufacturing_type_id: Annotated[int, Form()] = ...,
-    name: Annotated[str, Form()] = ...,
-    node_type: Annotated[str, Form()] = ...,
-    parent_node_id: Annotated[int | None, Form()] = None,
-    data_type: Annotated[str | None, Form()] = None,
-    required: Annotated[bool, Form()] = False,
-    price_impact_type: Annotated[str, Form()] = "fixed",
-    price_impact_value: Annotated[str | None, Form()] = None,
-    price_formula: Annotated[str | None, Form()] = None,
-    weight_impact: Annotated[str, Form()] = "0",
-    weight_formula: Annotated[str | None, Form()] = None,
-    technical_property_type: Annotated[str | None, Form()] = None,
-    technical_impact_formula: Annotated[str | None, Form()] = None,
-    sort_order: Annotated[int, Form()] = 0,
-    ui_component: Annotated[str | None, Form()] = None,
-    description: Annotated[str | None, Form()] = None,
-    help_text: Annotated[str | None, Form()] = None,
+    node_id: OptionalIntForm = None,
+    manufacturing_type_id: RequiredIntForm = ...,
+    name: RequiredStrForm = ...,
+    node_type: RequiredStrForm = ...,
+    parent_node_id: OptionalIntForm = None,
+    data_type: OptionalStrForm = None,
+    required: OptionalBoolForm = False,
+    price_impact_type: RequiredStrForm = "fixed",
+    price_impact_value: OptionalStrForm = None,
+    price_formula: OptionalStrForm = None,
+    weight_impact: RequiredStrForm = "0",
+    weight_formula: OptionalStrForm = None,
+    technical_property_type: OptionalStrForm = None,
+    technical_impact_formula: OptionalStrForm = None,
+    sort_order: OptionalIntForm = 0,
+    ui_component: OptionalStrForm = None,
+    description: OptionalStrForm = None,
+    help_text: OptionalStrForm = None,
 ):
     """Save node (create or update).
     
@@ -366,7 +366,7 @@ async def edit_node_form(
         "is_edit": True,
     }
     
-    return templates.TemplateResponse("admin/node_form.html.jinja", context)
+    return templates.TemplateResponse(request=request, name="admin/node_form.html.jinja", context=context)
 
 
 @router.post("/node/{node_id}/delete")

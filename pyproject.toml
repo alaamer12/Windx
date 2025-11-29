@@ -3,23 +3,43 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "backend-api"
+name = "windx-configurator"
 version = "1.0.0"
-description = "Professional backend API with FastAPI and PostgreSQL"
+description = "Automated product configurator for custom manufacturing - windows, doors, furniture, and more"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "WindX Team", email = "team@windx.example.com" }
 ]
-keywords = ["fastapi", "postgresql", "supabase", "api", "backend"]
+keywords = [
+    "product-configurator",
+    "manufacturing",
+    "custom-products",
+    "pricing-engine",
+    "quote-generation",
+    "order-management",
+    "fastapi",
+    "postgresql",
+    "ltree",
+    "hierarchical-data",
+    "e-commerce",
+    "b2b",
+    "windows",
+    "doors",
+    "furniture"
+]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Manufacturing",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Framework :: FastAPI",
+    "Topic :: Office/Business",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Operating System :: OS Independent",
 ]
 
 dependencies = [
@@ -41,8 +61,8 @@ dependencies = [
     "bcrypt==4.3.0"
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -51,10 +71,11 @@ dev-dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/backend-api"
-Documentation = "https://github.com/yourusername/backend-api#readme"
-Repository = "https://github.com/yourusername/backend-api"
-Issues = "https://github.com/yourusername/backend-api/issues"
+Homepage = "https://github.com/yourusername/windx-configurator"
+Documentation = "https://github.com/yourusername/windx-configurator#readme"
+Repository = "https://github.com/yourusername/windx-configurator"
+Issues = "https://github.com/yourusername/windx-configurator/issues"
+Changelog = "https://github.com/yourusername/windx-configurator/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

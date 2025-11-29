@@ -645,7 +645,7 @@ class Settings(BaseSettings):
     app_name: Annotated[
         str,
         Field(
-            default="My API",
+            default="WindX Product Configurator",
             description="Application name",
         ),
     ]

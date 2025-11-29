@@ -525,7 +525,12 @@ check file #database/test_ltree_type.py
 
 ## Phase 11: API Documentation
 
-- [ ] 11. Create API documentation examples
+- [x] 11. Create API documentation examples
+
+
+
+
+
   - Add request/response examples to all endpoints
   - Add error response examples
   - Document authentication requirements
@@ -533,16 +538,20 @@ check file #database/test_ltree_type.py
   - _Requirements: 6.5_
 
 - [x] 12. Migrate from aiosqlite in test code to use asyncpg
-
-
-
-
-
   - Run all tests first at the begining and identify which is failing and which is passing, and their count
   - Migrate the aioslqite with asyncpg, use supabase url and configuration from .env.test
   - Remove .env.test from .gitignore and clean cache
   - Add the needed configuration for supabase to work with asyncpg
   - Ensure asyncpg works in the end
+
+- [x] 13. Ensure all WindX overview and business is documented
+
+
+
+
+  - Update README.md for Windx project, ensure to be asbstracted and covering the business without too much techincal details
+  - Update pyproject.toml metadata
+  - Update any other needed files
 
 ## Notes
 

@@ -77,12 +77,44 @@ async def lifespan(application: FastAPI):
 
 
 app = FastAPI(
-    title="Backend API",
-    description="Professional backend API with PostgreSQL/Supabase",
+    title="WindX Product Configurator API",
+    description="""
+    **WindX** - Automated Product Configurator for Custom Manufacturing
+    
+    Transform how customers design and order custom manufactured products with:
+    - 🎨 **Dynamic Product Configuration** - Hierarchical attribute trees with unlimited depth
+    - 💰 **Real-time Pricing** - Instant price calculations with formula support
+    - 📋 **Template System** - Pre-configured products for quick start
+    - 📄 **Quote Generation** - Professional quotes with price protection
+    - 📦 **Order Management** - Complete order lifecycle tracking
+    
+    Perfect for windows, doors, furniture, cabinets, and any customizable manufactured products.
+    
+    **Key Features:**
+    - Self-service configuration with instant feedback
+    - Automated pricing with validation
+    - Template-based quick configuration
+    - Quote-to-order workflow
+    - Customer and order management
+    
+    **Technology:**
+    - PostgreSQL with LTREE for hierarchical data
+    - Type-safe with SQLAlchemy 2.0 and Pydantic V2
+    - High-performance caching and rate limiting
+    - Comprehensive API documentation
+    """,
     version="1.0.0",
     lifespan=lifespan,
     swagger_ui_parameters={
         "persistAuthorization": True,
+    },
+    contact={
+        "name": "WindX Support",
+        "email": "support@windx.example.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
     },
 )
 
@@ -92,9 +124,14 @@ async def root() -> dict[str, str]:
     """Root endpoint.
 
     Returns:
-        dict[str, str]: Welcome message
+        dict[str, str]: Welcome message with API information
     """
-    return {"message": "Welcome to the API"}
+    return {
+        "message": "Welcome to WindX Product Configurator API",
+        "version": "1.0.0",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 @app.get(

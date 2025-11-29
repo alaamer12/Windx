@@ -450,9 +450,11 @@ class HierarchyBuilderService(BaseService):
             raise ValueError("Node name cannot exceed 200 characters")
         
         # Validate node_type
+        from app.core.exceptions import ValidationException
+        
         valid_node_types = {"category", "attribute", "option", "component", "technical_spec"}
         if node_type not in valid_node_types:
-            raise ValueError(
+            raise ValidationException(
                 f"Invalid node_type '{node_type}'. Must be one of: {', '.join(valid_node_types)}"
             )
         
@@ -506,12 +508,36 @@ class HierarchyBuilderService(BaseService):
                     f"Parent node belongs to manufacturing type {parent.manufacturing_type_id}, "
                     f"but node is being created for manufacturing type {manufacturing_type_id}"
                 )
+            
+            # Note: Circular reference detection is not needed for new node creation
+            # since a new node cannot be its own ancestor. This validation is only
+            # needed when moving existing nodes (see move_node method).
         
         # Calculate ltree_path using helper method
         ltree_path = self._calculate_ltree_path(parent, name)
         
         # Calculate depth using helper method
         depth = self._calculate_depth(parent)
+        
+        # Check for duplicate names at the same level (same parent)
+        from app.core.exceptions import ConflictException
+        from sqlalchemy import select
+        
+        # Query for siblings with the same name
+        siblings_query = select(AttributeNode).where(
+            AttributeNode.manufacturing_type_id == manufacturing_type_id,
+            AttributeNode.parent_node_id == parent_node_id,
+            AttributeNode.name == name,
+        )
+        result = await self.attr_node_repo.db.execute(siblings_query)
+        existing_sibling = result.scalar_one_or_none()
+        
+        if existing_sibling is not None:
+            parent_desc = f"parent node {parent_node_id}" if parent_node_id else "root level"
+            raise ConflictException(
+                f"A node with name '{name}' already exists at {parent_desc} "
+                f"in manufacturing type {manufacturing_type_id}"
+            )
         
         # Create AttributeNodeCreate schema with calculated fields
         # We need to create the model directly because we're adding computed fields
@@ -543,6 +569,97 @@ class HierarchyBuilderService(BaseService):
         
         # Add to session and commit
         self.attr_node_repo.db.add(node)
+        await self.commit()
+        await self.refresh(node)
+        
+        return node
+
+    async def move_node(
+        self,
+        node_id: int,
+        new_parent_id: int | None,
+    ) -> AttributeNode:
+        """Move a node to a new parent in the hierarchy.
+        
+        Moves an existing attribute node to a new parent, recalculating
+        its LTREE path and depth. Validates that the move would not create
+        a circular reference.
+        
+        Args:
+            node_id: ID of the node to move
+            new_parent_id: ID of the new parent (None for root level)
+            
+        Returns:
+            AttributeNode: Updated node with new path and depth
+            
+        Raises:
+            NotFoundException: If node or new parent not found
+            ValidationException: If move would create circular reference
+            ValueError: If new parent is in different manufacturing type
+            
+        Example:
+            >>> # Move node 5 to be a child of node 10
+            >>> moved_node = await service.move_node(5, 10)
+            
+            >>> # Move node 5 to root level
+            >>> moved_node = await service.move_node(5, None)
+        """
+        from app.core.exceptions import NotFoundException, ValidationException
+        
+        # Validate node exists
+        node = await self.attr_node_repo.get(node_id)
+        if node is None:
+            raise NotFoundException(f"Node with id {node_id} not found")
+        
+        # If new_parent_id is provided, validate it
+        new_parent: AttributeNode | None = None
+        if new_parent_id is not None:
+            if new_parent_id <= 0:
+                raise ValueError("new_parent_id must be greater than 0")
+            
+            new_parent = await self.attr_node_repo.get(new_parent_id)
+            if new_parent is None:
+                raise NotFoundException(f"New parent node with id {new_parent_id} not found")
+            
+            # Validate new parent belongs to same manufacturing type
+            if new_parent.manufacturing_type_id != node.manufacturing_type_id:
+                raise ValueError(
+                    f"Cannot move node to parent in different manufacturing type. "
+                    f"Node is in type {node.manufacturing_type_id}, "
+                    f"parent is in type {new_parent.manufacturing_type_id}"
+                )
+            
+            # Check for circular reference
+            would_cycle = await self.attr_node_repo.would_create_cycle(node_id, new_parent_id)
+            if would_cycle:
+                raise ValidationException(
+                    f"Cannot move node {node_id} under node {new_parent_id}: "
+                    "this would create a circular reference in the hierarchy"
+                )
+        
+        # Calculate new ltree_path and depth
+        new_ltree_path = self._calculate_ltree_path(new_parent, node.name)
+        new_depth = self._calculate_depth(new_parent)
+        
+        # Update node
+        node.parent_node_id = new_parent_id
+        node.ltree_path = new_ltree_path
+        node.depth = new_depth
+        
+        # Update all descendants' paths and depths
+        descendants = await self.attr_node_repo.get_descendants(node_id)
+        for descendant in descendants:
+            # Calculate relative path from node to descendant
+            old_node_path = node.ltree_path
+            descendant_relative_path = descendant.ltree_path[len(old_node_path) + 1:]
+            
+            # Update descendant's path
+            descendant.ltree_path = f"{new_ltree_path}.{descendant_relative_path}"
+            
+            # Update descendant's depth (add the depth change)
+            depth_change = new_depth - node.depth
+            descendant.depth = descendant.depth + depth_change
+        
         await self.commit()
         await self.refresh(node)
         

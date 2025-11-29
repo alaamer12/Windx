@@ -89,7 +89,8 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Use ManufacturingTypeRepository to create
   - Return created instance
   - _Requirements: 1.1_
-- [-] 1.5 Implement `create_node()` method with automatic path/depth
+- [x] 1.5 Implement `create_node()` method with automatic path/depth
+
 
 
 
@@ -103,26 +104,39 @@ not only for this function but common global like AttributeNodeCreate had almost
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
 
-- [ ] 2. Node Validation and Error Handling
+
+- [x] 2. Node Validation and Error Handling
+
+
   - Add validation to prevent invalid hierarchies
   - _Requirements: 5.1-5.10_
-- [ ] 2.1 Add validation for parent node existence in `create_node()`
+- [x] 2.1 Add validation for parent node existence in `create_node()`
+
+
   - Check parent exists if parent_id provided
   - Raise NotFoundException if parent not found
   - _Requirements: 1.3, 5.1_
-- [ ] 2.2 Add validation for manufacturing type existence
+- [x] 2.2 Add validation for manufacturing type existence
+
+
   - Check manufacturing_type exists
   - Raise NotFoundException if not found
   - _Requirements: 5.2_
-- [ ] 2.3 Add circular reference detection
+- [x] 2.3 Add circular reference detection
+
+
   - Use AttributeNodeRepository.would_create_cycle() when moving nodes
   - Raise ValidationException if cycle detected
   - _Requirements: 5.9_
-- [ ] 2.4 Add duplicate name detection at same level
+- [x] 2.4 Add duplicate name detection at same level
+
+
   - Query for siblings with same name
   - Raise ConflictException if duplicate found
   - _Requirements: 5.4_
-- [ ] 2.5 Add node_type enum validation
+
+- [x] 2.5 Add node_type enum validation
+
   - Validate against allowed values (already in schema)
   - Raise ValidationException for invalid types
   - _Requirements: 5.4_
@@ -158,7 +172,8 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Located in `app/schemas/attribute_node.py`
   - Has children field for nested structure
   - _Requirements: 1.11_
-- [ ] 4.2 Implement `get_tree_as_pydantic()` method in HierarchyBuilderService
+- [ ] 4.2 Implement `get_tree_as_pydantic()` or "pydantify" <for simplicity> method in HierarchyBuilderService
+
   - Accept manufacturing_type_id and optional root_node_id
   - Use AttributeNodeRepository.get_by_manufacturing_type() to get all nodes
   - Use AttributeNodeRepository.build_tree() to create hierarchy

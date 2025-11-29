@@ -1,0 +1,549 @@
+"""HierarchyBuilderService for programmatic hierarchy management.
+
+This module provides the service for creating and managing hierarchical
+attribute data with automatic LTREE path calculation.
+
+Public Classes:
+    NodeParams: Base dataclass for node parameters
+    HierarchyBuilderService: Service for hierarchy management
+
+Features:
+    - Automatic LTREE path calculation
+    - Automatic depth calculation
+    - Manufacturing type creation
+    - Node creation with validation
+    - Batch hierarchy creation from dictionaries
+"""
+
+from dataclasses import dataclass
+from decimal import Decimal
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.attribute_node import AttributeNode
+from app.models.manufacturing_type import ManufacturingType
+from app.repositories.attribute_node import AttributeNodeRepository
+from app.repositories.manufacturing_type import ManufacturingTypeRepository
+from app.schemas.attribute_node import AttributeNodeCreate
+from app.schemas.manufacturing_type import ManufacturingTypeCreate
+from app.services.base import BaseService
+
+__all__ = ["NodeParams", "HierarchyBuilderService"]
+
+
+@dataclass
+class NodeParams:
+    """Base dataclass for common node parameters.
+    
+    This dataclass consolidates common parameters used across node creation
+    functions to reduce duplication and ensure consistency.
+    
+    Attributes:
+        manufacturing_type_id: Manufacturing type ID
+        name: Node display name
+        node_type: Type of node (category, attribute, option, etc.)
+        parent_node_id: Optional parent node ID
+        data_type: Optional data type for the node
+        display_condition: Optional conditional display logic
+        validation_rules: Optional validation rules
+        required: Whether the node is required
+        price_impact_type: How the node affects price
+        price_impact_value: Fixed price adjustment amount
+        price_formula: Dynamic price calculation formula
+        weight_impact: Fixed weight addition
+        weight_formula: Dynamic weight calculation formula
+        technical_property_type: Type of technical property
+        technical_impact_formula: Technical calculation formula
+        sort_order: Display order among siblings
+        ui_component: UI control type
+        description: Help text for users
+        help_text: Additional guidance
+    """
+
+    manufacturing_type_id: int
+    name: str
+    node_type: str
+    parent_node_id: int | None = None
+    data_type: str | None = None
+    display_condition: dict | None = None
+    validation_rules: dict | None = None
+    required: bool = False
+    price_impact_type: str = "fixed"
+    price_impact_value: Decimal | None = None
+    price_formula: str | None = None
+    weight_impact: Decimal = Decimal("0")
+    weight_formula: str | None = None
+    technical_property_type: str | None = None
+    technical_impact_formula: str | None = None
+    sort_order: int = 0
+    ui_component: str | None = None
+    description: str | None = None
+    help_text: str | None = None
+
+
+class HierarchyBuilderService(BaseService):
+    """Service for building and managing attribute hierarchies.
+    
+    This service provides high-level methods for creating manufacturing types
+    and attribute nodes with automatic LTREE path and depth calculation.
+    
+    Attributes:
+        db: Database session
+        mfg_type_repo: ManufacturingTypeRepository instance
+        attr_node_repo: AttributeNodeRepository instance
+    """
+
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize HierarchyBuilderService.
+        
+        Args:
+            db (AsyncSession): Database session
+        """
+        super().__init__(db)
+        self.mfg_type_repo = ManufacturingTypeRepository(db)
+        self.attr_node_repo = AttributeNodeRepository(db)
+
+    def _sanitize_for_ltree(self, name: str) -> str:
+        """Sanitize input string for LTREE path compatibility.
+        
+        Performs comprehensive sanitization to ensure the name is valid for
+        PostgreSQL LTREE paths. Handles all common edge cases including:
+        - Unicode characters (accents, diacritics)
+        - Special characters and symbols
+        - Multiple consecutive spaces/underscores
+        - Leading/trailing whitespace
+        - Empty or whitespace-only strings
+        - Names starting with numbers
+        - Very long names (LTREE label limit: 256 chars)
+        
+        Args:
+            name: Raw input string to sanitize
+            
+        Returns:
+            str: Sanitized string safe for LTREE paths
+            
+        Raises:
+            ValueError: If name is empty or becomes empty after sanitization
+            
+        Example:
+            >>> service._sanitize_for_ltree("Frame Material")
+            'frame_material'
+            
+            >>> service._sanitize_for_ltree("Aluminum & Steel (Premium)")
+            'aluminum_and_steel_premium'
+            
+            >>> service._sanitize_for_ltree("  Multiple   Spaces  ")
+            'multiple_spaces'
+            
+            >>> service._sanitize_for_ltree("Café-Style Door™")
+            'cafe_style_door'
+            
+            >>> service._sanitize_for_ltree("100% Pure")
+            'n_100_percent_pure'
+            
+            >>> service._sanitize_for_ltree("Price: $50-$100")
+            'price_dollar_50_dollar_100'
+        """
+        import re
+        import unicodedata
+        
+        # Validate input
+        if not name or not name.strip():
+            raise ValueError("Node name cannot be empty or whitespace-only")
+        
+        # Step 1: Normalize unicode characters (remove accents, etc.)
+        # NFD = Canonical Decomposition, then filter out combining characters
+        normalized = unicodedata.normalize('NFD', name)
+        ascii_name = ''.join(
+            char for char in normalized 
+            if unicodedata.category(char) != 'Mn'  # Mn = Mark, Nonspacing
+        )
+        
+        # Step 2: Convert to lowercase
+        sanitized = ascii_name.lower()
+        
+        # Step 3: Replace common symbols with words
+        replacements = {
+            '&': 'and',
+            '+': 'plus',
+            '%': 'percent',
+            '@': 'at',
+            '#': 'number',
+            '$': 'dollar',
+            '€': 'euro',
+            '£': 'pound',
+            '¥': 'yen',
+            '°': 'degree',
+            '™': '',
+            '®': '',
+            '©': '',
+            '×': 'x',
+            '÷': 'div',
+            '=': 'equals',
+            '<': 'lt',
+            '>': 'gt',
+        }
+        
+        for symbol, replacement in replacements.items():
+            if replacement:
+                sanitized = sanitized.replace(symbol, f'_{replacement}_')
+            else:
+                sanitized = sanitized.replace(symbol, '_')
+        
+        # Step 4: Replace common separators with underscores
+        separators = [' ', '-', '/', '\\', '|', '.', ',', ';', ':', '~', '`']
+        for sep in separators:
+            sanitized = sanitized.replace(sep, '_')
+        
+        # Step 5: Remove parentheses, brackets, quotes (but keep content)
+        sanitized = re.sub(r'[(){}\[\]"\']', '_', sanitized)
+        
+        # Step 6: Remove any remaining non-alphanumeric characters except underscore
+        sanitized = re.sub(r'[^a-z0-9_]', '', sanitized)
+        
+        # Step 7: Replace multiple consecutive underscores with single underscore
+        sanitized = re.sub(r'_+', '_', sanitized)
+        
+        # Step 8: Strip leading/trailing underscores
+        sanitized = sanitized.strip('_')
+        
+        # Step 9: Validate result is not empty
+        if not sanitized:
+            raise ValueError(
+                f"Node name '{name}' becomes empty after sanitization. "
+                "Please provide a name with at least one alphanumeric character."
+            )
+        
+        # Step 10: Enforce LTREE label length limit (256 characters)
+        if len(sanitized) > 256:
+            # Truncate to 256 characters
+            sanitized = sanitized[:256]
+            # Remove trailing underscore if truncation created one
+            sanitized = sanitized.rstrip('_')
+        
+        # Step 11: Ensure it doesn't start with a number (LTREE requirement)
+        # This must be done AFTER truncation to ensure the final result is valid
+        if sanitized and sanitized[0].isdigit():
+            sanitized = f'n_{sanitized}'
+            # If adding prefix makes it too long, truncate again
+            if len(sanitized) > 256:
+                sanitized = sanitized[:256].rstrip('_')
+        
+        return sanitized
+
+    def _calculate_ltree_path(
+        self, parent: AttributeNode | None, node_name: str
+    ) -> str:
+        """Calculate LTREE path for a new node.
+        
+        Sanitizes the node name using comprehensive sanitization and constructs
+        the LTREE path based on whether the node is a root node or a child node.
+        
+        Args:
+            parent: Parent node (None for root nodes)
+            node_name: Display name of the node
+            
+        Returns:
+            str: Sanitized LTREE path
+            
+        Raises:
+            ValueError: If node_name is invalid or becomes empty after sanitization
+            
+        Example:
+            >>> # Root node
+            >>> service._calculate_ltree_path(None, "Frame Material")
+            'frame_material'
+            
+            >>> # Child node with parent path "frame_material"
+            >>> service._calculate_ltree_path(parent, "Aluminum & Steel")
+            'frame_material.aluminum_and_steel'
+            
+            >>> # Complex name with special characters
+            >>> service._calculate_ltree_path(None, "100% Café-Style™")
+            'n_100_percent_cafe_style'
+        """
+        # Use robust sanitization function
+        sanitized_name = self._sanitize_for_ltree(node_name)
+        
+        if parent is None:
+            # Root node - return just the sanitized name
+            return sanitized_name
+        else:
+            # Child node - append to parent's path
+            return f"{parent.ltree_path}.{sanitized_name}"
+
+
+    def _calculate_depth(self, parent: AttributeNode | None) -> int:
+        """Calculate depth level for a new node.
+        
+        Determines the nesting level of a node in the hierarchy based on
+        its parent's depth.
+        
+        Args:
+            parent: Parent node (None for root nodes)
+            
+        Returns:
+            int: Depth level (0 for root nodes, parent.depth + 1 for children)
+            
+        Example:
+            >>> # Root node
+            >>> service._calculate_depth(None)
+            0
+            
+            >>> # Child of root node (depth=0)
+            >>> service._calculate_depth(root_node)
+            1
+            
+            >>> # Grandchild (parent depth=1)
+            >>> service._calculate_depth(child_node)
+            2
+        """
+        if parent is None:
+            # Root node - depth is 0
+            return 0
+        else:
+            # Child node - depth is parent's depth + 1
+            return parent.depth + 1
+
+
+    async def create_manufacturing_type(
+        self,
+        name: str,
+        description: str | None = None,
+        base_category: str | None = None,
+        base_price: Decimal = Decimal("0"),
+        base_weight: Decimal = Decimal("0"),
+    ) -> ManufacturingType:
+        """Create a new manufacturing type.
+        
+        Creates a manufacturing type that serves as the root for an
+        attribute hierarchy.
+        
+        Args:
+            name: Unique manufacturing type name
+            description: Optional detailed description
+            base_category: Optional high-level category (e.g., "window", "door")
+            base_price: Starting price (default: 0)
+            base_weight: Base weight in kg (default: 0)
+            
+        Returns:
+            ManufacturingType: Created manufacturing type instance
+            
+        Raises:
+            ConflictException: If name already exists
+            DatabaseException: If creation fails
+            
+        Example:
+            >>> mfg_type = await service.create_manufacturing_type(
+            ...     name="Casement Window",
+            ...     description="Energy-efficient casement windows",
+            ...     base_category="window",
+            ...     base_price=Decimal("200.00"),
+            ...     base_weight=Decimal("15.00")
+            ... )
+        """
+        # Create schema for validation
+        mfg_type_data = ManufacturingTypeCreate(
+            name=name,
+            description=description,
+            base_category=base_category,
+            base_price=base_price,
+            base_weight=base_weight,
+        )
+        
+        # Use repository to create
+        mfg_type = await self.mfg_type_repo.create(mfg_type_data)
+        await self.commit()
+        await self.refresh(mfg_type)
+        
+        return mfg_type
+
+
+    async def create_node(
+        self,
+        manufacturing_type_id: int,
+        name: str,
+        node_type: str,
+        parent_node_id: int | None = None,
+        data_type: str | None = None,
+        display_condition: dict | None = None,
+        validation_rules: dict | None = None,
+        required: bool = False,
+        price_impact_type: str = "fixed",
+        price_impact_value: Decimal | None = None,
+        price_formula: str | None = None,
+        weight_impact: Decimal = Decimal("0"),
+        weight_formula: str | None = None,
+        technical_property_type: str | None = None,
+        technical_impact_formula: str | None = None,
+        sort_order: int = 0,
+        ui_component: str | None = None,
+        description: str | None = None,
+        help_text: str | None = None,
+    ) -> AttributeNode:
+        """Create a single attribute node with automatic path/depth calculation.
+        
+        Creates an attribute node and automatically calculates its LTREE path
+        and depth based on its parent node. Performs comprehensive input validation
+        and sanitization.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID (must be > 0)
+            name: Node display name (cannot be empty)
+            node_type: Type of node (category, attribute, option, component, technical_spec)
+            parent_node_id: Optional parent node ID (None for root nodes)
+            data_type: Optional data type (string, number, boolean, formula, dimension, selection)
+            display_condition: Optional conditional display logic (JSONB)
+            validation_rules: Optional validation rules (JSONB)
+            required: Whether this attribute must be selected
+            price_impact_type: How it affects price (fixed, percentage, formula)
+            price_impact_value: Fixed price adjustment amount (must be >= 0 if provided)
+            price_formula: Dynamic price calculation formula
+            weight_impact: Fixed weight addition in kg (must be >= 0)
+            weight_formula: Dynamic weight calculation formula
+            technical_property_type: Type of technical property
+            technical_impact_formula: Technical calculation formula
+            sort_order: Display order among siblings
+            ui_component: UI control type
+            description: Help text for users
+            help_text: Additional guidance
+            
+        Returns:
+            AttributeNode: Created attribute node with calculated path and depth
+            
+        Raises:
+            ValueError: If input validation fails
+            NotFoundException: If parent node or manufacturing type not found
+            DatabaseException: If creation fails
+            
+        Example:
+            >>> # Create root node
+            >>> root = await service.create_node(
+            ...     manufacturing_type_id=1,
+            ...     name="Frame Material",
+            ...     node_type="category"
+            ... )
+            >>> # root.ltree_path == "frame_material"
+            >>> # root.depth == 0
+            
+            >>> # Create child node
+            >>> child = await service.create_node(
+            ...     manufacturing_type_id=1,
+            ...     name="Aluminum",
+            ...     node_type="option",
+            ...     parent_node_id=root.id,
+            ...     price_impact_value=Decimal("50.00")
+            ... )
+            >>> # child.ltree_path == "frame_material.aluminum"
+            >>> # child.depth == 1
+        """
+        from app.core.exceptions import NotFoundException
+        
+        # Input validation
+        if manufacturing_type_id <= 0:
+            raise ValueError("manufacturing_type_id must be greater than 0")
+        
+        if not name or not name.strip():
+            raise ValueError("Node name cannot be empty or whitespace-only")
+        
+        if len(name) > 200:
+            raise ValueError("Node name cannot exceed 200 characters")
+        
+        # Validate node_type
+        valid_node_types = {"category", "attribute", "option", "component", "technical_spec"}
+        if node_type not in valid_node_types:
+            raise ValueError(
+                f"Invalid node_type '{node_type}'. Must be one of: {', '.join(valid_node_types)}"
+            )
+        
+        # Validate data_type if provided
+        if data_type is not None:
+            valid_data_types = {"string", "number", "boolean", "formula", "dimension", "selection"}
+            if data_type not in valid_data_types:
+                raise ValueError(
+                    f"Invalid data_type '{data_type}'. Must be one of: {', '.join(valid_data_types)}"
+                )
+        
+        # Validate price_impact_type
+        valid_price_types = {"fixed", "percentage", "formula"}
+        if price_impact_type not in valid_price_types:
+            raise ValueError(
+                f"Invalid price_impact_type '{price_impact_type}'. Must be one of: {', '.join(valid_price_types)}"
+            )
+        
+        # Validate price_impact_value if provided
+        if price_impact_value is not None and price_impact_value < 0:
+            raise ValueError("price_impact_value cannot be negative")
+        
+        # Validate weight_impact
+        if weight_impact < 0:
+            raise ValueError("weight_impact cannot be negative")
+        
+        # Validate sort_order
+        if sort_order < 0:
+            raise ValueError("sort_order cannot be negative")
+        
+        # Validate manufacturing type exists
+        mfg_type = await self.mfg_type_repo.get(manufacturing_type_id)
+        if mfg_type is None:
+            raise NotFoundException(
+                f"Manufacturing type with id {manufacturing_type_id} not found"
+            )
+        
+        # Fetch parent node if parent_node_id is provided
+        parent: AttributeNode | None = None
+        if parent_node_id is not None:
+            if parent_node_id <= 0:
+                raise ValueError("parent_node_id must be greater than 0")
+            
+            parent = await self.attr_node_repo.get(parent_node_id)
+            if parent is None:
+                raise NotFoundException(f"Parent node with id {parent_node_id} not found")
+            
+            # Validate parent belongs to same manufacturing type
+            if parent.manufacturing_type_id != manufacturing_type_id:
+                raise ValueError(
+                    f"Parent node belongs to manufacturing type {parent.manufacturing_type_id}, "
+                    f"but node is being created for manufacturing type {manufacturing_type_id}"
+                )
+        
+        # Calculate ltree_path using helper method
+        ltree_path = self._calculate_ltree_path(parent, name)
+        
+        # Calculate depth using helper method
+        depth = self._calculate_depth(parent)
+        
+        # Create AttributeNodeCreate schema with calculated fields
+        # We need to create the model directly because we're adding computed fields
+        from app.models.attribute_node import AttributeNode as AttributeNodeModel
+        
+        node = AttributeNodeModel(
+            manufacturing_type_id=manufacturing_type_id,
+            parent_node_id=parent_node_id,
+            name=name,
+            node_type=node_type,
+            data_type=data_type,
+            display_condition=display_condition,
+            validation_rules=validation_rules,
+            required=required,
+            price_impact_type=price_impact_type,
+            price_impact_value=price_impact_value,
+            price_formula=price_formula,
+            weight_impact=weight_impact,
+            weight_formula=weight_formula,
+            technical_property_type=technical_property_type,
+            technical_impact_formula=technical_impact_formula,
+            ltree_path=ltree_path,  # Calculated field
+            depth=depth,  # Calculated field
+            sort_order=sort_order,
+            ui_component=ui_component,
+            description=description,
+            help_text=help_text,
+        )
+        
+        # Add to session and commit
+        self.attr_node_repo.db.add(node)
+        await self.commit()
+        await self.refresh(node)
+        
+        return node

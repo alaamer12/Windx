@@ -14,27 +14,85 @@ This task list implements the Windx Hierarchical Data Management System, providi
 
 ## Task List
 
-- [ ] 1. Core HierarchyBuilderService Implementation
+- [x] 1. Core HierarchyBuilderService Implementation
+
+
+
+
+
   - Create service for programmatic hierarchy management
   - _Requirements: 1.1-1.13_
-- [ ] 1.1 Create HierarchyBuilderService class in `app/services/hierarchy_builder.py`
+- [x] 1.1 Create HierarchyBuilderService class in `app/services/hierarchy_builder.py`
+
+
   - Inherit from BaseService
   - Initialize with AttributeNodeRepository and ManufacturingTypeRepository
+  - Note before you continue you can create a dataclass or pydnatic class to handle all these paramters `     manufacturing_type_id: int,
+
+        name: str,
+
+        node_type: str,
+
+        parent_node_id: int | None = None,
+
+        data_type: str | None = None,
+
+        display_condition: dict | None = None,
+
+        validation_rules: dict | None = None,
+
+        required: bool = False,
+
+        price_impact_type: str = "fixed",
+
+        price_impact_value: Decimal | None = None,
+
+        price_formula: str | None = None,
+
+        weight_impact: Decimal = Decimal("0"),
+
+        weight_formula: str | None = None,
+
+        technical_property_type: str | None = None,
+
+        technical_impact_formula: str | None = None,
+
+        sort_order: int = 0,
+
+        ui_component: str | None = None,
+
+        description: str | None = None,
+
+        help_text: str | None = None,`
+
+you name it like Node and handle common paramters between other functions to reduce duplication and ensure consistency, do you understand what i mean 
+not only for this function but common global like AttributeNodeCreate had almost same params, so you can like make a base dataclass NodeParamas
   - _Requirements: 1.9_
-- [ ] 1.2 Implement `_calculate_ltree_path()` helper method
+- [x] 1.2 Implement `_calculate_ltree_path()` helper method
+
+
   - Sanitize node name (lowercase, replace spaces with underscores, replace & with and)
   - Handle root nodes (no parent) vs child nodes (append to parent path)
   - _Requirements: 1.1_
+
+
 - [ ] 1.3 Implement `_calculate_depth()` helper method
   - Return 0 for root nodes
+
+
   - Return parent.depth + 1 for child nodes
   - _Requirements: 1.2_
-- [ ] 1.4 Implement `create_manufacturing_type()` method
+- [x] 1.4 Implement `create_manufacturing_type()` method
+
+
   - Accept name, description, base_category, base_price, base_weight
   - Use ManufacturingTypeRepository to create
   - Return created instance
   - _Requirements: 1.1_
-- [ ] 1.5 Implement `create_node()` method with automatic path/depth
+- [-] 1.5 Implement `create_node()` method with automatic path/depth
+
+
+
   - Accept manufacturing_type_id, name, node_type, parent_node_id, and all attribute fields
   - If parent_node_id provided, fetch parent node
   - Calculate ltree_path using _calculate_ltree_path()
@@ -43,6 +101,7 @@ This task list implements the Windx Hierarchical Data Management System, providi
   - Use AttributeNodeRepository.create() to persist
   - Return created node
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
+
 
 - [ ] 2. Node Validation and Error Handling
   - Add validation to prevent invalid hierarchies

@@ -202,7 +202,7 @@ class TestPricingServiceErrorHandling:
             node_type="attribute",
             data_type="number",
             price_impact_type="formula",
-            price_formula="width / height",  # Will fail if height is 0
+            price_formula="width / 0",  # Direct division by zero
             ltree_path="test.width",
         )
         db_session.add(attr_node)

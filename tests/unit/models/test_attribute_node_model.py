@@ -92,9 +92,31 @@ async def test_attribute_node_hierarchy(db_session: AsyncSession):
 
     # Verify relationships
     assert child.parent_node_id == parent.id
-    assert len(parent.children) == 1
-    assert parent.children[0].id == child.id
-    assert child.parent.id == parent.id
+    
+    # Use selectinload or await to access relationships in async context
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    
+    # Reload parent with children eagerly loaded
+    result = await db_session.execute(
+        select(AttributeNode)
+        .where(AttributeNode.id == parent.id)
+        .options(selectinload(AttributeNode.children))
+    )
+    parent_with_children = result.scalar_one()
+    
+    assert len(parent_with_children.children) == 1
+    assert parent_with_children.children[0].id == child.id
+    
+    # Reload child with parent eagerly loaded
+    result = await db_session.execute(
+        select(AttributeNode)
+        .where(AttributeNode.id == child.id)
+        .options(selectinload(AttributeNode.parent))
+    )
+    child_with_parent = result.scalar_one()
+    
+    assert child_with_parent.parent.id == parent.id
 
 
 @pytest.mark.asyncio

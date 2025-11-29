@@ -191,4 +191,4 @@ class TestLTREEQueryExamples:
         # Verify query structure
         query_str = str(query)
         assert "test_query_pattern" in query_str
-        assert "~" in q
+        assert "~" in query_str

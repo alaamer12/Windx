@@ -1,236 +1,207 @@
 {% extends "admin/base.html.jinja" %}
 
-{% block title %}Hierarchy Dashboard{% endblock %}
+{% block title %}Hierarchy Dashboard - WindX Admin{% endblock %}
+
+{% set active_page = "hierarchy" %}
 
 {% block extra_css %}
 <style>
-    .dashboard-header {
-        margin-bottom: 2rem;
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        height: calc(100vh - 200px);
     }
-    
-    .selector-card {
-        margin-bottom: 2rem;
-    }
-    
-    .tree-column {
-        height: calc(100vh - 300px);
+
+    .scrollable-column {
+        height: 100%;
         overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
+        background-color: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
         padding: 1rem;
-        background-color: #f8f9fa;
     }
-    
-    .visualization-column {
-        height: calc(100vh - 300px);
-        overflow-y: auto;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        background-color: #ffffff;
-    }
-    
+
     .empty-state {
         text-align: center;
         padding: 3rem 1rem;
-        color: #6c757d;
+        color: var(--text-light);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        opacity: 0.5;
+    }
+
+    .selector-form {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    .selector-group {
+        flex: 1;
+    }
+
+    .info-bar {
+        background-color: #eff6ff;
+        border: 1px solid #dbeafe;
+        color: #1e40af;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .tab-nav {
+        display: flex;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+        background: #f1f5f9;
+        border-radius: 0.5rem 0.5rem 0 0;
+        padding: 0.5rem 0.5rem 0;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-weight: 500;
+        color: var(--text-light);
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+
+    .tab-btn.active {
+        background: white;
+        color: var(--primary);
+        border: 1px solid var(--border);
+        border-bottom: 1px solid white;
+        margin-bottom: -1px;
+    }
+
+    .tab-content {
+        background: white;
+        border: 1px solid var(--border);
+        border-top: none;
+        border-radius: 0 0 0.5rem 0.5rem;
+        height: calc(100% - 45px);
+        overflow: hidden;
     }
     
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.5;
+    .tab-pane {
+        display: none;
+        height: 100%;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+    
+    .tab-pane.active {
+        display: block;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-header">
-    <h1 class="mb-3">
-        <i class="bi bi-diagram-3"></i> Hierarchy Management Dashboard
-    </h1>
-    <p class="text-muted">Manage attribute hierarchies for manufacturing types</p>
+<div class="page-header">
+    <h1 class="page-title">Hierarchy Editor</h1>
 </div>
-
-<!-- Flash Messages -->
-{% if success %}
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="bi bi-check-circle"></i> {{ success }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-{% endif %}
-
-{% if error %}
-<div class="alert alert-danger alert-dismissible fade show" role="alert">
-    <i class="bi bi-exclamation-triangle"></i> {{ error }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-{% endif %}
-
-{% if warning %}
-<div class="alert alert-warning alert-dismissible fade show" role="alert">
-    <i class="bi bi-exclamation-circle"></i> {{ warning }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-{% endif %}
-
-{% if info %}
-<div class="alert alert-info alert-dismissible fade show" role="alert">
-    <i class="bi bi-info-circle"></i> {{ info }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-{% endif %}
 
 <!-- Manufacturing Type Selector -->
-<div class="card selector-card">
-    <div class="card-body">
-        <form method="GET" action="/admin/hierarchy" class="row g-3 align-items-end">
-            <div class="col-md-8">
-                <label for="manufacturing_type_id" class="form-label">
-                    <i class="bi bi-box"></i> Select Manufacturing Type
-                </label>
-                <select 
-                    name="manufacturing_type_id" 
-                    id="manufacturing_type_id" 
-                    class="form-select form-select-lg"
-                    onchange="this.form.submit()"
-                >
-                    <option value="">-- Select a Manufacturing Type --</option>
-                    {% for mfg_type in manufacturing_types %}
-                    <option value="{{ mfg_type.id }}" 
-                            {% if mfg_type.id == selected_type_id %}selected{% endif %}>
-                        {{ mfg_type.name }}
-                        {% if mfg_type.base_category %}({{ mfg_type.base_category }}){% endif %}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary btn-lg w-100">
-                    <i class="bi bi-arrow-clockwise"></i> Load Hierarchy
-                </button>
-            </div>
-        </form>
-    </div>
+<div class="card">
+    <form method="GET" action="/api/v1/admin/hierarchy" class="selector-form">
+        <div class="selector-group">
+            <label for="manufacturing_type_id" class="form-label">Select Manufacturing Type</label>
+            <select name="manufacturing_type_id" id="manufacturing_type_id" class="form-control" onchange="this.form.submit()">
+                <option value="">-- Select a Type --</option>
+                {% for mfg_type in manufacturing_types %}
+                <option value="{{ mfg_type.id }}" {% if mfg_type.id == selected_type_id %}selected{% endif %}>
+                    {{ mfg_type.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Load</button>
+    </form>
 </div>
 
 {% if selected_manufacturing_type %}
-<!-- Selected Manufacturing Type Info -->
-<div class="alert alert-info">
-    <div class="row align-items-center">
-        <div class="col-md-8">
-            <h5 class="mb-1">
-                <i class="bi bi-info-circle"></i> {{ selected_manufacturing_type.name }}
-            </h5>
-            <p class="mb-0 small">
-                {% if selected_manufacturing_type.description %}
-                    {{ selected_manufacturing_type.description }}
-                {% else %}
-                    Base Price: ${{ "%.2f"|format(selected_manufacturing_type.base_price) }} | 
-                    Base Weight: {{ "%.2f"|format(selected_manufacturing_type.base_weight) }} kg
-                {% endif %}
-            </p>
-        </div>
-        <div class="col-md-4 text-end">
-            <a href="/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" 
-               class="btn btn-success">
-                <i class="bi bi-plus-circle"></i> Create Root Node
-            </a>
-        </div>
+<!-- Selected Type Info -->
+<div class="info-bar">
+    <div>
+        <strong>{{ selected_manufacturing_type.name }}</strong>
+        <span style="margin: 0 0.5rem; opacity: 0.5;">|</span>
+        Base Price: ${{ "%.2f"|format(selected_manufacturing_type.base_price) }}
     </div>
+    <a href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" class="btn btn-primary" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">
+        + Create Root Node
+    </a>
 </div>
 
-<!-- Two-Column Layout -->
-<div class="row">
+<div class="dashboard-grid">
     <!-- Left Column: Tree View -->
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">
-                    <i class="bi bi-diagram-2"></i> Attribute Tree
-                </h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="tree-column">
-                    {% if tree_nodes %}
-                        {% include "admin/components/tree_view.html.jinja" %}
-                    {% else %}
-                        <div class="empty-state">
-                            <i class="bi bi-tree"></i>
-                            <p>No attribute nodes found for this manufacturing type.</p>
-                            <a href="/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" 
-                               class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Create First Node
-                            </a>
-                        </div>
-                    {% endif %}
+    <div class="card" style="margin: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 1rem; border-bottom: 1px solid var(--border); background: #f8fafc; font-weight: 600;">
+            Attribute Tree
+        </div>
+        <div style="flex: 1; overflow-y: auto; padding: 1rem;">
+            {% if tree_nodes %}
+                {% include "admin/components/tree_view.html.jinja" %}
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">🌳</div>
+                    <p>No attribute nodes found.</p>
+                    <a href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" class="btn btn-primary">
+                        Create First Node
+                    </a>
                 </div>
-            </div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Right Column: Visualizations -->
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-secondary text-white">
-                <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="ascii-tab" data-bs-toggle="tab" 
-                                data-bs-target="#ascii-pane" type="button" role="tab">
-                            <i class="bi bi-code-square"></i> ASCII Tree
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="diagram-tab" data-bs-toggle="tab" 
-                                data-bs-target="#diagram-pane" type="button" role="tab">
-                            <i class="bi bi-diagram-3"></i> Diagram
-                        </button>
-                    </li>
-                </ul>
+    <div style="display: flex; flex-direction: column;">
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="openTab(event, 'ascii-pane')">ASCII Tree</button>
+            <button class="tab-btn" onclick="openTab(event, 'diagram-pane')">Diagram</button>
+        </div>
+        <div class="tab-content">
+            <div id="ascii-pane" class="tab-pane active">
+                {% if ascii_tree %}
+                    <pre style="font-family: monospace; font-size: 0.9rem;">{{ ascii_tree }}</pre>
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <p>No tree visualization available.</p>
+                    </div>
+                {% endif %}
             </div>
-            <div class="card-body p-0">
-                <div class="tab-content">
-                    <!-- ASCII Tree Tab -->
-                    <div class="tab-pane fade show active visualization-column" 
-                         id="ascii-pane" role="tabpanel">
-                        {% if ascii_tree %}
-                            {% include "admin/components/ascii_tree.html.jinja" %}
-                        {% else %}
-                            <div class="empty-state">
-                                <i class="bi bi-code-square"></i>
-                                <p>No tree visualization available.</p>
-                            </div>
-                        {% endif %}
+            <div id="diagram-pane" class="tab-pane">
+                {% if diagram_tree %}
+                    <img src="data:image/png;base64,{{ diagram_tree }}" alt="Tree Diagram" style="max-width: 100%;">
+                {% else %}
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <p>No diagram visualization available.</p>
                     </div>
-                    
-                    <!-- Diagram Tab -->
-                    <div class="tab-pane fade visualization-column" 
-                         id="diagram-pane" role="tabpanel">
-                        {% if diagram_tree %}
-                            {% include "admin/components/diagram_tree.html.jinja" %}
-                        {% else %}
-                            <div class="empty-state">
-                                <i class="bi bi-diagram-3"></i>
-                                <p>No diagram visualization available.</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
 {% else %}
-<!-- No Manufacturing Type Selected -->
-<div class="card">
-    <div class="card-body">
-        <div class="empty-state">
-            <i class="bi bi-box"></i>
-            <h4>Select a Manufacturing Type</h4>
-            <p>Choose a manufacturing type from the dropdown above to view and manage its attribute hierarchy.</p>
-        </div>
-    </div>
+<!-- No Selection State -->
+<div class="empty-state" style="background: white; border-radius: 1rem; border: 1px solid var(--border);">
+    <div class="empty-state-icon">👈</div>
+    <h3>Select a Manufacturing Type</h3>
+    <p>Choose a product type from the dropdown above to start editing.</p>
 </div>
 {% endif %}
 
@@ -238,13 +209,20 @@
 
 {% block scripts %}
 <script>
-    // Auto-dismiss alerts after 5 seconds
-    setTimeout(function() {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(function(alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        });
-    }, 5000);
+    function openTab(evt, tabName) {
+        var i, tabContent, tabLinks;
+        tabContent = document.getElementsByClassName("tab-pane");
+        for (i = 0; i < tabContent.length; i++) {
+            tabContent[i].style.display = "none";
+            tabContent[i].classList.remove("active");
+        }
+        tabLinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tabLinks.length; i++) {
+            tabLinks[i].className = tabLinks[i].className.replace(" active", "");
+        }
+        document.getElementById(tabName).style.display = "block";
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.className += " active";
+    }
 </script>
 {% endblock %}

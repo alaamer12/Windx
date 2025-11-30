@@ -18,7 +18,7 @@
     
     .ascii-tree-header {
         display: flex;
-        justify-content: between;
+        justify-content: space-between;
         align-items: center;
         margin-bottom: 1rem;
         padding-bottom: 0.5rem;
@@ -29,6 +29,9 @@
         color: #4ec9b0;
         font-weight: 600;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
     .ascii-tree-actions {
@@ -45,6 +48,9 @@
         font-size: 0.75rem;
         cursor: pointer;
         transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
     }
     
     .copy-btn:hover {
@@ -57,28 +63,16 @@
         border-color: #4ec9b0;
         color: #1e1e1e;
     }
-    
-    /* Syntax highlighting for ASCII tree */
-    .ascii-tree-pre {
-        /* Tree connectors */
-        --connector-color: #858585;
-        /* Node names */
-        --node-color: #9cdcfe;
-        /* Price values */
-        --price-color: #ce9178;
-        /* Node types */
-        --type-color: #4ec9b0;
-    }
 </style>
 
 <div class="ascii-tree-container">
     <div class="ascii-tree-header">
         <h6 class="ascii-tree-title">
-            <i class="bi bi-code-square"></i> ASCII Tree Visualization
+            <span>📝</span> ASCII Tree Visualization
         </h6>
         <div class="ascii-tree-actions">
             <button class="copy-btn" onclick="copyAsciiTree()" id="copyBtn">
-                <i class="bi bi-clipboard"></i> Copy
+                <span>📋</span> Copy
             </button>
         </div>
     </div>
@@ -94,12 +88,12 @@
         navigator.clipboard.writeText(content).then(function() {
             // Show success feedback
             btn.classList.add('copied');
-            btn.innerHTML = '<i class="bi bi-check"></i> Copied!';
+            btn.innerHTML = '<span>✅</span> Copied!';
             
             // Reset after 2 seconds
             setTimeout(function() {
                 btn.classList.remove('copied');
-                btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy';
+                btn.innerHTML = '<span>📋</span> Copy';
             }, 2000);
         }).catch(function(err) {
             console.error('Failed to copy:', err);

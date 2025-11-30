@@ -1,0 +1,61 @@
+{% extends "admin/base.html.jinja" %}
+
+{% block title %}Manufacturing Types - WindX Admin{% endblock %}
+
+{% set active_page = "manufacturing" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Manufacturing Types</h1>
+    <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary">
+        + New Type
+    </a>
+</div>
+
+<div class="card">
+    {% if manufacturing_types %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Name</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Category</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Base Price</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Status</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light); text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for type in manufacturing_types %}
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 1rem; font-weight: 500;">{{ type.name }}</td>
+                <td style="padding: 1rem;">{{ type.category }}</td>
+                <td style="padding: 1rem;">${{ "%.2f"|format(type.base_price) }}</td>
+                <td style="padding: 1rem;">
+                    {% if type.is_active %}
+                    <span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">Active</span>
+                    {% else %}
+                    <span style="background: #f1f5f9; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 1rem; text-align: right;">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <a href="/api/v1/admin/manufacturing-types/{{ type.id }}/edit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
+                        <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ type.id }}" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Hierarchy</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 3rem 1rem; color: var(--text-light);">
+        <div style="font-size: 3rem; opacity: 0.5; margin-bottom: 1rem;">🏭</div>
+        <h3>No Manufacturing Types</h3>
+        <p>Create your first product type to get started.</p>
+        <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary" style="margin-top: 1rem;">
+            Create First Type
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

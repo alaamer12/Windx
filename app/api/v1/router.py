@@ -16,6 +16,8 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin_hierarchy,
+    admin_auth,
+    admin_manufacturing,
     attribute_nodes,
     auth,
     configurations,
@@ -35,6 +37,8 @@ __all__ = ["api_router"]
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth")
+api_router.include_router(admin_auth.router, prefix="/admin", tags=["Admin Auth"])
+api_router.include_router(admin_manufacturing.router, prefix="/admin/manufacturing-types", tags=["Admin Manufacturing"])
 api_router.include_router(users.router, prefix="/users")
 api_router.include_router(export.router, prefix="/export")
 api_router.include_router(dashboard.router, prefix="/dashboard")

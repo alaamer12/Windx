@@ -22,6 +22,9 @@
         color: #495057;
         font-weight: 600;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
     .diagram-tree-actions {
@@ -38,6 +41,9 @@
         font-size: 0.75rem;
         cursor: pointer;
         transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
     }
     
     .diagram-btn:hover {
@@ -66,11 +72,14 @@
         text-align: center;
         color: #6c757d;
         padding: 3rem 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
     }
     
-    .diagram-placeholder i {
+    .diagram-placeholder-icon {
         font-size: 3rem;
-        margin-bottom: 1rem;
         opacity: 0.5;
     }
 </style>
@@ -78,15 +87,15 @@
 <div class="diagram-tree-container">
     <div class="diagram-tree-header">
         <h6 class="diagram-tree-title">
-            <i class="bi bi-diagram-3"></i> Tree Diagram Visualization
+            <span>📊</span> Tree Diagram Visualization
         </h6>
         <div class="diagram-tree-actions">
             {% if diagram_tree %}
             <button class="diagram-btn" onclick="downloadDiagram()" id="downloadBtn">
-                <i class="bi bi-download"></i> Download
+                <span>⬇️</span> Download
             </button>
             <button class="diagram-btn" onclick="refreshDiagram()" id="refreshBtn">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
+                <span>🔄</span> Refresh
             </button>
             {% endif %}
         </div>
@@ -101,7 +110,7 @@
                  id="diagramImage">
         {% else %}
             <div class="diagram-placeholder">
-                <i class="bi bi-diagram-3"></i>
+                <div class="diagram-placeholder-icon">📊</div>
                 <p class="mb-0">Diagram visualization will appear here</p>
                 <small class="text-muted">
                     The system will generate a visual diagram of the hierarchy tree
@@ -127,7 +136,7 @@
         // Show feedback
         const btn = document.getElementById('downloadBtn');
         const originalHTML = btn.innerHTML;
-        btn.innerHTML = '<i class="bi bi-check"></i> Downloaded!';
+        btn.innerHTML = '<span>✅</span> Downloaded!';
         btn.style.backgroundColor = '#d1e7dd';
         btn.style.borderColor = '#badbcc';
         
@@ -140,10 +149,9 @@
     
     function refreshDiagram() {
         const btn = document.getElementById('refreshBtn');
-        const originalHTML = btn.innerHTML;
         
         // Show loading state
-        btn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refreshing...';
+        btn.innerHTML = '<span>🔄</span> Refreshing...';
         btn.disabled = true;
         
         // Reload the page to regenerate the diagram

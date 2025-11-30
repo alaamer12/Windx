@@ -456,6 +456,8 @@ not only for this function but common global like AttributeNodeCreate had almost
 - [x] 9. Integration Testing - Complete uPVC Hierarchy
 
 
+
+
   - Test creating complex real-world hierarchy
   - _Requirements: 10.1-10.12_
 - [x] 9.1 Create test file `tests/integration/test_hierarchy_builder.py`
@@ -506,23 +508,32 @@ not only for this function but common global like AttributeNodeCreate had almost
   - Test that batch creation rolls back on error
   - Create hierarchy with invalid node in middle
   - Verify no nodes are created
+
   - _Requirements: 10.12_
 
-- [ ] 10. Documentation and Examples
+- [x] 10. Documentation and Examples
+
+
 
   - Document the hierarchy management system
   - _Requirements: 11.1-11.5_
-- [ ] 10.1 Add comprehensive docstrings to HierarchyBuilderService
+
+- [x] 10.1 Add comprehensive docstrings to HierarchyBuilderService
+
   - Document all public methods with parameters, return values, exceptions
   - Include usage examples in docstrings
   - Follow Google-style docstring format
   - _Requirements: 11.1, 11.4_
+
+
 - [ ] 10.2 Create example script `examples/hierarchy_insertion.py`
   - Import HierarchyBuilderService and required dependencies
   - Show how to create manufacturing type
   - Show how to create nodes with automatic path calculation
   - Show how to create hierarchy from dictionary
   - Show how to get tree as JSON
+
+
   - Include detailed comments explaining each step
   - _Requirements: 11.2_
 - [ ] 10.3 Create `docs/HIERARCHY_ADMIN_DASHBOARD.md`
@@ -533,6 +544,8 @@ not only for this function but common global like AttributeNodeCreate had almost
     - Viewing attribute tree
     - Creating new nodes
     - Editing existing nodes
+
+
     - Deleting nodes
     - Viewing ASCII tree visualization
   - Include example workflows

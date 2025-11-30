@@ -1,18 +1,85 @@
 """HierarchyBuilderService for programmatic hierarchy management.
 
-This module provides the service for creating and managing hierarchical
-attribute data with automatic LTREE path calculation.
+This module provides a comprehensive service for creating and managing hierarchical
+attribute data with automatic LTREE path calculation, depth tracking, and validation.
+
+The HierarchyBuilderService is the primary interface for building product configuration
+hierarchies in the Windx system. It handles all the complexity of LTREE path management,
+depth calculation, and validation, allowing you to focus on defining your product structure.
 
 Public Classes:
-    NodeParams: Base dataclass for node parameters
-    HierarchyBuilderService: Service for hierarchy management
+    NodeParams: Base dataclass for common node parameters
+    HierarchyBuilderService: Main service for hierarchy management
 
-Features:
-    - Automatic LTREE path calculation
-    - Automatic depth calculation
-    - Manufacturing type creation
-    - Node creation with validation
-    - Batch hierarchy creation from dictionaries
+Key Features:
+    - Automatic LTREE path calculation and sanitization
+    - Automatic depth calculation for nested hierarchies
+    - Manufacturing type creation and management
+    - Single node creation with comprehensive validation
+    - Batch hierarchy creation from nested dictionaries
+    - Tree visualization (ASCII and Pydantic/JSON)
+    - Circular reference detection
+    - Duplicate name detection at same level
+    - Transactional batch operations (all-or-nothing)
+
+Usage Example:
+    >>> from app.services.hierarchy_builder import HierarchyBuilderService
+    >>> from decimal import Decimal
+    >>> 
+    >>> # Initialize service with database session
+    >>> service = HierarchyBuilderService(db_session)
+    >>> 
+    >>> # Create a manufacturing type
+    >>> window_type = await service.create_manufacturing_type(
+    ...     name="Casement Window",
+    ...     description="Energy-efficient casement windows",
+    ...     base_price=Decimal("200.00"),
+    ...     base_weight=Decimal("15.00")
+    ... )
+    >>> 
+    >>> # Create root node
+    >>> frame_material = await service.create_node(
+    ...     manufacturing_type_id=window_type.id,
+    ...     name="Frame Material",
+    ...     node_type="category"
+    ... )
+    >>> 
+    >>> # Create child node with pricing
+    >>> aluminum = await service.create_node(
+    ...     manufacturing_type_id=window_type.id,
+    ...     name="Aluminum",
+    ...     node_type="option",
+    ...     parent_node_id=frame_material.id,
+    ...     price_impact_value=Decimal("50.00"),
+    ...     weight_impact=Decimal("2.0")
+    ... )
+    >>> 
+    >>> # Create entire hierarchy from dictionary
+    >>> hierarchy = {
+    ...     "name": "Glass Type",
+    ...     "node_type": "category",
+    ...     "children": [
+    ...         {
+    ...             "name": "Pane Count",
+    ...             "node_type": "attribute",
+    ...             "children": [
+    ...                 {"name": "Single Pane", "node_type": "option"},
+    ...                 {"name": "Double Pane", "node_type": "option", "price_impact_value": 80.00}
+    ...             ]
+    ...         }
+    ...     ]
+    ... }
+    >>> root = await service.create_hierarchy_from_dict(window_type.id, hierarchy)
+    >>> 
+    >>> # Get tree as JSON-serializable Pydantic models
+    >>> tree = await service.pydantify(window_type.id)
+    >>> 
+    >>> # Generate ASCII tree visualization
+    >>> ascii_tree = await service.asciify(window_type.id)
+    >>> print(ascii_tree)
+
+For more examples, see: examples/hierarchy_insertion.py
+For dashboard documentation, see: docs/HIERARCHY_ADMIN_DASHBOARD.md
 """
 
 from dataclasses import dataclass

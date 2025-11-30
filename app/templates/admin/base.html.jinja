@@ -88,6 +88,26 @@
             color: var(--primary);
         }
 
+        .nav-link.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: transparent;
+            color: var(--text-light);
+            pointer-events: none; /* Prevent clicks */
+            justify-content: space-between;
+        }
+
+        .badge-soon {
+            font-size: 0.65rem;
+            background-color: var(--secondary);
+            color: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 1rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-left: auto;
+        }
+
         .sidebar-footer {
             padding: 1rem;
             border-top: 1px solid var(--border);
@@ -308,11 +328,16 @@
             <a href="/api/v1/admin/hierarchy" class="nav-link {% if active_page == 'hierarchy' %}active{% endif %}">
                 <span>🌳</span> Hierarchy Editor
             </a>
-            <a href="/api/v1/admin/customers" class="nav-link {% if active_page == 'customers' %}active{% endif %}">
+            <div class="nav-link disabled" title="Coming Soon">
                 <span>👥</span> Customers
-            </a>
-            <a href="/api/v1/admin/orders" class="nav-link {% if active_page == 'orders' %}active{% endif %}">
+                <span class="badge-soon">Soon</span>
+            </div>
+            <div class="nav-link disabled" title="Coming Soon">
                 <span>📦</span> Orders
+                <span class="badge-soon">Soon</span>
+            </div>
+            <a href="/api/v1/admin/documentation" class="nav-link {% if active_page == 'documentation' %}active{% endif %}">
+                <span>📚</span> Documentation
             </a>
         </nav>
         <div class="sidebar-footer">

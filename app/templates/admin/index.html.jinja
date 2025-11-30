@@ -33,12 +33,26 @@
         <a href="/api/v1/admin/hierarchy" class="btn btn-outline">Open Editor</a>
     </div>
 
-    <div class="card">
-        <h3>👥 Customers</h3>
+    <div class="card" style="opacity: 0.7;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>👥 Customers</h3>
+            <span class="badge-soon">Soon</span>
+        </div>
         <p style="color: var(--text-light); margin: 0.5rem 0 1rem;">
             View and manage customer accounts.
         </p>
-        <a href="/api/v1/admin/customers" class="btn btn-outline">View Customers</a>
+        <button class="btn btn-outline" disabled style="cursor: not-allowed;">View Customers</button>
+    </div>
+
+    <div class="card" style="opacity: 0.7;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>📦 Orders</h3>
+            <span class="badge-soon">Soon</span>
+        </div>
+        <p style="color: var(--text-light); margin: 0.5rem 0 1rem;">
+            Track and manage customer orders.
+        </p>
+        <button class="btn btn-outline" disabled style="cursor: not-allowed;">View Orders</button>
     </div>
 </div>
 {% endblock %}

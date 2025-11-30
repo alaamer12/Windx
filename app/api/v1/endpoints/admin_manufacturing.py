@@ -30,7 +30,7 @@ async def list_manufacturing_types(
     current_superuser: CurrentSuperuser,
 ):
     """List all manufacturing types."""
-    manufacturing_types = await mfg_repo.get_all()
+    manufacturing_types = await mfg_repo.get_multi(limit=1000)
     
     return templates.TemplateResponse(
         "admin/manufacturing_list.html.jinja",
@@ -66,23 +66,32 @@ async def create_manufacturing_type(
     mfg_repo: ManufacturingTypeRepo,
     current_superuser: CurrentSuperuser,
     name: Annotated[str, Form()],
-    category: Annotated[str, Form()],
-    base_price: Annotated[float, Form()],
-    base_weight: Annotated[float, Form()],
+    base_category: Annotated[str | None, Form()] = None,
+    base_price: Annotated[float, Form()] = 0.0,
+    base_weight: Annotated[float, Form()] = 0.0,
     description: Annotated[str | None, Form()] = None,
-    is_active: Annotated[bool, Form()] = False,
+    image_url: Annotated[str | None, Form()] = None,
+    is_active: Annotated[bool, Form()] = True,
 ):
     """Handle create manufacturing type submission."""
     try:
+        from decimal import Decimal
+        
         mfg_in = ManufacturingTypeCreate(
             name=name,
-            category=category,
-            base_price=base_price,
-            base_weight=base_weight,
+            base_category=base_category,
+            base_price=Decimal(str(base_price)),
+            base_weight=Decimal(str(base_weight)),
             description=description,
-            is_active=is_active,
+            image_url=image_url,
         )
-        await mfg_repo.create(mfg_in)
+        new_mfg = await mfg_repo.create(mfg_in)
+        
+        # Update is_active separately since it's not in the create schema
+        if not is_active:
+            new_mfg.is_active = False
+            mfg_repo.db.add(new_mfg)
+            await mfg_repo.db.commit()
         
         return RedirectResponse(
             url="/api/v1/admin/manufacturing-types?success=Manufacturing type created successfully",

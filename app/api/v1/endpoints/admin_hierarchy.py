@@ -166,7 +166,7 @@ async def hierarchy_dashboard(
                 # If diagram generation fails, just skip it
                 context["diagram_tree"] = None
     
-    return templates.TemplateResponse(request=request, name="admin/hierarchy_dashboard.html.jinja", context=context)
+    return templates.TemplateResponse(request=request, name="admin/hierarchy_dashboard_enhanced.html.jinja", context=context)
 
 
 @router.get("/node/create", response_class=HTMLResponse)

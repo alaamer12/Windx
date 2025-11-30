@@ -1,0 +1,111 @@
+{% extends "admin/base.html.jinja" %}
+
+{% block title %}Orders - WindX Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📦 Orders</h1>
+    <p>Manage customer orders and track production status</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Orders</h2>
+    </div>
+    <div class="card-body">
+        {% if orders %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>{{ order.order_number }}</td>
+                        <td>{{ order.customer.company_name if order.customer else 'N/A' }}</td>
+                        <td>{{ order.order_date.strftime('%Y-%m-%d') }}</td>
+                        <td><span class="badge badge-{{ order.status }}">{{ order.status }}</span></td>
+                        <td>${{ order.total_amount }}</td>
+                        <td>
+                            <a href="/api/v1/admin/orders/{{ order.id }}" class="btn btn-sm">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <h3>No Orders Yet</h3>
+                <p>Orders will appear here once customers start placing them.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .data-table th {
+        background-color: var(--bg-secondary);
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .data-table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+    
+    .badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    
+    .badge-confirmed {
+        background-color: #3b82f6;
+        color: white;
+    }
+    
+    .badge-production {
+        background-color: #f59e0b;
+        color: white;
+    }
+    
+    .badge-shipped {
+        background-color: #8b5cf6;
+        color: white;
+    }
+    
+    .badge-delivered {
+        background-color: #10b981;
+        color: white;
+    }
+    
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}

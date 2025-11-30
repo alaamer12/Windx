@@ -22,10 +22,10 @@
         </div>
 
         <div class="form-group">
-            <label for="category" class="form-label">Category</label>
-            <input type="text" id="category" name="category" class="form-control" 
-                   value="{{ form_data.category if form_data else (mfg_type.category if mfg_type else '') }}" required>
-            <small style="color: var(--text-light);">e.g., "Window", "Door", "Furniture"</small>
+            <label for="base_category" class="form-label">Category</label>
+            <input type="text" id="base_category" name="base_category" class="form-control" 
+                   value="{{ form_data.base_category if form_data else (mfg_type.base_category if mfg_type else '') }}">
+            <small style="color: var(--text-light);">e.g., "window", "door", "furniture"</small>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -49,7 +49,7 @@
 
         <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
             <input type="checkbox" id="is_active" name="is_active" value="true" 
-                   {% if (form_data and form_data.is_active) or (mfg_type and mfg_type.is_active) %}checked{% endif %}>
+                   {% if (form_data and form_data.is_active) or (mfg_type and mfg_type.is_active) or (not mfg_type and not form_data) %}checked{% endif %}>
             <label for="is_active" class="form-label" style="margin-bottom: 0;">Active</label>
         </div>
 

@@ -41,6 +41,7 @@
                     <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                         <a href="/api/v1/admin/manufacturing-types/{{ type.id }}/edit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
                         <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ type.id }}" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Hierarchy</a>
+                        <button type="button" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;" onclick="confirmDelete({{ type.id }}, '{{ type.name }}')">Delete</button>
                     </div>
                 </td>
             </tr>
@@ -57,5 +58,46 @@
         </a>
     </div>
     {% endif %}
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+        <div class="modal-content" style="background-color: #fefefe; margin: auto; padding: 2rem; border: 1px solid #888; width: 100%; max-width: 500px; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <h2 style="margin-bottom: 1rem; color: var(--text);">Confirm Deletion</h2>
+            <p style="margin-bottom: 1.5rem; color: var(--text-light);">Are you sure you want to delete <strong id="deleteItemName"></strong>? This action cannot be undone and will delete all associated attribute hierarchies and configurations.</p>
+            
+            <form id="deleteForm" method="POST" action="">
+                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Permanently</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(id, name) {
+        const modal = document.getElementById('deleteModal');
+        const form = document.getElementById('deleteForm');
+        const nameSpan = document.getElementById('deleteItemName');
+        
+        form.action = `/api/v1/admin/manufacturing-types/${id}/delete`;
+        nameSpan.textContent = name;
+        
+        modal.style.display = "flex";
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = "none";
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('deleteModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
 {% endblock %}

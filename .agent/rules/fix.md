@@ -1,7 +1,6 @@
 ---
 trigger: always_on
 ---
-
 ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
 
 ALWAYS READ .agent/WINDX_API_DOCUEMNTATION.md

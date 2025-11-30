@@ -4,6 +4,19 @@
 
 {% set active_page = "manufacturing" %}
 
+{% block extra_css %}
+<style>
+    .truncate-text {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: help;
+        color: var(--text-light);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">Manufacturing Types</h1>
@@ -19,6 +32,7 @@
             <tr style="border-bottom: 1px solid var(--border); text-align: left;">
                 <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Name</th>
                 <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Category</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Description</th>
                 <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Base Price</th>
                 <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Status</th>
                 <th style="padding: 1rem; font-weight: 600; color: var(--text-light); text-align: right;">Actions</th>
@@ -28,7 +42,12 @@
             {% for type in manufacturing_types %}
             <tr style="border-bottom: 1px solid var(--border);">
                 <td style="padding: 1rem; font-weight: 500;">{{ type.name }}</td>
-                <td style="padding: 1rem;">{{ type.category }}</td>
+                <td style="padding: 1rem;">{{ type.base_category or type.category or '-' }}</td>
+                <td style="padding: 1rem;">
+                    <div class="truncate-text" title="{{ type.description or '' }}">
+                        {{ type.description or '-' }}
+                    </div>
+                </td>
                 <td style="padding: 1rem;">${{ "%.2f"|format(type.base_price) }}</td>
                 <td style="padding: 1rem;">
                     {% if type.is_active %}

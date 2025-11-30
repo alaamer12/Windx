@@ -153,7 +153,7 @@ async def edit_manufacturing_type(
     mfg_repo: ManufacturingTypeRepo,
     current_superuser: CurrentSuperuser,
     name: Annotated[str, Form()],
-    category: Annotated[str, Form()],
+    base_category: Annotated[str, Form()],
     base_price: Annotated[float, Form()],
     base_weight: Annotated[float, Form()],
     description: Annotated[str | None, Form()] = None,
@@ -170,7 +170,7 @@ async def edit_manufacturing_type(
     try:
         mfg_update = ManufacturingTypeUpdate(
             name=name,
-            category=category,
+            base_category=base_category,
             base_price=base_price,
             base_weight=base_weight,
             description=description,

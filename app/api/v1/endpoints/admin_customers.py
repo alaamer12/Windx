@@ -1,8 +1,8 @@
-"""Admin orders endpoints."""
+"""Admin customers endpoints."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Request, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.api.deps import get_current_active_superuser
@@ -15,15 +15,12 @@ CurrentSuperuser = Annotated[User, Depends(get_current_active_superuser)]
 
 
 @router.get("", response_class=HTMLResponse)
-async def list_orders(
+async def list_customers(
     request: Request,
     current_superuser: CurrentSuperuser,
 ):
-    """List all orders (placeholder)."""
-    from fastapi.responses import RedirectResponse
-    from fastapi import status
-    
+    """List all customers (placeholder)."""
     return RedirectResponse(
-        url="/api/v1/admin/dashboard?error=Orders module is currently under development",
+        url="/api/v1/admin/dashboard?error=Customers module is currently under development",
         status_code=status.HTTP_302_FOUND
     )

@@ -623,3 +623,409 @@ async def test_update_node_preserves_parent_when_not_provided(
     assert child.parent_node_id == parent.id  # Should still have parent
     assert child.name == "Child Updated"  # Name should be updated
     assert child.depth == 1  # Depth should remain the same
+
+
+
+# Additional validation tests for dangerous formulas and edge cases
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_dangerous_import_formula_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that formula with import statement is rejected by Pydantic validator."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with dangerous formula containing import
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Dangerous Node",
+        "node_type": "option",
+        "price_impact_type": "formula",
+        "price_formula": "import os; os.system('ls')",  # Dangerous!
+        "weight_impact": "0",
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions formula or forbidden operation
+    content = response.text.lower()
+    assert "formula" in content or "forbidden" in content or "import" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_dangerous_exec_formula_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that formula with exec() is rejected by Pydantic validator."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with dangerous formula containing exec
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Dangerous Node",
+        "node_type": "option",
+        "price_impact_type": "formula",
+        "price_formula": "exec('print(1)')",  # Dangerous!
+        "weight_impact": "0",
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions formula or forbidden operation
+    content = response.text.lower()
+    assert "formula" in content or "forbidden" in content or "exec" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_dangerous_eval_formula_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that formula with eval() is rejected by Pydantic validator."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with dangerous formula containing eval
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Dangerous Node",
+        "node_type": "option",
+        "price_impact_type": "formula",
+        "price_formula": "eval('1+1')",  # Dangerous!
+        "weight_impact": "0",
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions formula or forbidden operation
+    content = response.text.lower()
+    assert "formula" in content or "forbidden" in content or "eval" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_unbalanced_parentheses_formula_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that formula with unbalanced parentheses is rejected."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with formula having unbalanced parentheses
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Bad Formula Node",
+        "node_type": "option",
+        "price_impact_type": "formula",
+        "price_formula": "((width * height)",  # Unbalanced!
+        "weight_impact": "0",
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions formula or parentheses
+    content = response.text.lower()
+    assert "formula" in content or "parenthes" in content or "balanced" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_negative_price_impact_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that negative price_impact_value is rejected by Pydantic validator."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with negative price impact
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Negative Price Node",
+        "node_type": "option",
+        "price_impact_type": "fixed",
+        "price_impact_value": "-50.00",  # Negative - should be rejected
+        "weight_impact": "0",
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions price_impact_value
+    content = response.text.lower()
+    assert "price" in content or "validation" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_negative_weight_impact_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that negative weight_impact is rejected by Pydantic validator."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with negative weight impact
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Negative Weight Node",
+        "node_type": "option",
+        "price_impact_type": "fixed",
+        "weight_impact": "-5.00",  # Negative - should be rejected
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions weight
+    content = response.text.lower()
+    assert "weight" in content or "validation" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_invalid_data_type_rejected(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that invalid data_type is rejected by Pydantic validator."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    # Submit form with invalid data_type
+    form_data = {
+        "manufacturing_type_id": str(mfg_type.id),
+        "name": "Invalid Data Type Node",
+        "node_type": "attribute",
+        "data_type": "invalid_data_type",  # Invalid enum value
+        "price_impact_type": "fixed",
+        "weight_impact": "0",
+        "sort_order": "0",
+        "required": "false",
+    }
+    
+    response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data=form_data,
+    )
+    
+    # Should return 422 with validation error
+    assert response.status_code == 422
+    
+    # Verify error message mentions data_type
+    content = response.text.lower()
+    assert "data_type" in content or "data type" in content or "validation" in content
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_all_valid_node_types(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that all valid node_type enum values are accepted."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    valid_node_types = ["category", "attribute", "option", "component", "technical_spec"]
+    
+    for node_type in valid_node_types:
+        form_data = {
+            "manufacturing_type_id": str(mfg_type.id),
+            "name": f"Test {node_type}",
+            "node_type": node_type,
+            "price_impact_type": "fixed",
+            "weight_impact": "0",
+            "sort_order": "0",
+            "required": "false",
+        }
+        
+        response = await client.post(
+            "/api/v1/admin/hierarchy/node/save",
+            headers=superuser_auth_headers,
+            data=form_data,
+        )
+        
+        # Should succeed for all valid node types
+        assert response.status_code == 303, f"Failed for node_type: {node_type}"
+        assert "success" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_all_valid_data_types(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that all valid data_type enum values are accepted."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    valid_data_types = ["string", "number", "boolean", "formula", "dimension", "selection"]
+    
+    for data_type in valid_data_types:
+        form_data = {
+            "manufacturing_type_id": str(mfg_type.id),
+            "name": f"Test {data_type}",
+            "node_type": "attribute",
+            "data_type": data_type,
+            "price_impact_type": "fixed",
+            "weight_impact": "0",
+            "sort_order": "0",
+            "required": "false",
+        }
+        
+        response = await client.post(
+            "/api/v1/admin/hierarchy/node/save",
+            headers=superuser_auth_headers,
+            data=form_data,
+        )
+        
+        # Should succeed for all valid data types
+        assert response.status_code == 303, f"Failed for data_type: {data_type}"
+        assert "success" in response.headers["location"]
+
+
+@pytest.mark.asyncio
+async def test_save_node_with_all_valid_price_impact_types(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that all valid price_impact_type enum values are accepted."""
+    # Create manufacturing type
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+    
+    valid_price_impact_types = ["fixed", "percentage", "formula"]
+    
+    for price_impact_type in valid_price_impact_types:
+        form_data = {
+            "manufacturing_type_id": str(mfg_type.id),
+            "name": f"Test {price_impact_type}",
+            "node_type": "option",
+            "price_impact_type": price_impact_type,
+            "weight_impact": "0",
+            "sort_order": "0",
+            "required": "false",
+        }
+        
+        # Add appropriate value based on type
+        if price_impact_type == "fixed":
+            form_data["price_impact_value"] = "50.00"
+        elif price_impact_type == "percentage":
+            form_data["price_impact_value"] = "15.00"
+        elif price_impact_type == "formula":
+            form_data["price_formula"] = "width * height * 0.05"
+        
+        response = await client.post(
+            "/api/v1/admin/hierarchy/node/save",
+            headers=superuser_auth_headers,
+            data=form_data,
+        )
+        
+        # Should succeed for all valid price impact types
+        assert response.status_code == 303, f"Failed for price_impact_type: {price_impact_type}"
+        assert "success" in response.headers["location"]

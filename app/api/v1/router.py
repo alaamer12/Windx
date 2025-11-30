@@ -21,6 +21,7 @@ from app.api.v1.endpoints import (
     admin_orders,
     admin_customers,
     admin_documentation,
+    admin_settings,
     attribute_nodes,
     auth,
     configurations,
@@ -45,6 +46,7 @@ api_router.include_router(admin_manufacturing.router, prefix="/admin/manufacturi
 api_router.include_router(admin_orders.router, prefix="/admin/orders", tags=["Admin Orders"])
 api_router.include_router(admin_customers.router, prefix="/admin/customers", tags=["Admin Customers"])
 api_router.include_router(admin_documentation.router, prefix="/admin/documentation", tags=["Admin Documentation"])
+api_router.include_router(admin_settings.router, prefix="/admin", tags=["Admin Settings"])
 api_router.include_router(users.router, prefix="/users")
 api_router.include_router(export.router, prefix="/export")
 api_router.include_router(dashboard.router, prefix="/dashboard")

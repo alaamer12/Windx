@@ -453,53 +453,63 @@ not only for this function but common global like AttributeNodeCreate had almost
 
 
 
-- [ ] 9. Integration Testing - Complete uPVC Hierarchy
+- [x] 9. Integration Testing - Complete uPVC Hierarchy
+
+
   - Test creating complex real-world hierarchy
   - _Requirements: 10.1-10.12_
-- [ ] 9.1 Create test file `tests/integration/test_hierarchy_builder.py`
+- [x] 9.1 Create test file `tests/integration/test_hierarchy_builder.py`
+
   - Import HierarchyBuilderService
   - Import ManufacturingTypeRepository, AttributeNodeRepository
   - Create fixtures for db_session
+
   - _Requirements: 10.1_
-- [ ] 9.2 Implement `test_create_manufacturing_type()`
+- [x] 9.2 Implement `test_create_manufacturing_type()`
   - Create "Casement Window" manufacturing type using HierarchyBuilderService
   - Verify base_price and base_weight are set
   - _Requirements: 10.1_
-- [ ] 9.3 Implement `test_create_root_node()`
+
+- [x] 9.3 Implement `test_create_root_node()`
   - Create root category node "Material"
   - Verify ltree_path is sanitized name
   - Verify depth is 0
   - Verify parent_node_id is None
+
   - _Requirements: 10.2, 10.9_
-- [ ] 9.4 Implement `test_create_child_node()`
+- [x] 9.4 Implement `test_create_child_node()`
   - Create child node "uPVC" under "Material"
   - Verify ltree_path is "material.upvc"
   - Verify depth is 1
   - Verify parent_node_id is set correctly
   - _Requirements: 10.3, 10.9_
-- [ ] 9.5 Implement `test_create_complete_upvc_hierarchy()`
+- [x] 9.5 Implement `test_create_complete_upvc_hierarchy()`
   - Create full hierarchy: Material → uPVC → System → Aluplast → Profile → IDEAL 4000 → Color & Decor
   - Create color options with price impacts
   - Verify all ltree_paths are correct
   - Verify all depths are correct
   - _Requirements: 10.4, 10.5, 10.6, 10.9_
-- [ ] 9.6 Implement `test_get_descendants()`
+- [x] 9.6 Implement `test_get_descendants()`
+
   - Create hierarchy with multiple levels
   - Use AttributeNodeRepository.get_descendants() on root node
   - Verify all descendants are returned
   - _Requirements: 10.10_
-- [ ] 9.7 Implement `test_create_hierarchy_from_dict()`
+- [x] 9.7 Implement `test_create_hierarchy_from_dict()`
+
   - Create nested dictionary structure
   - Use HierarchyBuilderService.create_hierarchy_from_dict()
   - Verify all nodes are created with correct relationships
   - _Requirements: 10.11_
-- [ ] 9.8 Implement `test_batch_creation_rollback()`
+- [x] 9.8 Implement `test_batch_creation_rollback()`
+
   - Test that batch creation rolls back on error
   - Create hierarchy with invalid node in middle
   - Verify no nodes are created
   - _Requirements: 10.12_
 
 - [ ] 10. Documentation and Examples
+
   - Document the hierarchy management system
   - _Requirements: 11.1-11.5_
 - [ ] 10.1 Add comprehensive docstrings to HierarchyBuilderService

@@ -140,12 +140,13 @@
                             {% for parent in all_nodes %}
                             <option value="{{ parent.id }}" 
                                     data-depth="{{ parent.depth }}"
+                                    data-path="{{ parent.hierarchical_path }}"
                                     {% if (parent_node and parent.id == parent_node.id) or (node and node.parent_node_id == parent.id) or (form_data and form_data.parent_node_id == parent.id) %}selected{% endif %}>
-                                {{ '&nbsp;&nbsp;&nbsp;&nbsp;' * parent.depth|safe }}{{ parent.ltree_path.split('.')[-1]|replace('_', ' ')|title }} ({{ parent.node_type }})
+                                {{ parent.hierarchical_path }}
                             </option>
                             {% endfor %}
                         </select>
-                        <div class="form-text">Leave empty to create a root node. Indentation shows hierarchy level.</div>
+                        <div class="form-text">Leave empty to create a root node. Path shows full hierarchy (e.g., "Frame > Material > Aluminum").</div>
                     </div>
                     
                     <div class="col-md-6 mb-3">
@@ -254,7 +255,7 @@
                     <textarea class="form-control font-monospace" 
                               id="price_formula" 
                               name="price_formula" 
-                              rows="2">{{ node.price_formula if node and node.price_formula else '' }}</textarea>
+                              rows="2">{{ form_data.price_formula if form_data and form_data.price_formula else (node.price_formula if node and node.price_formula else '') }}</textarea>
                     <div class="form-text">Dynamic pricing formula (e.g., "width * height * 0.05")</div>
                 </div>
             </div>
@@ -270,7 +271,7 @@
                                class="form-control" 
                                id="weight_impact" 
                                name="weight_impact" 
-                               value="{{ node.weight_impact if node and node.weight_impact else '0' }}"
+                               value="{{ form_data.weight_impact if form_data and form_data.weight_impact is not none else (node.weight_impact if node and node.weight_impact else '0') }}"
                                step="0.01">
                         <div class="form-text">Fixed weight addition in kilograms</div>
                     </div>
@@ -280,7 +281,7 @@
                         <textarea class="form-control font-monospace" 
                                   id="weight_formula" 
                                   name="weight_formula" 
-                                  rows="2">{{ node.weight_formula if node and node.weight_formula else '' }}</textarea>
+                                  rows="2">{{ form_data.weight_formula if form_data and form_data.weight_formula else (node.weight_formula if node and node.weight_formula else '') }}</textarea>
                         <div class="form-text">Dynamic weight calculation</div>
                     </div>
                 </div>
@@ -297,7 +298,7 @@
                                class="form-control" 
                                id="technical_property_type" 
                                name="technical_property_type" 
-                               value="{{ node.technical_property_type if node and node.technical_property_type else '' }}">
+                               value="{{ form_data.technical_property_type if form_data and form_data.technical_property_type else (node.technical_property_type if node and node.technical_property_type else '') }}">
                         <div class="form-text">Type of technical property (e.g., "u_value", "load_capacity")</div>
                     </div>
                 </div>
@@ -307,7 +308,7 @@
                     <textarea class="form-control font-monospace" 
                               id="technical_impact_formula" 
                               name="technical_impact_formula" 
-                              rows="3">{{ node.technical_impact_formula if node and node.technical_impact_formula else '' }}</textarea>
+                              rows="3">{{ form_data.technical_impact_formula if form_data and form_data.technical_impact_formula else (node.technical_impact_formula if node and node.technical_impact_formula else '') }}</textarea>
                     <div class="form-text">Formula for calculating technical specifications</div>
                 </div>
             </div>
@@ -351,7 +352,7 @@
                     <textarea class="form-control" 
                               id="description" 
                               name="description" 
-                              rows="3">{{ node.description if node and node.description else '' }}</textarea>
+                              rows="3">{{ form_data.description if form_data and form_data.description else (node.description if node and node.description else '') }}</textarea>
                     <div class="form-text">User-facing description of this attribute</div>
                 </div>
 
@@ -360,7 +361,7 @@
                     <textarea class="form-control" 
                               id="help_text" 
                               name="help_text" 
-                              rows="2">{{ node.help_text if node and node.help_text else '' }}</textarea>
+                              rows="2">{{ form_data.help_text if form_data and form_data.help_text else (node.help_text if node and node.help_text else '') }}</textarea>
                     <div class="form-text">Additional guidance for users</div>
                 </div>
             </div>
@@ -403,19 +404,17 @@
         }
     });
     
-    // Format parent node selector with visual hierarchy
+    // Add visual styling to parent node selector based on depth
     document.addEventListener('DOMContentLoaded', function() {
         const parentSelect = document.getElementById('parent_node_id');
         if (parentSelect) {
-            // Add visual indicators for hierarchy depth
+            // Add indentation based on depth for better visual hierarchy
             const options = parentSelect.querySelectorAll('option[data-depth]');
             options.forEach(option => {
                 const depth = parseInt(option.getAttribute('data-depth'));
                 if (depth > 0) {
-                    // Add tree-like visual indicators
-                    const indent = '│   '.repeat(depth - 1) + '├── ';
-                    const currentText = option.textContent.trim();
-                    option.textContent = indent + currentText;
+                    // Add CSS padding for visual indentation
+                    option.style.paddingLeft = (depth * 20) + 'px';
                 }
             });
         }

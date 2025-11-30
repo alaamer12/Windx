@@ -40,6 +40,57 @@ templates = Jinja2Templates(directory="app/templates")
 router = APIRouter()
 
 
+def _format_nodes_for_selector(nodes: list) -> list[dict]:
+    """Format attribute nodes for parent selector dropdown.
+    
+    Converts nodes into a format suitable for dropdown display with
+    hierarchical paths (e.g., "Frame > Material > Aluminum").
+    
+    Args:
+        nodes: List of AttributeNode objects
+        
+    Returns:
+        List of dicts with id, name, depth, node_type, and hierarchical_path
+        
+    Example:
+        Input node with ltree_path: "frame_options.material_type.aluminum"
+        Output: {
+            "id": 42,
+            "name": "Aluminum",
+            "depth": 2,
+            "node_type": "option",
+            "hierarchical_path": "Frame Options > Material Type > Aluminum"
+        }
+    """
+    formatted = []
+    
+    for node in nodes:
+        # Convert ltree_path to readable hierarchical path
+        # Example: "frame_options.material_type.aluminum" -> "Frame Options > Material Type > Aluminum"
+        path_parts = node.ltree_path.split('.')
+        
+        # Convert each part from snake_case to Title Case
+        readable_parts = []
+        for part in path_parts:
+            # Replace underscores with spaces and title case
+            readable_part = part.replace('_', ' ').title()
+            readable_parts.append(readable_part)
+        
+        # Join with " > " separator
+        hierarchical_path = " > ".join(readable_parts)
+        
+        formatted.append({
+            "id": node.id,
+            "name": node.name,
+            "depth": node.depth,
+            "node_type": node.node_type,
+            "hierarchical_path": hierarchical_path,
+            "ltree_path": node.ltree_path,
+        })
+    
+    return formatted
+
+
 @router.get("/", response_class=HTMLResponse)
 async def hierarchy_dashboard(
     request: Request,
@@ -164,11 +215,14 @@ async def create_node_form(
     # Get all nodes for manufacturing type (for parent selector)
     all_nodes = await attr_repo.get_by_manufacturing_type(manufacturing_type_id)
     
+    # Format nodes with hierarchical paths for dropdown
+    formatted_nodes = _format_nodes_for_selector(all_nodes)
+    
     context = {
         "request": request,
         "manufacturing_type": manufacturing_type,
         "parent_node": parent_node,
-        "all_nodes": all_nodes,
+        "all_nodes": formatted_nodes,
         "node": None,  # No existing node (create mode)
         "is_edit": False,
     }
@@ -277,6 +331,9 @@ async def save_node(
                 descendant_ids.add(node_id)
                 available_parents = [n for n in all_nodes if n.id not in descendant_ids]
                 
+                # Format nodes with hierarchical paths for dropdown
+                formatted_nodes = _format_nodes_for_selector(available_parents)
+                
                 # Format validation errors for display
                 validation_errors = []
                 for error in ve.errors():
@@ -288,7 +345,7 @@ async def save_node(
                     "request": request,
                     "manufacturing_type": manufacturing_type,
                     "parent_node": None,
-                    "all_nodes": available_parents,
+                    "all_nodes": formatted_nodes,
                     "node": node,
                     "is_edit": True,
                     "validation_errors": validation_errors,
@@ -359,6 +416,9 @@ async def save_node(
                 manufacturing_type = await mfg_repo.get(manufacturing_type_id)
                 all_nodes = await attr_repo.get_by_manufacturing_type(manufacturing_type_id)
                 
+                # Format nodes with hierarchical paths for dropdown
+                formatted_nodes = _format_nodes_for_selector(all_nodes)
+                
                 # Format validation errors for display
                 validation_errors = []
                 for error in ve.errors():
@@ -370,7 +430,7 @@ async def save_node(
                     "request": request,
                     "manufacturing_type": manufacturing_type,
                     "parent_node": None,
-                    "all_nodes": all_nodes,
+                    "all_nodes": formatted_nodes,
                     "node": None,
                     "is_edit": False,
                     "validation_errors": validation_errors,
@@ -475,6 +535,9 @@ async def edit_node_form(
     # Filter out node and descendants
     available_parents = [n for n in all_nodes if n.id not in descendant_ids]
     
+    # Format nodes with hierarchical paths for dropdown
+    formatted_nodes = _format_nodes_for_selector(available_parents)
+    
     # Get parent node if exists
     parent_node = None
     if node.parent_node_id:
@@ -484,7 +547,7 @@ async def edit_node_form(
         "request": request,
         "manufacturing_type": manufacturing_type,
         "parent_node": parent_node,
-        "all_nodes": available_parents,
+        "all_nodes": formatted_nodes,
         "node": node,
         "is_edit": True,
     }

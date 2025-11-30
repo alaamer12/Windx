@@ -299,7 +299,7 @@ async def save_node(
                     request=request,
                     name="admin/node_form.html.jinja",
                     context=context,
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=422,
                 )
             
             # Validation passed - update node
@@ -381,7 +381,7 @@ async def save_node(
                     request=request,
                     name="admin/node_form.html.jinja",
                     context=context,
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
             
             # Validation passed - create node

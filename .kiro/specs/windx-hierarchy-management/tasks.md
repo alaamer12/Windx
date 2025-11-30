@@ -435,17 +435,22 @@ not only for this function but common global like AttributeNodeCreate had almost
 - [x] 8.2 Add parent node selector logic
 
 
+
   - Get all nodes for same manufacturing type
   - If editing, exclude current node and its descendants using AttributeNodeRepository.get_descendants()
   - Format dropdown options with hierarchical path (e.g., "Frame > Material > Aluminum")
   - _Requirements: 4.5, 5.9_
-- [ ] 8.3 Add node type and data type dropdowns
+- [x] 8.3 Add node type and data type dropdowns
+
+
+
 
   - Node types: category, attribute, option, component, technical_spec
   - Data types: string, number, boolean, formula, dimension, selection
   - Price impact types: fixed, percentage, formula
   - UI components: dropdown, radio, checkbox, slider, input
   - _Requirements: 5.4, 5.5_
+
 
 
 - [ ] 9. Integration Testing - Complete uPVC Hierarchy

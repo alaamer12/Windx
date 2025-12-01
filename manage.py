@@ -35,6 +35,7 @@ async def create_superuser():
     async with session_maker() as session:
         try:
             # Check if user exists
+            # noinspection PyTypeChecker
             result = await session.execute(
                 select(User).where((User.email == email) | (User.username == username))
             )
@@ -118,7 +119,7 @@ Management CLI for the application
 Commands:
     createsuperuser          Create a new superuser account
     promote <username>       Promote an existing user to superuser
-    
+
 Examples:
     python manage.py createsuperuser
     python manage.py promote johwqen_doe

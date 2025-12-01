@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_superuser
+from app.api.deps import get_current_active_superuser, get_admin_context
 from app.core.config import get_settings
 from app.core.security import create_access_token
 from app.database import get_db
@@ -119,5 +119,9 @@ async def dashboard(
     """Render main dashboard."""
     return templates.TemplateResponse(
         "admin/index.html.jinja",
-        {"request": request, "current_user": current_user, "active_page": "dashboard"},
+        get_admin_context(
+            request,
+            current_user,
+            active_page="dashboard",
+        ),
     )

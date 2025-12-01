@@ -13,13 +13,16 @@ Features:
     - Superuser authorization
     - HTTP Bearer token support
 """
+from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
+from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.database import get_db
 from app.models.user import User
@@ -138,3 +141,26 @@ async def get_current_active_superuser(
             detail="Not enough permissions",
         )
     return current_user
+
+
+def get_admin_context(
+    request: Request,
+    current_user: User,
+    active_page: str = "dashboard",
+    **extra: Any,
+) -> dict[str, Any]:
+    """Return a template context dictionary with common admin data.
+
+    Includes the request, current_user, active_page, and the experimental feature flags.
+    Additional keyword arguments are merged into the context.
+    """
+    settings = get_settings()
+    context: dict[str, Any] = {
+        "request": request,
+        "current_user": current_user,
+        "active_page": active_page,
+        "enable_customers": settings.windx.experimental_customers_page,
+        "enable_orders": settings.windx.experimental_orders_page,
+    }
+    context.update(extra)
+    return context

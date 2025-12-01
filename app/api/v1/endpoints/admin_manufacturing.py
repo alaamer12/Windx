@@ -4,6 +4,8 @@ This module provides endpoints for managing manufacturing types through
 server-rendered templates.
 """
 
+from __future__ import annotations
+
 from typing import Annotated
 
 from fastapi import APIRouter, Form, Request, status
@@ -14,6 +16,7 @@ from app.api.types import (
     CurrentSuperuser,
     ManufacturingTypeRepo,
 )
+from app.api.deps import get_admin_context
 from app.schemas.manufacturing_type import ManufacturingTypeCreate, ManufacturingTypeUpdate
 
 router = APIRouter()
@@ -31,12 +34,12 @@ async def list_manufacturing_types(
 
     return templates.TemplateResponse(
         "admin/manufacturing_list.html.jinja",
-        {
-            "request": request,
-            "current_user": current_superuser,
-            "manufacturing_types": manufacturing_types,
-            "active_page": "manufacturing",
-        },
+        get_admin_context(
+            request,
+            current_superuser,
+            active_page="manufacturing",
+            manufacturing_types=manufacturing_types,
+        ),
     )
 
 
@@ -48,12 +51,12 @@ async def create_manufacturing_type_form(
     """Render create manufacturing type form."""
     return templates.TemplateResponse(
         "admin/manufacturing_form.html.jinja",
-        {
-            "request": request,
-            "current_user": current_superuser,
-            "active_page": "manufacturing",
-            "action": "Create",
-        },
+        get_admin_context(
+            request,
+            current_superuser,
+            active_page="manufacturing",
+            action="Create",
+        ),
     )
 
 
@@ -97,21 +100,21 @@ async def create_manufacturing_type(
     except Exception as e:
         return templates.TemplateResponse(
             "admin/manufacturing_form.html.jinja",
-            {
-                "request": request,
-                "current_user": current_superuser,
-                "active_page": "manufacturing",
-                "action": "Create",
-                "error": str(e),
-                "form_data": {
+            get_admin_context(
+                request,
+                current_superuser,
+                active_page="manufacturing",
+                action="Create",
+                error=str(e),
+                form_data={
                     "name": name,
-                    "category": category,
+                    "category": base_category,
                     "base_price": base_price,
                     "base_weight": base_weight,
                     "description": description,
                     "is_active": is_active,
                 },
-            },
+            ),
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -133,13 +136,13 @@ async def edit_manufacturing_type_form(
 
     return templates.TemplateResponse(
         "admin/manufacturing_form.html.jinja",
-        {
-            "request": request,
-            "current_user": current_superuser,
-            "active_page": "manufacturing",
-            "action": "Edit",
-            "mfg_type": mfg_type,
-        },
+        get_admin_context(
+            request,
+            current_superuser,
+            active_page="manufacturing",
+            action="Edit",
+            mfg_type=mfg_type,
+        ),
     )
 
 
@@ -182,15 +185,14 @@ async def edit_manufacturing_type(
     except Exception as e:
         return templates.TemplateResponse(
             "admin/manufacturing_form.html.jinja",
-            {
-                "request": request,
-                "current_user": current_superuser,
-                "active_page": "manufacturing",
-                "action": "Edit",
-                "error": str(e),
-                "mfg_type": mfg_type,  # Keep original object but maybe update fields?
-                # Ideally we pass form_data back to pre-fill
-            },
+            get_admin_context(
+                request,
+                current_superuser,
+                active_page="manufacturing",
+                action="Edit",
+                error=str(e),
+                mfg_type=mfg_type,
+            ),
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 

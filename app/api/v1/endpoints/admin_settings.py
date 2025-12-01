@@ -11,7 +11,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_superuser
+from app.api.deps import get_current_active_superuser, get_admin_context
+
+# Shared admin utilities for consistent context (feature flags, etc.)
 from app.core.config import get_settings
 from app.core.exceptions import ConflictException
 from app.database import get_db
@@ -29,10 +31,10 @@ async def settings_page(
     request: Request,
     current_user: Annotated[User, Depends(get_current_active_superuser)],
 ):
-    """Render settings page."""
+    """Render settings page with shared admin context."""
     return templates.TemplateResponse(
         "admin/settings.html.jinja",
-        {"request": request, "current_user": current_user, "active_page": "settings"},
+        get_admin_context(request, current_user, active_page="settings"),
     )
 
 
@@ -55,16 +57,16 @@ async def update_username(
         # Update username using service
         user_service = UserService(db)
         user_update = UserUpdate(username=new_username)
-
         await user_service.update_user(
-            user_id=current_user.id, user_update=user_update, current_user=current_user
+            user_id=current_user.id,
+            user_update=user_update,
+            current_user=current_user,
         )
 
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?success=Username updated successfully",
             status_code=status.HTTP_302_FOUND,
         )
-
     except ConflictException as e:
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?error={e.message}",
@@ -110,16 +112,16 @@ async def update_password(
         # Update password using service
         user_service = UserService(db)
         user_update = UserUpdate(password=new_password)
-
         await user_service.update_user(
-            user_id=current_user.id, user_update=user_update, current_user=current_user
+            user_id=current_user.id,
+            user_update=user_update,
+            current_user=current_user,
         )
 
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?success=Password updated successfully",
             status_code=status.HTTP_302_FOUND,
         )
-
     except Exception as e:
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?error=Failed to update password: {str(e)}",

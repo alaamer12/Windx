@@ -83,11 +83,6 @@
             font-weight: 500;
         }
 
-        .nav-link:hover, .nav-link.active {
-            background-color: #eff6ff;
-            color: var(--primary);
-        }
-
         .nav-link.disabled {
             opacity: 0.6;
             cursor: not-allowed;
@@ -100,6 +95,17 @@
         .badge-soon {
             font-size: 0.65rem;
             background-color: var(--secondary);
+            color: white;
+            padding: 0.1rem 0.4rem;
+            border-radius: 1rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-left: auto;
+        }
+
+        .badge-beta {
+            font-size: 0.65rem;
+            background-color: var(--primary);
             color: white;
             padding: 0.1rem 0.4rem;
             border-radius: 1rem;
@@ -328,14 +334,31 @@
             <a href="/api/v1/admin/hierarchy" class="nav-link {% if active_page == 'hierarchy' %}active{% endif %}">
                 <span>🌳</span> Hierarchy Editor
             </a>
+            
+            {% if enable_customers %}
+            <a href="/api/v1/admin/customers" class="nav-link {% if active_page == 'customers' %}active{% endif %}">
+                <span>👥</span> Customers
+                <span class="badge-beta">Beta</span>
+            </a>
+            {% else %}
             <div class="nav-link disabled" title="Coming Soon">
                 <span>👥</span> Customers
                 <span class="badge-soon">Soon</span>
             </div>
+            {% endif %}
+
+            {% if enable_orders %}
+            <a href="/api/v1/admin/orders" class="nav-link {% if active_page == 'orders' %}active{% endif %}">
+                <span>📦</span> Orders
+                <span class="badge-beta">Beta</span>
+            </a>
+            {% else %}
             <div class="nav-link disabled" title="Coming Soon">
                 <span>📦</span> Orders
                 <span class="badge-soon">Soon</span>
             </div>
+            {% endif %}
+
             <a href="/api/v1/admin/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">
                 <span>⚙️</span> Settings
             </a>

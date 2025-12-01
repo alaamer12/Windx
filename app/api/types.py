@@ -27,8 +27,9 @@ Features:
     - Reduced boilerplate in endpoints
     - Full Windx configurator system support
 """
+from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Depends, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -116,7 +117,7 @@ Example:
 # Query Parameter Type Aliases
 # ============================================================================
 
-OptionalIntQuery = Annotated[int | None, Query()]
+OptionalIntQuery = Annotated[Optional[int], Query()]
 """Optional integer query parameter.
 
 Usage:

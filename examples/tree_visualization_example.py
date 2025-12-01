@@ -14,11 +14,11 @@ from app.services.hierarchy_builder import HierarchyBuilderService
 
 async def main():
     """Demonstrate tree visualization functionality."""
-    
+
     # Get database session
     async for session in get_async_session():
         service = HierarchyBuilderService(session)
-        
+
         # Create manufacturing type
         print("Creating manufacturing type...")
         mfg_type = await service.create_manufacturing_type(
@@ -28,7 +28,7 @@ async def main():
             base_weight=Decimal("15.00"),
         )
         print(f"✓ Created manufacturing type: {mfg_type.name} (ID: {mfg_type.id})")
-        
+
         # Create hierarchy using dictionary
         print("\nCreating attribute hierarchy...")
         hierarchy = {
@@ -84,54 +84,56 @@ async def main():
                 },
             ],
         }
-        
+
         root = await service.create_hierarchy_from_dict(
             manufacturing_type_id=mfg_type.id,
             hierarchy_data=hierarchy,
         )
         print(f"✓ Created hierarchy with root node: {root.name} (ID: {root.id})")
-        
+
         # Generate ASCII tree
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("ASCII Tree Visualization:")
-        print("="*60)
+        print("=" * 60)
         ascii_tree = await service.asciify(manufacturing_type_id=mfg_type.id)
         print(ascii_tree)
-        
+
         # Generate graphical tree plot
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Generating graphical tree plot...")
-        print("="*60)
-        
+        print("=" * 60)
+
         try:
             fig = await service.plot_tree(manufacturing_type_id=mfg_type.id)
-            
+
             # Save to file
             output_file = "hierarchy_tree.png"
-            fig.savefig(output_file, dpi=300, bbox_inches='tight')
+            fig.savefig(output_file, dpi=300, bbox_inches="tight")
             print(f"✓ Tree plot saved to: {output_file}")
-            
+
             # Clean up
             import matplotlib.pyplot as plt
+
             plt.close(fig)
-            
+
         except ImportError as e:
             print(f"✗ Could not generate plot: {e}")
             print("  Install matplotlib with: pip install matplotlib networkx")
-        
+
         # Get tree as JSON (Pydantic serialization)
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("JSON Tree Structure (first 500 chars):")
-        print("="*60)
+        print("=" * 60)
         tree = await service.pydantify(manufacturing_type_id=mfg_type.id)
         import json
+
         tree_json = json.dumps([node.model_dump() for node in tree], indent=2)
         print(tree_json[:500] + "...")
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
         print("Example completed successfully!")
-        print("="*60)
-        
+        print("=" * 60)
+
         break  # Exit after first session
 
 

@@ -3,8 +3,9 @@
 Tests the admin dashboard endpoints for managing hierarchical attribute data.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,17 +26,17 @@ async def test_hierarchy_dashboard_no_type_selected(
         description="Test window type",
         base_price=Decimal("200.00"),
     )
-    
+
     # Request dashboard without type selection
     response = await client.get(
         "/api/v1/admin/hierarchy/",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    
+
     # Verify content contains expected elements
     content = response.text
     assert "Hierarchy Management Dashboard" in content
@@ -57,31 +58,31 @@ async def test_hierarchy_dashboard_with_type_selected(
         description="Test window type",
         base_price=Decimal("200.00"),
     )
-    
+
     # Create simple hierarchy
     root = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Frame Options",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Material Type",
         node_type="attribute",
         parent_node_id=root.id,
     )
-    
+
     # Request dashboard with type selection
     response = await client.get(
         f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    
+
     # Verify content contains tree data
     content = response.text
     assert "Frame Options" in content
@@ -102,13 +103,13 @@ async def test_hierarchy_dashboard_shows_ascii_tree(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     root = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Frame Options",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Aluminum",
@@ -116,13 +117,13 @@ async def test_hierarchy_dashboard_shows_ascii_tree(
         parent_node_id=root.id,
         price_impact_value=Decimal("50.00"),
     )
-    
+
     # Request dashboard
     response = await client.get(
         f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify ASCII tree is present
     assert response.status_code == 200
     content = response.text
@@ -143,12 +144,12 @@ async def test_hierarchy_dashboard_requires_superuser(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Request without authentication
     response = await client.get(
         f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
     )
-    
+
     # Verify unauthorized
     assert response.status_code == 401
 
@@ -166,13 +167,13 @@ async def test_hierarchy_dashboard_with_empty_tree(
         name="Empty Type",
         base_price=Decimal("100.00"),
     )
-    
+
     # Request dashboard
     response = await client.get(
         f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response
     assert response.status_code == 200
     content = response.text
@@ -195,28 +196,27 @@ async def test_hierarchy_dashboard_diagram_failure_graceful(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     root = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Frame Options",
         node_type="category",
     )
-    
+
     # Mock plot_tree to raise exception
     async def mock_plot_tree(*args, **kwargs):
         raise Exception("Matplotlib not available")
-    
+
     monkeypatch.setattr(
-        "app.services.hierarchy_builder.HierarchyBuilderService.plot_tree",
-        mock_plot_tree
+        "app.services.hierarchy_builder.HierarchyBuilderService.plot_tree", mock_plot_tree
     )
-    
+
     # Request dashboard (should not crash)
     response = await client.get(
         f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response is still successful
     assert response.status_code == 200
     content = response.text
@@ -238,7 +238,7 @@ async def test_hierarchy_dashboard_with_complex_tree(
         name="Complex Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Create complex hierarchy
     hierarchy = {
         "name": "Frame Options",
@@ -277,18 +277,18 @@ async def test_hierarchy_dashboard_with_complex_tree(
             },
         ],
     }
-    
+
     await service.create_hierarchy_from_dict(
         manufacturing_type_id=mfg_type.id,
         hierarchy_data=hierarchy,
     )
-    
+
     # Request dashboard
     response = await client.get(
         f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify all nodes are present
     assert response.status_code == 200
     content = response.text
@@ -310,23 +310,23 @@ async def test_hierarchy_dashboard_multiple_manufacturing_types(
     """Test dashboard selector shows multiple manufacturing types."""
     # Create multiple manufacturing types
     service = HierarchyBuilderService(db_session)
-    
+
     window = await service.create_manufacturing_type(
         name="Window Type",
         base_price=Decimal("200.00"),
     )
-    
+
     door = await service.create_manufacturing_type(
         name="Door Type",
         base_price=Decimal("300.00"),
     )
-    
+
     # Request dashboard
     response = await client.get(
         "/api/v1/admin/hierarchy/",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify both types are in selector
     assert response.status_code == 200
     content = response.text
@@ -353,13 +353,13 @@ async def test_create_node_form_renders(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Request create form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response
     assert response.status_code == 200
     content = response.text
@@ -380,19 +380,19 @@ async def test_create_node_form_with_parent(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     parent = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Frame Options",
         node_type="category",
     )
-    
+
     # Request create form with parent
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}&parent_id={parent.id}",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response
     assert response.status_code == 200
     content = response.text
@@ -411,12 +411,12 @@ async def test_create_node_form_requires_superuser(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Request without authentication
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
     )
-    
+
     # Verify unauthorized
     assert response.status_code == 401
 
@@ -434,7 +434,7 @@ async def test_save_node_creates_new_node(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form to create node
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -445,20 +445,21 @@ async def test_save_node_creates_new_node(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify redirect to dashboard
     assert response.status_code == 303
     assert f"manufacturing_type_id={mfg_type.id}" in response.headers["location"]
     assert "success" in response.headers["location"]
-    
+
     # Verify node was created
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 1
@@ -478,13 +479,13 @@ async def test_save_node_updates_existing_node(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Original Name",
         node_type="category",
     )
-    
+
     # Submit form to update node
     form_data = {
         "node_id": str(node.id),
@@ -496,17 +497,17 @@ async def test_save_node_updates_existing_node(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify redirect
     assert response.status_code == 303
     assert "success" in response.headers["location"]
-    
+
     # Verify node was updated
     await db_session.refresh(node)
     assert node.name == "Updated Name"
@@ -525,7 +526,7 @@ async def test_save_node_with_price_impact(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with price impact
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -537,18 +538,19 @@ async def test_save_node_with_price_impact(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify success
     assert response.status_code == 303
-    
+
     # Verify node has correct price impact
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 1
@@ -568,7 +570,7 @@ async def test_save_node_requires_superuser(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form without authentication
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -579,12 +581,12 @@ async def test_save_node_requires_superuser(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         data=form_data,
     )
-    
+
     # Verify unauthorized
     assert response.status_code == 401
 
@@ -602,20 +604,20 @@ async def test_edit_node_form_renders(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Frame Material",
         node_type="category",
         description="Test description",
     )
-    
+
     # Request edit form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/{node.id}/edit",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response
     assert response.status_code == 200
     content = response.text
@@ -637,33 +639,33 @@ async def test_edit_node_form_excludes_descendants_from_parent_selector(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     root = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Root",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Child",
         node_type="category",
         parent_node_id=root.id,
     )
-    
+
     grandchild = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Grandchild",
         node_type="option",
         parent_node_id=child.id,
     )
-    
+
     # Request edit form for root node
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/{root.id}/edit",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify response (root, child, grandchild should not be in parent selector)
     assert response.status_code == 200
     # The form should render successfully
@@ -683,18 +685,18 @@ async def test_edit_node_form_requires_superuser(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Test Node",
         node_type="category",
     )
-    
+
     # Request without authentication
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/{node.id}/edit",
     )
-    
+
     # Verify unauthorized
     assert response.status_code == 401
 
@@ -712,25 +714,26 @@ async def test_delete_node_success(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Test Node",
         node_type="category",
     )
-    
+
     # Delete node
     response = await client.post(
         f"/api/v1/admin/hierarchy/node/{node.id}/delete",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify redirect
     assert response.status_code == 303
     assert "success" in response.headers["location"]
-    
+
     # Verify node was deleted
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     deleted_node = await attr_repo.get(node.id)
     assert deleted_node is None
@@ -749,33 +752,34 @@ async def test_delete_node_with_children_fails(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     parent = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Parent",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Child",
         node_type="option",
         parent_node_id=parent.id,
     )
-    
+
     # Try to delete parent
     response = await client.post(
         f"/api/v1/admin/hierarchy/node/{parent.id}/delete",
         headers=superuser_auth_headers,
     )
-    
+
     # Verify redirect with error
     assert response.status_code == 303
     assert "error" in response.headers["location"]
     assert "children" in response.headers["location"].lower()
-    
+
     # Verify node still exists
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     existing_node = await attr_repo.get(parent.id)
     assert existing_node is not None
@@ -793,21 +797,20 @@ async def test_delete_node_requires_superuser(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Test Node",
         node_type="category",
     )
-    
+
     # Request without authentication
     response = await client.post(
         f"/api/v1/admin/hierarchy/node/{node.id}/delete",
     )
-    
+
     # Verify unauthorized
     assert response.status_code == 401
-
 
 
 @pytest.mark.asyncio
@@ -823,13 +826,13 @@ async def test_flash_message_success_displayed(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     response = await client.get(
         f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&success=Node created successfully",
         headers=superuser_auth_headers,
         follow_redirects=True,
     )
-    
+
     assert response.status_code == 200
     assert b"Node created successfully" in response.content
     assert b"alert-success" in response.content
@@ -849,13 +852,13 @@ async def test_flash_message_error_displayed(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     response = await client.get(
         f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&error=Node not found",
         headers=superuser_auth_headers,
         follow_redirects=True,
     )
-    
+
     assert response.status_code == 200
     assert b"Node not found" in response.content
     assert b"alert-danger" in response.content
@@ -875,13 +878,13 @@ async def test_flash_message_warning_displayed(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     response = await client.get(
         f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&warning=This is a warning",
         headers=superuser_auth_headers,
         follow_redirects=True,
     )
-    
+
     assert response.status_code == 200
     assert b"This is a warning" in response.content
     assert b"alert-warning" in response.content
@@ -901,13 +904,13 @@ async def test_flash_message_info_displayed(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     response = await client.get(
         f"/api/v1/admin/hierarchy?manufacturing_type_id={mfg_type.id}&info=This is information",
         headers=superuser_auth_headers,
         follow_redirects=True,
     )
-    
+
     assert response.status_code == 200
     assert b"This is information" in response.content
     assert b"alert-info" in response.content
@@ -927,7 +930,7 @@ async def test_create_node_redirects_with_success_message(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
@@ -941,12 +944,14 @@ async def test_create_node_redirects_with_success_message(
             "required": "false",
         },
     )
-    
+
     assert response.status_code == 303
     # Check for URL-encoded version of the message
     assert "success=" in response.headers["location"]
-    assert ("Node created successfully" in response.headers["location"] or 
-            "Node%20created%20successfully" in response.headers["location"])
+    assert (
+        "Node created successfully" in response.headers["location"]
+        or "Node%20created%20successfully" in response.headers["location"]
+    )
 
 
 @pytest.mark.asyncio
@@ -962,20 +967,22 @@ async def test_delete_node_redirects_with_success_message(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Test Node",
         node_type="category",
     )
-    
+
     response = await client.post(
         f"/api/v1/admin/hierarchy/node/{node.id}/delete",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 303
     # Check for URL-encoded version of the message
     assert "success=" in response.headers["location"]
-    assert ("Node deleted successfully" in response.headers["location"] or 
-            "Node%20deleted%20successfully" in response.headers["location"])
+    assert (
+        "Node deleted successfully" in response.headers["location"]
+        or "Node%20deleted%20successfully" in response.headers["location"]
+    )

@@ -78,7 +78,6 @@ async def get_dashboard(
     )
 
 
-
 @router.get(
     "/data-entry",
     response_class=HTMLResponse,

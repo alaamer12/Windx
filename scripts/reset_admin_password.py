@@ -29,9 +29,7 @@ async def reset_password():
     async with session_maker() as session:
         try:
             # Find admin user
-            result = await session.execute(
-                select(User).where(User.username == "admin")
-            )
+            result = await session.execute(select(User).where(User.username == "admin"))
             user = result.scalar_one_or_none()
 
             if not user:

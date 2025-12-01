@@ -16,6 +16,7 @@ class TestSanitizeForLtree:
         """Set up test fixtures."""
         # Create a mock session (we don't need real DB for unit tests)
         from unittest.mock import MagicMock
+
         mock_session = MagicMock()
         self.service = HierarchyBuilderService(mock_session)
 
@@ -73,7 +74,7 @@ class TestSanitizeForLtree:
 
     def test_quotes(self):
         """Test quote character handling."""
-        assert self.service._sanitize_for_ltree('Single\'Quote') == "single_quote"
+        assert self.service._sanitize_for_ltree("Single'Quote") == "single_quote"
         assert self.service._sanitize_for_ltree('Double"Quote') == "double_quote"
 
     def test_multiple_spaces(self):
@@ -98,10 +99,10 @@ class TestSanitizeForLtree:
         """Test that empty input raises ValueError."""
         with pytest.raises(ValueError, match="cannot be empty"):
             self.service._sanitize_for_ltree("")
-        
+
         with pytest.raises(ValueError, match="cannot be empty"):
             self.service._sanitize_for_ltree("   ")
-        
+
         with pytest.raises(ValueError, match="cannot be empty"):
             self.service._sanitize_for_ltree("\t\n")
 
@@ -109,10 +110,10 @@ class TestSanitizeForLtree:
         """Test that names with only special characters raise ValueError."""
         with pytest.raises(ValueError, match="becomes empty after sanitization"):
             self.service._sanitize_for_ltree("™®©")
-        
+
         with pytest.raises(ValueError, match="becomes empty after sanitization"):
             self.service._sanitize_for_ltree("---")
-        
+
         with pytest.raises(ValueError, match="becomes empty after sanitization"):
             self.service._sanitize_for_ltree("!!!")
 
@@ -126,18 +127,21 @@ class TestSanitizeForLtree:
     def test_complex_real_world_examples(self):
         """Test complex real-world product names."""
         # Note: Numbers in the middle don't get n_ prefix, only at the start
-        assert self.service._sanitize_for_ltree(
-            "Premium Café-Style Door™ (100% Wood)"
-        ) == "premium_cafe_style_door_100_percent_wood"
-        
-        assert self.service._sanitize_for_ltree(
-            "Energy-Efficient Window: $500-$1000"
-        ) == "energy_efficient_window_dollar_500_dollar_1000"
-        
+        assert (
+            self.service._sanitize_for_ltree("Premium Café-Style Door™ (100% Wood)")
+            == "premium_cafe_style_door_100_percent_wood"
+        )
+
+        assert (
+            self.service._sanitize_for_ltree("Energy-Efficient Window: $500-$1000")
+            == "energy_efficient_window_dollar_500_dollar_1000"
+        )
+
         # This starts with a number after sanitization, so gets n_ prefix
-        assert self.service._sanitize_for_ltree(
-            "90° Corner @ 45° Angle"
-        ) == "n_90_degree_corner_at_45_degree_angle"
+        assert (
+            self.service._sanitize_for_ltree("90° Corner @ 45° Angle")
+            == "n_90_degree_corner_at_45_degree_angle"
+        )
 
     def test_mathematical_operators(self):
         """Test mathematical operator handling."""
@@ -176,16 +180,17 @@ class TestSanitizeForLtree:
 async def test_create_node_with_special_characters(db_session: AsyncSession):
     """Integration test: Create nodes with special character names."""
     from decimal import Decimal
+
     from app.services.hierarchy_builder import HierarchyBuilderService
-    
+
     service = HierarchyBuilderService(db_session)
-    
+
     # Create manufacturing type
     mfg_type = await service.create_manufacturing_type(
         name="Special Characters Test",
         base_price=Decimal("100.00"),
     )
-    
+
     # Test various special character names
     test_cases = [
         ("Café-Style Door™", "cafe_style_door"),
@@ -193,7 +198,7 @@ async def test_create_node_with_special_characters(db_session: AsyncSession):
         ("Premium & Deluxe", "premium_and_deluxe"),
         ("Price: $50-$100", "price_dollar_50_dollar_100"),
     ]
-    
+
     for display_name, expected_path in test_cases:
         node = await service.create_node(
             manufacturing_type_id=mfg_type.id,
@@ -208,16 +213,17 @@ async def test_create_node_with_special_characters(db_session: AsyncSession):
 async def test_create_node_validation_errors(db_session: AsyncSession):
     """Integration test: Test input validation in create_node."""
     from decimal import Decimal
+
     from app.services.hierarchy_builder import HierarchyBuilderService
-    
+
     service = HierarchyBuilderService(db_session)
-    
+
     # Create manufacturing type
     mfg_type = await service.create_manufacturing_type(
         name="Validation Test",
         base_price=Decimal("100.00"),
     )
-    
+
     # Test empty name
     with pytest.raises(ValueError, match="cannot be empty"):
         await service.create_node(
@@ -225,7 +231,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
             name="",
             node_type="option",
         )
-    
+
     # Test whitespace-only name
     with pytest.raises(ValueError, match="cannot be empty"):
         await service.create_node(
@@ -233,7 +239,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
             name="   ",
             node_type="option",
         )
-    
+
     # Test invalid manufacturing_type_id
     with pytest.raises(ValueError, match="must be greater than 0"):
         await service.create_node(
@@ -241,7 +247,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
             name="Test",
             node_type="option",
         )
-    
+
     # Test invalid node_type
     with pytest.raises(ValueError, match="Invalid node_type"):
         await service.create_node(
@@ -249,7 +255,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
             name="Test",
             node_type="invalid_type",
         )
-    
+
     # Test invalid data_type
     with pytest.raises(ValueError, match="Invalid data_type"):
         await service.create_node(
@@ -258,7 +264,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
             node_type="option",
             data_type="invalid_data_type",
         )
-    
+
     # Test negative price_impact_value
     with pytest.raises(ValueError, match="cannot be negative"):
         await service.create_node(
@@ -267,7 +273,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
             node_type="option",
             price_impact_value=Decimal("-10.00"),
         )
-    
+
     # Test negative weight_impact
     with pytest.raises(ValueError, match="cannot be negative"):
         await service.create_node(
@@ -282,28 +288,29 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
 async def test_parent_manufacturing_type_validation(db_session: AsyncSession):
     """Integration test: Validate parent belongs to same manufacturing type."""
     from decimal import Decimal
+
     from app.services.hierarchy_builder import HierarchyBuilderService
-    
+
     service = HierarchyBuilderService(db_session)
-    
+
     # Create two different manufacturing types
     mfg_type1 = await service.create_manufacturing_type(
         name="Type 1",
         base_price=Decimal("100.00"),
     )
-    
+
     mfg_type2 = await service.create_manufacturing_type(
         name="Type 2",
         base_price=Decimal("200.00"),
     )
-    
+
     # Create node in type 1
     node1 = await service.create_node(
         manufacturing_type_id=mfg_type1.id,
         name="Node in Type 1",
         node_type="category",
     )
-    
+
     # Try to create child in type 2 with parent from type 1 (should fail)
     with pytest.raises(ValueError, match="Parent node belongs to manufacturing type"):
         await service.create_node(

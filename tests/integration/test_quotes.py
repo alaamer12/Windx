@@ -115,7 +115,9 @@ class TestQuoteCreation:
         assert data["quote_number"].startswith("Q-")
         assert Decimal(data["subtotal"]) == Decimal("525.00")
         assert Decimal(data["tax_rate"]) == Decimal("8.50")
-        assert Decimal(data["tax_amount"]) == Decimal("44.62")  # 525 * 0.085 = 44.625 rounds to 44.62
+        assert Decimal(data["tax_amount"]) == Decimal(
+            "44.62"
+        )  # 525 * 0.085 = 44.625 rounds to 44.62
         assert Decimal(data["discount_amount"]) == Decimal("0.00")
         assert Decimal(data["total_amount"]) == Decimal("569.62")  # 525 + 44.62
         assert data["status"] == "draft"

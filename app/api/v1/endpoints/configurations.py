@@ -281,9 +281,7 @@ async def update_configuration(
     from app.services.configuration import ConfigurationService
 
     config_service = ConfigurationService(db)
-    return await config_service.update_configuration(
-        config_id, config_update, current_user
-    )
+    return await config_service.update_configuration(config_id, config_update, current_user)
 
 
 @router.patch(

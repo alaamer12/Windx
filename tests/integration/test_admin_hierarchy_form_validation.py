@@ -3,8 +3,9 @@
 Tests Pydantic validation, error handling, and form re-rendering with errors.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +25,7 @@ async def test_save_node_with_invalid_name_shows_validation_error(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with empty name (should fail validation)
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -35,16 +36,16 @@ async def test_save_node_with_invalid_name_shows_validation_error(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status code (validation error)
     assert response.status_code == 422
-    
+
     # Verify form is re-rendered with error
     content = response.text
     assert "validation_errors" in content or "error" in content.lower()
@@ -64,7 +65,7 @@ async def test_save_node_with_invalid_node_type_shows_validation_error(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with invalid node_type
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -75,16 +76,16 @@ async def test_save_node_with_invalid_node_type_shows_validation_error(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status code
     assert response.status_code == 422
-    
+
     # Verify error message mentions node_type
     content = response.text
     assert "node_type" in content.lower()
@@ -103,7 +104,7 @@ async def test_save_node_with_invalid_decimal_shows_error(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with invalid decimal
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -115,13 +116,13 @@ async def test_save_node_with_invalid_decimal_shows_error(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify redirect with error message (decimal conversion error caught)
     assert response.status_code == 303
     assert "error=" in response.headers["location"]
@@ -142,7 +143,7 @@ async def test_save_node_preserves_form_data_on_validation_error(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with Pydantic validation error (invalid enum value)
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -154,16 +155,16 @@ async def test_save_node_preserves_form_data_on_validation_error(
         "sort_order": "5",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status
     assert response.status_code == 422
-    
+
     # Verify form is re-rendered with preserved data
     content = response.text
     # Check that validation error is shown
@@ -187,13 +188,13 @@ async def test_update_node_with_validation_error_shows_form(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Original Name",
         node_type="category",
     )
-    
+
     # Submit update with Pydantic validation error (invalid enum)
     form_data = {
         "node_id": str(node.id),
@@ -205,16 +206,16 @@ async def test_update_node_with_validation_error_shows_form(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status
     assert response.status_code == 422
-    
+
     # Verify form is rendered with node data
     content = response.text
     assert "Original Name" in content or "node_form" in content or "Updated Name" in content
@@ -233,7 +234,7 @@ async def test_save_node_handles_empty_optional_fields(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with empty optional fields
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -248,19 +249,20 @@ async def test_save_node_handles_empty_optional_fields(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify success (empty strings should be converted to None)
     assert response.status_code == 303
     assert "success" in response.headers["location"]
-    
+
     # Verify node was created with None for empty fields
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 1
@@ -283,7 +285,7 @@ async def test_save_node_with_whitespace_only_fields(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with whitespace-only fields
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -296,19 +298,20 @@ async def test_save_node_with_whitespace_only_fields(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify success
     assert response.status_code == 303
     assert "success" in response.headers["location"]
-    
+
     # Verify whitespace was handled correctly
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 1
@@ -330,20 +333,20 @@ async def test_update_node_excludes_descendants_from_parent_selector_on_error(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     root = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Root",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Child",
         node_type="category",
         parent_node_id=root.id,
     )
-    
+
     # Submit update with Pydantic validation error (invalid enum)
     form_data = {
         "node_id": str(root.id),
@@ -355,16 +358,16 @@ async def test_update_node_excludes_descendants_from_parent_selector_on_error(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status
     assert response.status_code == 422
-    
+
     # Verify form is rendered (descendants should be excluded from parent selector)
     content = response.text
     assert "Root" in content or "node_form" in content
@@ -383,7 +386,7 @@ async def test_save_node_with_multiple_validation_errors(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with multiple validation errors
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -394,16 +397,16 @@ async def test_save_node_with_multiple_validation_errors(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status
     assert response.status_code == 422
-    
+
     # Verify both errors are mentioned
     content = response.text.lower()
     assert "name" in content
@@ -423,7 +426,7 @@ async def test_create_node_with_invalid_price_impact_type_shows_validation_error
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit create with invalid price_impact_type (should trigger Pydantic validation)
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -434,20 +437,20 @@ async def test_create_node_with_invalid_price_impact_type_shows_validation_error
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify 422 status (validation error)
     assert response.status_code == 422
-    
+
     # Verify form is re-rendered (HTML response, not JSON)
     content = response.text
     assert "<!DOCTYPE html>" in content or "<html" in content
-    
+
     # Verify validation error is shown
     assert "price_impact_type" in content.lower() or "validation" in content.lower()
 
@@ -465,7 +468,7 @@ async def test_save_node_with_valid_price_formula(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with price formula
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -477,19 +480,20 @@ async def test_save_node_with_valid_price_formula(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify success
     assert response.status_code == 303
     assert "success" in response.headers["location"]
-    
+
     # Verify formula was saved
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 1
@@ -509,31 +513,31 @@ async def test_update_node_recalculates_path_on_parent_change(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     parent1 = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Parent 1",
         node_type="category",
     )
-    
+
     parent2 = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Parent 2",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Child",
         node_type="option",
         parent_node_id=parent1.id,
     )
-    
+
     # Verify initial path
     await db_session.refresh(child)
     assert "parent_1" in child.ltree_path
     assert child.depth == 1
-    
+
     # Update child to have parent2 as parent
     form_data = {
         "node_id": str(child.id),
@@ -546,16 +550,16 @@ async def test_update_node_recalculates_path_on_parent_change(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify success
     assert response.status_code == 303
-    
+
     # Verify path was recalculated
     await db_session.refresh(child)
     assert "parent_2" in child.ltree_path
@@ -576,25 +580,25 @@ async def test_update_node_preserves_parent_when_not_provided(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     parent = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Parent",
         node_type="category",
     )
-    
+
     child = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Child",
         node_type="category",
         parent_node_id=parent.id,
     )
-    
+
     # Verify initial state
     await db_session.refresh(child)
     assert child.parent_node_id == parent.id
     assert child.depth == 1
-    
+
     # Update child name without changing parent
     # When parent_node_id is not provided, it should remain unchanged
     form_data = {
@@ -608,22 +612,21 @@ async def test_update_node_preserves_parent_when_not_provided(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Verify success
     assert response.status_code == 303
-    
+
     # Verify parent was preserved (not changed to None)
     await db_session.refresh(child)
     assert child.parent_node_id == parent.id  # Should still have parent
     assert child.name == "Child Updated"  # Name should be updated
     assert child.depth == 1  # Depth should remain the same
-
 
 
 # Additional validation tests for dangerous formulas and edge cases
@@ -642,7 +645,7 @@ async def test_save_node_with_dangerous_import_formula_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with dangerous formula containing import
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -654,16 +657,16 @@ async def test_save_node_with_dangerous_import_formula_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions formula or forbidden operation
     content = response.text.lower()
     assert "formula" in content or "forbidden" in content or "import" in content
@@ -682,7 +685,7 @@ async def test_save_node_with_dangerous_exec_formula_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with dangerous formula containing exec
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -694,16 +697,16 @@ async def test_save_node_with_dangerous_exec_formula_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions formula or forbidden operation
     content = response.text.lower()
     assert "formula" in content or "forbidden" in content or "exec" in content
@@ -722,7 +725,7 @@ async def test_save_node_with_dangerous_eval_formula_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with dangerous formula containing eval
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -734,16 +737,16 @@ async def test_save_node_with_dangerous_eval_formula_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions formula or forbidden operation
     content = response.text.lower()
     assert "formula" in content or "forbidden" in content or "eval" in content
@@ -762,7 +765,7 @@ async def test_save_node_with_unbalanced_parentheses_formula_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with formula having unbalanced parentheses
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -774,16 +777,16 @@ async def test_save_node_with_unbalanced_parentheses_formula_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions formula or parentheses
     content = response.text.lower()
     assert "formula" in content or "parenthes" in content or "balanced" in content
@@ -802,7 +805,7 @@ async def test_save_node_with_negative_price_impact_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with negative price impact
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -814,16 +817,16 @@ async def test_save_node_with_negative_price_impact_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions price_impact_value
     content = response.text.lower()
     assert "price" in content or "validation" in content
@@ -842,7 +845,7 @@ async def test_save_node_with_negative_weight_impact_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with negative weight impact
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -853,16 +856,16 @@ async def test_save_node_with_negative_weight_impact_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions weight
     content = response.text.lower()
     assert "weight" in content or "validation" in content
@@ -881,7 +884,7 @@ async def test_save_node_with_invalid_data_type_rejected(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Submit form with invalid data_type
     form_data = {
         "manufacturing_type_id": str(mfg_type.id),
@@ -893,16 +896,16 @@ async def test_save_node_with_invalid_data_type_rejected(
         "sort_order": "0",
         "required": "false",
     }
-    
+
     response = await client.post(
         "/api/v1/admin/hierarchy/node/save",
         headers=superuser_auth_headers,
         data=form_data,
     )
-    
+
     # Should return 422 with validation error
     assert response.status_code == 422
-    
+
     # Verify error message mentions data_type
     content = response.text.lower()
     assert "data_type" in content or "data type" in content or "validation" in content
@@ -921,9 +924,9 @@ async def test_save_node_with_all_valid_node_types(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     valid_node_types = ["category", "attribute", "option", "component", "technical_spec"]
-    
+
     for node_type in valid_node_types:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -934,13 +937,13 @@ async def test_save_node_with_all_valid_node_types(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Should succeed for all valid node types
         assert response.status_code == 303, f"Failed for node_type: {node_type}"
         assert "success" in response.headers["location"]
@@ -959,9 +962,9 @@ async def test_save_node_with_all_valid_data_types(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     valid_data_types = ["string", "number", "boolean", "formula", "dimension", "selection"]
-    
+
     for data_type in valid_data_types:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -973,13 +976,13 @@ async def test_save_node_with_all_valid_data_types(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Should succeed for all valid data types
         assert response.status_code == 303, f"Failed for data_type: {data_type}"
         assert "success" in response.headers["location"]
@@ -998,9 +1001,9 @@ async def test_save_node_with_all_valid_price_impact_types(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     valid_price_impact_types = ["fixed", "percentage", "formula"]
-    
+
     for price_impact_type in valid_price_impact_types:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -1011,7 +1014,7 @@ async def test_save_node_with_all_valid_price_impact_types(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         # Add appropriate value based on type
         if price_impact_type == "fixed":
             form_data["price_impact_value"] = "50.00"
@@ -1019,13 +1022,13 @@ async def test_save_node_with_all_valid_price_impact_types(
             form_data["price_impact_value"] = "15.00"
         elif price_impact_type == "formula":
             form_data["price_formula"] = "width * height * 0.05"
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Should succeed for all valid price impact types
         assert response.status_code == 303, f"Failed for price_impact_type: {price_impact_type}"
         assert "success" in response.headers["location"]

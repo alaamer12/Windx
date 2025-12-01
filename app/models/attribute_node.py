@@ -29,17 +29,17 @@ if TYPE_CHECKING:
 class AttributeNode(Base):
     """
     Hierarchical attribute tree node with LTREE for efficient traversal.
-    
+
     Represents configurable product attributes in a tree structure.
     Uses PostgreSQL LTREE extension for fast hierarchical queries.
-    
+
     Node Types:
         - category: Organizational grouping (e.g., "Frame Options")
         - attribute: Configurable property (e.g., "Frame Material")
         - option: Selectable choice (e.g., "Aluminum", "Vinyl")
         - component: Physical component (e.g., "Handle", "Lock")
         - technical_spec: Technical property (e.g., "U-Value", "Load Capacity")
-    
+
     Data Types:
         - string: Text values (colors, materials)
         - number: Numeric values (dimensions, quantities)
@@ -47,7 +47,7 @@ class AttributeNode(Base):
         - formula: Calculated values (area, volume)
         - dimension: Size measurements (width, height)
         - selection: Choice from options
-    
+
     Price Impact Types:
         - fixed: Add/subtract fixed amount (+$50)
         - percentage: Multiply by percentage (+15%)

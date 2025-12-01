@@ -7,14 +7,14 @@ Tests the create_hierarchy_from_dict method with various scenarios including:
 - Error handling and validation
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
-    DatabaseException,
-    NotFoundException,
     ConflictException,
+    NotFoundException,
     ValidationException,
 )
 from app.models.attribute_node import AttributeNode
@@ -488,10 +488,9 @@ class TestCreateHierarchyFromDictTransactions:
         }
 
         # Count nodes before
-        from sqlalchemy import select, func
-        count_before = await db_session.scalar(
-            select(func.count()).select_from(AttributeNode)
-        )
+        from sqlalchemy import func, select
+
+        count_before = await db_session.scalar(select(func.count()).select_from(AttributeNode))
 
         # Try to create hierarchy (should fail with ValidationException)
         with pytest.raises(ValidationException):
@@ -501,9 +500,7 @@ class TestCreateHierarchyFromDictTransactions:
             )
 
         # Verify no nodes were created (rollback successful)
-        count_after = await db_session.scalar(
-            select(func.count()).select_from(AttributeNode)
-        )
+        count_after = await db_session.scalar(select(func.count()).select_from(AttributeNode))
         assert count_after == count_before
 
     async def test_rollback_on_error_in_nested_child(
@@ -537,10 +534,9 @@ class TestCreateHierarchyFromDictTransactions:
         }
 
         # Count nodes before
-        from sqlalchemy import select, func
-        count_before = await db_session.scalar(
-            select(func.count()).select_from(AttributeNode)
-        )
+        from sqlalchemy import func, select
+
+        count_before = await db_session.scalar(select(func.count()).select_from(AttributeNode))
 
         # Try to create hierarchy (should fail with ValidationException)
         with pytest.raises(ValidationException):
@@ -550,9 +546,7 @@ class TestCreateHierarchyFromDictTransactions:
             )
 
         # Verify no nodes were created (rollback successful)
-        count_after = await db_session.scalar(
-            select(func.count()).select_from(AttributeNode)
-        )
+        count_after = await db_session.scalar(select(func.count()).select_from(AttributeNode))
         assert count_after == count_before
 
     async def test_error_message_includes_context(
@@ -613,10 +607,9 @@ class TestCreateHierarchyFromDictTransactions:
         }
 
         # Count nodes before
-        from sqlalchemy import select, func
-        count_before = await db_session.scalar(
-            select(func.count()).select_from(AttributeNode)
-        )
+        from sqlalchemy import func, select
+
+        count_before = await db_session.scalar(select(func.count()).select_from(AttributeNode))
 
         # Create hierarchy
         root = await hierarchy_service.create_hierarchy_from_dict(
@@ -625,9 +618,7 @@ class TestCreateHierarchyFromDictTransactions:
         )
 
         # Verify all nodes were created (4 total: root + 2 children + 1 grandchild)
-        count_after = await db_session.scalar(
-            select(func.count()).select_from(AttributeNode)
-        )
+        count_after = await db_session.scalar(select(func.count()).select_from(AttributeNode))
         assert count_after == count_before + 4
 
         # Verify we can query the created nodes

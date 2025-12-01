@@ -6,16 +6,13 @@ server-rendered templates.
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, Request, Response, status
+from fastapi import APIRouter, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.api.types import (
     CurrentSuperuser,
     ManufacturingTypeRepo,
-    OptionalStrForm,
-    RequiredStrForm,
-    RequiredIntForm,
 )
 from app.schemas.manufacturing_type import ManufacturingTypeCreate, ManufacturingTypeUpdate
 
@@ -31,7 +28,7 @@ async def list_manufacturing_types(
 ):
     """List all manufacturing types."""
     manufacturing_types = await mfg_repo.get_multi(limit=1000)
-    
+
     return templates.TemplateResponse(
         "admin/manufacturing_list.html.jinja",
         {
@@ -39,7 +36,7 @@ async def list_manufacturing_types(
             "current_user": current_superuser,
             "manufacturing_types": manufacturing_types,
             "active_page": "manufacturing",
-        }
+        },
     )
 
 
@@ -56,7 +53,7 @@ async def create_manufacturing_type_form(
             "current_user": current_superuser,
             "active_page": "manufacturing",
             "action": "Create",
-        }
+        },
     )
 
 
@@ -76,7 +73,7 @@ async def create_manufacturing_type(
     """Handle create manufacturing type submission."""
     try:
         from decimal import Decimal
-        
+
         mfg_in = ManufacturingTypeCreate(
             name=name,
             base_category=base_category,
@@ -86,16 +83,16 @@ async def create_manufacturing_type(
             image_url=image_url,
         )
         new_mfg = await mfg_repo.create(mfg_in)
-        
+
         # Update is_active separately since it's not in the create schema
         if not is_active:
             new_mfg.is_active = False
             mfg_repo.db.add(new_mfg)
             await mfg_repo.db.commit()
-        
+
         return RedirectResponse(
             url="/api/v1/admin/manufacturing-types?success=Manufacturing type created successfully",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
     except Exception as e:
         return templates.TemplateResponse(
@@ -113,7 +110,7 @@ async def create_manufacturing_type(
                     "base_weight": base_weight,
                     "description": description,
                     "is_active": is_active,
-                }
+                },
             },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
@@ -131,9 +128,9 @@ async def edit_manufacturing_type_form(
     if not mfg_type:
         return RedirectResponse(
             url="/api/v1/admin/manufacturing-types?error=Manufacturing type not found",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
-        
+
     return templates.TemplateResponse(
         "admin/manufacturing_form.html.jinja",
         {
@@ -142,7 +139,7 @@ async def edit_manufacturing_type_form(
             "active_page": "manufacturing",
             "action": "Edit",
             "mfg_type": mfg_type,
-        }
+        },
     )
 
 
@@ -164,9 +161,9 @@ async def edit_manufacturing_type(
     if not mfg_type:
         return RedirectResponse(
             url="/api/v1/admin/manufacturing-types?error=Manufacturing type not found",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
-        
+
     try:
         mfg_update = ManufacturingTypeUpdate(
             name=name,
@@ -177,10 +174,10 @@ async def edit_manufacturing_type(
             is_active=is_active,
         )
         await mfg_repo.update(mfg_type, mfg_update)
-        
+
         return RedirectResponse(
             url="/api/v1/admin/manufacturing-types?success=Manufacturing type updated successfully",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
     except Exception as e:
         return templates.TemplateResponse(
@@ -191,7 +188,7 @@ async def edit_manufacturing_type(
                 "active_page": "manufacturing",
                 "action": "Edit",
                 "error": str(e),
-                "mfg_type": mfg_type, # Keep original object but maybe update fields?
+                "mfg_type": mfg_type,  # Keep original object but maybe update fields?
                 # Ideally we pass form_data back to pre-fill
             },
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -210,10 +207,10 @@ async def delete_manufacturing_type(
         await mfg_repo.delete(id)
         return RedirectResponse(
             url="/api/v1/admin/manufacturing-types?success=Manufacturing type deleted successfully",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
     except Exception as e:
         return RedirectResponse(
             url=f"/api/v1/admin/manufacturing-types?error={str(e)}",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )

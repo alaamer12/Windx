@@ -56,9 +56,7 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
             quote = await repo.get_by_quote_number("Q-2024-001")
             ```
         """
-        result = await self.db.execute(
-            select(Quote).where(Quote.quote_number == quote_number)
-        )
+        result = await self.db.execute(select(Quote).where(Quote.quote_number == quote_number))
         return result.scalar_one_or_none()
 
     async def get_by_customer(self, customer_id: int) -> list[Quote]:
@@ -79,9 +77,7 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
             ```
         """
         result = await self.db.execute(
-            select(Quote)
-            .where(Quote.customer_id == customer_id)
-            .order_by(Quote.created_at.desc())
+            select(Quote).where(Quote.customer_id == customer_id).order_by(Quote.created_at.desc())
         )
         return list(result.scalars().all())
 
@@ -109,7 +105,6 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
         )
         return list(result.scalars().all())
 
-
     async def get_user_quote_ids(self, customer_id: int) -> list[int]:
         """Get list of quote IDs for a customer.
 
@@ -121,9 +116,7 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
         """
         from sqlalchemy import select
 
-        result = await self.db.execute(
-            select(Quote.id).where(Quote.customer_id == customer_id)
-        )
+        result = await self.db.execute(select(Quote.id).where(Quote.customer_id == customer_id))
         return list(result.scalars().all())
 
     async def get_with_details(self, quote_id: int) -> Quote | None:
@@ -158,9 +151,9 @@ class QuoteRepository(BaseRepository[Quote, QuoteCreate, QuoteUpdate]):
             select(Quote)
             .where(Quote.id == quote_id)
             .options(
-                selectinload(Quote.configuration).selectinload(
-                    Configuration.selections
-                ).selectinload(ConfigurationSelection.attribute_node),
+                selectinload(Quote.configuration)
+                .selectinload(Configuration.selections)
+                .selectinload(ConfigurationSelection.attribute_node),
                 selectinload(Quote.customer),
                 selectinload(Quote.orders),
             )

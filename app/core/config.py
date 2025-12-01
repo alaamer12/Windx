@@ -179,7 +179,9 @@ class DatabaseSettings(BaseSettings):
             if isinstance(self.password, SecretStr)
             else self.password
         )
-        return f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        return (
+            f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        )
 
     @computed_field
     @property

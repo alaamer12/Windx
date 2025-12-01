@@ -65,9 +65,7 @@ class TemplateSelectionRepository(
         )
         return list(result.scalars().all())
 
-    async def get_by_attribute_node(
-        self, node_id: int
-    ) -> list[TemplateSelection]:
+    async def get_by_attribute_node(self, node_id: int) -> list[TemplateSelection]:
         """Get all selections for an attribute node.
 
         Args:
@@ -83,9 +81,7 @@ class TemplateSelectionRepository(
         )
         return list(result.scalars().all())
 
-    async def bulk_create(
-        self, selections: list[dict]
-    ) -> list[TemplateSelection]:
+    async def bulk_create(self, selections: list[dict]) -> list[TemplateSelection]:
         """Create multiple selections in bulk.
 
         Args:
@@ -113,8 +109,6 @@ class TemplateSelectionRepository(
             int: Number of deleted selections
         """
         result = await self.db.execute(
-            delete(TemplateSelection).where(
-                TemplateSelection.template_id == template_id
-            )
+            delete(TemplateSelection).where(TemplateSelection.template_id == template_id)
         )
         return result.rowcount or 0

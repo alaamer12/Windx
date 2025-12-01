@@ -1,4 +1,5 @@
 """Check what tables exist in the database."""
+
 import asyncio
 
 from sqlalchemy import text
@@ -22,7 +23,7 @@ async def check_tables():
             print(f"  - {table}")
 
         # Check if sessions table exists
-        if 'sessions' in tables:
+        if "sessions" in tables:
             print("\n✓ sessions table exists")
         else:
             print("\n✗ sessions table DOES NOT exist")

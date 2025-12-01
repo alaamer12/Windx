@@ -382,4 +382,3 @@ class TestDashboardDataEntryEndpoint:
         response = await client.get("/api/v1/dashboard/data-entry")
 
         assert response.status_code == 401
-

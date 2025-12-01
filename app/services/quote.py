@@ -221,9 +221,7 @@ class QuoteService(BaseService):
             )
         return quote
 
-    async def update_quote(
-        self, quote_id: PositiveInt, quote_update: QuoteUpdate
-    ) -> Quote:
+    async def update_quote(self, quote_id: PositiveInt, quote_update: QuoteUpdate) -> Quote:
         """Update quote.
 
         Args:
@@ -247,9 +245,7 @@ class QuoteService(BaseService):
 
         return updated_quote
 
-    async def update_quote_status(
-        self, quote_id: PositiveInt, status: str
-    ) -> Quote:
+    async def update_quote_status(self, quote_id: PositiveInt, status: str) -> Quote:
         """Update quote status.
 
         Args:
@@ -375,9 +371,7 @@ class QuoteService(BaseService):
                 timestamp_micro = datetime.now().strftime("%Y%m%d%H%M%S%f")
                 return f"Q-{timestamp_micro}"
 
-    async def create_configuration_snapshot(
-        self, quote_id: int, config: Configuration
-    ) -> None:
+    async def create_configuration_snapshot(self, quote_id: int, config: Configuration) -> None:
         """Create a configuration snapshot for quote history.
 
         This method will create an immutable snapshot of the configuration
@@ -458,9 +452,7 @@ class QuoteService(BaseService):
 
         # Authorization check
         if not user.is_superuser and quote.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to access this quote"
-            )
+            raise AuthorizationException("You do not have permission to access this quote")
 
         return quote
 

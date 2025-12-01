@@ -178,9 +178,7 @@ async def list_manufacturing_types(
         404: {
             "description": "Manufacturing type not found",
             "content": {
-                "application/json": {
-                    "example": {"message": "Manufacturing type not found"}
-                }
+                "application/json": {"example": {"message": "Manufacturing type not found"}}
             },
         },
         **get_common_responses(401, 500),
@@ -335,9 +333,7 @@ async def create_manufacturing_type(
         404: {
             "description": "Manufacturing type not found",
             "content": {
-                "application/json": {
-                    "example": {"message": "Manufacturing type not found"}
-                }
+                "application/json": {"example": {"message": "Manufacturing type not found"}}
             },
         },
         409: {
@@ -417,9 +413,7 @@ async def update_manufacturing_type(
         404: {
             "description": "Manufacturing type not found",
             "content": {
-                "application/json": {
-                    "example": {"message": "Manufacturing type not found"}
-                }
+                "application/json": {"example": {"message": "Manufacturing type not found"}}
             },
         },
         **get_common_responses(401, 403, 500),

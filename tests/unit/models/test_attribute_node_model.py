@@ -92,11 +92,11 @@ async def test_attribute_node_hierarchy(db_session: AsyncSession):
 
     # Verify relationships
     assert child.parent_node_id == parent.id
-    
+
     # Use selectinload or await to access relationships in async context
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
-    
+
     # Reload parent with children eagerly loaded
     result = await db_session.execute(
         select(AttributeNode)
@@ -104,10 +104,10 @@ async def test_attribute_node_hierarchy(db_session: AsyncSession):
         .options(selectinload(AttributeNode.children))
     )
     parent_with_children = result.scalar_one()
-    
+
     assert len(parent_with_children.children) == 1
     assert parent_with_children.children[0].id == child.id
-    
+
     # Reload child with parent eagerly loaded
     result = await db_session.execute(
         select(AttributeNode)
@@ -115,7 +115,7 @@ async def test_attribute_node_hierarchy(db_session: AsyncSession):
         .options(selectinload(AttributeNode.parent))
     )
     child_with_parent = result.scalar_one()
-    
+
     assert child_with_parent.parent.id == parent.id
 
 
@@ -229,8 +229,6 @@ async def test_attribute_node_cascade_delete(db_session: AsyncSession):
     # Verify node was cascade deleted
     from sqlalchemy import select
 
-    result = await db_session.execute(
-        select(AttributeNode).where(AttributeNode.id == node_id)
-    )
+    result = await db_session.execute(select(AttributeNode).where(AttributeNode.id == node_id))
     deleted_node = result.scalar_one_or_none()
     assert deleted_node is None

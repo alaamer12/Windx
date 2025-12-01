@@ -75,9 +75,7 @@ class OrderItemBase(BaseModel):
             expected = Decimal(str(info.data["quantity"])) * info.data["unit_price"]
             # Allow small rounding differences (within 0.01)
             if abs(v - expected) > Decimal("0.01"):
-                raise ValueError(
-                    f"total_price ({v}) must equal quantity * unit_price ({expected})"
-                )
+                raise ValueError(f"total_price ({v}) must equal quantity * unit_price ({expected})")
         return v
 
 

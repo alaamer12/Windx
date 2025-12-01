@@ -173,12 +173,7 @@ class TemplateSelection(Base):
         Returns:
             str: Selection representation with ID and template ID
         """
-        value = (
-            self.string_value
-            or self.numeric_value
-            or self.boolean_value
-            or self.json_value
-        )
+        value = self.string_value or self.numeric_value or self.boolean_value or self.json_value
         return (
             f"<TemplateSelection(id={self.id}, template_id={self.template_id}, "
             f"attribute_node_id={self.attribute_node_id}, value={value})>"

@@ -32,11 +32,7 @@ async def settings_page(
     """Render settings page."""
     return templates.TemplateResponse(
         "admin/settings.html.jinja",
-        {
-            "request": request,
-            "current_user": current_user,
-            "active_page": "settings"
-        }
+        {"request": request, "current_user": current_user, "active_page": "settings"},
     )
 
 
@@ -53,33 +49,31 @@ async def update_username(
         if new_username == current_user.username:
             return RedirectResponse(
                 url=f"{settings.api_v1_prefix}/admin/settings?error=New username must be different from current username",
-                status_code=status.HTTP_302_FOUND
+                status_code=status.HTTP_302_FOUND,
             )
 
         # Update username using service
         user_service = UserService(db)
         user_update = UserUpdate(username=new_username)
-        
+
         await user_service.update_user(
-            user_id=current_user.id,
-            user_update=user_update,
-            current_user=current_user
+            user_id=current_user.id, user_update=user_update, current_user=current_user
         )
 
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?success=Username updated successfully",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
 
     except ConflictException as e:
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?error={e.message}",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
     except Exception as e:
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?error=Failed to update username: {str(e)}",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
 
 
@@ -97,39 +91,37 @@ async def update_password(
         if new_password != confirm_password:
             return RedirectResponse(
                 url=f"{settings.api_v1_prefix}/admin/settings?error=Passwords do not match",
-                status_code=status.HTTP_302_FOUND
+                status_code=status.HTTP_302_FOUND,
             )
 
         # Validate password length
         if len(new_password) < 8:
             return RedirectResponse(
                 url=f"{settings.api_v1_prefix}/admin/settings?error=Password must be at least 8 characters",
-                status_code=status.HTTP_302_FOUND
+                status_code=status.HTTP_302_FOUND,
             )
 
         if len(new_password) > 100:
             return RedirectResponse(
                 url=f"{settings.api_v1_prefix}/admin/settings?error=Password must be at most 100 characters",
-                status_code=status.HTTP_302_FOUND
+                status_code=status.HTTP_302_FOUND,
             )
 
         # Update password using service
         user_service = UserService(db)
         user_update = UserUpdate(password=new_password)
-        
+
         await user_service.update_user(
-            user_id=current_user.id,
-            user_update=user_update,
-            current_user=current_user
+            user_id=current_user.id, user_update=user_update, current_user=current_user
         )
 
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?success=Password updated successfully",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )
 
     except Exception as e:
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/settings?error=Failed to update password: {str(e)}",
-            status_code=status.HTTP_302_FOUND
+            status_code=status.HTTP_302_FOUND,
         )

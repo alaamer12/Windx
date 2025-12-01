@@ -31,18 +31,9 @@ def check_dns_resolution(hostname: str) -> dict:
         ipv4_addresses = [info[4][0] for info in addr_info if info[0] == socket.AF_INET]
         ipv6_addresses = [info[4][0] for info in addr_info if info[0] == socket.AF_INET6]
 
-        return {
-            "success": True,
-            "ipv4": ipv4_addresses,
-            "ipv6": ipv6_addresses,
-            "all": addr_info
-        }
+        return {"success": True, "ipv4": ipv4_addresses, "ipv6": ipv6_addresses, "all": addr_info}
     except socket.gaierror as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
+        return {"success": False, "error": str(e)}
 
 
 # @pytest.mark.skip(reason="Manual integration test - requires live Supabase connection")
@@ -103,6 +94,7 @@ async def test_connection():
         print("4. Try using port 6543 (transaction pooler) instead of 5432")
         return False
 
+
 # @pytest.mark.skip(reason="Manual integration test - requires live Supabase connection")
 async def test_connection2():
     """Test different Supabase pooler connection formats."""
@@ -155,7 +147,7 @@ async def test_connection2():
                 echo=False,
                 pool_pre_ping=True,
                 connect_args=connect_args,
-                execution_options={"prepared_statement_cache_size": 0} if i == 2 else {}
+                execution_options={"prepared_statement_cache_size": 0} if i == 2 else {},
             )
 
             async with engine.begin() as conn:
@@ -186,7 +178,6 @@ async def test_connection2():
     print("4. Verify the pooler region matches your project")
     print("5. Try connecting from Supabase dashboard first")
     return False
-
 
 
 if __name__ == "__main__":

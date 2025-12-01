@@ -1,4 +1,5 @@
 """Admin customers endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
@@ -22,5 +23,5 @@ async def list_customers(
     """List all customers (placeholder)."""
     return RedirectResponse(
         url="/api/v1/admin/dashboard?error=Customers module is currently under development",
-        status_code=status.HTTP_302_FOUND
+        status_code=status.HTTP_302_FOUND,
     )

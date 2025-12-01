@@ -13,11 +13,11 @@ from app.services.hierarchy_builder import HierarchyBuilderService
 
 async def main():
     """Demonstrate ASCII tree visualization."""
-    
+
     # Get database session
     async for db_session in get_async_session():
         service = HierarchyBuilderService(db_session)
-        
+
         # Create a manufacturing type
         print("Creating manufacturing type...")
         mfg_type = await service.create_manufacturing_type(
@@ -28,7 +28,7 @@ async def main():
             base_weight=Decimal("15.00"),
         )
         print(f"✓ Created manufacturing type: {mfg_type.name} (ID: {mfg_type.id})")
-        
+
         # Create a complex hierarchy
         print("\nCreating hierarchy...")
         hierarchy = {
@@ -84,13 +84,13 @@ async def main():
                 },
             ],
         }
-        
+
         root = await service.create_hierarchy_from_dict(
             manufacturing_type_id=mfg_type.id,
             hierarchy_data=hierarchy,
         )
         print(f"✓ Created hierarchy with root: {root.name}")
-        
+
         # Generate ASCII tree
         print("\n" + "=" * 60)
         print("ASCII TREE VISUALIZATION")
@@ -98,16 +98,16 @@ async def main():
         tree_str = await service.asciify(manufacturing_type_id=mfg_type.id)
         print(tree_str)
         print("=" * 60)
-        
+
         # Generate subtree (just the Material branch)
         print("\n" + "=" * 60)
         print("SUBTREE VISUALIZATION (Material branch only)")
         print("=" * 60)
-        
+
         # Find the Material node
         nodes = await service.attr_node_repo.get_by_manufacturing_type(mfg_type.id)
         material_node = next((n for n in nodes if n.name == "Material"), None)
-        
+
         if material_node:
             subtree_str = await service.asciify(
                 manufacturing_type_id=mfg_type.id,
@@ -115,12 +115,12 @@ async def main():
             )
             print(subtree_str)
             print("=" * 60)
-        
+
         # Demonstrate with more complex hierarchy
         print("\n" + "=" * 60)
         print("COMPLEX HIERARCHY EXAMPLE")
         print("=" * 60)
-        
+
         complex_hierarchy = {
             "name": "Glass Options",
             "node_type": "category",
@@ -184,17 +184,17 @@ async def main():
                 }
             ],
         }
-        
+
         await service.create_hierarchy_from_dict(
             manufacturing_type_id=mfg_type.id,
             hierarchy_data=complex_hierarchy,
         )
-        
+
         # Show complete tree
         complete_tree = await service.asciify(manufacturing_type_id=mfg_type.id)
         print(complete_tree)
         print("=" * 60)
-        
+
         print("\n✓ ASCII tree visualization demo complete!")
         print("\nKey Features Demonstrated:")
         print("  • Box-drawing characters (├──, └──, │)")
@@ -203,7 +203,7 @@ async def main():
         print("  • Nested hierarchy visualization")
         print("  • Subtree visualization")
         print("  • Multiple branches at same level")
-        
+
         break  # Exit after first session
 
 

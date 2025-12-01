@@ -87,7 +87,9 @@ async def list_users(
     ] = None,
     is_superuser: Annotated[
         bool | None,
-        Query(description="Filter by superuser status (true=superusers, false=regular users, null=all)"),
+        Query(
+            description="Filter by superuser status (true=superusers, false=regular users, null=all)"
+        ),
     ] = None,
     search: Annotated[
         str | None,

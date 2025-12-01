@@ -56,10 +56,10 @@ from tests.config import TestSettings, get_test_settings
 # - Better async performance than psycopg
 def get_test_database_url() -> str:
     """Get test database URL from settings.
-    
+
     Returns:
         str: PostgreSQL connection string with asyncpg driver
-        
+
     Note:
         Uses asyncpg driver for full PostgreSQL feature support including
         LTREE extension and JSONB types required by the Windx schema.
@@ -73,11 +73,8 @@ def get_test_database_url() -> str:
     # Note: password is a SecretStr, so we need to get its value
     password = db.password.get_secret_value() if db.password else ""
 
-    return (
-        f"postgresql+asyncpg://{db.user}:"
-        f"{password}@{db.host}:"
-        f"{db.port}/{db.name}"
-    )
+    return f"postgresql+asyncpg://{db.user}:{password}@{db.host}:{db.port}/{db.name}"
+
 
 TEST_DATABASE_URL = get_test_database_url()
 
@@ -153,7 +150,7 @@ def setup_test_settings(test_settings: TestSettings):
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
     """Create test database engine with asyncpg driver.
-    
+
     This fixture:
     - Creates a fresh database engine for each test
     - Enables LTREE extension (required for hierarchical attributes)
@@ -163,7 +160,7 @@ async def test_engine():
 
     Yields:
         AsyncEngine: Test database engine with asyncpg driver
-        
+
     Note:
         asyncpg driver is used instead of psycopg for:
         - Native LTREE support
@@ -242,7 +239,9 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
 
 # noinspection PyUnresolvedReferences
 @pytest_asyncio.fixture(scope="function")
-async def client(db_session: AsyncSession, test_settings: TestSettings) -> AsyncGenerator[AsyncClient, None]:
+async def client(
+    db_session: AsyncSession, test_settings: TestSettings
+) -> AsyncGenerator[AsyncClient, None]:
     """Create test HTTP client with httpx.
 
     Args:
@@ -353,7 +352,9 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
 
 
 @pytest_asyncio.fixture
-async def auth_headers(client: AsyncClient, test_user, test_user_data: dict[str, Any]) -> dict[str, str]:
+async def auth_headers(
+    client: AsyncClient, test_user, test_user_data: dict[str, Any]
+) -> dict[str, str]:
     """Get authentication headers for test user.
 
     Args:

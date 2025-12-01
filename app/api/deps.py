@@ -51,11 +51,11 @@ async def get_current_user(
         HTTPException: If token is invalid or user not found
     """
     token = None
-    
+
     # 1. Try Bearer token from Authorization header
     if credentials:
         token = credentials.credentials
-    
+
     # 2. Try Cookie if no Bearer token
     if not token:
         token = request.cookies.get("access_token")
@@ -67,8 +67,8 @@ async def get_current_user(
         # Check if it's a browser request (HTML) -> Redirect to login
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
-            # For browser requests, we might want to redirect, but dependencies 
-            # usually raise exceptions. The exception handler or the endpoint 
+            # For browser requests, we might want to redirect, but dependencies
+            # usually raise exceptions. The exception handler or the endpoint
             # should handle the redirect. For now, we raise 401.
             # The admin endpoints can catch this or we can use a separate dependency for admin pages.
             pass
@@ -89,6 +89,7 @@ async def get_current_user(
 
     # Check if session is active
     from app.repositories.session import SessionRepository
+
     session_repo = SessionRepository(db)
     session = await session_repo.get_by_token(token)
 

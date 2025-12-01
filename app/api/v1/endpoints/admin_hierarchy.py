@@ -42,16 +42,16 @@ router = APIRouter()
 
 def _format_nodes_for_selector(nodes: list) -> list[dict]:
     """Format attribute nodes for parent selector dropdown.
-    
+
     Converts nodes into a format suitable for dropdown display with
     hierarchical paths (e.g., "Frame > Material > Aluminum").
-    
+
     Args:
         nodes: List of AttributeNode objects
-        
+
     Returns:
         List of dicts with id, name, depth, node_type, and hierarchical_path
-        
+
     Example:
         Input node with ltree_path: "frame_options.material_type.aluminum"
         Output: {
@@ -63,31 +63,33 @@ def _format_nodes_for_selector(nodes: list) -> list[dict]:
         }
     """
     formatted = []
-    
+
     for node in nodes:
         # Convert ltree_path to readable hierarchical path
         # Example: "frame_options.material_type.aluminum" -> "Frame Options > Material Type > Aluminum"
-        path_parts = node.ltree_path.split('.')
-        
+        path_parts = node.ltree_path.split(".")
+
         # Convert each part from snake_case to Title Case
         readable_parts = []
         for part in path_parts:
             # Replace underscores with spaces and title case
-            readable_part = part.replace('_', ' ').title()
+            readable_part = part.replace("_", " ").title()
             readable_parts.append(readable_part)
-        
+
         # Join with " > " separator
         hierarchical_path = " > ".join(readable_parts)
-        
-        formatted.append({
-            "id": node.id,
-            "name": node.name,
-            "depth": node.depth,
-            "node_type": node.node_type,
-            "hierarchical_path": hierarchical_path,
-            "ltree_path": node.ltree_path,
-        })
-    
+
+        formatted.append(
+            {
+                "id": node.id,
+                "name": node.name,
+                "depth": node.depth,
+                "node_type": node.node_type,
+                "hierarchical_path": hierarchical_path,
+                "ltree_path": node.ltree_path,
+            }
+        )
+
     return formatted
 
 
@@ -105,7 +107,7 @@ async def hierarchy_dashboard(
     info: OptionalStrQuery = None,
 ):
     """Render hierarchy management dashboard.
-    
+
     Args:
         request: FastAPI request object
         current_superuser: Current authenticated superuser
@@ -117,13 +119,13 @@ async def hierarchy_dashboard(
         error: Optional error message from query params
         warning: Optional warning message from query params
         info: Optional info message from query params
-        
+
     Returns:
         HTMLResponse: Rendered dashboard template
     """
     # Get all manufacturing types for selector
     manufacturing_types = await mfg_repo.get_active()
-    
+
     # Initialize context
     context = {
         "request": request,
@@ -139,34 +141,36 @@ async def hierarchy_dashboard(
         "warning": warning,
         "info": info,
     }
-    
+
     # If manufacturing type selected, get tree data
     if manufacturing_type_id:
         # Get the selected manufacturing type
         selected_mfg_type = await mfg_repo.get(manufacturing_type_id)
         if selected_mfg_type:
             context["selected_manufacturing_type"] = selected_mfg_type
-            
+
             hierarchy_service = HierarchyBuilderService(db)
-            
+
             # Get tree as Pydantic models
             tree = await hierarchy_service.pydantify(manufacturing_type_id)
-            
+
             # Convert to dict for template
             if tree:
                 context["tree_nodes"] = [node.model_dump() for node in tree]
-            
+
             # Get ASCII tree visualization
             context["ascii_tree"] = await hierarchy_service.asciify(manufacturing_type_id)
-            
+
             # Get diagram tree visualization (base64 encoded image)
             try:
                 context["diagram_tree"] = await hierarchy_service.plot_tree(manufacturing_type_id)
             except Exception:
                 # If diagram generation fails, just skip it
                 context["diagram_tree"] = None
-    
-    return templates.TemplateResponse(request=request, name="admin/hierarchy_dashboard_enhanced.html.jinja", context=context)
+
+    return templates.TemplateResponse(
+        request=request, name="admin/hierarchy_dashboard_enhanced.html.jinja", context=context
+    )
 
 
 @router.get("/node/create", response_class=HTMLResponse)
@@ -180,7 +184,7 @@ async def create_node_form(
     parent_id: OptionalIntQuery = None,
 ):
     """Render node creation form.
-    
+
     Args:
         request: FastAPI request object
         current_superuser: Current authenticated superuser
@@ -189,7 +193,7 @@ async def create_node_form(
         attr_repo: Attribute node repository
         manufacturing_type_id: Manufacturing type ID (required)
         parent_id: Optional parent node ID
-        
+
     Returns:
         HTMLResponse: Rendered node form template
     """
@@ -198,10 +202,10 @@ async def create_node_form(
     if not manufacturing_type:
         # Redirect back with error
         return RedirectResponse(
-            url=f"/admin/hierarchy?error=Manufacturing type not found",
+            url="/admin/hierarchy?error=Manufacturing type not found",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    
+
     # Get parent node if provided
     parent_node = None
     if parent_id:
@@ -211,13 +215,13 @@ async def create_node_form(
                 url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Parent node not found",
                 status_code=status.HTTP_303_SEE_OTHER,
             )
-    
+
     # Get all nodes for manufacturing type (for parent selector)
     all_nodes = await attr_repo.get_by_manufacturing_type(manufacturing_type_id)
-    
+
     # Format nodes with hierarchical paths for dropdown
     formatted_nodes = _format_nodes_for_selector(all_nodes)
-    
+
     context = {
         "request": request,
         "manufacturing_type": manufacturing_type,
@@ -226,8 +230,10 @@ async def create_node_form(
         "node": None,  # No existing node (create mode)
         "is_edit": False,
     }
-    
-    return templates.TemplateResponse(request=request, name="admin/node_form.html.jinja", context=context)
+
+    return templates.TemplateResponse(
+        request=request, name="admin/node_form.html.jinja", context=context
+    )
 
 
 @router.post("/node/save")
@@ -257,7 +263,7 @@ async def save_node(
     help_text: OptionalStrForm = None,
 ):
     """Save node (create or update) with Pydantic validation.
-    
+
     Args:
         request: FastAPI request object
         current_superuser: Current authenticated superuser
@@ -282,19 +288,26 @@ async def save_node(
         ui_component: UI component type
         description: Description
         help_text: Help text
-        
+
     Returns:
         RedirectResponse: Redirect to dashboard with success message
         HTMLResponse: Re-render form with validation errors
     """
     from pydantic import ValidationError
+
     from app.schemas.attribute_node import AttributeNodeCreate, AttributeNodeUpdate
-    
+
     try:
         # Convert string values to Decimal
-        price_value = Decimal(price_impact_value) if price_impact_value and price_impact_value.strip() else None
-        weight_value = Decimal(weight_impact) if weight_impact and weight_impact.strip() else Decimal("0")
-        
+        price_value = (
+            Decimal(price_impact_value)
+            if price_impact_value and price_impact_value.strip()
+            else None
+        )
+        weight_value = (
+            Decimal(weight_impact) if weight_impact and weight_impact.strip() else Decimal("0")
+        )
+
         # Prepare form data
         form_data = {
             "name": name,
@@ -307,14 +320,18 @@ async def save_node(
             "price_formula": price_formula if price_formula and price_formula.strip() else None,
             "weight_impact": weight_value,
             "weight_formula": weight_formula if weight_formula and weight_formula.strip() else None,
-            "technical_property_type": technical_property_type if technical_property_type and technical_property_type.strip() else None,
-            "technical_impact_formula": technical_impact_formula if technical_impact_formula and technical_impact_formula.strip() else None,
+            "technical_property_type": technical_property_type
+            if technical_property_type and technical_property_type.strip()
+            else None,
+            "technical_impact_formula": technical_impact_formula
+            if technical_impact_formula and technical_impact_formula.strip()
+            else None,
             "sort_order": sort_order,
             "ui_component": ui_component if ui_component else None,
             "description": description if description and description.strip() else None,
             "help_text": help_text if help_text and help_text.strip() else None,
         }
-        
+
         if node_id:
             # Update existing node - validate with AttributeNodeUpdate
             try:
@@ -324,23 +341,23 @@ async def save_node(
                 node = await attr_repo.get(node_id)
                 manufacturing_type = await mfg_repo.get(manufacturing_type_id)
                 all_nodes = await attr_repo.get_by_manufacturing_type(manufacturing_type_id)
-                
+
                 # Get descendants to exclude from parent selector
                 descendants = await attr_repo.get_descendants(node_id)
                 descendant_ids = {d.id for d in descendants}
                 descendant_ids.add(node_id)
                 available_parents = [n for n in all_nodes if n.id not in descendant_ids]
-                
+
                 # Format nodes with hierarchical paths for dropdown
                 formatted_nodes = _format_nodes_for_selector(available_parents)
-                
+
                 # Format validation errors for display
                 validation_errors = []
                 for error in ve.errors():
                     field = error["loc"][0] if error["loc"] else "unknown"
                     message = error["msg"]
                     validation_errors.append(f"{field}: {message}")
-                
+
                 context = {
                     "request": request,
                     "manufacturing_type": manufacturing_type,
@@ -351,14 +368,14 @@ async def save_node(
                     "validation_errors": validation_errors,
                     "form_data": form_data,  # Pass back form data to preserve user input
                 }
-                
+
                 return templates.TemplateResponse(
                     request=request,
                     name="admin/node_form.html.jinja",
                     context=context,
                     status_code=422,
                 )
-            
+
             # Validation passed - update node
             node = await attr_repo.get(node_id)
             if not node:
@@ -366,27 +383,79 @@ async def save_node(
                     url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Node not found",
                     status_code=status.HTTP_303_SEE_OTHER,
                 )
-            
+
             hierarchy_service = HierarchyBuilderService(db)
-            
+
             # Update node fields
             node.name = validated_data.name if validated_data.name is not None else node.name
-            node.node_type = validated_data.node_type if validated_data.node_type is not None else node.node_type
-            node.parent_node_id = validated_data.parent_node_id if validated_data.parent_node_id is not None else node.parent_node_id
-            node.data_type = validated_data.data_type if validated_data.data_type is not None else node.data_type
-            node.required = validated_data.required if validated_data.required is not None else node.required
-            node.price_impact_type = validated_data.price_impact_type if validated_data.price_impact_type is not None else node.price_impact_type
-            node.price_impact_value = validated_data.price_impact_value if validated_data.price_impact_value is not None else node.price_impact_value
-            node.price_formula = validated_data.price_formula if validated_data.price_formula is not None else node.price_formula
-            node.weight_impact = validated_data.weight_impact if validated_data.weight_impact is not None else node.weight_impact
-            node.weight_formula = validated_data.weight_formula if validated_data.weight_formula is not None else node.weight_formula
-            node.technical_property_type = validated_data.technical_property_type if validated_data.technical_property_type is not None else node.technical_property_type
-            node.technical_impact_formula = validated_data.technical_impact_formula if validated_data.technical_impact_formula is not None else node.technical_impact_formula
-            node.sort_order = validated_data.sort_order if validated_data.sort_order is not None else node.sort_order
-            node.ui_component = validated_data.ui_component if validated_data.ui_component is not None else node.ui_component
-            node.description = validated_data.description if validated_data.description is not None else node.description
-            node.help_text = validated_data.help_text if validated_data.help_text is not None else node.help_text
-            
+            node.node_type = (
+                validated_data.node_type if validated_data.node_type is not None else node.node_type
+            )
+            node.parent_node_id = (
+                validated_data.parent_node_id
+                if validated_data.parent_node_id is not None
+                else node.parent_node_id
+            )
+            node.data_type = (
+                validated_data.data_type if validated_data.data_type is not None else node.data_type
+            )
+            node.required = (
+                validated_data.required if validated_data.required is not None else node.required
+            )
+            node.price_impact_type = (
+                validated_data.price_impact_type
+                if validated_data.price_impact_type is not None
+                else node.price_impact_type
+            )
+            node.price_impact_value = (
+                validated_data.price_impact_value
+                if validated_data.price_impact_value is not None
+                else node.price_impact_value
+            )
+            node.price_formula = (
+                validated_data.price_formula
+                if validated_data.price_formula is not None
+                else node.price_formula
+            )
+            node.weight_impact = (
+                validated_data.weight_impact
+                if validated_data.weight_impact is not None
+                else node.weight_impact
+            )
+            node.weight_formula = (
+                validated_data.weight_formula
+                if validated_data.weight_formula is not None
+                else node.weight_formula
+            )
+            node.technical_property_type = (
+                validated_data.technical_property_type
+                if validated_data.technical_property_type is not None
+                else node.technical_property_type
+            )
+            node.technical_impact_formula = (
+                validated_data.technical_impact_formula
+                if validated_data.technical_impact_formula is not None
+                else node.technical_impact_formula
+            )
+            node.sort_order = (
+                validated_data.sort_order
+                if validated_data.sort_order is not None
+                else node.sort_order
+            )
+            node.ui_component = (
+                validated_data.ui_component
+                if validated_data.ui_component is not None
+                else node.ui_component
+            )
+            node.description = (
+                validated_data.description
+                if validated_data.description is not None
+                else node.description
+            )
+            node.help_text = (
+                validated_data.help_text if validated_data.help_text is not None else node.help_text
+            )
+
             # Recalculate path and depth if parent changed
             if validated_data.parent_node_id is not None:
                 if validated_data.parent_node_id:
@@ -397,10 +466,10 @@ async def save_node(
                 else:
                     node.ltree_path = hierarchy_service._calculate_ltree_path(None, node.name)
                     node.depth = 0
-            
+
             await db.commit()
             await db.refresh(node)
-            
+
             return RedirectResponse(
                 url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&success=Node updated successfully",
                 status_code=status.HTTP_303_SEE_OTHER,
@@ -408,24 +477,24 @@ async def save_node(
         else:
             # Create new node - validate with AttributeNodeCreate
             form_data["manufacturing_type_id"] = manufacturing_type_id
-            
+
             try:
                 validated_data = AttributeNodeCreate(**form_data)
             except ValidationError as ve:
                 # Re-render form with validation errors
                 manufacturing_type = await mfg_repo.get(manufacturing_type_id)
                 all_nodes = await attr_repo.get_by_manufacturing_type(manufacturing_type_id)
-                
+
                 # Format nodes with hierarchical paths for dropdown
                 formatted_nodes = _format_nodes_for_selector(all_nodes)
-                
+
                 # Format validation errors for display
                 validation_errors = []
                 for error in ve.errors():
                     field = error["loc"][0] if error["loc"] else "unknown"
                     message = error["msg"]
                     validation_errors.append(f"{field}: {message}")
-                
+
                 context = {
                     "request": request,
                     "manufacturing_type": manufacturing_type,
@@ -436,14 +505,14 @@ async def save_node(
                     "validation_errors": validation_errors,
                     "form_data": form_data,  # Pass back form data to preserve user input
                 }
-                
+
                 return templates.TemplateResponse(
                     request=request,
                     name="admin/node_form.html.jinja",
                     context=context,
                     status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 )
-            
+
             # Validation passed - create node
             hierarchy_service = HierarchyBuilderService(db)
             await hierarchy_service.create_node(
@@ -465,12 +534,12 @@ async def save_node(
                 description=validated_data.description,
                 help_text=validated_data.help_text,
             )
-            
+
             return RedirectResponse(
                 url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&success=Node created successfully",
                 status_code=status.HTTP_303_SEE_OTHER,
             )
-    
+
     except ValueError as ve:
         # Handle decimal conversion errors
         return RedirectResponse(
@@ -495,7 +564,7 @@ async def edit_node_form(
     attr_repo: AttributeNodeRepo,
 ):
     """Render node edit form.
-    
+
     Args:
         request: FastAPI request object
         node_id: Node ID to edit
@@ -503,7 +572,7 @@ async def edit_node_form(
         db: Database session
         mfg_repo: Manufacturing type repository
         attr_repo: Attribute node repository
-        
+
     Returns:
         HTMLResponse: Rendered node form template with pre-filled data
     """
@@ -514,7 +583,7 @@ async def edit_node_form(
             url="/admin/hierarchy?error=Node not found",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    
+
     # Get manufacturing type
     manufacturing_type = await mfg_repo.get(node.manufacturing_type_id)
     if not manufacturing_type:
@@ -522,27 +591,27 @@ async def edit_node_form(
             url="/admin/hierarchy?error=Manufacturing type not found",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    
+
     # Get all nodes for manufacturing type (for parent selector)
     # Exclude current node and its descendants to prevent circular references
     all_nodes = await attr_repo.get_by_manufacturing_type(node.manufacturing_type_id)
-    
+
     # Get descendants to exclude them from parent selector
     descendants = await attr_repo.get_descendants(node_id)
     descendant_ids = {d.id for d in descendants}
     descendant_ids.add(node_id)  # Also exclude the node itself
-    
+
     # Filter out node and descendants
     available_parents = [n for n in all_nodes if n.id not in descendant_ids]
-    
+
     # Format nodes with hierarchical paths for dropdown
     formatted_nodes = _format_nodes_for_selector(available_parents)
-    
+
     # Get parent node if exists
     parent_node = None
     if node.parent_node_id:
         parent_node = await attr_repo.get(node.parent_node_id)
-    
+
     context = {
         "request": request,
         "manufacturing_type": manufacturing_type,
@@ -551,8 +620,10 @@ async def edit_node_form(
         "node": node,
         "is_edit": True,
     }
-    
-    return templates.TemplateResponse(request=request, name="admin/node_form.html.jinja", context=context)
+
+    return templates.TemplateResponse(
+        request=request, name="admin/node_form.html.jinja", context=context
+    )
 
 
 @router.post("/node/{node_id}/delete")
@@ -563,13 +634,13 @@ async def delete_node(
     attr_repo: AttributeNodeRepo,
 ):
     """Delete node.
-    
+
     Args:
         node_id: Node ID to delete
         current_superuser: Current authenticated superuser
         db: Database session
         attr_repo: Attribute node repository
-        
+
     Returns:
         RedirectResponse: Redirect to dashboard with success/error message
     """
@@ -580,9 +651,9 @@ async def delete_node(
             url="/admin/hierarchy?error=Node not found",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    
+
     manufacturing_type_id = node.manufacturing_type_id
-    
+
     # Check for children
     children = await attr_repo.get_children(node_id)
     if children:
@@ -590,12 +661,12 @@ async def delete_node(
             url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Cannot delete node with children. Delete children first.",
             status_code=status.HTTP_303_SEE_OTHER,
         )
-    
+
     # Delete node
     try:
         await attr_repo.delete(node_id)
         await db.commit()
-        
+
         return RedirectResponse(
             url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&success=Node deleted successfully",
             status_code=status.HTTP_303_SEE_OTHER,

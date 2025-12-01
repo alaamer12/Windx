@@ -67,9 +67,7 @@ class PricingService(BaseService):
         self.selection_repo = ConfigurationSelectionRepository(db)
         self.attr_node_repo = AttributeNodeRepository(db)
 
-    async def calculate_configuration_price(
-        self, config_id: int
-    ) -> dict[str, Decimal]:
+    async def calculate_configuration_price(self, config_id: int) -> dict[str, Decimal]:
         """Calculate total price and weight for a configuration.
 
         Calculates the total price and weight by summing the base price/weight
@@ -209,9 +207,7 @@ class PricingService(BaseService):
             # Formula-based weight calculation
             try:
                 context = self._build_formula_context(selection)
-                weight_impact = await self.evaluate_price_formula(
-                    attr_node.weight_formula, context
-                )
+                weight_impact = await self.evaluate_price_formula(attr_node.weight_formula, context)
             except InvalidFormulaException as e:
                 # Re-raise with additional context
                 raise InvalidFormulaException(
@@ -233,9 +229,7 @@ class PricingService(BaseService):
             "weight_impact": weight_impact,
         }
 
-    async def evaluate_price_formula(
-        self, formula: str, context: dict[str, Any]
-    ) -> Decimal:
+    async def evaluate_price_formula(self, formula: str, context: dict[str, Any]) -> Decimal:
         """Evaluate a price formula with safe execution.
 
         Safely evaluates mathematical formulas using a restricted set of
@@ -405,9 +399,7 @@ class PricingService(BaseService):
                 details={"node_type": type(node).__name__},
             )
 
-    def _build_formula_context(
-        self, selection: ConfigurationSelection
-    ) -> dict[str, Any]:
+    def _build_formula_context(self, selection: ConfigurationSelection) -> dict[str, Any]:
         """Build context dictionary for formula evaluation.
 
         Extracts relevant values from the selection to use as variables

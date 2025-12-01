@@ -3,8 +3,9 @@
 Tests that all dropdown options are present and functional.
 """
 
-import pytest
 from decimal import Decimal
+
+import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,23 +25,23 @@ async def test_node_form_has_all_node_type_options(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Get create node form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify all 5 node types are present
     assert 'value="category"' in content
     assert 'value="attribute"' in content
     assert 'value="option"' in content
     assert 'value="component"' in content
     assert 'value="technical_spec"' in content
-    
+
     # Verify descriptions are present
     assert "Category - Organizational grouping" in content
     assert "Attribute - Configurable property" in content
@@ -62,16 +63,16 @@ async def test_node_form_has_all_data_type_options(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Get create node form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify all 6 data types are present
     assert 'value="string"' in content
     assert 'value="number"' in content
@@ -79,7 +80,7 @@ async def test_node_form_has_all_data_type_options(
     assert 'value="formula"' in content
     assert 'value="dimension"' in content
     assert 'value="selection"' in content
-    
+
     # Verify descriptions are present
     assert "String - Text values" in content
     assert "Number - Numeric values" in content
@@ -102,21 +103,21 @@ async def test_node_form_has_all_price_impact_type_options(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Get create node form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify all 3 price impact types are present
     assert 'value="fixed"' in content
     assert 'value="percentage"' in content
     assert 'value="formula"' in content
-    
+
     # Verify descriptions are present
     assert "Fixed - Add/subtract dollar amount" in content
     assert "Percentage - Multiply by percentage" in content
@@ -136,23 +137,23 @@ async def test_node_form_has_all_ui_component_options(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     # Get create node form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify all 5 UI components are present
     assert 'value="dropdown"' in content
     assert 'value="radio"' in content
     assert 'value="checkbox"' in content
     assert 'value="slider"' in content
     assert 'value="input"' in content
-    
+
     # Verify descriptions are present
     assert "Dropdown - Select from list" in content
     assert "Radio - Single choice buttons" in content
@@ -174,9 +175,9 @@ async def test_create_node_with_each_node_type(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node_types = ["category", "attribute", "option", "component", "technical_spec"]
-    
+
     for node_type in node_types:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -187,23 +188,24 @@ async def test_create_node_with_each_node_type(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Verify success
         assert response.status_code == 303, f"Failed for node_type: {node_type}"
         assert "success" in response.headers["location"]
-    
+
     # Verify all nodes were created
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 5
-    
+
     # Verify each node type exists
     node_types_created = {node.node_type for node in nodes}
     assert node_types_created == set(node_types)
@@ -222,9 +224,9 @@ async def test_create_node_with_each_data_type(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     data_types = ["string", "number", "boolean", "formula", "dimension", "selection"]
-    
+
     for data_type in data_types:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -236,23 +238,24 @@ async def test_create_node_with_each_data_type(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Verify success
         assert response.status_code == 303, f"Failed for data_type: {data_type}"
         assert "success" in response.headers["location"]
-    
+
     # Verify all nodes were created
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 6
-    
+
     # Verify each data type exists
     data_types_created = {node.data_type for node in nodes}
     assert data_types_created == set(data_types)
@@ -271,9 +274,9 @@ async def test_create_node_with_each_price_impact_type(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     price_impact_types = ["fixed", "percentage", "formula"]
-    
+
     for price_impact_type in price_impact_types:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -286,23 +289,24 @@ async def test_create_node_with_each_price_impact_type(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Verify success
         assert response.status_code == 303, f"Failed for price_impact_type: {price_impact_type}"
         assert "success" in response.headers["location"]
-    
+
     # Verify all nodes were created
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 3
-    
+
     # Verify each price impact type exists
     price_types_created = {node.price_impact_type for node in nodes}
     assert price_types_created == set(price_impact_types)
@@ -321,9 +325,9 @@ async def test_create_node_with_each_ui_component(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     ui_components = ["dropdown", "radio", "checkbox", "slider", "input"]
-    
+
     for ui_component in ui_components:
         form_data = {
             "manufacturing_type_id": str(mfg_type.id),
@@ -335,23 +339,24 @@ async def test_create_node_with_each_ui_component(
             "sort_order": "0",
             "required": "false",
         }
-        
+
         response = await client.post(
             "/api/v1/admin/hierarchy/node/save",
             headers=superuser_auth_headers,
             data=form_data,
         )
-        
+
         # Verify success
         assert response.status_code == 303, f"Failed for ui_component: {ui_component}"
         assert "success" in response.headers["location"]
-    
+
     # Verify all nodes were created
     from app.repositories.attribute_node import AttributeNodeRepository
+
     attr_repo = AttributeNodeRepository(db_session)
     nodes = await attr_repo.get_by_manufacturing_type(mfg_type.id)
     assert len(nodes) == 5
-    
+
     # Verify each UI component exists
     ui_components_created = {node.ui_component for node in nodes}
     assert ui_components_created == set(ui_components)
@@ -370,7 +375,7 @@ async def test_edit_form_preserves_dropdown_selections(
         name="Test Window",
         base_price=Decimal("200.00"),
     )
-    
+
     node = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Test Node",
@@ -379,19 +384,19 @@ async def test_edit_form_preserves_dropdown_selections(
         price_impact_type="percentage",
         ui_component="slider",
     )
-    
+
     # Get edit form
     response = await client.get(
         f"/api/v1/admin/hierarchy/node/{node.id}/edit",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify correct options are selected
     # Check for selected attribute in the correct option
-    assert 'value="component"' in content and 'selected' in content
-    assert 'value="dimension"' in content and 'selected' in content
-    assert 'value="percentage"' in content and 'selected' in content
-    assert 'value="slider"' in content and 'selected' in content
+    assert 'value="component"' in content and "selected" in content
+    assert 'value="dimension"' in content and "selected" in content
+    assert 'value="percentage"' in content and "selected" in content
+    assert 'value="slider"' in content and "selected" in content

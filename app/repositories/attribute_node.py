@@ -51,9 +51,7 @@ class AttributeNodeRepository(
         """
         super().__init__(AttributeNode, db)
 
-    async def get_by_manufacturing_type(
-        self, manufacturing_type_id: int
-    ) -> list[AttributeNode]:
+    async def get_by_manufacturing_type(self, manufacturing_type_id: int) -> list[AttributeNode]:
         """Get all attribute nodes for a manufacturing type.
 
         Returns all nodes in the attribute tree for the specified
@@ -78,9 +76,7 @@ class AttributeNodeRepository(
         )
         return list(result.scalars().all())
 
-    async def get_root_nodes(
-        self, manufacturing_type_id: int | None = None
-    ) -> list[AttributeNode]:
+    async def get_root_nodes(self, manufacturing_type_id: int | None = None) -> list[AttributeNode]:
         """Get root nodes (top-level nodes with no parent).
 
         Returns nodes at the top of the hierarchy. Can optionally filter
@@ -96,7 +92,7 @@ class AttributeNodeRepository(
             ```python
             # Get all root nodes
             roots = await repo.get_root_nodes()
-            
+
             # Get root nodes for specific manufacturing type
             window_roots = await repo.get_root_nodes(manufacturing_type_id=1)
             ```
@@ -104,9 +100,7 @@ class AttributeNodeRepository(
         query = select(AttributeNode).where(AttributeNode.parent_node_id.is_(None))
 
         if manufacturing_type_id is not None:
-            query = query.where(
-                AttributeNode.manufacturing_type_id == manufacturing_type_id
-            )
+            query = query.where(AttributeNode.manufacturing_type_id == manufacturing_type_id)
 
         query = query.order_by(AttributeNode.sort_order, AttributeNode.name)
 
@@ -129,10 +123,10 @@ class AttributeNodeRepository(
             ```python
             # Find all nodes with 'material' in path
             materials = await repo.search_by_path_pattern('*.material.*')
-            
+
             # Find nodes at specific depth (3 levels)
             level3 = await repo.search_by_path_pattern('*{3}')
-            
+
             # Find specific path pattern
             frames = await repo.search_by_path_pattern('window.frame.*')
             ```
@@ -185,9 +179,7 @@ class AttributeNodeRepository(
 
         # Apply filters
         if manufacturing_type_id is not None:
-            query = query.where(
-                AttributeNode.manufacturing_type_id == manufacturing_type_id
-            )
+            query = query.where(AttributeNode.manufacturing_type_id == manufacturing_type_id)
 
         if parent_node_id is not None:
             query = query.where(AttributeNode.parent_node_id == parent_node_id)
@@ -219,7 +211,7 @@ class AttributeNodeRepository(
             ```python
             # Get all nodes for a manufacturing type
             nodes = await repo.get_by_manufacturing_type(1)
-            
+
             # Build tree structure
             tree = repo.build_tree(nodes)
             ```
@@ -334,17 +326,11 @@ class AttributeNodeRepository(
         result = await self.db.execute(
             select(AttributeNode)
             .where(AttributeNode.id == node_id)
-            .options(
-                selectinload(AttributeNode.children).selectinload(
-                    AttributeNode.children
-                )
-            )
+            .options(selectinload(AttributeNode.children).selectinload(AttributeNode.children))
         )
         return result.scalar_one_or_none()
 
-    async def would_create_cycle(
-        self, node_id: int, new_parent_id: int
-    ) -> bool:
+    async def would_create_cycle(self, node_id: int, new_parent_id: int) -> bool:
         """Check if setting a new parent would create a cycle.
 
         Validates that moving a node to a new parent would not create

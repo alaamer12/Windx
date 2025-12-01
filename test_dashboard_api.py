@@ -8,8 +8,8 @@ This script:
 """
 
 import asyncio
-import httpx
 
+import httpx
 
 BASE_URL = "http://127.0.0.1:8000/api/v1"
 
@@ -21,26 +21,25 @@ async def main():
         print("=" * 60)
         print("WindX Dashboard API Test - Manual Data Entry")
         print("=" * 60)
-        
+
         # Step 1: Login
         print("\n1. Logging in as admin...")
         login_response = await client.post(
-            f"{BASE_URL}/auth/login",
-            json={"username": "admin", "password": "Admin123!"}
+            f"{BASE_URL}/auth/login", json={"username": "admin", "password": "Admin123!"}
         )
-        
+
         if login_response.status_code != 200:
             print(f"❌ Login failed: {login_response.status_code}")
             print(f"   Response: {login_response.text}")
             return
-        
+
         token_data = login_response.json()
         access_token = token_data["access_token"]
         print(f"✅ Login successful! Token: {access_token[:50]}...")
-        
+
         # Set authorization header for subsequent requests
         headers = {"Authorization": f"Bearer {access_token}"}
-        
+
         # Step 2: Get current user info
         print("\n2. Getting current user info...")
         me_response = await client.get(f"{BASE_URL}/auth/me", headers=headers)
@@ -50,7 +49,7 @@ async def main():
             print(f"   Is Superuser: {user_data['is_superuser']}")
         else:
             print(f"❌ Failed to get user info: {me_response.status_code}")
-        
+
         # Step 3: List existing manufacturing types
         print("\n3. Listing existing manufacturing types...")
         mfg_response = await client.get(f"{BASE_URL}/manufacturing-types", headers=headers)
@@ -58,11 +57,13 @@ async def main():
             mfg_types = mfg_response.json()
             print(f"✅ Found {len(mfg_types)} manufacturing types:")
             for mfg in mfg_types:
-                print(f"   - ID: {mfg['id']}, Name: {mfg['name']}, Base Price: ${mfg['base_price']}")
+                print(
+                    f"   - ID: {mfg['id']}, Name: {mfg['name']}, Base Price: ${mfg['base_price']}"
+                )
         else:
             print(f"❌ Failed to get manufacturing types: {mfg_response.status_code}")
             mfg_types = []
-        
+
         # Step 4: Create a new manufacturing type (Window)
         print("\n4. Creating a new manufacturing type: 'Custom Window'...")
         new_mfg_data = {
@@ -71,28 +72,26 @@ async def main():
             "base_price": 200.00,
             "base_weight": 25.0,
             "category": "Windows & Doors",
-            "is_active": True
+            "is_active": True,
         }
-        
+
         create_mfg_response = await client.post(
-            f"{BASE_URL}/manufacturing-types",
-            headers=headers,
-            json=new_mfg_data
+            f"{BASE_URL}/manufacturing-types", headers=headers, json=new_mfg_data
         )
-        
+
         if create_mfg_response.status_code == 201:
             created_mfg = create_mfg_response.json()
             mfg_type_id = created_mfg["id"]
-            print(f"✅ Manufacturing type created successfully!")
+            print("✅ Manufacturing type created successfully!")
             print(f"   ID: {created_mfg['id']}")
             print(f"   Name: {created_mfg['name']}")
             print(f"   Base Price: ${created_mfg['base_price']}")
         elif create_mfg_response.status_code == 409:
-            print(f"⚠️  Manufacturing type already exists, using existing one...")
+            print("⚠️  Manufacturing type already exists, using existing one...")
             # Find existing one
             for mfg in mfg_types:
-                if mfg['name'] == "Custom Window":
-                    mfg_type_id = mfg['id']
+                if mfg["name"] == "Custom Window":
+                    mfg_type_id = mfg["id"]
                     print(f"   Using existing ID: {mfg_type_id}")
                     break
             else:
@@ -102,10 +101,10 @@ async def main():
             print(f"❌ Failed to create manufacturing type: {create_mfg_response.status_code}")
             print(f"   Response: {create_mfg_response.text}")
             return
-        
+
         # Step 5: Create hierarchical attribute nodes
         print(f"\n5. Creating attribute nodes for manufacturing type ID {mfg_type_id}...")
-        
+
         # Create root category: Frame Options
         print("\n   Creating category: Frame Options...")
         frame_category_data = {
@@ -113,15 +112,13 @@ async def main():
             "name": "Frame Options",
             "node_type": "category",
             "sort_order": 1,
-            "description": "Frame material and color options"
+            "description": "Frame material and color options",
         }
-        
+
         frame_cat_response = await client.post(
-            f"{BASE_URL}/attribute-nodes",
-            headers=headers,
-            json=frame_category_data
+            f"{BASE_URL}/attribute-nodes", headers=headers, json=frame_category_data
         )
-        
+
         if frame_cat_response.status_code == 201:
             frame_category = frame_cat_response.json()
             frame_category_id = frame_category["id"]
@@ -130,7 +127,7 @@ async def main():
             print(f"   ❌ Failed to create Frame Options: {frame_cat_response.status_code}")
             print(f"      Response: {frame_cat_response.text}")
             return
-        
+
         # Create attribute: Material Type
         print("\n   Creating attribute: Material Type...")
         material_attr_data = {
@@ -141,15 +138,13 @@ async def main():
             "data_type": "string",
             "required": True,
             "sort_order": 1,
-            "description": "Type of frame material"
+            "description": "Type of frame material",
         }
-        
+
         material_attr_response = await client.post(
-            f"{BASE_URL}/attribute-nodes",
-            headers=headers,
-            json=material_attr_data
+            f"{BASE_URL}/attribute-nodes", headers=headers, json=material_attr_data
         )
-        
+
         if material_attr_response.status_code == 201:
             material_attr = material_attr_response.json()
             material_attr_id = material_attr["id"]
@@ -158,14 +153,14 @@ async def main():
             print(f"   ❌ Failed to create Material Type: {material_attr_response.status_code}")
             print(f"      Response: {material_attr_response.text}")
             return
-        
+
         # Create options for Material Type
         materials = [
             {"name": "Aluminum", "price": 50.00, "weight": 5.0},
             {"name": "Wood", "price": 120.00, "weight": 8.0},
-            {"name": "Vinyl", "price": 30.00, "weight": 3.0}
+            {"name": "Vinyl", "price": 30.00, "weight": 3.0},
         ]
-        
+
         print("\n   Creating material options...")
         for idx, material in enumerate(materials):
             option_data = {
@@ -177,51 +172,50 @@ async def main():
                 "price_impact_value": material["price"],
                 "weight_impact": material["weight"],
                 "sort_order": idx + 1,
-                "description": f"{material['name']} frame material"
+                "description": f"{material['name']} frame material",
             }
-            
+
             option_response = await client.post(
-                f"{BASE_URL}/attribute-nodes",
-                headers=headers,
-                json=option_data
+                f"{BASE_URL}/attribute-nodes", headers=headers, json=option_data
             )
-            
+
             if option_response.status_code == 201:
                 option = option_response.json()
-                print(f"   ✅ {material['name']} option created (ID: {option['id']}, +${material['price']})")
+                print(
+                    f"   ✅ {material['name']} option created (ID: {option['id']}, +${material['price']})"
+                )
             else:
                 print(f"   ❌ Failed to create {material['name']}: {option_response.status_code}")
-        
+
         # Step 6: Verify the hierarchy
         print(f"\n6. Verifying the created hierarchy for manufacturing type {mfg_type_id}...")
         tree_response = await client.get(
-            f"{BASE_URL}/attribute-nodes/manufacturing-type/{mfg_type_id}/tree",
-            headers=headers
+            f"{BASE_URL}/attribute-nodes/manufacturing-type/{mfg_type_id}/tree", headers=headers
         )
-        
+
         if tree_response.status_code == 200:
             tree_data = tree_response.json()
-            print(f"✅ Hierarchy retrieved successfully!")
+            print("✅ Hierarchy retrieved successfully!")
             print(f"   Total nodes: {len(tree_data)}")
             print("\n   Hierarchy structure:")
             for node in tree_data:
-                indent = "   " * node.get('depth', 0)
-                node_type = node.get('node_type', 'unknown')
-                name = node.get('name', 'unnamed')
-                price = node.get('price_impact_value')
+                indent = "   " * node.get("depth", 0)
+                node_type = node.get("node_type", "unknown")
+                name = node.get("name", "unnamed")
+                price = node.get("price_impact_value")
                 price_str = f" (+${price})" if price else ""
                 print(f"   {indent}[{node_type}] {name}{price_str}")
         else:
             print(f"❌ Failed to get hierarchy tree: {tree_response.status_code}")
-        
+
         print("\n" + "=" * 60)
         print("✅ Manual data entry test completed successfully!")
         print("=" * 60)
         print("\nSummary:")
         print(f"- Created manufacturing type: Custom Window (ID: {mfg_type_id})")
-        print(f"- Created hierarchical attribute structure with categories, attributes, and options")
-        print(f"- Verified CRUD operations work correctly")
-        print(f"\nThe WindX system is functioning properly for data entry!")
+        print("- Created hierarchical attribute structure with categories, attributes, and options")
+        print("- Verified CRUD operations work correctly")
+        print("\nThe WindX system is functioning properly for data entry!")
 
 
 if __name__ == "__main__":

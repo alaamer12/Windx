@@ -616,9 +616,7 @@ Available Methods:
     - delete(id): Delete manufacturing type by ID
 """
 
-AttributeNodeRepo = Annotated[
-    AttributeNodeRepository, Depends(get_attribute_node_repository)
-]
+AttributeNodeRepo = Annotated[AttributeNodeRepository, Depends(get_attribute_node_repository)]
 """Attribute node repository dependency.
 
 Provides access to hierarchical attribute node data with LTREE support.
@@ -660,9 +658,7 @@ Available Methods:
     - delete(id): Delete attribute node by ID
 """
 
-ConfigurationRepo = Annotated[
-    ConfigurationRepository, Depends(get_configuration_repository)
-]
+ConfigurationRepo = Annotated[ConfigurationRepository, Depends(get_configuration_repository)]
 """Configuration repository dependency.
 
 Provides access to customer product configuration data access layer.

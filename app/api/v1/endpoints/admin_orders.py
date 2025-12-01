@@ -1,4 +1,5 @@
 """Admin orders endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -20,10 +21,10 @@ async def list_orders(
     current_superuser: CurrentSuperuser,
 ):
     """List all orders (placeholder)."""
-    from fastapi.responses import RedirectResponse
     from fastapi import status
-    
+    from fastapi.responses import RedirectResponse
+
     return RedirectResponse(
         url="/api/v1/admin/dashboard?error=Orders module is currently under development",
-        status_code=status.HTTP_302_FOUND
+        status_code=status.HTTP_302_FOUND,
     )

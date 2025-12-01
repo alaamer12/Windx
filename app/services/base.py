@@ -50,6 +50,7 @@ class BaseService:
             # Log the actual error for debugging
             print(f"[ERROR] Commit failed: {type(e).__name__}: {str(e)}")
             import traceback
+
             traceback.print_exc()
 
             raise DatabaseException(

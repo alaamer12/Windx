@@ -78,7 +78,7 @@ async def promote_user(username: str):
         # First check if user exists and their current status
         check_result = await conn.execute(
             text("SELECT id, email, username, is_superuser FROM users WHERE username = :username"),
-            {"username": username}
+            {"username": username},
         )
         existing_user = check_result.fetchone()
 
@@ -99,7 +99,7 @@ async def promote_user(username: str):
                 "WHERE username = :username "
                 "RETURNING id, email, username, is_superuser"
             ),
-            {"username": username}
+            {"username": username},
         )
         user = result.fetchone()
 

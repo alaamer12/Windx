@@ -1,4 +1,5 @@
 """Admin documentation endpoints."""
+
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -26,5 +27,5 @@ async def documentation(
             "request": request,
             "current_user": current_superuser,
             "active_page": "documentation",
-        }
+        },
     )

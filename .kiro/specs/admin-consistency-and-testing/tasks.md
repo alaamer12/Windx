@@ -10,11 +10,11 @@
 
 
 
-  - [x] 1.1 Create `app/core/responses.py` with `get_common_responses()` function
+  - [x] 1.1 Use existing `app/schemas/responses.py` with `get_common_responses()` function
 
 
-    - Implement response definitions for 401, 403, 404, 422, 500
-    - Add comprehensive docstring with usage examples
+    - Note: `app/schemas/responses.py` already exists with comprehensive response definitions
+    - Updated all admin endpoints to import from `app.schemas.responses`
     - _Requirements: 7.1, 7.2, 10.1_
   
   - [x] 1.2 Add enhanced type definitions to `app/api/types.py`
@@ -75,32 +75,47 @@
 
     - _Requirements: 10.1, 10.4_
 
-- [ ] 2. Refactor All Admin Endpoints with Consistent Patterns
+- [x] 2. Refactor All Admin Endpoints with Consistent Patterns
 
 
-  - [ ] 2.1 Refactor `admin_auth.py` endpoint
+
+
+
+  - [x] 2.1 Refactor `admin_auth.py` endpoint
+
+
     - Add professional endpoint documentation (summary, description, operation_id)
     - Update to use typed parameters (`RequiredStrForm`, `DBSession`)
     - Ensure using `get_admin_context()` from `app.api.deps`
     - Document all response codes with `get_common_responses()`
     - _Requirements: 1.2, 3.1, 7.1, 10.2, 10.3_
   
-  - [ ] 2.2 Refactor `admin_customers.py` endpoint
+
+
+  - [x] 2.2 Refactor `admin_customers.py` endpoint
     - Update imports to use shared utilities (remove duplicate `get_admin_context`)
     - Add professional documentation to all endpoints
     - Update to use typed parameters (`PageQuery`, `SearchQuery`, `IsActiveQuery`)
     - Refactor error handling to use `build_redirect_response()` and `format_validation_errors()`
+
+
     - _Requirements: 1.2, 3.1, 3.2, 7.1, 8.1, 8.2, 8.5, 10.2, 10.3_
   
-  - [ ] 2.3 Refactor `admin_orders.py` endpoint
+  - [x] 2.3 Refactor `admin_orders.py` endpoint
     - Update imports to use shared utilities (remove duplicate `get_admin_context`)
     - Add professional documentation to all endpoints
     - Update to use typed parameters
+
+
     - Fix missing `OrderStatus` import and add proper validation
     - Refactor error handling to use shared utilities
     - _Requirements: 1.2, 3.1, 3.2, 5.3, 5.4, 7.1, 8.1, 10.2, 10.3_
   
-  - [ ] 2.4 Refactor `admin_hierarchy.py` endpoint
+
+
+
+
+  - [x] 2.4 Refactor `admin_hierarchy.py` endpoint
     - Update imports to use shared utilities (remove duplicate functions)
     - Add professional documentation to all endpoints
     - Update to use typed parameters from `app.api.types`
@@ -109,6 +124,7 @@
     - _Requirements: 2.1, 2.2, 2.3, 3.1, 7.1, 8.1, 8.5, 10.2, 10.3_
 
 - [ ] 3. Test Infrastructure: Factories and Repository Tests
+
   - [ ] 3.1 Create `tests/factories/customer_factory.py`
     - Implement `CustomerFactory` with all fields
     - Add factory traits: `residential`, `inactive`, `contractor`

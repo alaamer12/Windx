@@ -12,14 +12,19 @@ Endpoints:
 """
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from fastapi import APIRouter, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
+from app.api.admin_utils import (
+    FormDataProcessor,
+    build_redirect_response,
+    format_validation_errors,
+)
+from app.api.deps import get_admin_context
 from app.api.types import (
     AttributeNodeRepo,
     CurrentSuperuser,
@@ -34,7 +39,7 @@ from app.api.types import (
     RequiredIntQuery,
     RequiredStrForm,
 )
-from app.api.deps import get_admin_context
+from app.schemas.responses import get_common_responses
 from app.schemas import AttributeNodeCreate, AttributeNodeUpdate
 from app.services.hierarchy_builder import HierarchyBuilderService
 
@@ -98,7 +103,21 @@ def _format_nodes_for_selector(nodes: list) -> list[dict]:
     return formatted
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get(
+    "/",
+    response_class=HTMLResponse,
+    summary="Hierarchy Management Dashboard",
+    description="View and manage hierarchical attribute trees for manufacturing types",
+    response_description="HTML page with hierarchy visualization",
+    operation_id="hierarchyDashboard",
+    responses={
+        200: {
+            "description": "Successfully retrieved hierarchy dashboard",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
 async def hierarchy_dashboard(
     request: Request,
     current_superuser: CurrentSuperuser,
@@ -113,6 +132,9 @@ async def hierarchy_dashboard(
 ):
     """Render hierarchy management dashboard.
 
+    Displays the hierarchy management interface with tree visualization,
+    ASCII representation, and diagram for a selected manufacturing type.
+
     Args:
         request: FastAPI request object
         current_superuser: Current authenticated superuser
@@ -126,7 +148,7 @@ async def hierarchy_dashboard(
         info: Optional info message from query params
 
     Returns:
-        HTMLResponse: Rendered dashboard template
+        HTMLResponse: Rendered dashboard template with hierarchy data
     """
     # Get all manufacturing types for selector
     manufacturing_types = await mfg_repo.get_active()
@@ -180,7 +202,24 @@ async def hierarchy_dashboard(
     )
 
 
-@router.get("/node/create", response_class=HTMLResponse)
+@router.get(
+    "/node/create",
+    response_class=HTMLResponse,
+    summary="Create Node Form",
+    description="Display form for creating a new attribute node",
+    response_description="HTML page with node creation form",
+    operation_id="createNodeForm",
+    responses={
+        200: {
+            "description": "Successfully rendered node creation form",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+        302: {
+            "description": "Redirect if manufacturing type not found",
+        },
+        **get_common_responses(401, 403, 404, 500),
+    },
+)
 async def create_node_form(
     request: Request,
     current_superuser: CurrentSuperuser,
@@ -191,6 +230,9 @@ async def create_node_form(
     parent_id: OptionalIntQuery = None,
 ):
     """Render node creation form.
+
+    Displays an empty form for creating a new attribute node within
+    a manufacturing type's hierarchy.
 
     Args:
         request: FastAPI request object
@@ -203,14 +245,15 @@ async def create_node_form(
 
     Returns:
         HTMLResponse: Rendered node form template
+        RedirectResponse: Redirect if manufacturing type not found
     """
     # Get manufacturing type
     manufacturing_type = await mfg_repo.get(manufacturing_type_id)
     if not manufacturing_type:
-        # Redirect back with error
-        return RedirectResponse(
-            url="/admin/hierarchy?error=Manufacturing type not found",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url="/admin/hierarchy",
+            message="Manufacturing type not found",
+            message_type="error",
         )
 
     # Get parent node if provided
@@ -218,9 +261,10 @@ async def create_node_form(
     if parent_id:
         parent_node = await attr_repo.get(parent_id)
         if not parent_node:
-            return RedirectResponse(
-                url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Parent node not found",
-                status_code=status.HTTP_303_SEE_OTHER,
+            return build_redirect_response(
+                url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+                message="Parent node not found",
+                message_type="error",
             )
 
     # Get all nodes for manufacturing type (for parent selector)
@@ -248,21 +292,6 @@ async def create_node_form(
 class NodeFormDataProcessor:
     """Handles conversion and preparation of form data for node operations."""
 
-    @staticmethod
-    def convert_to_decimal(value: str | None, default: Decimal | None = None) -> Decimal | None:
-        """Convert string to Decimal, returning default if empty or invalid."""
-        if not value or not value.strip():
-            return default
-        try:
-            return Decimal(value)
-        except InvalidOperation as iv:
-            raise ValueError(f"Invalid decimal value: {value}") from iv
-
-    @staticmethod
-    def normalize_optional_string(value: str | None) -> str | None:
-        """Return None for empty strings, otherwise return stripped value."""
-        return value.strip() if value and value.strip() else None
-
     @classmethod
     def prepare_form_data(
         cls,
@@ -284,7 +313,12 @@ class NodeFormDataProcessor:
         help_text: str | None,
         manufacturing_type_id: int | None = None,
     ) -> dict[str, Any]:
-        """Prepare and normalize form data for validation."""
+        """Prepare and normalize form data for validation.
+        
+        Uses shared FormDataProcessor for string normalization and decimal conversion.
+        """
+        from decimal import Decimal
+        
         return {
             "manufacturing_type_id": manufacturing_type_id,
             "name": name,
@@ -293,16 +327,20 @@ class NodeFormDataProcessor:
             "data_type": data_type or None,
             "required": required,
             "price_impact_type": price_impact_type,
-            "price_impact_value": cls.convert_to_decimal(price_impact_value),
-            "price_formula": cls.normalize_optional_string(price_formula),
-            "weight_impact": cls.convert_to_decimal(weight_impact, Decimal("0")),
-            "weight_formula": cls.normalize_optional_string(weight_formula),
-            "technical_property_type": cls.normalize_optional_string(technical_property_type),
-            "technical_impact_formula": cls.normalize_optional_string(technical_impact_formula),
+            "price_impact_value": FormDataProcessor.convert_to_decimal(price_impact_value),
+            "price_formula": FormDataProcessor.normalize_optional_string(price_formula),
+            "weight_impact": FormDataProcessor.convert_to_decimal(weight_impact, Decimal("0")),
+            "weight_formula": FormDataProcessor.normalize_optional_string(weight_formula),
+            "technical_property_type": FormDataProcessor.normalize_optional_string(
+                technical_property_type
+            ),
+            "technical_impact_formula": FormDataProcessor.normalize_optional_string(
+                technical_impact_formula
+            ),
             "sort_order": sort_order,
             "ui_component": ui_component or None,
-            "description": cls.normalize_optional_string(description),
-            "help_text": cls.normalize_optional_string(help_text),
+            "description": FormDataProcessor.normalize_optional_string(description),
+            "help_text": FormDataProcessor.normalize_optional_string(help_text),
         }
 
 
@@ -311,11 +349,11 @@ class ValidationErrorFormatter:
 
     @staticmethod
     def format_errors(validation_error: ValidationError) -> list[str]:
-        """Convert Pydantic validation errors to readable messages."""
-        return [
-            f"{error['loc'][0] if error['loc'] else 'unknown'}: {error['msg']}"
-            for error in validation_error.errors()
-        ]
+        """Convert Pydantic validation errors to readable messages.
+        
+        Uses shared format_validation_errors function for consistency.
+        """
+        return format_validation_errors(validation_error)
 
 
 class NodeUpdater:
@@ -576,23 +614,41 @@ class NodeSaveHandler:
         )
 
     @staticmethod
-    def _redirect_with_success(manufacturing_type_id: int, message: str) -> RedirectResponse:
+    def _redirect_with_success(manufacturing_type_id: int, message: str):
         """Create redirect response with success message."""
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&success={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message=message,
+            message_type="success",
         )
 
     @staticmethod
-    def _redirect_with_error(manufacturing_type_id: int, message: str) -> RedirectResponse:
+    def _redirect_with_error(manufacturing_type_id: int, message: str):
         """Create redirect response with error message."""
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error={message}",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message=message,
+            message_type="error",
         )
 
 
-@router.post("/node/save")
+@router.post(
+    "/node/save",
+    summary="Save Node",
+    description="Create or update an attribute node with validation",
+    response_description="Redirect to hierarchy dashboard with success or error message",
+    operation_id="saveNode",
+    responses={
+        302: {
+            "description": "Redirect to hierarchy dashboard after save attempt",
+        },
+        422: {
+            "description": "Validation error, re-render form with errors",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+        **get_common_responses(401, 403, 404, 500),
+    },
+)
 async def save_node(
     request: Request,
     current_superuser: CurrentSuperuser,
@@ -621,7 +677,37 @@ async def save_node(
     """Save node (create or update) with Pydantic validation.
 
     Handles both node creation and updates, with proper validation,
-    error handling, and user feedback.
+    error handling, and user feedback. Automatically calculates LTREE
+    paths and depth based on parent relationships.
+
+    Args:
+        request: FastAPI request object
+        current_superuser: Current authenticated superuser
+        db: Database session
+        attr_repo: Attribute node repository
+        mfg_repo: Manufacturing type repository
+        node_id: Optional node ID (None for create, ID for update)
+        manufacturing_type_id: Manufacturing type ID
+        name: Node name
+        node_type: Node type (category, attribute, option, etc.)
+        parent_node_id: Optional parent node ID
+        data_type: Data type for attribute values
+        required: Whether the attribute is required
+        price_impact_type: How price is affected (fixed, percentage, formula)
+        price_impact_value: Price impact value
+        price_formula: Dynamic pricing formula
+        weight_impact: Weight impact value
+        weight_formula: Dynamic weight formula
+        technical_property_type: Technical property type
+        technical_impact_formula: Technical impact formula
+        sort_order: Display order
+        ui_component: UI component type
+        description: Node description
+        help_text: Help text for users
+
+    Returns:
+        RedirectResponse: Redirect to hierarchy dashboard with success or error
+        HTMLResponse: Re-rendered form with validation errors
     """
     try:
         # Prepare form data
@@ -660,18 +746,37 @@ async def save_node(
             )
 
     except ValueError as ve:
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Invalid numeric value: {str(ve)}",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message=f"Invalid numeric value: {str(ve)}",
+            message_type="error",
         )
     except Exception as e:
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Error saving node: {str(e)}",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message=f"Error saving node: {str(e)}",
+            message_type="error",
         )
 
 
-@router.get("/node/{node_id}/edit", response_class=HTMLResponse)
+@router.get(
+    "/node/{node_id}/edit",
+    response_class=HTMLResponse,
+    summary="Edit Node Form",
+    description="Display form for editing an existing attribute node",
+    response_description="HTML page with pre-filled node form",
+    operation_id="editNodeForm",
+    responses={
+        200: {
+            "description": "Successfully rendered node edit form",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+        302: {
+            "description": "Redirect if node not found",
+        },
+        **get_common_responses(401, 403, 404, 500),
+    },
+)
 async def edit_node_form(
     request: Request,
     node_id: int,
@@ -681,6 +786,10 @@ async def edit_node_form(
     attr_repo: AttributeNodeRepo,
 ):
     """Render node edit form.
+
+    Displays a form pre-filled with existing node data for editing.
+    Excludes the node itself and its descendants from the parent selector
+    to prevent circular references.
 
     Args:
         request: FastAPI request object
@@ -692,21 +801,24 @@ async def edit_node_form(
 
     Returns:
         HTMLResponse: Rendered node form template with pre-filled data
+        RedirectResponse: Redirect if node not found
     """
     # Get node by ID
     node = await attr_repo.get(node_id)
     if not node:
-        return RedirectResponse(
-            url="/admin/hierarchy?error=Node not found",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url="/admin/hierarchy",
+            message="Node not found",
+            message_type="error",
         )
 
     # Get manufacturing type
     manufacturing_type = await mfg_repo.get(node.manufacturing_type_id)
     if not manufacturing_type:
-        return RedirectResponse(
-            url="/admin/hierarchy?error=Manufacturing type not found",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url="/admin/hierarchy",
+            message="Manufacturing type not found",
+            message_type="error",
         )
 
     # Get all nodes for manufacturing type (for parent selector)
@@ -745,7 +857,19 @@ async def edit_node_form(
     )
 
 
-@router.post("/node/{node_id}/delete")
+@router.post(
+    "/node/{node_id}/delete",
+    summary="Delete Node",
+    description="Delete an attribute node (must not have children)",
+    response_description="Redirect to hierarchy dashboard with success or error message",
+    operation_id="deleteNode",
+    responses={
+        302: {
+            "description": "Redirect to hierarchy dashboard after deletion attempt",
+        },
+        **get_common_responses(401, 403, 404, 500),
+    },
+)
 async def delete_node(
     node_id: int,
     current_superuser: CurrentSuperuser,
@@ -754,6 +878,9 @@ async def delete_node(
 ):
     """Delete node.
 
+    Removes an attribute node from the hierarchy. The node must not have
+    any children - child nodes must be deleted first to prevent orphaned data.
+
     Args:
         node_id: Node ID to delete
         current_superuser: Current authenticated superuser
@@ -761,14 +888,15 @@ async def delete_node(
         attr_repo: Attribute node repository
 
     Returns:
-        RedirectResponse: Redirect to dashboard with success/error message
+        RedirectResponse: Redirect to dashboard with success or error message
     """
     # Get node by ID
     node = await attr_repo.get(node_id)
     if not node:
-        return RedirectResponse(
-            url="/admin/hierarchy?error=Node not found",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url="/admin/hierarchy",
+            message="Node not found",
+            message_type="error",
         )
 
     manufacturing_type_id = node.manufacturing_type_id
@@ -776,9 +904,10 @@ async def delete_node(
     # Check for children
     children = await attr_repo.get_children(node_id)
     if children:
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Cannot delete node with children. Delete children first.",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message="Cannot delete node with children. Delete children first.",
+            message_type="error",
         )
 
     # Delete node
@@ -786,12 +915,15 @@ async def delete_node(
         await attr_repo.delete(node_id)
         await db.commit()
 
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&success=Node deleted successfully",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message="Node deleted successfully",
+            message_type="success",
         )
+
     except Exception as e:
-        return RedirectResponse(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}&error=Failed to delete node: {str(e)}",
-            status_code=status.HTTP_303_SEE_OTHER,
+        return build_redirect_response(
+            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            message=f"Failed to delete node: {str(e)}",
+            message_type="error",
         )

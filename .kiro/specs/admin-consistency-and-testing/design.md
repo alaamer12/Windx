@@ -73,93 +73,38 @@ This design document outlines the architecture and implementation approach for e
 
 ### 1. Common Response Definitions
 
-**Location:** `app/core/responses.py`
+**Location:** `app/schemas/responses.py` (existing file)
 
 **Purpose:** Provide reusable OpenAPI response documentation
 
-**Interface:**
+**Note:** This file already exists with comprehensive response definitions including Pydantic models (`ErrorDetail`, `ErrorResponse`) and pre-defined response constants. All admin endpoints import `get_common_responses()` from this module.
+
+**Usage:**
 
 ```python
-# app/core/responses.py
+# Import in admin endpoints
+from app.schemas.responses import get_common_responses
 
-from typing import Any
-
-def get_common_responses(*status_codes: int) -> dict[int, dict[str, Any]]:
-    """Get common response definitions for OpenAPI documentation.
-    
-    Args:
-        *status_codes: HTTP status codes to include
-        
-    Returns:
-        Dictionary mapping status codes to response definitions
-        
-    Example:
-        responses={
-            200: {"description": "Success"},
-            **get_common_responses(401, 403, 500),
-        }
-    """
-    responses = {
-        401: {
-            "description": "Unauthorized - Invalid or missing authentication",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Could not validate credentials"
-                    }
-                }
-            },
-        },
-        403: {
-            "description": "Forbidden - Insufficient permissions",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Not enough permissions"
-                    }
-                }
-            },
-        },
-        404: {
-            "description": "Not Found - Resource does not exist",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Resource not found"
-                    }
-                }
-            },
-        },
-        422: {
-            "description": "Validation Error - Invalid request data",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": [
-                            {
-                                "loc": ["body", "email"],
-                                "msg": "value is not a valid email address",
-                                "type": "value_error.email"
-                            }
-                        ]
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Internal Server Error - Unexpected error occurred",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Internal server error"
-                    }
-                }
-            },
-        },
-    }
-    
-    return {code: responses[code] for code in status_codes if code in responses}
+# Use in endpoint decorator
+@router.get(
+    "/customers",
+    responses={
+        200: {"description": "Success"},
+        **get_common_responses(401, 403, 500),
+    },
+)
+async def list_customers(...):
+    pass
 ```
+
+**Available Response Codes:**
+- `401`: Authentication required or invalid token
+- `403`: Insufficient permissions
+- `404`: Resource not found
+- `422`: Validation error
+- `429`: Rate limit exceeded
+- `500`: Internal server error
+- `503`: Service unavailable
 
 ### 2. Shared Admin Utilities Module
 
@@ -365,7 +310,7 @@ JSONResponse = Annotated[JSONResponse, ...]
 ```python
 # app/api/v1/endpoints/admin_customers.py
 
-from app.core.responses import get_common_responses
+from app.schemas.responses import get_common_responses
 
 @router.get(
     "",
@@ -488,7 +433,7 @@ from app.api.types import (
     OptionalIntForm,
     OptionalBoolForm,
 )
-from app.core.responses import get_common_responses
+from app.schemas.responses import get_common_responses
 
 @router.get(
     "/",

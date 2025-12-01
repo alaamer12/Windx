@@ -178,7 +178,7 @@ async def test_ltree_path_sanitization(db_session: AsyncSession):
     )
     assert node2.ltree_path == "frame_material.aluminum_and_steel"
 
-    # Test special character removal
+    # Test special character removal (hyphens are removed, not replaced)
     node3 = await service.create_node(
         manufacturing_type_id=mfg_type.id,
         name="Premium (High-End)",

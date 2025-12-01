@@ -56,7 +56,7 @@ class TestSanitizeForLtree:
 
     def test_separators(self):
         """Test various separator replacements."""
-        assert self.service._sanitize_for_ltree("Hyphen-Separated") == "hyphen_separated"
+        assert self.service._sanitize_for_ltree("Hyphen-Separated") == "hyphenseparated"
         assert self.service._sanitize_for_ltree("Slash/Separated") == "slash_separated"
         assert self.service._sanitize_for_ltree("Backslash\\Separated") == "backslash_separated"
         assert self.service._sanitize_for_ltree("Pipe|Separated") == "pipe_separated"
@@ -127,14 +127,15 @@ class TestSanitizeForLtree:
     def test_complex_real_world_examples(self):
         """Test complex real-world product names."""
         # Note: Numbers in the middle don't get n_ prefix, only at the start
+        # Hyphens are removed, not replaced with underscore
         assert (
             self.service._sanitize_for_ltree("Premium Café-Style Door™ (100% Wood)")
-            == "premium_cafe_style_door_100_percent_wood"
+            == "premium_cafestyle_door_100_percent_wood"
         )
 
         assert (
             self.service._sanitize_for_ltree("Energy-Efficient Window: $500-$1000")
-            == "energy_efficient_window_dollar_500_dollar_1000"
+            == "energyefficient_window_dollar_500dollar_1000"
         )
 
         # This starts with a number after sanitization, so gets n_ prefix
@@ -193,10 +194,10 @@ async def test_create_node_with_special_characters(db_session: AsyncSession):
 
     # Test various special character names
     test_cases = [
-        ("Café-Style Door™", "cafe_style_door"),
+        ("Café-Style Door™", "cafestyle_door"),
         ("100% Pure Aluminum", "n_100_percent_pure_aluminum"),
         ("Premium & Deluxe", "premium_and_deluxe"),
-        ("Price: $50-$100", "price_dollar_50_dollar_100"),
+        ("Price: $50-$100", "price_dollar_50dollar_100"),
     ]
 
     for display_name, expected_path in test_cases:
@@ -249,7 +250,9 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
         )
 
     # Test invalid node_type
-    with pytest.raises(ValueError, match="Invalid node_type"):
+    from app.core.exceptions import ValidationException
+    
+    with pytest.raises(ValidationException, match="Invalid node_type"):
         await service.create_node(
             manufacturing_type_id=mfg_type.id,
             name="Test",

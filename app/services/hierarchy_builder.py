@@ -259,9 +259,14 @@ class HierarchyBuilderService(BaseService):
                 sanitized = sanitized.replace(symbol, "_")
 
         # Step 4: Replace common separators with underscores
-        separators = [" ", "-", "/", "\\", "|", ".", ",", ";", ":", "~", "`"]
+        # Note: Hyphens between words should be removed, not replaced with underscore
+        # to avoid double underscores (e.g., "High-End" -> "highend" not "high_end")
+        separators = [" ", "/", "\\", "|", ".", ",", ";", ":", "~", "`"]
         for sep in separators:
             sanitized = sanitized.replace(sep, "_")
+        
+        # Remove hyphens (don't replace with underscore to avoid "high_end" -> "high__end")
+        sanitized = sanitized.replace("-", "")
 
         # Step 5: Remove parentheses, brackets, quotes (but keep content)
         sanitized = re.sub(r'[(){}\[\]"\']', "_", sanitized)

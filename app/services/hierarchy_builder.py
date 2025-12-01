@@ -231,13 +231,15 @@ class HierarchyBuilderService(BaseService):
         sanitized = ascii_name.lower()
 
         # Step 3: Replace common symbols with words
+        # Note: We replace symbols with just the word, not wrapped in underscores
+        # The separators step will add underscores where needed
         replacements = {
-            "&": "and",
-            "+": "plus",
-            "%": "percent",
-            "@": "at",
-            "#": "number",
-            "$": "dollar",
+            "&": "_and_",  # Keep underscores for & since it's typically between words
+            "+": "_plus_",
+            "%": "_percent_",
+            "@": "_at_",
+            "#": "_number_",
+            "$": "dollar",  # No underscores - let context determine
             "€": "euro",
             "£": "pound",
             "¥": "yen",
@@ -253,26 +255,23 @@ class HierarchyBuilderService(BaseService):
         }
 
         for symbol, replacement in replacements.items():
-            if replacement:
-                sanitized = sanitized.replace(symbol, f"_{replacement}_")
-            else:
-                sanitized = sanitized.replace(symbol, "_")
+            sanitized = sanitized.replace(symbol, replacement)
 
         # Step 4: Replace common separators with underscores
-        # Note: Hyphens between words should be removed, not replaced with underscore
-        # to avoid double underscores (e.g., "High-End" -> "highend" not "high_end")
-        separators = [" ", "/", "\\", "|", ".", ",", ";", ":", "~", "`"]
+        separators = [" ", "-", "/", "\\", "|", ".", ",", ";", ":", "~", "`"]
         for sep in separators:
             sanitized = sanitized.replace(sep, "_")
-        
-        # Remove hyphens (don't replace with underscore to avoid "high_end" -> "high__end")
-        sanitized = sanitized.replace("-", "")
 
         # Step 5: Remove parentheses, brackets, quotes (but keep content)
         sanitized = re.sub(r'[(){}\[\]"\']', "_", sanitized)
 
         # Step 6: Remove any remaining non-alphanumeric characters except underscore
         sanitized = re.sub(r"[^a-z0-9_]", "", sanitized)
+
+        # Step 6.5: Add underscores between letter-number and number-letter transitions
+        # This handles cases like "dollar500" -> "dollar_500"
+        sanitized = re.sub(r"([a-z])(\d)", r"\1_\2", sanitized)  # letter to digit
+        sanitized = re.sub(r"(\d)([a-z])", r"\1_\2", sanitized)  # digit to letter
 
         # Step 7: Replace multiple consecutive underscores with single underscore
         sanitized = re.sub(r"_+", "_", sanitized)

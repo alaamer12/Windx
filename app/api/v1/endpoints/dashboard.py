@@ -104,9 +104,11 @@ async def get_data_entry_form(
     return templates.TemplateResponse(
         request,
         "dashboard/data_entry.html.jinja",
-        {
-            "user": current_superuser,
-        },
+        get_admin_context(
+            request,
+            current_superuser,
+            active_page="data_entry",
+        ),
     )
 
 

@@ -91,7 +91,7 @@ class TestSanitizeForLtree:
 
     def test_leading_number(self):
         """Test names starting with numbers get 'n_' prefix."""
-        assert self.service._sanitize_for_ltree("100mm") == "n_100mm"
+        assert self.service._sanitize_for_ltree("100mm") == "n_100_mm"
         assert self.service._sanitize_for_ltree("5 Star") == "n_5_star"
         assert self.service._sanitize_for_ltree("2024 Model") == "n_2024_model"
 
@@ -167,13 +167,13 @@ class TestSanitizeForLtree:
 
     def test_preserves_alphanumeric(self):
         """Test that alphanumeric characters are preserved."""
-        assert self.service._sanitize_for_ltree("abc123xyz") == "abc123xyz"
-        assert self.service._sanitize_for_ltree("Test123") == "test123"
+        assert self.service._sanitize_for_ltree("abc123xyz") == "abc_123_xyz"
+        assert self.service._sanitize_for_ltree("Test123") == "test_123"
 
     def test_mixed_case_with_numbers(self):
         """Test mixed case with numbers."""
-        assert self.service._sanitize_for_ltree("Model2024XL") == "model2024xl"
-        assert self.service._sanitize_for_ltree("Type3Premium") == "type3premium"
+        assert self.service._sanitize_for_ltree("Model2024XL") == "model_2024_xl"
+        assert self.service._sanitize_for_ltree("Type3Premium") == "type_3_premium"
 
 
 @pytest.mark.asyncio

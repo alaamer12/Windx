@@ -110,18 +110,18 @@ async def get_table_names() -> list[str]:
 
 async def enable_ltree_extension() -> bool:
     """Enable PostgreSQL LTREE extension.
-    
+
     This function enables the LTREE extension which provides data types
     and functions for representing hierarchical tree-like structures.
-    
+
     The LTREE extension is required for the Windx attribute hierarchy system.
-    
+
     Returns:
         bool: True if extension was enabled successfully, False otherwise
-    
+
     Raises:
         Exception: If extension cannot be enabled
-    
+
     Example:
         ```python
         # Enable during application startup
@@ -130,7 +130,7 @@ async def enable_ltree_extension() -> bool:
             await init_db()
             await enable_ltree_extension()
         ```
-    
+
     Note:
         This function is idempotent - it can be called multiple times safely.
         The extension will only be created if it doesn't already exist.
@@ -142,9 +142,7 @@ async def enable_ltree_extension() -> bool:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
 
             # Verify extension is installed
-            result = await conn.execute(
-                text("SELECT 1 FROM pg_extension WHERE extname = 'ltree'")
-            )
+            result = await conn.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'ltree'"))
             if not result.scalar():
                 raise Exception("LTREE extension failed to install")
 
@@ -157,14 +155,14 @@ async def enable_ltree_extension() -> bool:
 
 async def execute_sql_file(file_path: str | Path) -> None:
     """Execute SQL commands from a file.
-    
+
     Args:
         file_path: Path to SQL file
-        
+
     Raises:
         FileNotFoundError: If SQL file doesn't exist
         Exception: If SQL execution fails
-    
+
     Example:
         ```python
         await execute_sql_file("app/database/sql/enable_ltree.sql")

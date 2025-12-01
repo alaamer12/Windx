@@ -209,10 +209,7 @@ async def create_template(
             "description": "Template successfully applied",
             "content": {
                 "application/json": {
-                    "example": {
-                        "configuration_id": 123,
-                        "message": "Template applied successfully"
-                    }
+                    "example": {"configuration_id": 123, "message": "Template applied successfully"}
                 }
             },
         },
@@ -251,11 +248,6 @@ async def apply_template(
     from app.services.template import TemplateService
 
     template_service = TemplateService(db)
-    config = await template_service.apply_template(
-        template_id, current_user, configuration_name
-    )
+    config = await template_service.apply_template(template_id, current_user, configuration_name)
 
-    return {
-        "configuration_id": config.id,
-        "message": "Template applied successfully"
-    }
+    return {"configuration_id": config.id, "message": "Template applied successfully"}

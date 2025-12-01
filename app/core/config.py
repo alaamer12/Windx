@@ -17,6 +17,7 @@ Features:
     - LRU cache for settings singleton
     - Type-safe configuration with validation
 """
+from __future__ import annotations
 
 from functools import lru_cache
 from typing import Annotated, Literal
@@ -179,7 +180,9 @@ class DatabaseSettings(BaseSettings):
             if isinstance(self.password, SecretStr)
             else self.password
         )
-        return f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        return (
+            f"postgresql+asyncpg://{self.user}:{password_str}@{self.host}:{self.port}/{self.name}"
+        )
 
     @computed_field
     @property
@@ -192,7 +195,7 @@ class DatabaseSettings(BaseSettings):
         return self.provider == "supabase"
 
     @model_validator(mode="after")
-    def validate_connection_mode(self) -> "DatabaseSettings":
+    def validate_connection_mode(self) -> DatabaseSettings:
         """Validate connection mode and show warnings."""
         import warnings
 
@@ -604,6 +607,26 @@ class WindxSettings(BaseSettings):
         ),
     ] = 2
 
+    # Experimental Features
+    # Note: These flags are flexible and may be renamed or removed in future versions
+    experimental_customers_page: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Enable experimental customers admin page (may be renamed/removed)",
+            alias_priority=2,  # Allow flexible renaming
+        ),
+    ] = False
+
+    experimental_orders_page: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="Enable experimental orders admin page (may be renamed/removed)",
+            alias_priority=2,  # Allow flexible renaming
+        ),
+    ] = False
+
     @computed_field
     @property
     def allowed_functions_list(self) -> list[str]:
@@ -698,12 +721,12 @@ class Settings(BaseSettings):
         """
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
-        elif isinstance(v, list | str):
+        elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
 
     @model_validator(mode="after")
-    def validate_settings(self) -> "Settings":
+    def validate_settings(self) -> Settings:
         """Validate settings after initialization.
 
         Returns:

@@ -133,9 +133,7 @@ class TestBulkUserCreation:
         users_data = [
             create_user_data(email="new1@example.com", username="new1"),
             create_user_data(email="new2@example.com", username="new2"),
-            create_user_data(
-                email=test_user.email, username="new3"
-            ),  # Duplicate email
+            create_user_data(email=test_user.email, username="new3"),  # Duplicate email
         ]
 
         # Remove fields not in UserCreate schema
@@ -362,9 +360,7 @@ class TestBulkUserCreation:
         assert len(data) == 20
 
         # Verify all users were created
-        result = await db_session.execute(
-            select(User).where(User.email.like("large%@example.com"))
-        )
+        result = await db_session.execute(select(User).where(User.email.like("large%@example.com")))
         db_users = result.scalars().all()
         assert len(db_users) == 20
 
@@ -395,9 +391,7 @@ class TestBulkUserCreation:
 
         # Verify password is hashed in database
         # noinspection PyTypeChecker
-        result = await db_session.execute(
-            select(User).where(User.email == "hash1@example.com")
-        )
+        result = await db_session.execute(select(User).where(User.email == "hash1@example.com"))
         user = result.scalar_one()
 
         # Password should be hashed (bcrypt format)
@@ -447,9 +441,7 @@ class TestBulkUserCreation:
         superuser_auth_headers: dict,
     ):
         """Test that response format matches specification."""
-        users_data = [
-            create_user_data(email="format@example.com", username="format1")
-        ]
+        users_data = [create_user_data(email="format@example.com", username="format1")]
         users_data[0].pop("is_active", None)
         users_data[0].pop("is_superuser", None)
 
@@ -503,4 +495,3 @@ class TestBulkUserCreation:
 
         assert response.status_code == 201
         assert "application/json" in response.headers["content-type"]
-

@@ -1,4 +1,5 @@
 """Reset Alembic version and run migrations fresh."""
+
 import asyncio
 
 from sqlalchemy import text

@@ -1,0 +1,122 @@
+{% extends "admin/base.html.jinja" %}
+
+{% block title %}Manufacturing Types - WindX Admin{% endblock %}
+
+{% set active_page = "manufacturing" %}
+
+{% block extra_css %}
+<style>
+    .truncate-text {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: help;
+        color: var(--text-light);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Manufacturing Types</h1>
+    <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary">
+        + New Type
+    </a>
+</div>
+
+<div class="card">
+    {% if manufacturing_types %}
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Name</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Category</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Description</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Base Price</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light);">Status</th>
+                <th style="padding: 1rem; font-weight: 600; color: var(--text-light); text-align: right;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for type in manufacturing_types %}
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 1rem; font-weight: 500;">{{ type.name }}</td>
+                <td style="padding: 1rem;">{{ type.base_category or type.category or '-' }}</td>
+                <td style="padding: 1rem;">
+                    <div class="truncate-text" title="{{ type.description or '' }}">
+                        {{ type.description or '-' }}
+                    </div>
+                </td>
+                <td style="padding: 1rem;">${{ "%.2f"|format(type.base_price) }}</td>
+                <td style="padding: 1rem;">
+                    {% if type.is_active %}
+                    <span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">Active</span>
+                    {% else %}
+                    <span style="background: #f1f5f9; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 1rem; text-align: right;">
+                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                        <a href="/api/v1/admin/manufacturing-types/{{ type.id }}/edit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
+                        <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ type.id }}" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Hierarchy</a>
+                        <button type="button" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;" onclick="confirmDelete({{ type.id }}, '{{ type.name }}')">Delete</button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 3rem 1rem; color: var(--text-light);">
+        <div style="font-size: 3rem; opacity: 0.5; margin-bottom: 1rem;">🏭</div>
+        <h3>No Manufacturing Types</h3>
+        <p>Create your first product type to get started.</p>
+        <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary" style="margin-top: 1rem;">
+            Create First Type
+        </a>
+    </div>
+    {% endif %}
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+        <div class="modal-content" style="background-color: #fefefe; margin: auto; padding: 2rem; border: 1px solid #888; width: 100%; max-width: 500px; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            <h2 style="margin-bottom: 1rem; color: var(--text);">Confirm Deletion</h2>
+            <p style="margin-bottom: 1.5rem; color: var(--text-light);">Are you sure you want to delete <strong id="deleteItemName"></strong>? This action cannot be undone and will delete all associated attribute hierarchies and configurations.</p>
+            
+            <form id="deleteForm" method="POST" action="">
+                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                    <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Permanently</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(id, name) {
+        const modal = document.getElementById('deleteModal');
+        const form = document.getElementById('deleteForm');
+        const nameSpan = document.getElementById('deleteItemName');
+        
+        form.action = `/api/v1/admin/manufacturing-types/${id}/delete`;
+        nameSpan.textContent = name;
+        
+        modal.style.display = "flex";
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = "none";
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('deleteModal');
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

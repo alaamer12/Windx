@@ -94,9 +94,7 @@ class ConfigurationTemplateRepository(
         """
         result = await self.db.execute(
             select(ConfigurationTemplate)
-            .where(
-                ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id
-            )
+            .where(ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id)
             .where(ConfigurationTemplate.is_active == True)
             .order_by(ConfigurationTemplate.usage_count.desc())
         )
@@ -122,7 +120,6 @@ class ConfigurationTemplateRepository(
             .values(usage_count=ConfigurationTemplate.usage_count + 1)
         )
         await self.db.commit()
-
 
     def get_filtered(
         self,
@@ -164,9 +161,7 @@ class ConfigurationTemplateRepository(
 
         return query
 
-    async def get_with_selections(
-        self, template_id: int
-    ) -> ConfigurationTemplate | None:
+    async def get_with_selections(self, template_id: int) -> ConfigurationTemplate | None:
         """Get template with selections loaded.
 
         Loads the template along with all its selections and their
@@ -202,9 +197,7 @@ class ConfigurationTemplateRepository(
         )
         return result.scalar_one_or_none()
 
-    async def get_with_full_details(
-        self, template_id: int
-    ) -> ConfigurationTemplate | None:
+    async def get_with_full_details(self, template_id: int) -> ConfigurationTemplate | None:
         """Get template with all related data eager-loaded.
 
         Loads the template along with:

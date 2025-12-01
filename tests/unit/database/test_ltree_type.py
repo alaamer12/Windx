@@ -45,6 +45,7 @@ class TestLTREEType:
 
     def test_ltree_comparator_ancestor_of(self):
         """Test LTREE ancestor_of operator."""
+
         # Create a test model
         class TestNode(Base):
             __tablename__ = "test_nodes_ancestor"
@@ -57,6 +58,7 @@ class TestLTREEType:
 
     def test_ltree_comparator_descendant_of(self):
         """Test LTREE descendant_of operator."""
+
         # Create a test model
         class TestNode(Base):
             __tablename__ = "test_nodes_descendant"
@@ -69,6 +71,7 @@ class TestLTREEType:
 
     def test_ltree_comparator_lquery(self):
         """Test LTREE lquery pattern matching operator."""
+
         # Create a test model
         class TestNode(Base):
             __tablename__ = "test_nodes_lquery"
@@ -109,6 +112,7 @@ class TestLTREEModelDefinition:
 
     def test_model_with_ltree_column(self):
         """Test creating a model with LTREE column."""
+
         class AttributeNode(Base):
             __tablename__ = "test_attribute_nodes"
 
@@ -116,9 +120,7 @@ class TestLTREEModelDefinition:
             name: Mapped[str] = mapped_column()
             ltree_path: Mapped[str] = mapped_column(LTREE, nullable=False)
 
-            __table_args__ = (
-                Index('idx_test_ltree_path', 'ltree_path', postgresql_using='gist'),
-            )
+            __table_args__ = (Index("idx_test_ltree_path", "ltree_path", postgresql_using="gist"),)
 
         # Verify table was created
         assert AttributeNode.__tablename__ == "test_attribute_nodes"
@@ -130,6 +132,7 @@ class TestLTREEModelDefinition:
 
     def test_model_with_ltree_type_decorator(self):
         """Test creating a model with LtreeType decorator."""
+
         class Node(Base):
             __tablename__ = "test_nodes_decorator"
 
@@ -150,6 +153,7 @@ class TestLTREEQueryExamples:
 
     def test_query_descendants_example(self):
         """Test example query for finding descendants."""
+
         class Node(Base):
             __tablename__ = "test_query_descendants"
             id: Mapped[int] = mapped_column(primary_key=True)
@@ -165,6 +169,7 @@ class TestLTREEQueryExamples:
 
     def test_query_ancestors_example(self):
         """Test example query for finding ancestors."""
+
         class Node(Base):
             __tablename__ = "test_query_ancestors"
             id: Mapped[int] = mapped_column(primary_key=True)
@@ -180,6 +185,7 @@ class TestLTREEQueryExamples:
 
     def test_query_pattern_matching_example(self):
         """Test example query for pattern matching."""
+
         class Node(Base):
             __tablename__ = "test_query_pattern"
             id: Mapped[int] = mapped_column(primary_key=True)

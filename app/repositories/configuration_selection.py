@@ -52,9 +52,7 @@ class ConfigurationSelectionRepository(
         """
         super().__init__(ConfigurationSelection, db)
 
-    async def get_by_configuration(
-        self, config_id: int
-    ) -> list[ConfigurationSelection]:
+    async def get_by_configuration(self, config_id: int) -> list[ConfigurationSelection]:
         """Get all selections for a configuration.
 
         Args:
@@ -70,9 +68,7 @@ class ConfigurationSelectionRepository(
         )
         return list(result.scalars().all())
 
-    async def get_by_attribute_node(
-        self, node_id: int
-    ) -> list[ConfigurationSelection]:
+    async def get_by_attribute_node(self, node_id: int) -> list[ConfigurationSelection]:
         """Get all selections for an attribute node.
 
         Args:
@@ -88,9 +84,7 @@ class ConfigurationSelectionRepository(
         )
         return list(result.scalars().all())
 
-    async def bulk_create(
-        self, selections: list[dict]
-    ) -> list[ConfigurationSelection]:
+    async def bulk_create(self, selections: list[dict]) -> list[ConfigurationSelection]:
         """Create multiple selections in bulk.
 
         Args:

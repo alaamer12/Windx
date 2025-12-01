@@ -174,9 +174,7 @@ class TemplateService(BaseService):
             )
 
         # Get template selections
-        template_selections = await self.template_selection_repo.get_by_template(
-            template_id
-        )
+        template_selections = await self.template_selection_repo.get_by_template(template_id)
 
         # Create configuration name if not provided
         if not config_name:
@@ -349,9 +347,7 @@ class TemplateService(BaseService):
             list[ConfigurationTemplate]: List of templates
         """
         if manufacturing_type_id:
-            templates = await self.template_repo.get_by_manufacturing_type(
-                manufacturing_type_id
-            )
+            templates = await self.template_repo.get_by_manufacturing_type(manufacturing_type_id)
         elif is_public is not None and is_public:
             templates = await self.template_repo.get_public_templates()
         else:
@@ -366,9 +362,7 @@ class TemplateService(BaseService):
 
         return templates
 
-    async def get_popular_templates(
-        self, limit: int = 10
-    ) -> list[ConfigurationTemplate]:
+    async def get_popular_templates(self, limit: int = 10) -> list[ConfigurationTemplate]:
         """Get most popular templates by usage count.
 
         Args:
@@ -379,9 +373,7 @@ class TemplateService(BaseService):
         """
         return await self.template_repo.get_popular(limit=limit)
 
-    async def update_template_estimates(
-        self, template_id: PositiveInt
-    ) -> ConfigurationTemplate:
+    async def update_template_estimates(self, template_id: PositiveInt) -> ConfigurationTemplate:
         """Update template estimated price and weight.
 
         Recalculates estimates based on current template selections.
@@ -431,7 +423,6 @@ class TemplateService(BaseService):
         await self.refresh(template)
 
         return template
-
 
     async def create_template(
         self, template_in: ConfigurationTemplateCreate, user: Any

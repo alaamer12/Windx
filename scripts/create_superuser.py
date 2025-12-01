@@ -41,14 +41,14 @@ async def create_superuser():
         try:
             # Check if user already exists
             result = await session.execute(
-                select(User).where(
-                    (User.email == email) | (User.username == username)
-                )
+                select(User).where((User.email == email) | (User.username == username))
             )
             existing_user = result.scalar_one_or_none()
 
             if existing_user:
-                print(f"\n❌ Error: User with email '{email}' or username '{username}' already exists!")
+                print(
+                    f"\n❌ Error: User with email '{email}' or username '{username}' already exists!"
+                )
                 return
 
             # Create superuser
@@ -100,9 +100,7 @@ async def promote_to_superuser():
         try:
             # Find user
             result = await session.execute(
-                select(User).where(
-                    (User.email == identifier) | (User.username == identifier)
-                )
+                select(User).where((User.email == identifier) | (User.username == identifier))
             )
             user = result.scalar_one_or_none()
 

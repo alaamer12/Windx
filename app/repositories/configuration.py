@@ -64,7 +64,7 @@ class ConfigurationRepository(
             ```python
             # Get all configurations for customer
             configs = await repo.get_by_customer(42)
-            
+
             # Get only quoted configurations
             quoted = await repo.get_by_customer(42, status="quoted")
             ```
@@ -95,7 +95,7 @@ class ConfigurationRepository(
             ```python
             # Get all draft configurations
             drafts = await repo.get_by_status("draft")
-            
+
             # Get all ordered configurations
             orders = await repo.get_by_status("ordered")
             ```

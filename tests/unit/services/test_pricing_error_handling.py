@@ -31,9 +31,7 @@ def pricing_service(db_session: AsyncSession) -> PricingService:
 class TestPricingServiceErrorHandling:
     """Test error handling in PricingService."""
 
-    async def test_evaluate_formula_division_by_zero(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_division_by_zero(self, pricing_service: PricingService):
         """Test that division by zero raises InvalidFormulaException."""
         formula = "100 / 0"
         context = {}
@@ -58,9 +56,7 @@ class TestPricingServiceErrorHandling:
         assert "Division by zero" in exc_info.value.message
         assert exc_info.value.details["error_type"] == "division_by_zero"
 
-    async def test_evaluate_formula_unknown_variable(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_unknown_variable(self, pricing_service: PricingService):
         """Test that unknown variable raises InvalidFormulaException."""
         formula = "width * unknown_var"
         context = {"width": 100}
@@ -72,9 +68,7 @@ class TestPricingServiceErrorHandling:
         assert exc_info.value.details["error_type"] == "unknown_variable"
         assert "available_variables" in exc_info.value.details
 
-    async def test_evaluate_formula_syntax_error(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_syntax_error(self, pricing_service: PricingService):
         """Test that syntax error raises InvalidFormulaException."""
         formula = "width * * height"  # Invalid syntax
         context = {"width": 100, "height": 50}
@@ -85,9 +79,7 @@ class TestPricingServiceErrorHandling:
         assert "syntax error" in exc_info.value.message.lower()
         assert exc_info.value.details["error_type"] == "syntax_error"
 
-    async def test_evaluate_formula_overflow(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_overflow(self, pricing_service: PricingService):
         """Test that overflow raises InvalidFormulaException."""
         formula = "width ** 1000"  # Will overflow
         context = {"width": 10}
@@ -95,11 +87,12 @@ class TestPricingServiceErrorHandling:
         with pytest.raises(InvalidFormulaException) as exc_info:
             await pricing_service.evaluate_price_formula(formula, context)
 
-        assert "Calculation error" in exc_info.value.message or "out of range" in exc_info.value.message.lower()
+        assert (
+            "Calculation error" in exc_info.value.message
+            or "out of range" in exc_info.value.message.lower()
+        )
 
-    async def test_evaluate_formula_invalid_result(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_invalid_result(self, pricing_service: PricingService):
         """Test that invalid result raises InvalidFormulaException."""
         # This will be caught by the range check
         formula = "width * 1e20"  # Result too large
@@ -108,11 +101,12 @@ class TestPricingServiceErrorHandling:
         with pytest.raises(InvalidFormulaException) as exc_info:
             await pricing_service.evaluate_price_formula(formula, context)
 
-        assert "invalid" in exc_info.value.message.lower() or "out of range" in exc_info.value.message.lower()
+        assert (
+            "invalid" in exc_info.value.message.lower()
+            or "out of range" in exc_info.value.message.lower()
+        )
 
-    async def test_evaluate_formula_empty_formula(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_empty_formula(self, pricing_service: PricingService):
         """Test that empty formula returns zero."""
         formula = ""
         context = {}
@@ -121,9 +115,7 @@ class TestPricingServiceErrorHandling:
 
         assert result == Decimal("0")
 
-    async def test_evaluate_formula_whitespace_only(
-        self, pricing_service: PricingService
-    ):
+    async def test_evaluate_formula_whitespace_only(self, pricing_service: PricingService):
         """Test that whitespace-only formula returns zero."""
         formula = "   "
         context = {}
@@ -233,9 +225,7 @@ class TestPricingServiceErrorHandling:
         assert exc_info.value.details["configuration_id"] == config.id
         assert exc_info.value.details["selection_id"] == selection.id
 
-    async def test_calculate_configuration_price_not_found(
-        self, pricing_service: PricingService
-    ):
+    async def test_calculate_configuration_price_not_found(self, pricing_service: PricingService):
         """Test that non-existent configuration raises NotFoundException."""
         with pytest.raises(NotFoundException) as exc_info:
             await pricing_service.calculate_configuration_price(99999)
@@ -248,16 +238,12 @@ class TestPricingServiceErrorHandling:
         assert pricing_service.validate_formula("(width + height) / 2")
         assert pricing_service.validate_formula("width ** 2")
 
-    async def test_validate_formula_invalid_syntax(
-        self, pricing_service: PricingService
-    ):
+    async def test_validate_formula_invalid_syntax(self, pricing_service: PricingService):
         """Test that invalid syntax fails validation."""
         assert not pricing_service.validate_formula("width * * height")
         assert not pricing_service.validate_formula("width +")
 
-    async def test_validate_formula_unsafe_operation(
-        self, pricing_service: PricingService
-    ):
+    async def test_validate_formula_unsafe_operation(self, pricing_service: PricingService):
         """Test that unsafe operations fail validation."""
         # These should fail because they use unsafe operations
         assert not pricing_service.validate_formula("import os")
@@ -268,9 +254,7 @@ class TestPricingServiceErrorHandling:
         assert pricing_service.validate_formula("")
         assert pricing_service.validate_formula("   ")
 
-    async def test_meaningful_error_messages(
-        self, pricing_service: PricingService
-    ):
+    async def test_meaningful_error_messages(self, pricing_service: PricingService):
         """Test that error messages are meaningful and helpful."""
         # Division by zero
         with pytest.raises(InvalidFormulaException) as exc_info:
@@ -289,9 +273,7 @@ class TestPricingServiceErrorHandling:
             await pricing_service.evaluate_price_formula("1 +", {})
         assert "syntax error" in exc_info.value.message.lower()
 
-    async def test_error_details_include_context(
-        self, pricing_service: PricingService
-    ):
+    async def test_error_details_include_context(self, pricing_service: PricingService):
         """Test that error details include helpful context."""
         formula = "width / height"
         context = {"width": 100, "height": 0}

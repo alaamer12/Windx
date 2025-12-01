@@ -426,6 +426,19 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
         },
     )
 
+    # Check if request accepts HTML (browser) and error is 401/403
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and exc.status_code in [
+        status.HTTP_401_UNAUTHORIZED,
+        status.HTTP_403_FORBIDDEN,
+    ]:
+        from fastapi.responses import RedirectResponse
+
+        return RedirectResponse(
+            url=f"/api/v1/admin/login?next={request.url.path}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
     # Build error response
     error_response = ErrorResponse(
         error=exc.error_type,

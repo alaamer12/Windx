@@ -13,13 +13,16 @@ Features:
     - Superuser authorization
     - HTTP Bearer token support
 """
+from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
+from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.database import get_db
 from app.models.user import User
@@ -31,12 +34,16 @@ security = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
+    request: Request,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(security)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     """Get current authenticated user from JWT token.
 
+    Supports both Bearer token (API) and Cookie (Browser) authentication.
+
     Args:
+        request (Request): FastAPI request object
         credentials (HTTPAuthorizationCredentials | None): HTTP bearer credentials
         db (AsyncSession): Database session
 
@@ -46,14 +53,34 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
-    if credentials is None:
+    token = None
+
+    # 1. Try Bearer token from Authorization header
+    if credentials:
+        token = credentials.credentials
+
+    # 2. Try Cookie if no Bearer token
+    if not token:
+        token = request.cookies.get("access_token")
+        # Handle "Bearer " prefix in cookie if present
+        if token and token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
+    if not token:
+        # Check if it's a browser request (HTML) -> Redirect to login
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            # For browser requests, we might want to redirect, but dependencies
+            # usually raise exceptions. The exception handler or the endpoint
+            # should handle the redirect. For now, we raise 401.
+            # The admin endpoints can catch this or we can use a separate dependency for admin pages.
+            pass
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    token = credentials.credentials
     user_id = decode_access_token(token)
 
     if user_id is None:
@@ -65,6 +92,7 @@ async def get_current_user(
 
     # Check if session is active
     from app.repositories.session import SessionRepository
+
     session_repo = SessionRepository(db)
     session = await session_repo.get_by_token(token)
 
@@ -113,3 +141,26 @@ async def get_current_active_superuser(
             detail="Not enough permissions",
         )
     return current_user
+
+
+def get_admin_context(
+    request: Request,
+    current_user: User,
+    active_page: str = "dashboard",
+    **extra: Any,
+) -> dict[str, Any]:
+    """Return a template context dictionary with common admin data.
+
+    Includes the request, current_user, active_page, and the experimental feature flags.
+    Additional keyword arguments are merged into the context.
+    """
+    settings = get_settings()
+    context: dict[str, Any] = {
+        "request": request,
+        "current_user": current_user,
+        "active_page": active_page,
+        "enable_customers": settings.windx.experimental_customers_page,
+        "enable_orders": settings.windx.experimental_orders_page,
+    }
+    context.update(extra)
+    return context

@@ -19,6 +19,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi_cache.decorator import cache
 
 from app.api.types import CurrentSuperuser, DBSession
+from app.api.deps import get_admin_context
 from app.schemas.responses import get_common_responses
 from app.services.dashboard import DashboardService
 from app.services.user import UserService
@@ -70,13 +71,14 @@ async def get_dashboard(
     return templates.TemplateResponse(
         request,
         "dashboard/index.html.jinja",
-        {
-            "user": current_superuser,
-            "stats": stats,
-            "users": all_users,
-        },
+        get_admin_context(
+            request,
+            current_superuser,
+            active_page="dashboard",
+            stats=stats,
+            users=all_users,
+        ),
     )
-
 
 
 @router.get(
@@ -102,9 +104,11 @@ async def get_data_entry_form(
     return templates.TemplateResponse(
         request,
         "dashboard/data_entry.html.jinja",
-        {
-            "user": current_superuser,
-        },
+        get_admin_context(
+            request,
+            current_superuser,
+            active_page="data_entry",
+        ),
     )
 
 

@@ -68,9 +68,7 @@ class ConfigurationService(BaseService):
         self.attr_node_repo = AttributeNodeRepository(db)
         self.pricing_service = PricingService(db)
 
-    async def create_configuration(
-        self, config_in: ConfigurationCreate
-    ) -> Configuration:
+    async def create_configuration(self, config_in: ConfigurationCreate) -> Configuration:
         """Create new configuration with initial selections.
 
         Creates a configuration and optionally adds initial attribute selections.
@@ -137,9 +135,7 @@ class ConfigurationService(BaseService):
             )
         return config
 
-    async def get_configuration_with_details(
-        self, config_id: PositiveInt
-    ) -> Configuration:
+    async def get_configuration_with_details(self, config_id: PositiveInt) -> Configuration:
         """Get configuration with full selection data.
 
         Loads configuration with all related data including selections,
@@ -310,9 +306,7 @@ class ConfigurationService(BaseService):
 
         return selection
 
-    async def remove_selection(
-        self, config_id: PositiveInt, selection_id: PositiveInt
-    ) -> None:
+    async def remove_selection(self, config_id: PositiveInt, selection_id: PositiveInt) -> None:
         """Remove a selection from a configuration.
 
         Args:
@@ -417,9 +411,7 @@ class ConfigurationService(BaseService):
         query = select(Configuration)
 
         if manufacturing_type_id:
-            query = query.where(
-                Configuration.manufacturing_type_id == manufacturing_type_id
-            )
+            query = query.where(Configuration.manufacturing_type_id == manufacturing_type_id)
 
         if customer_id:
             query = query.where(Configuration.customer_id == customer_id)
@@ -431,7 +423,6 @@ class ConfigurationService(BaseService):
 
         result = await self.db.execute(query)
         return list(result.scalars().all())
-
 
     def get_user_configurations_query(
         self,
@@ -462,9 +453,7 @@ class ConfigurationService(BaseService):
 
         # Apply filters
         if manufacturing_type_id is not None:
-            query = query.where(
-                Configuration.manufacturing_type_id == manufacturing_type_id
-            )
+            query = query.where(Configuration.manufacturing_type_id == manufacturing_type_id)
 
         if status:
             query = query.where(Configuration.status == status)
@@ -474,9 +463,7 @@ class ConfigurationService(BaseService):
 
         return query
 
-    async def get_configuration_with_auth(
-        self, config_id: PositiveInt, user: Any
-    ) -> Configuration:
+    async def get_configuration_with_auth(self, config_id: PositiveInt, user: Any) -> Configuration:
         """Get configuration with authorization check.
 
         Users can only access their own configurations unless they are superusers.
@@ -498,9 +485,7 @@ class ConfigurationService(BaseService):
 
         # Authorization check
         if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to access this configuration"
-            )
+            raise AuthorizationException("You do not have permission to access this configuration")
 
         return config
 
@@ -527,9 +512,7 @@ class ConfigurationService(BaseService):
 
         # Authorization check
         if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to update this configuration"
-            )
+            raise AuthorizationException("You do not have permission to update this configuration")
 
         # Update configuration fields
         update_data = config_update.model_dump(exclude_unset=True, exclude={"selections"})
@@ -564,9 +547,7 @@ class ConfigurationService(BaseService):
 
         # Authorization check
         if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to update this configuration"
-            )
+            raise AuthorizationException("You do not have permission to update this configuration")
 
         # Delete existing selections
         await self.selection_repo.delete_by_configuration(config_id)
@@ -598,9 +579,7 @@ class ConfigurationService(BaseService):
 
         # Authorization check
         if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to delete this configuration"
-            )
+            raise AuthorizationException("You do not have permission to delete this configuration")
 
         await self.config_repo.delete(config_id)
         await self.commit()

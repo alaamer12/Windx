@@ -23,6 +23,7 @@ Features:
 from app.services.auth import AuthService
 from app.services.configuration import ConfigurationService
 from app.services.dashboard import DashboardService
+from app.services.hierarchy_builder import HierarchyBuilderService
 from app.services.pricing import PricingService
 from app.services.quote import QuoteService
 from app.services.session import SessionService
@@ -38,4 +39,5 @@ __all__ = [
     "ConfigurationService",
     "QuoteService",
     "TemplateService",
+    "HierarchyBuilderService",
 ]

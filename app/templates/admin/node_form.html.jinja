@@ -1,0 +1,423 @@
+{% extends "admin/base.html.jinja" %}
+
+{% block title %}{% if node %}Edit Node{% else %}Create Node{% endif %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+    }
+    
+    .form-section h5 {
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+    
+    .form-actions {
+        position: sticky;
+        bottom: 0;
+        background-color: white;
+        padding: 1rem 0;
+        border-top: 2px solid #dee2e6;
+        margin-top: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10 offset-lg-1">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="bi bi-{% if node %}pencil-square{% else %}plus-circle{% endif %}"></i>
+                    {% if node %}Edit Node{% else %}Create Node{% endif %}
+                </h1>
+                <p class="text-muted mb-0">
+                    Manufacturing Type: <strong>{{ manufacturing_type.name }}</strong>
+                </p>
+                <p class="text-muted mb-0">
+                    {% if node %}
+                        Update attribute node: <strong>{{ node.name }}</strong>
+                    {% else %}
+                        Add a new attribute node to the hierarchy
+                    {% endif %}
+                </p>
+            </div>
+            <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
+               class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Validation Errors -->
+        {% if validation_errors %}
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-exclamation-triangle"></i> Validation Errors</h5>
+            <ul class="mb-0">
+                {% for error in validation_errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+
+        <!-- Form -->
+        <form method="POST" action="/admin/hierarchy/node/save" id="nodeForm">
+            {% if node %}
+            <input type="hidden" name="node_id" value="{{ node.id }}">
+            {% endif %}
+            <input type="hidden" name="manufacturing_type_id" value="{{ manufacturing_type.id }}">
+
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h5><i class="bi bi-info-circle"></i> Basic Information</h5>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="name" class="form-label required-field">Node Name</label>
+                        <input type="text" 
+                               class="form-control {% if validation_errors and 'name' in validation_errors|join %}is-invalid{% endif %}" 
+                               id="name" 
+                               name="name" 
+                               value="{{ form_data.name if form_data else (node.name if node else '') }}"
+                               required>
+                        <div class="form-text">Display name for this attribute node</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="node_type" class="form-label required-field">Node Type</label>
+                        <select class="form-select {% if validation_errors and 'node_type' in validation_errors|join %}is-invalid{% endif %}" 
+                                id="node_type" 
+                                name="node_type" 
+                                required>
+                            <option value="">-- Select Type --</option>
+                            <option value="category" 
+                                    {% if (form_data and form_data.node_type == 'category') or (node and node.node_type == 'category') %}selected{% endif %}>
+                                Category - Organizational grouping
+                            </option>
+                            <option value="attribute" 
+                                    {% if (form_data and form_data.node_type == 'attribute') or (node and node.node_type == 'attribute') %}selected{% endif %}>
+                                Attribute - Configurable property
+                            </option>
+                            <option value="option" 
+                                    {% if (form_data and form_data.node_type == 'option') or (node and node.node_type == 'option') %}selected{% endif %}>
+                                Option - Selectable choice
+                            </option>
+                            <option value="component" 
+                                    {% if (form_data and form_data.node_type == 'component') or (node and node.node_type == 'component') %}selected{% endif %}>
+                                Component - Physical part
+                            </option>
+                            <option value="technical_spec" 
+                                    {% if (form_data and form_data.node_type == 'technical_spec') or (node and node.node_type == 'technical_spec') %}selected{% endif %}>
+                                Technical Spec - Calculated property
+                            </option>
+                        </select>
+                        <div class="form-text">
+                            <strong>Category:</strong> Groups related attributes. 
+                            <strong>Attribute:</strong> A property that can be configured. 
+                            <strong>Option:</strong> A specific choice for an attribute.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="parent_node_id" class="form-label">Parent Node</label>
+                        <select class="form-select" id="parent_node_id" name="parent_node_id">
+                            <option value="">-- None (Root Node) --</option>
+                            {% for parent in all_nodes %}
+                            <option value="{{ parent.id }}" 
+                                    data-depth="{{ parent.depth }}"
+                                    data-path="{{ parent.hierarchical_path }}"
+                                    {% if (parent_node and parent.id == parent_node.id) or (node and node.parent_node_id == parent.id) or (form_data and form_data.parent_node_id == parent.id) %}selected{% endif %}>
+                                {{ parent.hierarchical_path }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">Leave empty to create a root node. Path shows full hierarchy (e.g., "Frame > Material > Aluminum").</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="data_type" class="form-label">Data Type</label>
+                        <select class="form-select {% if validation_errors and 'data_type' in validation_errors|join %}is-invalid{% endif %}" 
+                                id="data_type" 
+                                name="data_type">
+                            <option value="">-- Select Data Type --</option>
+                            <option value="string" 
+                                    {% if (form_data and form_data.data_type == 'string') or (node and node.data_type == 'string') %}selected{% endif %}>
+                                String - Text values
+                            </option>
+                            <option value="number" 
+                                    {% if (form_data and form_data.data_type == 'number') or (node and node.data_type == 'number') %}selected{% endif %}>
+                                Number - Numeric values
+                            </option>
+                            <option value="boolean" 
+                                    {% if (form_data and form_data.data_type == 'boolean') or (node and node.data_type == 'boolean') %}selected{% endif %}>
+                                Boolean - Yes/No choices
+                            </option>
+                            <option value="formula" 
+                                    {% if (form_data and form_data.data_type == 'formula') or (node and node.data_type == 'formula') %}selected{% endif %}>
+                                Formula - Calculated values
+                            </option>
+                            <option value="dimension" 
+                                    {% if (form_data and form_data.data_type == 'dimension') or (node and node.data_type == 'dimension') %}selected{% endif %}>
+                                Dimension - Size measurements
+                            </option>
+                            <option value="selection" 
+                                    {% if (form_data and form_data.data_type == 'selection') or (node and node.data_type == 'selection') %}selected{% endif %}>
+                                Selection - Choice from options
+                            </option>
+                        </select>
+                        <div class="form-text">Type of data this attribute will store</div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="sort_order" class="form-label">Sort Order</label>
+                        <input type="number" 
+                               class="form-control {% if validation_errors and 'sort_order' in validation_errors|join %}is-invalid{% endif %}" 
+                               id="sort_order" 
+                               name="sort_order" 
+                               value="{{ form_data.sort_order if form_data and form_data.sort_order is not none else (node.sort_order if node else 0) }}"
+                               min="0">
+                        <div class="form-text">Display order (lower numbers appear first)</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" 
+                                   type="checkbox" 
+                                   id="required" 
+                                   name="required"
+                                   {% if (form_data and form_data.required) or (node and node.required) %}checked{% endif %}>
+                            <label class="form-check-label" for="required">
+                                Required Field
+                            </label>
+                            <div class="form-text">Users must provide a value for this attribute</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Configuration -->
+            <div class="form-section">
+                <h5><i class="bi bi-currency-dollar"></i> Pricing Configuration</h5>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="price_impact_type" class="form-label">Price Impact Type</label>
+                        <select class="form-select {% if validation_errors and 'price_impact_type' in validation_errors|join %}is-invalid{% endif %}" 
+                                id="price_impact_type" 
+                                name="price_impact_type">
+                            <option value="fixed" 
+                                    {% if (form_data and form_data.price_impact_type == 'fixed') or (not form_data and (not node or node.price_impact_type == 'fixed')) %}selected{% endif %}>
+                                Fixed - Add/subtract dollar amount
+                            </option>
+                            <option value="percentage" 
+                                    {% if (form_data and form_data.price_impact_type == 'percentage') or (node and node.price_impact_type == 'percentage') %}selected{% endif %}>
+                                Percentage - Multiply by percentage
+                            </option>
+                            <option value="formula" 
+                                    {% if (form_data and form_data.price_impact_type == 'formula') or (node and node.price_impact_type == 'formula') %}selected{% endif %}>
+                                Formula - Calculate dynamically
+                            </option>
+                        </select>
+                        <div class="form-text">How this option affects the total price</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="price_impact_value" class="form-label">Price Impact Value</label>
+                        <input type="number" 
+                               class="form-control {% if validation_errors and 'price_impact_value' in validation_errors|join %}is-invalid{% endif %}" 
+                               id="price_impact_value" 
+                               name="price_impact_value" 
+                               value="{{ form_data.price_impact_value if form_data and form_data.price_impact_value is not none else (node.price_impact_value if node and node.price_impact_value else '') }}"
+                               step="0.01">
+                        <div class="form-text">Dollar amount or percentage value</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="price_formula" class="form-label">Price Formula</label>
+                    <textarea class="form-control font-monospace" 
+                              id="price_formula" 
+                              name="price_formula" 
+                              rows="2">{{ form_data.price_formula if form_data and form_data.price_formula else (node.price_formula if node and node.price_formula else '') }}</textarea>
+                    <div class="form-text">Dynamic pricing formula (e.g., "width * height * 0.05")</div>
+                </div>
+            </div>
+
+            <!-- Weight Configuration -->
+            <div class="form-section">
+                <h5><i class="bi bi-box-seam"></i> Weight Configuration</h5>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="weight_impact" class="form-label">Weight Impact (kg)</label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="weight_impact" 
+                               name="weight_impact" 
+                               value="{{ form_data.weight_impact if form_data and form_data.weight_impact is not none else (node.weight_impact if node and node.weight_impact else '0') }}"
+                               step="0.01">
+                        <div class="form-text">Fixed weight addition in kilograms</div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label for="weight_formula" class="form-label">Weight Formula</label>
+                        <textarea class="form-control font-monospace" 
+                                  id="weight_formula" 
+                                  name="weight_formula" 
+                                  rows="2">{{ form_data.weight_formula if form_data and form_data.weight_formula else (node.weight_formula if node and node.weight_formula else '') }}</textarea>
+                        <div class="form-text">Dynamic weight calculation</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technical Properties -->
+            <div class="form-section">
+                <h5><i class="bi bi-gear"></i> Technical Properties</h5>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="technical_property_type" class="form-label">Technical Property Type</label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="technical_property_type" 
+                               name="technical_property_type" 
+                               value="{{ form_data.technical_property_type if form_data and form_data.technical_property_type else (node.technical_property_type if node and node.technical_property_type else '') }}">
+                        <div class="form-text">Type of technical property (e.g., "u_value", "load_capacity")</div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="technical_impact_formula" class="form-label">Technical Impact Formula</label>
+                    <textarea class="form-control font-monospace" 
+                              id="technical_impact_formula" 
+                              name="technical_impact_formula" 
+                              rows="3">{{ form_data.technical_impact_formula if form_data and form_data.technical_impact_formula else (node.technical_impact_formula if node and node.technical_impact_formula else '') }}</textarea>
+                    <div class="form-text">Formula for calculating technical specifications</div>
+                </div>
+            </div>
+
+            <!-- UI Configuration -->
+            <div class="form-section">
+                <h5><i class="bi bi-palette"></i> UI Configuration</h5>
+                
+                <div class="mb-3">
+                    <label for="ui_component" class="form-label">UI Component</label>
+                    <select class="form-select {% if validation_errors and 'ui_component' in validation_errors|join %}is-invalid{% endif %}" 
+                            id="ui_component" 
+                            name="ui_component">
+                        <option value="">-- Select Component --</option>
+                        <option value="dropdown" 
+                                {% if (form_data and form_data.ui_component == 'dropdown') or (node and node.ui_component == 'dropdown') %}selected{% endif %}>
+                            Dropdown - Select from list
+                        </option>
+                        <option value="radio" 
+                                {% if (form_data and form_data.ui_component == 'radio') or (node and node.ui_component == 'radio') %}selected{% endif %}>
+                            Radio - Single choice buttons
+                        </option>
+                        <option value="checkbox" 
+                                {% if (form_data and form_data.ui_component == 'checkbox') or (node and node.ui_component == 'checkbox') %}selected{% endif %}>
+                            Checkbox - Multiple selections
+                        </option>
+                        <option value="slider" 
+                                {% if (form_data and form_data.ui_component == 'slider') or (node and node.ui_component == 'slider') %}selected{% endif %}>
+                            Slider - Range selection
+                        </option>
+                        <option value="input" 
+                                {% if (form_data and form_data.ui_component == 'input') or (node and node.ui_component == 'input') %}selected{% endif %}>
+                            Input - Text/number entry
+                        </option>
+                    </select>
+                    <div class="form-text">How this attribute will be displayed to users</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" 
+                              id="description" 
+                              name="description" 
+                              rows="3">{{ form_data.description if form_data and form_data.description else (node.description if node and node.description else '') }}</textarea>
+                    <div class="form-text">User-facing description of this attribute</div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="help_text" class="form-label">Help Text</label>
+                    <textarea class="form-control" 
+                              id="help_text" 
+                              name="help_text" 
+                              rows="2">{{ form_data.help_text if form_data and form_data.help_text else (node.help_text if node and node.help_text else '') }}</textarea>
+                    <div class="form-text">Additional guidance for users</div>
+                </div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+                <div class="d-flex justify-content-between">
+                    <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
+                       class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-check-circle"></i> 
+                        {% if node %}Update Node{% else %}Create Node{% endif %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Form validation
+    document.getElementById('nodeForm').addEventListener('submit', function(e) {
+        const name = document.getElementById('name').value.trim();
+        const nodeType = document.getElementById('node_type').value;
+        
+        if (!name) {
+            e.preventDefault();
+            alert('Node name is required');
+            return false;
+        }
+        
+        if (!nodeType) {
+            e.preventDefault();
+            alert('Node type is required');
+            return false;
+        }
+    });
+    
+    // Add visual styling to parent node selector based on depth
+    document.addEventListener('DOMContentLoaded', function() {
+        const parentSelect = document.getElementById('parent_node_id');
+        if (parentSelect) {
+            // Add indentation based on depth for better visual hierarchy
+            const options = parentSelect.querySelectorAll('option[data-depth]');
+            options.forEach(option => {
+                const depth = parseInt(option.getAttribute('data-depth'));
+                if (depth > 0) {
+                    // Add CSS padding for visual indentation
+                    option.style.paddingLeft = (depth * 20) + 'px';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

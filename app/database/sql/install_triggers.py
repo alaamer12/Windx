@@ -7,7 +7,7 @@ depth calculation, and price history tracking.
 
 Usage:
     python -m app.database.sql.install_triggers
-    
+
 Or from the project root:
     .venv/scripts/python -m app.database.sql.install_triggers
 """
@@ -46,7 +46,7 @@ async def install_triggers(session: AsyncSession) -> None:
 
         try:
             # Read SQL script
-            with open(script_path, encoding='utf-8') as f:
+            with open(script_path, encoding="utf-8") as f:
                 sql = f.read()
 
             # Execute SQL
@@ -84,7 +84,7 @@ async def verify_installation(session: AsyncSession) -> None:
                 FROM pg_proc 
                 WHERE proname = :func_name
             """),
-            {"func_name": func_name}
+            {"func_name": func_name},
         )
         row = result.fetchone()
 
@@ -108,12 +108,12 @@ async def verify_installation(session: AsyncSession) -> None:
                 WHERE tgname = :trigger_name 
                 AND tgrelid = :table_name::regclass
             """),
-            {"trigger_name": trigger_name, "table_name": table_name}
+            {"trigger_name": trigger_name, "table_name": table_name},
         )
         row = result.fetchone()
 
         if row:
-            enabled = row[1] == 'O'  # 'O' means enabled
+            enabled = row[1] == "O"  # 'O' means enabled
             status = "enabled" if enabled else "disabled"
             print(f"✅ Trigger exists: {trigger_name} on {table_name} ({status})")
         else:
@@ -138,9 +138,7 @@ async def uninstall_triggers(session: AsyncSession) -> None:
 
     for trigger_name, table_name in triggers:
         try:
-            await session.execute(
-                text(f"DROP TRIGGER IF EXISTS {trigger_name} ON {table_name}")
-            )
+            await session.execute(text(f"DROP TRIGGER IF EXISTS {trigger_name} ON {table_name}"))
             print(f"✅ Dropped trigger: {trigger_name}")
         except Exception as e:
             print(f"❌ Error dropping trigger {trigger_name}: {e}")
@@ -154,9 +152,7 @@ async def uninstall_triggers(session: AsyncSession) -> None:
 
     for func_name in functions:
         try:
-            await session.execute(
-                text(f"DROP FUNCTION IF EXISTS {func_name}() CASCADE")
-            )
+            await session.execute(text(f"DROP FUNCTION IF EXISTS {func_name}() CASCADE"))
             print(f"✅ Dropped function: {func_name}")
         except Exception as e:
             print(f"❌ Error dropping function {func_name}: {e}")

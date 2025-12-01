@@ -58,6 +58,25 @@ class UserRepository(BaseRepository[User, UserCreate, UserUpdate]):
         result = await self.db.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
+    async def authenticate(self, username: str, password: str) -> User | None:
+        """Authenticate user by username and password.
+
+        Args:
+            username (str): Username
+            password (str): Plain text password
+
+        Returns:
+            User | None: User instance if authentication successful, None otherwise
+        """
+        from app.core.security import verify_password
+
+        user = await self.get_by_username(username)
+        if not user:
+            return None
+        if not verify_password(password, user.hashed_password):
+            return None
+        return user
+
     async def get_active_users(self, skip: int = 0, limit: int = 100) -> list[User]:
         """Get all active users.
 

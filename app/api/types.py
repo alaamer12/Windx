@@ -27,10 +27,11 @@ Features:
     - Reduced boilerplate in endpoints
     - Full Windx configurator system support
 """
+from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import Depends
+from fastapi import Depends, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -64,6 +65,18 @@ __all__ = [
     "ConfigurationTemplateRepo",
     "TemplateSelectionRepo",
     "OrderRepo",
+    # Query parameter types
+    "OptionalIntQuery",
+    "RequiredIntQuery",
+    "OptionalStrQuery",
+    "RequiredStrQuery",
+    # Form parameter types
+    "OptionalIntForm",
+    "RequiredIntForm",
+    "OptionalStrForm",
+    "RequiredStrForm",
+    "OptionalBoolForm",
+    "RequiredBoolForm",
 ]
 
 
@@ -96,6 +109,156 @@ Example:
     ) -> User:
         user_repo = UserRepository(db)
         return await user_repo.create(user_in)
+    ```
+"""
+
+
+# ============================================================================
+# Query Parameter Type Aliases
+# ============================================================================
+
+OptionalIntQuery = Annotated[Optional[int], Query()]
+"""Optional integer query parameter.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        manufacturing_type_id: OptionalIntQuery = None,
+    ):
+        # manufacturing_type_id is optional
+        pass
+    ```
+"""
+
+RequiredIntQuery = Annotated[int, Query()]
+"""Required integer query parameter.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        manufacturing_type_id: RequiredIntQuery,
+    ):
+        # manufacturing_type_id is required
+        pass
+    ```
+"""
+
+OptionalStrQuery = Annotated[str | None, Query()]
+"""Optional string query parameter.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        search: OptionalStrQuery = None,
+    ):
+        # search is optional
+        pass
+    ```
+"""
+
+RequiredStrQuery = Annotated[str, Query()]
+"""Required string query parameter.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        name: RequiredStrQuery,
+    ):
+        # name is required
+        pass
+    ```
+"""
+
+
+# ============================================================================
+# Form Parameter Type Aliases
+# ============================================================================
+
+OptionalIntForm = Annotated[int | None, Form()]
+"""Optional integer form parameter.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        node_id: OptionalIntForm = None,
+    ):
+        # node_id is optional
+        pass
+    ```
+"""
+
+RequiredIntForm = Annotated[int, Form()]
+"""Required integer form parameter.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        manufacturing_type_id: RequiredIntForm = ...,
+    ):
+        # manufacturing_type_id is required
+        pass
+    ```
+"""
+
+OptionalStrForm = Annotated[str | None, Form()]
+"""Optional string form parameter.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        description: OptionalStrForm = None,
+    ):
+        # description is optional
+        pass
+    ```
+"""
+
+RequiredStrForm = Annotated[str, Form()]
+"""Required string form parameter.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        name: RequiredStrForm = ...,
+    ):
+        # name is required
+        pass
+    ```
+"""
+
+OptionalBoolForm = Annotated[bool, Form()]
+"""Optional boolean form parameter (defaults to False).
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        required: OptionalBoolForm = False,
+    ):
+        # required is optional, defaults to False
+        pass
+    ```
+"""
+
+RequiredBoolForm = Annotated[bool, Form()]
+"""Required boolean form parameter.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        is_active: RequiredBoolForm = ...,
+    ):
+        # is_active is required
+        pass
     ```
 """
 
@@ -454,9 +617,7 @@ Available Methods:
     - delete(id): Delete manufacturing type by ID
 """
 
-AttributeNodeRepo = Annotated[
-    AttributeNodeRepository, Depends(get_attribute_node_repository)
-]
+AttributeNodeRepo = Annotated[AttributeNodeRepository, Depends(get_attribute_node_repository)]
 """Attribute node repository dependency.
 
 Provides access to hierarchical attribute node data with LTREE support.
@@ -498,9 +659,7 @@ Available Methods:
     - delete(id): Delete attribute node by ID
 """
 
-ConfigurationRepo = Annotated[
-    ConfigurationRepository, Depends(get_configuration_repository)
-]
+ConfigurationRepo = Annotated[ConfigurationRepository, Depends(get_configuration_repository)]
 """Configuration repository dependency.
 
 Provides access to customer product configuration data access layer.

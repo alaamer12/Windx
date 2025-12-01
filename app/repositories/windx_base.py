@@ -129,7 +129,7 @@ class HierarchicalRepository(
             ```python
             # Get direct children of node 42
             children = await repo.get_children(42)
-            
+
             # Get root nodes (no parent)
             roots = await repo.get_children(None)
             ```
@@ -162,7 +162,7 @@ class HierarchicalRepository(
             ```python
             # Get entire tree
             all_nodes = await repo.get_tree()
-            
+
             # Get subtree starting from node 42
             subtree = await repo.get_tree(root_id=42)
             ```
@@ -172,7 +172,5 @@ class HierarchicalRepository(
             return await self.get_descendants(root_id)
 
         # Get entire tree ordered by ltree_path
-        result = await self.db.execute(
-            select(self.model).order_by(self.model.ltree_path)
-        )
+        result = await self.db.execute(select(self.model).order_by(self.model.ltree_path))
         return list(result.scalars().all())

@@ -307,9 +307,7 @@ class TestUpdateUserEndpoint:
         from app.models.session import Session
 
         # noinspection PyTypeChecker
-        await db_session.execute(
-            delete(Session).where(Session.user_id == test_user.id)
-        )
+        await db_session.execute(delete(Session).where(Session.user_id == test_user.id))
         await db_session.commit()
 
         # Verify can login with new password

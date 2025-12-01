@@ -143,11 +143,7 @@ async def list_attribute_nodes(
         },
         404: {
             "description": "Attribute node not found",
-            "content": {
-                "application/json": {
-                    "example": {"message": "Attribute node not found"}
-                }
-            },
+            "content": {"application/json": {"example": {"message": "Attribute node not found"}}},
         },
         **get_common_responses(401, 500),
     },

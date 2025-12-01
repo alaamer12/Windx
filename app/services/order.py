@@ -186,9 +186,7 @@ class OrderService(BaseService):
             )
         return order
 
-    async def update_order_status(
-        self, order_id: PositiveInt, status: str
-    ) -> Order:
+    async def update_order_status(self, order_id: PositiveInt, status: str) -> Order:
         """Update order status.
 
         Args:
@@ -313,15 +311,11 @@ class OrderService(BaseService):
 
         # Authorization check
         if not user.is_superuser and quote.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to access this order"
-            )
+            raise AuthorizationException("You do not have permission to access this order")
 
         return order
 
-    async def get_order_with_items_auth(
-        self, order_id: PositiveInt, user
-    ) -> Order:
+    async def get_order_with_items_auth(self, order_id: PositiveInt, user) -> Order:
         """Get order with items and authorization check.
 
         Args:
@@ -352,9 +346,7 @@ class OrderService(BaseService):
 
         # Authorization check
         if not user.is_superuser and quote.customer_id != user.id:
-            raise AuthorizationException(
-                "You do not have permission to access this order"
-            )
+            raise AuthorizationException("You do not have permission to access this order")
 
         return order
 

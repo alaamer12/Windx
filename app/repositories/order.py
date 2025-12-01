@@ -57,9 +57,7 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
             order = await repo.get_by_order_number("ORD-2024-001")
             ```
         """
-        result = await self.db.execute(
-            select(Order).where(Order.order_number == order_number)
-        )
+        result = await self.db.execute(select(Order).where(Order.order_number == order_number))
         return result.scalar_one_or_none()
 
     async def get_by_quote(self, quote_id: int) -> Order | None:
@@ -78,9 +76,7 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
             order = await repo.get_by_quote(501)
             ```
         """
-        result = await self.db.execute(
-            select(Order).where(Order.quote_id == quote_id)
-        )
+        result = await self.db.execute(select(Order).where(Order.quote_id == quote_id))
         return result.scalar_one_or_none()
 
     async def get_with_items(self, order_id: int) -> Order | None:
@@ -110,9 +106,7 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
         result = await self.db.execute(
             select(Order)
             .where(Order.id == order_id)
-            .options(
-                selectinload(Order.items).selectinload(OrderItem.configuration)
-            )
+            .options(selectinload(Order.items).selectinload(OrderItem.configuration))
         )
         return result.scalar_one_or_none()
 
@@ -122,7 +116,7 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
         Loads the order along with:
         - Quote (with configuration and customer)
         - All items with their configurations
-        
+
         Args:
             order_id (int): Order ID
 
@@ -151,7 +145,6 @@ class OrderRepository(BaseRepository[Order, OrderCreate, OrderUpdate]):
             )
         )
         return result.scalar_one_or_none()
-
 
     def get_filtered(
         self,

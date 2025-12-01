@@ -35,6 +35,7 @@ async def create_superuser():
     async with session_maker() as session:
         try:
             # Check if user exists
+            # noinspection PyTypeChecker
             result = await session.execute(
                 select(User).where((User.email == email) | (User.username == username))
             )
@@ -78,7 +79,7 @@ async def promote_user(username: str):
         # First check if user exists and their current status
         check_result = await conn.execute(
             text("SELECT id, email, username, is_superuser FROM users WHERE username = :username"),
-            {"username": username}
+            {"username": username},
         )
         existing_user = check_result.fetchone()
 
@@ -99,7 +100,7 @@ async def promote_user(username: str):
                 "WHERE username = :username "
                 "RETURNING id, email, username, is_superuser"
             ),
-            {"username": username}
+            {"username": username},
         )
         user = result.fetchone()
 
@@ -118,7 +119,7 @@ Management CLI for the application
 Commands:
     createsuperuser          Create a new superuser account
     promote <username>       Promote an existing user to superuser
-    
+
 Examples:
     python manage.py createsuperuser
     python manage.py promote johwqen_doe

@@ -45,7 +45,6 @@ class ErrorDetail(BaseModel):
     """
 
     detail: str = Field(
-        ...,
         description="Error message describing what went wrong",
         min_length=1,
         max_length=500,
@@ -98,7 +97,6 @@ class ErrorResponse(BaseModel):
     """
 
     message: str = Field(
-        ...,
         description="Human-readable error message",
         min_length=1,
         max_length=200,

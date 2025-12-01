@@ -256,6 +256,212 @@ Designed for growth:
 - [Performance Guide](docs/PERFORMANCE.md) - Optimization strategies
 - [API Documentation](http://localhost:8000/docs) - Interactive API explorer (when running)
 
+### Hierarchy Management Documentation
+- [Hierarchy Admin Dashboard Guide](docs/HIERARCHY_ADMIN_DASHBOARD.md) - Complete dashboard user guide
+- [Hierarchy Insertion Examples](examples/hierarchy_insertion.py) - Programmatic hierarchy creation examples
+
+## Hierarchy Management
+
+The Windx system includes powerful tools for creating and managing hierarchical product attribute structures. These tools enable administrators to define complex product configurations without writing code.
+
+### Key Features
+
+**Automatic Path Calculation**
+- LTREE paths are calculated automatically based on node names and parent relationships
+- No manual path management required
+- Paths are sanitized to ensure PostgreSQL LTREE compatibility
+
+**Automatic Depth Tracking**
+- Node depth is calculated automatically from parent relationships
+- Supports unlimited nesting levels
+- Efficient queries at any depth using LTREE indexes
+
+**Comprehensive Validation**
+- Prevents duplicate names at the same level
+- Detects and prevents circular references
+- Validates node types, data types, and pricing rules
+- Ensures data integrity with foreign key constraints
+
+**Multiple Creation Methods**
+- **Programmatic**: Use `HierarchyBuilderService` in Python code
+- **Batch Import**: Create entire hierarchies from nested dictionaries
+- **Admin Dashboard**: Visual interface for creating and editing nodes
+- **API Endpoints**: RESTful API for integration with other systems
+
+**Tree Visualization**
+- **ASCII Trees**: Human-readable text representation with box-drawing characters
+- **JSON Export**: Pydantic models serializable to JSON for API responses
+- **Graphical Plots**: Visual diagrams using Matplotlib (optional)
+
+### HierarchyBuilderService
+
+The `HierarchyBuilderService` is the primary interface for programmatic hierarchy management. It provides high-level methods that handle all the complexity of LTREE path calculation, depth tracking, and validation.
+
+**Core Capabilities:**
+- Create manufacturing types (product categories)
+- Create individual nodes with automatic path/depth calculation
+- Create entire hierarchies from nested dictionaries (batch import)
+- Move nodes to different parents (with automatic path recalculation)
+- Get tree as JSON-serializable Pydantic models
+- Generate ASCII tree visualizations
+- Generate graphical tree plots
+
+**Example Usage:**
+
+```python
+from app.services.hierarchy_builder import HierarchyBuilderService
+from decimal import Decimal
+
+# Initialize service
+service = HierarchyBuilderService(db_session)
+
+# Create a manufacturing type
+window_type = await service.create_manufacturing_type(
+    name="Casement Window",
+    description="Energy-efficient casement windows",
+    base_price=Decimal("200.00"),
+    base_weight=Decimal("15.00")
+)
+
+# Create a root node
+frame_material = await service.create_node(
+    manufacturing_type_id=window_type.id,
+    name="Frame Material",
+    node_type="category"
+)
+# Result: ltree_path="frame_material", depth=0
+
+# Create a child node with pricing
+aluminum = await service.create_node(
+    manufacturing_type_id=window_type.id,
+    name="Aluminum",
+    node_type="option",
+    parent_node_id=frame_material.id,
+    price_impact_value=Decimal("50.00"),
+    weight_impact=Decimal("2.0")
+)
+# Result: ltree_path="frame_material.aluminum", depth=1
+
+# Create entire hierarchy from dictionary
+hierarchy = {
+    "name": "Glass Type",
+    "node_type": "category",
+    "children": [
+        {
+            "name": "Pane Count",
+            "node_type": "attribute",
+            "children": [
+                {"name": "Single Pane", "node_type": "option"},
+                {"name": "Double Pane", "node_type": "option", "price_impact_value": 80.00}
+            ]
+        }
+    ]
+}
+root = await service.create_hierarchy_from_dict(window_type.id, hierarchy)
+
+# Get tree as JSON
+tree = await service.pydantify(window_type.id)
+tree_json = [node.model_dump() for node in tree]
+
+# Generate ASCII visualization
+ascii_tree = await service.asciify(window_type.id)
+print(ascii_tree)
+```
+
+**For complete examples, see:** [`examples/hierarchy_insertion.py`](examples/hierarchy_insertion.py)
+
+### Admin Dashboard
+
+The Hierarchy Admin Dashboard provides a visual interface for managing attribute hierarchies through your web browser.
+
+**Access:** Navigate to `/admin/hierarchy` (requires superuser authentication)
+
+**Features:**
+- **Manufacturing Type Selector**: Choose which product type to manage
+- **Visual Tree View**: See the complete hierarchy with expand/collapse
+- **Create Nodes**: Add new nodes with comprehensive forms
+- **Edit Nodes**: Modify existing nodes with validation
+- **Delete Nodes**: Remove nodes with safety checks (prevents orphans)
+- **ASCII Visualization**: View text representation of the tree
+- **Diagram Visualization**: View graphical representation of the tree
+
+**Dashboard Capabilities:**
+- Create root nodes (categories) and child nodes (attributes, options)
+- Set pricing impacts (fixed amounts, percentages, formulas)
+- Configure weight impacts for shipping calculations
+- Define validation rules and display conditions
+- Organize nodes with sort order
+- View real-time tree structure updates
+
+**For complete dashboard documentation, see:** [`docs/HIERARCHY_ADMIN_DASHBOARD.md`](docs/HIERARCHY_ADMIN_DASHBOARD.md)
+
+### Quick Start
+
+**1. Create a Manufacturing Type:**
+```bash
+# Using Python script
+python examples/hierarchy_insertion.py
+
+# Or via admin dashboard
+# Navigate to /admin/hierarchy and use the interface
+```
+
+**2. Add Attribute Nodes:**
+```python
+# Programmatically
+service = HierarchyBuilderService(db_session)
+node = await service.create_node(
+    manufacturing_type_id=1,
+    name="Frame Material",
+    node_type="category"
+)
+
+# Or use the admin dashboard's "Create Node" button
+```
+
+**3. Visualize the Hierarchy:**
+```python
+# ASCII visualization
+ascii_tree = await service.asciify(manufacturing_type_id=1)
+print(ascii_tree)
+
+# Or view in the admin dashboard's visualization panel
+```
+
+### Best Practices
+
+**Planning Your Hierarchy:**
+- Sketch the structure before creating nodes
+- Use categories for organization, attributes for configuration, options for choices
+- Plan pricing and weight impacts in advance
+- Consider conditional display logic for complex products
+
+**Naming Conventions:**
+- Use clear, descriptive names
+- Be consistent with capitalization
+- Avoid special characters (they're sanitized automatically)
+- Use singular nouns for options
+
+**Performance:**
+- LTREE indexes enable fast queries at any depth
+- Batch creation is faster than individual node creation
+- Use `pydantify()` for efficient JSON serialization
+- Cache tree structures for frequently accessed hierarchies
+
+**Maintenance:**
+- Test changes in development before production
+- Document pricing decisions and validation rules
+- Use version control for hierarchy definitions
+- Monitor tree depth and complexity
+
+### Related Resources
+
+- **Service Documentation**: See docstrings in `app/services/hierarchy_builder.py`
+- **Example Scripts**: See `examples/hierarchy_insertion.py` for complete examples
+- **Dashboard Guide**: See `docs/HIERARCHY_ADMIN_DASHBOARD.md` for dashboard usage
+- **Database Schema**: See `docs/windx-sql-explanations.md` for LTREE implementation details
+- **API Endpoints**: See `/docs` for attribute node API documentation
+
 ## Features
 
 - ✅ **Dual Database Support**: Seamlessly switch between Supabase (development) and PostgreSQL (production)
@@ -273,6 +479,7 @@ Designed for growth:
 - ✅ **LTREE Hierarchies**: Efficient tree queries with PostgreSQL LTREE
 - ✅ **Dynamic Pricing**: Formula-based price calculations
 - ✅ **Template System**: Pre-defined configurations for quick start
+- ✅ **Hierarchy Management**: Admin dashboard and programmatic tools for managing attribute hierarchies
 
 ## Prerequisites
 

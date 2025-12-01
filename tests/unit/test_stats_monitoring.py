@@ -22,7 +22,7 @@ async def monitor_stats():
                 "username": "johwqen_doe",
                 "password": "SecurePaswqes123!",
             },
-            url=base_url
+            url=base_url,
         )
 
         if login_response.status_code != 200:
@@ -47,10 +47,7 @@ async def monitor_stats():
                 poll_count += 1
 
                 # Get current stats
-                response = await client.get(
-                    f"{base_url}/api/v1/dashboard/stats",
-                    headers=headers
-                )
+                response = await client.get(f"{base_url}/api/v1/dashboard/stats", headers=headers)
 
                 if response.status_code != 200:
                     print(f"❌ Error: {response.text}")
@@ -73,18 +70,30 @@ async def monitor_stats():
                 else:
                     # Check for changes
                     changes = []
-                    if current_stats['total_users'] != previous_stats['total_users']:
-                        changes.append(f"Total: {previous_stats['total_users']} → {current_stats['total_users']}")
-                    if current_stats['active_users'] != previous_stats['active_users']:
-                        changes.append(f"Active: {previous_stats['active_users']} → {current_stats['active_users']}")
-                    if current_stats['inactive_users'] != previous_stats['inactive_users']:
-                        changes.append(f"Inactive: {previous_stats['inactive_users']} → {current_stats['inactive_users']}")
-                    if current_stats['superusers'] != previous_stats['superusers']:
-                        changes.append(f"Superusers: {previous_stats['superusers']} → {current_stats['superusers']}")
-                    if current_stats['new_users_today'] != previous_stats['new_users_today']:
-                        changes.append(f"New Today: {previous_stats['new_users_today']} → {current_stats['new_users_today']}")
-                    if current_stats['new_users_week'] != previous_stats['new_users_week']:
-                        changes.append(f"New Week: {previous_stats['new_users_week']} → {current_stats['new_users_week']}")
+                    if current_stats["total_users"] != previous_stats["total_users"]:
+                        changes.append(
+                            f"Total: {previous_stats['total_users']} → {current_stats['total_users']}"
+                        )
+                    if current_stats["active_users"] != previous_stats["active_users"]:
+                        changes.append(
+                            f"Active: {previous_stats['active_users']} → {current_stats['active_users']}"
+                        )
+                    if current_stats["inactive_users"] != previous_stats["inactive_users"]:
+                        changes.append(
+                            f"Inactive: {previous_stats['inactive_users']} → {current_stats['inactive_users']}"
+                        )
+                    if current_stats["superusers"] != previous_stats["superusers"]:
+                        changes.append(
+                            f"Superusers: {previous_stats['superusers']} → {current_stats['superusers']}"
+                        )
+                    if current_stats["new_users_today"] != previous_stats["new_users_today"]:
+                        changes.append(
+                            f"New Today: {previous_stats['new_users_today']} → {current_stats['new_users_today']}"
+                        )
+                    if current_stats["new_users_week"] != previous_stats["new_users_week"]:
+                        changes.append(
+                            f"New Week: {previous_stats['new_users_week']} → {current_stats['new_users_week']}"
+                        )
 
                     if changes:
                         print(f"[{current_time}] Poll #{poll_count} - 🔥 CHANGES DETECTED!")
@@ -92,10 +101,12 @@ async def monitor_stats():
                             print(f"  • {change}")
                         print()
                     else:
-                        print(f"[{current_time}] Poll #{poll_count} - No changes (Total: {current_stats['total_users']})")
+                        print(
+                            f"[{current_time}] Poll #{poll_count} - No changes (Total: {current_stats['total_users']})"
+                        )
 
                 previous_stats = current_stats
-                 # Wait 2 seconds before next poll
+                # Wait 2 seconds before next poll
                 await asyncio.sleep(2)
 
         except KeyboardInterrupt:
@@ -117,8 +128,8 @@ async def create_test_user():
                 "username": test_username,
                 "email": f"{test_username}@example.com",
                 "password": "TestPassword123!",
-                "full_name": "Test User"
-            }
+                "full_name": "Test User",
+            },
         )
 
         if response.status_code == 201:

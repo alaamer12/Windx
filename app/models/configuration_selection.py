@@ -198,12 +198,7 @@ class ConfigurationSelection(Base):
         Returns:
             str: ConfigurationSelection representation with IDs and value
         """
-        value = (
-            self.string_value
-            or self.numeric_value
-            or self.boolean_value
-            or self.json_value
-        )
+        value = self.string_value or self.numeric_value or self.boolean_value or self.json_value
         return (
             f"<ConfigurationSelection(id={self.id}, "
             f"config_id={self.configuration_id}, "

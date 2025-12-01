@@ -8,4 +8,4 @@ Public Modules:
     users: User management endpoints
 """
 
-__all__ = ["auth", "users"]
+__all__ = ["auth", "users", "admin_settings"]

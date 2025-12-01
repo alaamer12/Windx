@@ -1,0 +1,58 @@
+{% extends "admin/base.html.jinja" %}
+
+{% block title %}Dashboard - WindX Admin{% endblock %}
+
+{% set active_page = "dashboard" %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Dashboard</h1>
+</div>
+
+<div class="card">
+    <h2>Welcome, {{ current_user.full_name or current_user.username }}!</h2>
+    <p style="color: var(--text-light); margin-top: 0.5rem;">
+        Select an option from the sidebar to manage your product configuration system.
+    </p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+    <div class="card">
+        <h3>🏭 Manufacturing Types</h3>
+        <p style="color: var(--text-light); margin: 0.5rem 0 1rem;">
+            Manage product categories and base configurations.
+        </p>
+        <a href="/api/v1/admin/manufacturing-types" class="btn btn-outline">Manage Types</a>
+    </div>
+
+    <div class="card">
+        <h3>🌳 Hierarchy Editor</h3>
+        <p style="color: var(--text-light); margin: 0.5rem 0 1rem;">
+            Visual editor for attribute trees and options.
+        </p>
+        <a href="/api/v1/admin/hierarchy" class="btn btn-outline">Open Editor</a>
+    </div>
+
+    <div class="card" style="opacity: 0.7;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>👥 Customers</h3>
+            <span class="badge-soon">Soon</span>
+        </div>
+        <p style="color: var(--text-light); margin: 0.5rem 0 1rem;">
+            View and manage customer accounts.
+        </p>
+        <button class="btn btn-outline" disabled style="cursor: not-allowed;">View Customers</button>
+    </div>
+
+    <div class="card" style="opacity: 0.7;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>📦 Orders</h3>
+            <span class="badge-soon">Soon</span>
+        </div>
+        <p style="color: var(--text-light); margin: 0.5rem 0 1rem;">
+            Track and manage customer orders.
+        </p>
+        <button class="btn btn-outline" disabled style="cursor: not-allowed;">View Orders</button>
+    </div>
+</div>
+{% endblock %}

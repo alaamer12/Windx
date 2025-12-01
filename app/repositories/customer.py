@@ -55,9 +55,7 @@ class CustomerRepository(BaseRepository[Customer, CustomerCreate, CustomerUpdate
             customer = await repo.get_by_email("john@example.com")
             ```
         """
-        result = await self.db.execute(
-            select(Customer).where(Customer.email == email)
-        )
+        result = await self.db.execute(select(Customer).where(Customer.email == email))
         return result.scalar_one_or_none()
 
     async def get_active(self) -> list[Customer]:
@@ -80,7 +78,6 @@ class CustomerRepository(BaseRepository[Customer, CustomerCreate, CustomerUpdate
             .order_by(Customer.company_name, Customer.email)
         )
         return list(result.scalars().all())
-
 
     def get_filtered(
         self,

@@ -9,6 +9,7 @@ This test suite validates the env consistency checker by:
 
 NOTE: These are manual tests. Run directly with: python tests/unit/test_env.py
 """
+
 from __future__ import annotations
 
 import importlib.util

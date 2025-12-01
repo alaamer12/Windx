@@ -79,7 +79,9 @@ def get_engine() -> AsyncEngine:
         # Disable at SQLAlchemy level
         engine_kwargs["execution_options"] = {"prepared_statement_cache_size": 0}
     elif settings.database.is_supabase:
-        print(f"[INFO] Using {settings.database.connection_mode} mode (prepared statements enabled)")
+        print(
+            f"[INFO] Using {settings.database.connection_mode} mode (prepared statements enabled)"
+        )
         print(f"[INFO] Host: {settings.database.host}")
 
     print(f"[DEBUG] Final engine kwargs: {engine_kwargs}")
@@ -108,7 +110,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
     This is a FastAPI dependency that provides a database session
     for each request. The session is automatically closed after use.
-    
+
     Yields:
         AsyncSession: Database session with automatic cleanup
     """
@@ -143,7 +145,6 @@ async def init_db() -> None:
         await conn.execute(text("SELECT 1"))
 
     print(f"[OK] Database connected: {settings.database.provider} @ {settings.database.host}")
-
 
 
 async def close_db() -> None:

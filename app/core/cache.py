@@ -67,6 +67,7 @@ async def init_cache() -> None:
         print("[WARNING] Cache disabled")
         # Initialize with in-memory backend to prevent errors
         from fastapi_cache.backends.inmemory import InMemoryBackend
+
         FastAPICache.init(InMemoryBackend())
         return
 
@@ -85,6 +86,7 @@ async def init_cache() -> None:
         print("[WARNING] Falling back to in-memory cache")
         # Fall back to in-memory cache
         from fastapi_cache.backends.inmemory import InMemoryBackend
+
         FastAPICache.init(InMemoryBackend())
 
 

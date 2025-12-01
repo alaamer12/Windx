@@ -7,22 +7,22 @@ Available commands:
     Server:
         dev              - Run development server with auto-reload
         start            - Run production server
-    
+
     Database:
         db:upgrade       - Apply database migrations
         db:downgrade     - Rollback last migration
         db:revision      - Create new migration
         db:current       - Show current migration
-    
+
     Management:
         createsuperuser  - Create a new superuser
         promote          - Promote user to superuser (requires username)
-    
+
     Testing:
         test             - Run all tests
         test:unit        - Run unit tests only
         test:cov         - Run tests with coverage report
-    
+
     Code Quality:
         lint             - Check code with ruff
         lint:fix         - Fix code issues with ruff
@@ -37,24 +37,38 @@ COMMANDS = {
     # Server commands
     "dev": [sys.executable, "-m", "uvicorn", "main:app", "--reload"],
     "start": [sys.executable, "-m", "uvicorn", "main:app"],
-    "prod": [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"],
-
+    "prod": [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--workers",
+        "4",
+    ],
     # Database commands
     "db:upgrade": [sys.executable, "-m", "alembic", "upgrade", "head"],
     "db:downgrade": [sys.executable, "-m", "alembic", "downgrade", "-1"],
     "db:current": [sys.executable, "-m", "alembic", "current"],
     "db:history": [sys.executable, "-m", "alembic", "history"],
-
     # Management commands
     "createsuperuser": [sys.executable, "manage.py", "createsuperuser"],
     "promote": [sys.executable, "manage.py", "promote"],
-
     # Testing commands
     "test": [sys.executable, "-m", "pytest"],
     "test:unit": [sys.executable, "-m", "pytest", "-m", "unit"],
     "test:integration": [sys.executable, "-m", "pytest", "-m", "integration"],
-    "test:cov": [sys.executable, "-m", "pytest", "--cov=app", "--cov-report=html", "--cov-report=term"],
-
+    "test:cov": [
+        sys.executable,
+        "-m",
+        "pytest",
+        "--cov=app",
+        "--cov-report=html",
+        "--cov-report=term",
+    ],
     # Code quality commands
     "lint": [sys.executable, "-m", "ruff", "check", "."],
     "lint:fix": [sys.executable, "-m", "ruff", "check", "--fix", "."],

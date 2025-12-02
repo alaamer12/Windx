@@ -177,12 +177,13 @@ async def test_engine():
 
     # Create all tables with LTREE extension
     async with engine.begin() as conn:
-        # Enable LTREE extension for hierarchical attribute nodes
-        # This is required by the Windx schema for efficient tree queries
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
-
         # Drop first to ensure clean state between tests
         await conn.run_sync(Base.metadata.drop_all)
+        
+        # Enable LTREE extension for hierarchical attribute nodes
+        # This is required by the Windx schema for efficient tree queries
+        # Use IF NOT EXISTS to avoid errors if extension already exists
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
 
         # Create all tables from SQLAlchemy models
         await conn.run_sync(Base.metadata.create_all)

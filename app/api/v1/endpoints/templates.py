@@ -13,6 +13,7 @@ Features:
     - Authorization checks (public read, restricted write)
     - OpenAPI documentation with examples
 """
+from __future__ import annotations
 
 from typing import Annotated
 

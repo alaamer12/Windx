@@ -24,6 +24,7 @@ from typing import Any
 __all__ = [
     "create_quote_data",
     "create_multiple_quotes_data",
+    "QuoteFactory",
 ]
 
 _counter = 0
@@ -145,3 +146,125 @@ def create_multiple_quotes_data(
         >>> quotes = create_multiple_quotes_data(count=5, configuration_id=1)
     """
     return [create_quote_data(**kwargs) for _ in range(count)]
+
+
+
+class QuoteFactory:
+    """Class-based factory for creating quotes in database.
+    
+    This factory provides a convenient interface for creating quote
+    records in the database during tests, with automatic creation of
+    required dependencies (configuration, customer, manufacturing type).
+    
+    Examples:
+        >>> # Create single quote (auto-creates dependencies)
+        >>> quote = await QuoteFactory.create(db_session)
+        
+        >>> # Create with custom fields
+        >>> quote = await QuoteFactory.create(
+        ...     db_session,
+        ...     quote_number="Q-2024-001",
+        ...     status="sent"
+        ... )
+        
+        >>> # Create with existing configuration
+        >>> quote = await QuoteFactory.create(
+        ...     db_session,
+        ...     configuration_id=config.id
+        ... )
+        
+        >>> # Create multiple quotes
+        >>> quotes = await QuoteFactory.create_batch(db_session, 5)
+    """
+
+    @staticmethod
+    async def create(
+        db_session: Any,
+        configuration_id: int | None = None,
+        customer_id: int | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Create a quote in the database.
+        
+        If configuration_id is not provided, automatically creates a
+        configuration with customer and manufacturing type.
+        
+        Args:
+            db_session: Database session
+            configuration_id: Optional configuration ID (auto-created if None)
+            customer_id: Optional customer ID (auto-created if None)
+            **kwargs: Quote fields
+        
+        Returns:
+            Quote: Created quote instance
+        
+        Examples:
+            >>> # Auto-create dependencies
+            >>> quote = await QuoteFactory.create(db_session)
+            
+            >>> # Use existing configuration
+            >>> quote = await QuoteFactory.create(
+            ...     db_session,
+            ...     configuration_id=config.id,
+            ...     status="sent"
+            ... )
+        """
+        from app.models.quote import Quote
+
+        # Create configuration if not provided
+        if configuration_id is None:
+            from tests.factories.configuration_factory import ConfigurationFactory
+
+            config = await ConfigurationFactory.create(db_session)
+            configuration_id = config.id
+            if customer_id is None:
+                customer_id = config.customer_id
+
+        # Create quote data
+        data = create_quote_data(
+            configuration_id=configuration_id,
+            customer_id=customer_id,
+            **kwargs,
+        )
+        
+        # Create quote instance
+        quote = Quote(**data)
+        
+        db_session.add(quote)
+        await db_session.commit()
+        await db_session.refresh(quote)
+        
+        return quote
+
+    @staticmethod
+    async def create_batch(
+        db_session: Any,
+        count: int,
+        **kwargs: Any,
+    ) -> list[Any]:
+        """Create multiple quotes in the database.
+        
+        Args:
+            db_session: Database session
+            count: Number of quotes to create
+            **kwargs: Common fields for all quotes
+        
+        Returns:
+            list[Quote]: List of created quote instances
+        
+        Examples:
+            >>> # Create 5 quotes (each with own config/customer)
+            >>> quotes = await QuoteFactory.create_batch(db_session, 5)
+            
+            >>> # Create 3 quotes with same configuration
+            >>> quotes = await QuoteFactory.create_batch(
+            ...     db_session,
+            ...     3,
+            ...     configuration_id=config.id
+            ... )
+        """
+        quotes = []
+        for _ in range(count):
+            quote = await QuoteFactory.create(db_session, **kwargs)
+            quotes.append(quote)
+        return quotes

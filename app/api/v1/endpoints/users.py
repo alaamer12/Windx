@@ -15,6 +15,7 @@ Features:
     - Rate limiting on all endpoints
     - Caching for read operations
 """
+from __future__ import annotations
 
 from typing import Annotated, Literal
 

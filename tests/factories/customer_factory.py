@@ -8,6 +8,9 @@ Public Functions:
     create_customer_create_schema: Create CustomerCreate schema
     create_multiple_customers_data: Create multiple customer data dictionaries
 
+Public Classes:
+    CustomerFactory: Class-based factory for creating customers in database
+
 Features:
     - Realistic test data
     - Unique values per call
@@ -18,14 +21,20 @@ Features:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.schemas.customer import CustomerCreate
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.models.customer import Customer
 
 __all__ = [
     "create_customer_data",
     "create_customer_create_schema",
     "create_multiple_customers_data",
+    "CustomerFactory",
 ]
 
 _counter = 0
@@ -240,3 +249,111 @@ def create_multiple_customers_data(
         ... )
     """
     return [create_customer_data(**kwargs) for _ in range(count)]
+
+
+
+class CustomerFactory:
+    """Class-based factory for creating customers in database.
+    
+    This factory provides a convenient interface for creating customer
+    records in the database during tests, with support for traits and
+    batch creation.
+    
+    Examples:
+        >>> # Create single customer
+        >>> customer = await CustomerFactory.create(db_session)
+        
+        >>> # Create with custom fields
+        >>> customer = await CustomerFactory.create(
+        ...     db_session,
+        ...     company_name="Acme Corp",
+        ...     email="acme@example.com"
+        ... )
+        
+        >>> # Create with trait
+        >>> customer = await CustomerFactory.create(
+        ...     db_session,
+        ...     residential=True
+        ... )
+        
+        >>> # Create multiple customers
+        >>> customers = await CustomerFactory.create_batch(db_session, 5)
+    """
+
+    @staticmethod
+    async def create(
+        db_session: AsyncSession,
+        **kwargs: Any,
+    ) -> Customer:
+        """Create a customer in the database.
+        
+        Args:
+            db_session: Database session
+            **kwargs: Customer fields and traits
+        
+        Returns:
+            Customer: Created customer instance
+        
+        Examples:
+            >>> customer = await CustomerFactory.create(
+            ...     db_session,
+            ...     company_name="Test Corp"
+            ... )
+        """
+        from app.repositories.customer import CustomerRepository
+
+        # Create customer data
+        data = create_customer_data(**kwargs)
+        
+        # Remove is_active from schema creation (it's set after creation)
+        is_active = data.pop("is_active", True)
+        
+        # Create schema
+        schema = CustomerCreate(**data)
+        
+        # Create in database
+        repo = CustomerRepository(db_session)
+        customer = await repo.create(schema)
+        
+        # Set is_active if different from default
+        if not is_active:
+            customer.is_active = False
+            db_session.add(customer)
+        
+        await db_session.commit()
+        await db_session.refresh(customer)
+        
+        return customer
+
+    @staticmethod
+    async def create_batch(
+        db_session: AsyncSession,
+        count: int,
+        **kwargs: Any,
+    ) -> list[Customer]:
+        """Create multiple customers in the database.
+        
+        Args:
+            db_session: Database session
+            count: Number of customers to create
+            **kwargs: Common fields for all customers
+        
+        Returns:
+            list[Customer]: List of created customer instances
+        
+        Examples:
+            >>> # Create 5 customers
+            >>> customers = await CustomerFactory.create_batch(db_session, 5)
+            
+            >>> # Create 3 residential customers
+            >>> customers = await CustomerFactory.create_batch(
+            ...     db_session,
+            ...     3,
+            ...     residential=True
+            ... )
+        """
+        customers = []
+        for _ in range(count):
+            customer = await CustomerFactory.create(db_session, **kwargs)
+            customers.append(customer)
+        return customers

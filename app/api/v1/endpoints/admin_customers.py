@@ -124,8 +124,9 @@ async def list_customers(
     customers = result.scalars().all()
 
     return templates.TemplateResponse(
-        "admin/customers_list.html.jinja",
-        get_admin_context(
+        request=request,
+        name="admin/customers_list.html.jinja",
+        context=get_admin_context(
             request,
             current_superuser,
             active_page="customers",
@@ -183,8 +184,9 @@ async def new_customer_form(
         )
 
     return templates.TemplateResponse(
-        "admin/customer_form.html.jinja",
-        get_admin_context(
+        request=request,
+        name="admin/customer_form.html.jinja",
+        context=get_admin_context(
             request,
             current_superuser,
             active_page="customers",
@@ -288,10 +290,14 @@ async def create_customer(
             notes=FormDataProcessor.normalize_optional_string(notes),
         )
 
-        # Create customer
+        # Create customer (this commits internally)
         customer = await customer_repo.create(customer_in)
-        customer.is_active = is_active
-        await db.commit()
+        
+        # Update is_active if needed (customer_repo.create already committed)
+        if not is_active:
+            customer.is_active = is_active
+            db.add(customer)
+            await db.commit()
 
         return build_redirect_response(
             url="/api/v1/admin/customers",
@@ -302,8 +308,9 @@ async def create_customer(
     except ValidationError as ve:
         validation_errors = format_validation_errors(ve)
         return templates.TemplateResponse(
-            "admin/customer_form.html.jinja",
-            get_admin_context(
+            request=request,
+            name="admin/customer_form.html.jinja",
+            context=get_admin_context(
                 request,
                 current_superuser,
                 active_page="customers",
@@ -322,18 +329,37 @@ async def create_customer(
                     "is_active": is_active,
                 },
             ),
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
     except Exception as e:
+        # Rollback any pending transaction
+        try:
+            await db.rollback()
+        except Exception:
+            pass  # Ignore rollback errors
+        
+        # Check for duplicate email error
+        error_msg = str(e)
+        if "ix_customers_email" in error_msg or "duplicate key" in error_msg.lower():
+            error_msg = f"A customer with email '{email}' already exists"
+            # For duplicate email, redirect instead of rendering template
+            # to avoid session issues after rollback
+            return build_redirect_response(
+                url="/api/v1/admin/customers/new",
+                message=error_msg,
+                message_type="error",
+            )
+        
         return templates.TemplateResponse(
-            "admin/customer_form.html.jinja",
-            get_admin_context(
+            request=request,
+            name="admin/customer_form.html.jinja",
+            context=get_admin_context(
                 request,
                 current_superuser,
                 active_page="customers",
                 action="create",
-                error=str(e),
+                error=error_msg,
                 form_data={
                     "company_name": company_name,
                     "contact_person": contact_person,
@@ -402,8 +428,9 @@ async def view_customer(
         )
 
     return templates.TemplateResponse(
-        "admin/customer_detail.html.jinja",
-        get_admin_context(
+        request=request,
+        name="admin/customer_detail.html.jinja",
+        context=get_admin_context(
             request,
             current_superuser,
             active_page="customers",
@@ -462,8 +489,9 @@ async def edit_customer_form(
         )
 
     return templates.TemplateResponse(
-        "admin/customer_form.html.jinja",
-        get_admin_context(
+        request=request,
+        name="admin/customer_form.html.jinja",
+        context=get_admin_context(
             request,
             current_superuser,
             active_page="customers",
@@ -592,8 +620,9 @@ async def update_customer(
     except ValidationError as ve:
         validation_errors = format_validation_errors(ve)
         return templates.TemplateResponse(
-            "admin/customer_form.html.jinja",
-            get_admin_context(
+            request=request,
+            name="admin/customer_form.html.jinja",
+            context=get_admin_context(
                 request,
                 current_superuser,
                 active_page="customers",
@@ -601,13 +630,14 @@ async def update_customer(
                 customer=customer,
                 validation_errors=validation_errors,
             ),
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
     except Exception as e:
         return templates.TemplateResponse(
-            "admin/customer_form.html.jinja",
-            get_admin_context(
+            request=request,
+            name="admin/customer_form.html.jinja",
+            context=get_admin_context(
                 request,
                 current_superuser,
                 active_page="customers",
@@ -667,8 +697,8 @@ async def delete_customer(
         )
 
     try:
-        await customer_repo.remove(id)
-        await db.commit()
+        # Note: delete() method commits internally
+        await customer_repo.delete(id)
 
         return build_redirect_response(
             url="/api/v1/admin/customers",
@@ -677,6 +707,7 @@ async def delete_customer(
         )
 
     except Exception as e:
+        await db.rollback()
         return build_redirect_response(
             url="/api/v1/admin/customers",
             message=f"Error deleting customer: {str(e)}",

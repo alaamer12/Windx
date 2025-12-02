@@ -14,6 +14,7 @@ Features:
     - Delete/deactivate manufacturing type (superuser only)
     - OpenAPI documentation with examples
 """
+from __future__ import annotations
 
 from typing import Annotated, Literal
 

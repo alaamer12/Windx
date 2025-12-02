@@ -12,9 +12,11 @@ Revises: d7882101cf73
 Create Date: 2025-12-02 00:07:26.561118
 
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+
 from alembic import op
 
 # revision identifiers, used by Alembic.
@@ -26,25 +28,25 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade database schema.
-    
+
     Add performance indexes for admin pages. These indexes improve
     query performance for filtering, searching, and sorting operations
     on the customers and orders tables.
-    
+
     Note: This migration is designed to be idempotent and will only
     create indexes if the tables exist. If customers or orders tables
     don't exist yet, this migration will skip index creation.
-    
+
     The indexes are also defined in the ORM models, so they will be
     created automatically when tables are created via SQLAlchemy.
     """
     # Get connection to check if tables exist
     conn = op.get_bind()
-    
+
     # Check if customers table exists
     inspector = sa.inspect(conn)
     tables = inspector.get_table_names()
-    
+
     if "customers" in tables:
         # Customers table indexes
         op.create_index(
@@ -66,7 +68,7 @@ def upgrade() -> None:
             ["customer_type", "is_active"],
             if_not_exists=True,
         )
-    
+
     if "orders" in tables:
         # Orders table indexes
         op.create_index(
@@ -92,9 +94,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade database schema.
-    
+
     Remove performance indexes added for admin pages.
-    
+
     Note: We only drop indexes that are not critical for the application.
     Primary key and foreign key indexes are preserved.
     """

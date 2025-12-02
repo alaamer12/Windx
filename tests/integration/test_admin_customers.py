@@ -246,7 +246,9 @@ class TestCreateCustomer:
         # Should redirect to customer list with success message
         assert response.status_code == 303
         assert "/api/v1/admin/customers" in response.headers["location"]
-        assert ("message=" in response.headers["location"] or "success=" in response.headers["location"])
+        assert (
+            "message=" in response.headers["location"] or "success=" in response.headers["location"]
+        )
 
     async def test_create_customer_duplicate_email(
         self,

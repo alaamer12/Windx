@@ -19,16 +19,15 @@ from app.api.types import (
     CurrentSuperuser,
     CustomerRepo,
     DBSession,
-    IsActiveQuery,
     OptionalBoolForm,
     OptionalStrForm,
     PageQuery,
     SearchQuery,
 )
 from app.core.config import get_settings
-from app.schemas.responses import get_common_responses
 from app.models.customer import Customer
 from app.schemas.customer import CustomerCreate, CustomerUpdate
+from app.schemas.responses import get_common_responses
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -292,7 +291,7 @@ async def create_customer(
 
         # Create customer (this commits internally)
         customer = await customer_repo.create(customer_in)
-        
+
         # Update is_active if needed (customer_repo.create already committed)
         if not is_active:
             customer.is_active = is_active
@@ -338,7 +337,7 @@ async def create_customer(
             await db.rollback()
         except Exception:
             pass  # Ignore rollback errors
-        
+
         # Check for duplicate email error
         error_msg = str(e)
         if "ix_customers_email" in error_msg or "duplicate key" in error_msg.lower():
@@ -350,7 +349,7 @@ async def create_customer(
                 message=error_msg,
                 message_type="error",
             )
-        
+
         return templates.TemplateResponse(
             request=request,
             name="admin/customer_form.html.jinja",

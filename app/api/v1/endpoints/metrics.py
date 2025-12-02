@@ -12,6 +12,7 @@ Features:
     - Real-time metrics (no caching)
     - Comprehensive OpenAPI documentation
 """
+
 import asyncio
 
 from fastapi import APIRouter, status

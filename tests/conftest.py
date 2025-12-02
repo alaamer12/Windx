@@ -179,7 +179,7 @@ async def test_engine():
     async with engine.begin() as conn:
         # Drop first to ensure clean state between tests
         await conn.run_sync(Base.metadata.drop_all)
-        
+
         # Enable LTREE extension for hierarchical attribute nodes
         # This is required by the Windx schema for efficient tree queries
         # Use IF NOT EXISTS to avoid errors if extension already exists

@@ -40,9 +40,10 @@ from app.api.types import (
     SortOrderQuery,
 )
 
+
 class TestQueryParameterTypes:
     """Tests for query parameter type definitions.
-    
+
     Note: These are FastAPI dependency types, not callable validators.
     We test that they are properly defined with correct annotations.
     """
@@ -81,7 +82,7 @@ class TestQueryParameterTypes:
 
 class TestFormParameterTypes:
     """Tests for form parameter type definitions.
-    
+
     Note: These are FastAPI dependency types, not callable validators.
     We test that they are properly defined with correct annotations.
     """

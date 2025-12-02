@@ -27,6 +27,7 @@ Features:
     - Reduced boilerplate in endpoints
     - Full Windx configurator system support
 """
+
 from __future__ import annotations
 
 from typing import Annotated, Optional

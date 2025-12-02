@@ -13,9 +13,9 @@ from fastapi.templating import Jinja2Templates
 from app.api.deps import get_admin_context
 from app.api.types import CurrentSuperuser, DBSession, RequiredStrForm, UserRepo
 from app.core.config import get_settings
-from app.schemas.responses import get_common_responses
 from app.core.security import create_access_token
 from app.repositories.session import SessionRepository
+from app.schemas.responses import get_common_responses
 from app.schemas.session import SessionCreate
 
 router = APIRouter()

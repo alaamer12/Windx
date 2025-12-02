@@ -92,10 +92,10 @@ def create_customer_data(
     Examples:
         >>> # Standard commercial customer
         >>> data = create_customer_data()
-        
+
         >>> # Residential customer (trait)
         >>> data = create_customer_data(residential=True)
-        
+
         >>> # Inactive contractor (multiple traits)
         >>> data = create_customer_data(contractor=True, inactive=True)
     """
@@ -119,16 +119,16 @@ def create_customer_data(
     # Generate default values
     if company_name is None and customer_type != "residential":
         company_name = f"Test Company {unique_id}"
-    
+
     if contact_person is None:
         contact_person = f"Contact Person {unique_id}"
-    
+
     if email is None:
         email = f"customer{unique_id}@example.com"
-    
+
     if phone is None:
         phone = f"555-{unique_id:04d}"
-    
+
     if address is None:
         address = {
             "street": f"{unique_id} Test Street",
@@ -137,7 +137,7 @@ def create_customer_data(
             "zip": f"{unique_id:05d}",
             "country": "USA",
         }
-    
+
     if tax_id is None and customer_type != "residential":
         tax_id = f"{unique_id:02d}-{unique_id:07d}"
 
@@ -195,10 +195,10 @@ def create_customer_create_schema(
     Examples:
         >>> # Standard commercial customer
         >>> schema = create_customer_create_schema()
-        
+
         >>> # Residential customer
         >>> schema = create_customer_create_schema(residential=True)
-        
+
         >>> # Contractor with custom payment terms
         >>> schema = create_customer_create_schema(
         ...     contractor=True,
@@ -241,7 +241,7 @@ def create_multiple_customers_data(
     Examples:
         >>> # Create 5 commercial customers
         >>> customers = create_multiple_customers_data(count=5)
-        
+
         >>> # Create 3 residential customers
         >>> customers = create_multiple_customers_data(
         ...     count=3,
@@ -251,31 +251,30 @@ def create_multiple_customers_data(
     return [create_customer_data(**kwargs) for _ in range(count)]
 
 
-
 class CustomerFactory:
     """Class-based factory for creating customers in database.
-    
+
     This factory provides a convenient interface for creating customer
     records in the database during tests, with support for traits and
     batch creation.
-    
+
     Examples:
         >>> # Create single customer
         >>> customer = await CustomerFactory.create(db_session)
-        
+
         >>> # Create with custom fields
         >>> customer = await CustomerFactory.create(
         ...     db_session,
         ...     company_name="Acme Corp",
         ...     email="acme@example.com"
         ... )
-        
+
         >>> # Create with trait
         >>> customer = await CustomerFactory.create(
         ...     db_session,
         ...     residential=True
         ... )
-        
+
         >>> # Create multiple customers
         >>> customers = await CustomerFactory.create_batch(db_session, 5)
     """
@@ -286,14 +285,14 @@ class CustomerFactory:
         **kwargs: Any,
     ) -> Customer:
         """Create a customer in the database.
-        
+
         Args:
             db_session: Database session
             **kwargs: Customer fields and traits
-        
+
         Returns:
             Customer: Created customer instance
-        
+
         Examples:
             >>> customer = await CustomerFactory.create(
             ...     db_session,
@@ -304,25 +303,25 @@ class CustomerFactory:
 
         # Create customer data
         data = create_customer_data(**kwargs)
-        
+
         # Remove is_active from schema creation (it's set after creation)
         is_active = data.pop("is_active", True)
-        
+
         # Create schema
         schema = CustomerCreate(**data)
-        
+
         # Create in database
         repo = CustomerRepository(db_session)
         customer = await repo.create(schema)
-        
+
         # Set is_active if different from default
         if not is_active:
             customer.is_active = False
             db_session.add(customer)
-        
+
         await db_session.commit()
         await db_session.refresh(customer)
-        
+
         return customer
 
     @staticmethod
@@ -332,19 +331,19 @@ class CustomerFactory:
         **kwargs: Any,
     ) -> list[Customer]:
         """Create multiple customers in the database.
-        
+
         Args:
             db_session: Database session
             count: Number of customers to create
             **kwargs: Common fields for all customers
-        
+
         Returns:
             list[Customer]: List of created customer instances
-        
+
         Examples:
             >>> # Create 5 customers
             >>> customers = await CustomerFactory.create_batch(db_session, 5)
-            
+
             >>> # Create 3 residential customers
             >>> customers = await CustomerFactory.create_batch(
             ...     db_session,

@@ -12,11 +12,11 @@ from fastapi import APIRouter, Form, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from app.api.deps import get_admin_context
 from app.api.types import (
     CurrentSuperuser,
     ManufacturingTypeRepo,
 )
-from app.api.deps import get_admin_context
 from app.schemas.manufacturing_type import ManufacturingTypeCreate, ManufacturingTypeUpdate
 
 router = APIRouter()

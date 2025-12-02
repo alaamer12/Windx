@@ -28,7 +28,7 @@ from tests.conftest import TEST_DATABASE_URL
 
 async def reset_database():
     """Reset the test database to a clean state."""
-    print(f"Connecting to test database...")
+    print("Connecting to test database...")
     print(f"URL: {TEST_DATABASE_URL.split('@')[1]}")  # Hide password
 
     engine = create_async_engine(
@@ -70,7 +70,9 @@ async def reset_database():
             print("\n4. Verifying tables...")
             # Verify tables exist
             result = await conn.execute(
-                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename")
+                text(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename"
+                )
             )
             tables = [row[0] for row in result]
             print(f"✓ Found {len(tables)} tables:")

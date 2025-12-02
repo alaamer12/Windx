@@ -85,13 +85,13 @@ def create_order_data(
     Examples:
         >>> # Standard confirmed order
         >>> data = create_order_data(quote_id=1)
-        
+
         >>> # Order in production (trait)
         >>> data = create_order_data(quote_id=1, in_production=True)
-        
+
         >>> # Shipped order (trait)
         >>> data = create_order_data(quote_id=1, shipped=True)
-        
+
         >>> # Completed order (trait)
         >>> data = create_order_data(quote_id=1, completed=True)
     """
@@ -109,13 +109,13 @@ def create_order_data(
     if order_number is None:
         today = date.today()
         order_number = f"ORD-{today.strftime('%Y%m%d')}-{unique_id:03d}"
-    
+
     if order_date is None:
         order_date = date.today()
-    
+
     if required_date is None:
         required_date = date.today() + timedelta(days=30)
-    
+
     if installation_address is None:
         installation_address = {
             "street": f"{unique_id} Installation Street",
@@ -157,7 +157,7 @@ def create_multiple_orders_data(
     Examples:
         >>> # Create 5 orders
         >>> orders = create_multiple_orders_data(count=5, quote_id=1)
-        
+
         >>> # Create 3 orders in production
         >>> orders = create_multiple_orders_data(
         ...     count=3,
@@ -168,37 +168,36 @@ def create_multiple_orders_data(
     return [create_order_data(**kwargs) for _ in range(count)]
 
 
-
 class OrderFactory:
     """Class-based factory for creating orders in database.
-    
+
     This factory provides a convenient interface for creating order
     records in the database during tests, with automatic creation of
     required dependencies (quote, customer, configuration).
-    
+
     Examples:
         >>> # Create single order (auto-creates quote and customer)
         >>> order = await OrderFactory.create(db_session)
-        
+
         >>> # Create with custom fields
         >>> order = await OrderFactory.create(
         ...     db_session,
         ...     order_number="ORD-2024-001",
         ...     status="production"
         ... )
-        
+
         >>> # Create with trait
         >>> order = await OrderFactory.create(
         ...     db_session,
         ...     shipped=True
         ... )
-        
+
         >>> # Create with existing quote
         >>> order = await OrderFactory.create(
         ...     db_session,
         ...     quote_id=existing_quote.id
         ... )
-        
+
         >>> # Create multiple orders
         >>> orders = await OrderFactory.create_batch(db_session, 5)
     """
@@ -210,22 +209,22 @@ class OrderFactory:
         **kwargs: Any,
     ) -> Order:
         """Create an order in the database.
-        
+
         If quote_id is not provided, automatically creates a quote with
         customer and configuration.
-        
+
         Args:
             db_session: Database session
             quote_id: Optional quote ID (auto-created if None)
             **kwargs: Order fields and traits
-        
+
         Returns:
             Order: Created order instance
-        
+
         Examples:
             >>> # Auto-create dependencies
             >>> order = await OrderFactory.create(db_session)
-            
+
             >>> # Use existing quote
             >>> order = await OrderFactory.create(
             ...     db_session,
@@ -244,14 +243,14 @@ class OrderFactory:
 
         # Create order data
         data = create_order_data(quote_id=quote_id, **kwargs)
-        
+
         # Create order instance
         order = Order(**data)
-        
+
         db_session.add(order)
         await db_session.commit()
         await db_session.refresh(order)
-        
+
         return order
 
     @staticmethod
@@ -261,19 +260,19 @@ class OrderFactory:
         **kwargs: Any,
     ) -> list[Order]:
         """Create multiple orders in the database.
-        
+
         Args:
             db_session: Database session
             count: Number of orders to create
             **kwargs: Common fields for all orders
-        
+
         Returns:
             list[Order]: List of created order instances
-        
+
         Examples:
             >>> # Create 5 orders (each with own quote/customer)
             >>> orders = await OrderFactory.create_batch(db_session, 5)
-            
+
             >>> # Create 3 orders in production
             >>> orders = await OrderFactory.create_batch(
             ...     db_session,

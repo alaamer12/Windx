@@ -80,7 +80,7 @@ def create_configuration_data(
     Examples:
         >>> # Standard configuration
         >>> data = create_configuration_data(manufacturing_type_id=1)
-        
+
         >>> # Configuration with custom pricing
         >>> data = create_configuration_data(
         ...     manufacturing_type_id=1,
@@ -92,19 +92,19 @@ def create_configuration_data(
     # Generate default values
     if name is None:
         name = f"Test Configuration {unique_id}"
-    
+
     if reference_code is None:
         reference_code = f"CFG-TEST-{unique_id:04d}"
-    
+
     if base_price is None:
         base_price = Decimal("200.00")
-    
+
     if total_price is None:
         total_price = Decimal("200.00")
-    
+
     if calculated_weight is None:
         calculated_weight = Decimal("15.00")
-    
+
     if calculated_technical_data is None:
         calculated_technical_data = {}
 
@@ -127,28 +127,28 @@ def create_configuration_data(
 
 class ConfigurationFactory:
     """Class-based factory for creating configurations in database.
-    
+
     This factory provides a convenient interface for creating configuration
     records in the database during tests, with automatic creation of
     required dependencies (manufacturing type, customer).
-    
+
     Examples:
         >>> # Create single configuration (auto-creates dependencies)
         >>> config = await ConfigurationFactory.create(db_session)
-        
+
         >>> # Create with custom fields
         >>> config = await ConfigurationFactory.create(
         ...     db_session,
         ...     name="Custom Window",
         ...     total_price=Decimal("500.00")
         ... )
-        
+
         >>> # Create with existing manufacturing type
         >>> config = await ConfigurationFactory.create(
         ...     db_session,
         ...     manufacturing_type_id=mfg_type.id
         ... )
-        
+
         >>> # Create multiple configurations
         >>> configs = await ConfigurationFactory.create_batch(db_session, 5)
     """
@@ -161,23 +161,23 @@ class ConfigurationFactory:
         **kwargs: Any,
     ) -> Configuration:
         """Create a configuration in the database.
-        
+
         If manufacturing_type_id or customer_id are not provided,
         automatically creates them.
-        
+
         Args:
             db_session: Database session
             manufacturing_type_id: Optional manufacturing type ID (auto-created if None)
             customer_id: Optional customer ID (auto-created if None)
             **kwargs: Configuration fields
-        
+
         Returns:
             Configuration: Created configuration instance
-        
+
         Examples:
             >>> # Auto-create dependencies
             >>> config = await ConfigurationFactory.create(db_session)
-            
+
             >>> # Use existing manufacturing type
             >>> config = await ConfigurationFactory.create(
             ...     db_session,
@@ -216,14 +216,14 @@ class ConfigurationFactory:
             customer_id=customer_id,
             **kwargs,
         )
-        
+
         # Create configuration instance
         config = Configuration(**data)
-        
+
         db_session.add(config)
         await db_session.commit()
         await db_session.refresh(config)
-        
+
         return config
 
     @staticmethod
@@ -233,19 +233,19 @@ class ConfigurationFactory:
         **kwargs: Any,
     ) -> list[Configuration]:
         """Create multiple configurations in the database.
-        
+
         Args:
             db_session: Database session
             count: Number of configurations to create
             **kwargs: Common fields for all configurations
-        
+
         Returns:
             list[Configuration]: List of created configuration instances
-        
+
         Examples:
             >>> # Create 5 configurations (each with own dependencies)
             >>> configs = await ConfigurationFactory.create_batch(db_session, 5)
-            
+
             >>> # Create 3 configurations with same manufacturing type
             >>> configs = await ConfigurationFactory.create_batch(
             ...     db_session,

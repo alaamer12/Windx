@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
@@ -19,10 +19,10 @@ from app.api.types import (
     SearchQuery,
 )
 from app.core.config import get_settings
-from app.schemas.responses import get_common_responses
 from app.models.customer import Customer
 from app.models.order import Order
 from app.schemas.order import OrderUpdate
+from app.schemas.responses import get_common_responses
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

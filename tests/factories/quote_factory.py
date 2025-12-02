@@ -77,7 +77,7 @@ def create_quote_data(
     Examples:
         >>> # Standard quote
         >>> data = create_quote_data(configuration_id=1)
-        
+
         >>> # Quote with custom pricing
         >>> data = create_quote_data(
         ...     configuration_id=1,
@@ -91,22 +91,22 @@ def create_quote_data(
     if quote_number is None:
         today = date.today()
         quote_number = f"Q-{today.strftime('%Y%m%d')}-{unique_id:03d}"
-    
+
     if subtotal is None:
         subtotal = Decimal("500.00")
-    
+
     if tax_rate is None:
         tax_rate = Decimal("8.50")
-    
+
     if tax_amount is None:
         tax_amount = (subtotal * tax_rate / Decimal("100")).quantize(Decimal("0.01"))
-    
+
     if discount_amount is None:
         discount_amount = Decimal("0.00")
-    
+
     if total_amount is None:
         total_amount = (subtotal + tax_amount - discount_amount).quantize(Decimal("0.01"))
-    
+
     if valid_until is None:
         valid_until = date.today() + timedelta(days=30)
 
@@ -148,31 +148,30 @@ def create_multiple_quotes_data(
     return [create_quote_data(**kwargs) for _ in range(count)]
 
 
-
 class QuoteFactory:
     """Class-based factory for creating quotes in database.
-    
+
     This factory provides a convenient interface for creating quote
     records in the database during tests, with automatic creation of
     required dependencies (configuration, customer, manufacturing type).
-    
+
     Examples:
         >>> # Create single quote (auto-creates dependencies)
         >>> quote = await QuoteFactory.create(db_session)
-        
+
         >>> # Create with custom fields
         >>> quote = await QuoteFactory.create(
         ...     db_session,
         ...     quote_number="Q-2024-001",
         ...     status="sent"
         ... )
-        
+
         >>> # Create with existing configuration
         >>> quote = await QuoteFactory.create(
         ...     db_session,
         ...     configuration_id=config.id
         ... )
-        
+
         >>> # Create multiple quotes
         >>> quotes = await QuoteFactory.create_batch(db_session, 5)
     """
@@ -185,23 +184,23 @@ class QuoteFactory:
         **kwargs: Any,
     ) -> Any:
         """Create a quote in the database.
-        
+
         If configuration_id is not provided, automatically creates a
         configuration with customer and manufacturing type.
-        
+
         Args:
             db_session: Database session
             configuration_id: Optional configuration ID (auto-created if None)
             customer_id: Optional customer ID (auto-created if None)
             **kwargs: Quote fields
-        
+
         Returns:
             Quote: Created quote instance
-        
+
         Examples:
             >>> # Auto-create dependencies
             >>> quote = await QuoteFactory.create(db_session)
-            
+
             >>> # Use existing configuration
             >>> quote = await QuoteFactory.create(
             ...     db_session,
@@ -226,14 +225,14 @@ class QuoteFactory:
             customer_id=customer_id,
             **kwargs,
         )
-        
+
         # Create quote instance
         quote = Quote(**data)
-        
+
         db_session.add(quote)
         await db_session.commit()
         await db_session.refresh(quote)
-        
+
         return quote
 
     @staticmethod
@@ -243,19 +242,19 @@ class QuoteFactory:
         **kwargs: Any,
     ) -> list[Any]:
         """Create multiple quotes in the database.
-        
+
         Args:
             db_session: Database session
             count: Number of quotes to create
             **kwargs: Common fields for all quotes
-        
+
         Returns:
             list[Quote]: List of created quote instances
-        
+
         Examples:
             >>> # Create 5 quotes (each with own config/customer)
             >>> quotes = await QuoteFactory.create_batch(db_session, 5)
-            
+
             >>> # Create 3 quotes with same configuration
             >>> quotes = await QuoteFactory.create_batch(
             ...     db_session,

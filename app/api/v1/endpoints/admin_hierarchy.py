@@ -10,6 +10,7 @@ Endpoints:
     GET /admin/hierarchy/node/{node_id}/edit - Node edit form
     POST /admin/hierarchy/node/{node_id}/delete - Delete node
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -39,8 +40,8 @@ from app.api.types import (
     RequiredIntQuery,
     RequiredStrForm,
 )
-from app.schemas.responses import get_common_responses
 from app.schemas import AttributeNodeCreate, AttributeNodeUpdate
+from app.schemas.responses import get_common_responses
 from app.services.hierarchy_builder import HierarchyBuilderService
 
 # Configure Jinja2 templates
@@ -314,11 +315,11 @@ class NodeFormDataProcessor:
         manufacturing_type_id: int | None = None,
     ) -> dict[str, Any]:
         """Prepare and normalize form data for validation.
-        
+
         Uses shared FormDataProcessor for string normalization and decimal conversion.
         """
         from decimal import Decimal
-        
+
         return {
             "manufacturing_type_id": manufacturing_type_id,
             "name": name,
@@ -350,7 +351,7 @@ class ValidationErrorFormatter:
     @staticmethod
     def format_errors(validation_error: ValidationError) -> list[str]:
         """Convert Pydantic validation errors to readable messages.
-        
+
         Uses shared format_validation_errors function for consistency.
         """
         return format_validation_errors(validation_error)

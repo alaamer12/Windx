@@ -250,7 +250,7 @@ async def test_create_node_validation_errors(db_session: AsyncSession):
 
     # Test invalid node_type
     from app.core.exceptions import ValidationException
-    
+
     with pytest.raises(ValidationException, match="Invalid node_type"):
         await service.create_node(
             manufacturing_type_id=mfg_type.id,

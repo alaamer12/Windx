@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.customer import Customer
 from app.repositories.customer import CustomerRepository
-from app.schemas.customer import CustomerCreate, CustomerUpdate
+from app.schemas.customer import CustomerUpdate
 from tests.factories.customer_factory import (
     create_customer_create_schema,
     create_customer_data,
@@ -188,9 +188,7 @@ class TestCustomerRepositoryFiltering:
         repo = CustomerRepository(db_session)
 
         # Create various customers
-        active_commercial = create_customer_data(
-            customer_type="commercial", is_active=True
-        )
+        active_commercial = create_customer_data(customer_type="commercial", is_active=True)
         inactive_commercial = create_customer_data(
             customer_type="commercial", is_active=False, inactive=True
         )
@@ -208,9 +206,7 @@ class TestCustomerRepositoryFiltering:
         filtered_customers = list(result.scalars().all())
 
         assert len(filtered_customers) >= 1
-        assert all(
-            c.is_active and c.customer_type == "commercial" for c in filtered_customers
-        )
+        assert all(c.is_active and c.customer_type == "commercial" for c in filtered_customers)
 
 
 class TestCustomerRepositorySearch:

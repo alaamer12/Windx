@@ -35,7 +35,7 @@ class TestCustomerOrderWorkflow:
         db_session: AsyncSession,
     ):
         """Test complete workflow: customer → configuration → quote → order.
-        
+
         This test verifies the entire workflow from customer creation
         through order placement with a single configuration.
         """
@@ -125,7 +125,7 @@ class TestCustomerOrderWorkflow:
         db_session: AsyncSession,
     ):
         """Test workflow with multiple configurations for same customer.
-        
+
         This test verifies that a customer can have multiple configurations,
         each with their own quotes and orders.
         """
@@ -211,7 +211,7 @@ class TestCustomerOrderWorkflow:
         db_session: AsyncSession,
     ):
         """Test workflow with order status progression.
-        
+
         This test verifies that orders can progress through different
         statuses: confirmed → production → shipped → installed.
         """
@@ -292,13 +292,14 @@ class TestCustomerOrderWorkflow:
         db_session: AsyncSession,
     ):
         """Test data integrity throughout workflow.
-        
+
         This test verifies that data remains consistent and accessible
         throughout the entire workflow, including all relationships.
         """
-        from app.models.manufacturing_type import ManufacturingType
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
+
+        from app.models.manufacturing_type import ManufacturingType
         from tests.factories.configuration_factory import ConfigurationFactory
         from tests.factories.customer_factory import CustomerFactory
         from tests.factories.order_factory import OrderFactory
@@ -355,23 +356,19 @@ class TestCustomerOrderWorkflow:
         db_session.expire_all()
 
         # Verify we can query from order back to customer
-        from app.models.order import Order
-        from app.models.quote import Quote
         from app.models.configuration import Configuration
         from app.models.customer import Customer
+        from app.models.order import Order
+        from app.models.quote import Quote
 
         # Query order (no relationship access needed)
-        result = await db_session.execute(
-            select(Order).where(Order.id == order_id)
-        )
+        result = await db_session.execute(select(Order).where(Order.id == order_id))
         queried_order = result.scalar_one()
         assert queried_order.id == order_id
         assert queried_order.quote_id == quote_id
 
         # Query quote (no relationship access needed)
-        result = await db_session.execute(
-            select(Quote).where(Quote.id == quote_id)
-        )
+        result = await db_session.execute(select(Quote).where(Quote.id == quote_id))
         queried_quote = result.scalar_one()
         assert queried_quote.id == quote_id
         assert queried_quote.configuration_id == config_id
@@ -385,30 +382,24 @@ class TestCustomerOrderWorkflow:
         assert queried_config.customer_id == customer_id
 
         # Query customer (no relationship access needed)
-        result = await db_session.execute(
-            select(Customer).where(Customer.id == customer_id)
-        )
+        result = await db_session.execute(select(Customer).where(Customer.id == customer_id))
         queried_customer = result.scalar_one()
         assert queried_customer.id == customer_id
         assert queried_customer.email == "integrity@test.com"
-        
+
         # Verify relationships with eager loading
         result = await db_session.execute(
-            select(Order)
-            .options(selectinload(Order.quote))
-            .where(Order.id == order_id)
+            select(Order).options(selectinload(Order.quote)).where(Order.id == order_id)
         )
         order_with_quote = result.scalar_one()
         assert order_with_quote.quote.id == quote_id
-        
+
         result = await db_session.execute(
-            select(Quote)
-            .options(selectinload(Quote.configuration))
-            .where(Quote.id == quote_id)
+            select(Quote).options(selectinload(Quote.configuration)).where(Quote.id == quote_id)
         )
         quote_with_config = result.scalar_one()
         assert quote_with_config.configuration.id == config_id
-        
+
         result = await db_session.execute(
             select(Configuration)
             .options(selectinload(Configuration.customer))
@@ -422,7 +413,7 @@ class TestCustomerOrderWorkflow:
         db_session: AsyncSession,
     ):
         """Test workflow where configuration is updated before quote.
-        
+
         This test verifies that configurations can be modified and
         the changes are reflected in subsequent quotes.
         """
@@ -484,10 +475,9 @@ class TestCustomerOrderWorkflow:
         assert quote.configuration_id == config.id
 
 
-
 class TestHierarchyManagementWorkflow:
     """Test hierarchy management workflow.
-    
+
     Requirements: 6.2
     """
 
@@ -496,12 +486,12 @@ class TestHierarchyManagementWorkflow:
         db_session: AsyncSession,
     ):
         """Test creating manufacturing type → attribute nodes → hierarchy.
-        
+
         This test verifies the complete workflow of creating a manufacturing
         type and building its attribute hierarchy.
         """
-        from app.models.manufacturing_type import ManufacturingType
         from app.models.attribute_node import AttributeNode
+        from app.models.manufacturing_type import ManufacturingType
 
         # Step 1: Create manufacturing type
         mfg_type = ManufacturingType(
@@ -594,9 +584,7 @@ class TestHierarchyManagementWorkflow:
         from sqlalchemy import select
 
         result = await db_session.execute(
-            select(AttributeNode).where(
-                AttributeNode.manufacturing_type_id == mfg_type.id
-            )
+            select(AttributeNode).where(AttributeNode.manufacturing_type_id == mfg_type.id)
         )
         all_nodes = result.scalars().all()
         assert len(all_nodes) == 4  # root + attribute + 2 options
@@ -606,12 +594,12 @@ class TestHierarchyManagementWorkflow:
         db_session: AsyncSession,
     ):
         """Test updating node parent triggers hierarchy recalculation.
-        
+
         This test verifies that when a node's parent is changed, the LTREE
         paths and depths are recalculated for the node and all descendants.
         """
-        from app.models.manufacturing_type import ManufacturingType
         from app.models.attribute_node import AttributeNode
+        from app.models.manufacturing_type import ManufacturingType
 
         # Create manufacturing type
         mfg_type = ManufacturingType(
@@ -687,13 +675,14 @@ class TestHierarchyManagementWorkflow:
         db_session: AsyncSession,
     ):
         """Test that deleting nodes with children is handled properly.
-        
+
         This test verifies that when a node with children is deleted,
         either the children are cascade deleted or the operation is prevented.
         """
-        from app.models.manufacturing_type import ManufacturingType
-        from app.models.attribute_node import AttributeNode
         from sqlalchemy import select
+
+        from app.models.attribute_node import AttributeNode
+        from app.models.manufacturing_type import ManufacturingType
 
         # Create manufacturing type
         mfg_type = ManufacturingType(
@@ -749,15 +738,13 @@ class TestHierarchyManagementWorkflow:
         assert result.scalar_one_or_none() is None
 
         # Verify child is also deleted (cascade)
-        result = await db_session.execute(
-            select(AttributeNode).where(AttributeNode.id == child_id)
-        )
+        result = await db_session.execute(select(AttributeNode).where(AttributeNode.id == child_id))
         assert result.scalar_one_or_none() is None
 
 
 class TestErrorRecoveryWorkflow:
     """Test error recovery workflows.
-    
+
     Requirements: 6.5
     """
 
@@ -766,12 +753,13 @@ class TestErrorRecoveryWorkflow:
         db_session: AsyncSession,
     ):
         """Test validation error → fix → success workflow.
-        
+
         This test verifies that after a validation error, the user can
         fix the data and successfully complete the operation.
         """
-        from app.schemas.customer import CustomerCreate
         from pydantic import ValidationError
+
+        from app.schemas.customer import CustomerCreate
         from tests.factories.customer_factory import CustomerFactory
 
         # Step 1: Try to create customer with invalid data (invalid email format)
@@ -812,12 +800,12 @@ class TestErrorRecoveryWorkflow:
         db_session: AsyncSession,
     ):
         """Test duplicate email error → fix → success workflow.
-        
+
         This test verifies that after a duplicate email error, the user
         can change the email and successfully create the customer.
         """
-        from tests.factories.customer_factory import CustomerFactory
         from sqlalchemy.exc import IntegrityError
+
         from app.models.customer import Customer
 
         # Step 1: Create first customer directly
@@ -842,7 +830,7 @@ class TestErrorRecoveryWorkflow:
             is_active=True,
         )
         db_session.add(customer2)
-        
+
         try:
             await db_session.commit()
             assert False, "Should have raised IntegrityError"
@@ -861,7 +849,7 @@ class TestErrorRecoveryWorkflow:
         db_session.add(customer3)
         await db_session.commit()
         await db_session.refresh(customer3)
-        
+
         assert customer3.id is not None
         assert customer3.email == "unique@example.com"
 
@@ -870,7 +858,7 @@ class TestErrorRecoveryWorkflow:
         db_session: AsyncSession,
     ):
         """Test configuration update after initial error.
-        
+
         This test verifies that after an error updating a configuration,
         the user can fix the issue and successfully update.
         """

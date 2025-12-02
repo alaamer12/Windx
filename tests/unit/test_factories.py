@@ -16,8 +16,8 @@ from decimal import Decimal
 
 from app.schemas.customer import CustomerCreate
 from tests.factories.customer_factory import (
-    create_customer_data,
     create_customer_create_schema,
+    create_customer_data,
 )
 from tests.factories.order_factory import create_order_data
 from tests.factories.quote_factory import create_quote_data

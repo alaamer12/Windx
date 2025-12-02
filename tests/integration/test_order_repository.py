@@ -14,16 +14,17 @@ Features:
     - Query filtering testing
 """
 
-import pytest
-from decimal import Decimal
 from datetime import date, timedelta
+from decimal import Decimal
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.customer import Customer
 from app.models.configuration import Configuration
+from app.models.customer import Customer
 from app.models.manufacturing_type import ManufacturingType
-from app.models.quote import Quote
 from app.models.order import Order
+from app.models.quote import Quote
 from app.repositories.order import OrderRepository
 from app.schemas.order import OrderUpdate
 from tests.factories.customer_factory import create_customer_data
@@ -38,11 +39,11 @@ async def create_test_order_with_dependencies(
     **order_kwargs,
 ) -> Order:
     """Helper to create an order with all required dependencies.
-    
+
     Args:
         db_session: Database session
         **order_kwargs: Additional order fields
-        
+
     Returns:
         Order: Created order with all dependencies
     """
@@ -201,9 +202,7 @@ class TestOrderRepositoryUpdateOperations:
         order = await create_test_order_with_dependencies(db_session)
 
         # Update instructions
-        update_data = OrderUpdate(
-            special_instructions="Updated: Call before delivery"
-        )
+        update_data = OrderUpdate(special_instructions="Updated: Call before delivery")
         updated = await repo.update(order, update_data)
 
         assert updated.special_instructions == "Updated: Call before delivery"

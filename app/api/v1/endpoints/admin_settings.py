@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_superuser, get_admin_context
+from app.api.deps import get_admin_context, get_current_active_superuser
 
 # Shared admin utilities for consistent context (feature flags, etc.)
 from app.core.config import get_settings

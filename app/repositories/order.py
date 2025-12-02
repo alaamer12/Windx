@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.order import Order
+from app.models.quote import Quote
 from app.repositories.base import BaseRepository
 from app.schemas.order import OrderCreate, OrderUpdate
 

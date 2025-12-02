@@ -123,30 +123,49 @@
     - Simplify class-based utilities (move generic functionality to shared utilities)
     - _Requirements: 2.1, 2.2, 2.3, 3.1, 7.1, 8.1, 8.5, 10.2, 10.3_
 
-- [ ] 3. Test Infrastructure: Factories and Repository Tests
+- [x] 3. Test Infrastructure: Factories and Repository Tests
 
-  - [ ] 3.1 Create `tests/factories/customer_factory.py`
+
+
+
+
+
+
+
+  - [x] 3.1 Create `tests/factories/customer_factory.py`
+
+
     - Implement `CustomerFactory` with all fields
     - Add factory traits: `residential`, `inactive`, `contractor`
     - Handle async session properly
     - Add docstrings
     - _Requirements: 9.1, 9.3, 9.4_
   
-  - [ ] 3.2 Create `tests/factories/order_factory.py`
+
+
+
+  - [x] 3.2 Create `tests/factories/order_factory.py`
+
     - Implement `OrderFactory` with all fields
     - Add factory traits: `in_production`, `shipped`, `completed`
     - Use `SubFactory` for quote relationship
     - Handle async session properly
+
+
     - _Requirements: 9.2, 9.3, 9.4_
   
-  - [ ] 3.3 Create `tests/integration/test_customer_repository.py`
+  - [x] 3.3 Create `tests/integration/test_customer_repository.py`
+
     - Test CRUD operations (create, get, get_with_full_details, update, delete)
     - Test filtering by `is_active` and `customer_type`
+
+
     - Test search by company name, contact person, email
     - Test pagination with different page sizes and edge cases
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
   
-  - [ ] 3.4 Create `tests/integration/test_order_repository.py`
+  - [x] 3.4 Create `tests/integration/test_order_repository.py`
+
     - Test get operations (get, get_with_full_details with customer, items, quote)
     - Test update operations
     - Test filtering by status
@@ -154,7 +173,8 @@
     - Test pagination and ordering by order_date DESC
     - _Requirements: 5.1, 5.2, 5.3, 5.7_
   
-  - [ ]* 3.5 Add factory validation tests
+  - [x] 3.5 Add factory validation tests
+
     - Test customer factory creates valid customers
     - Test customer factory traits work correctly
     - Test order factory creates valid orders
@@ -162,6 +182,7 @@
     - _Requirements: 9.1, 9.2, 9.4_
 
 - [ ] 4. Endpoint Integration Tests: Customers and Orders
+
   - [ ] 4.1 Create `tests/integration/test_admin_customers.py`
     - Test `list_customers` with pagination, search, and filters
     - Test `create_customer` with valid/invalid data and duplicate email

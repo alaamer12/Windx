@@ -40,6 +40,7 @@ async def create_superuser():
     async with session_maker() as session:
         try:
             # Check if user already exists
+            # noinspection PyTypeChecker
             result = await session.execute(
                 select(User).where((User.email == email) | (User.username == username))
             )
@@ -99,6 +100,7 @@ async def promote_to_superuser():
     async with session_maker() as session:
         try:
             # Find user
+            # noinspection PyTypeChecker
             result = await session.execute(
                 select(User).where((User.email == identifier) | (User.username == identifier))
             )

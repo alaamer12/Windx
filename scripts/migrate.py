@@ -2,6 +2,7 @@
 
 This script helps run Alembic migrations with the correct environment configuration.
 """
+from __future__ import annotations
 
 import argparse
 import os

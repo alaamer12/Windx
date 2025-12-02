@@ -305,56 +305,55 @@ This implementation plan breaks down the critical fixes into discrete, actionabl
 
 ## Phase 7: Admin Template Consistency
 
-- [ ] 7. Unify admin template styling and components
+- [x] 7. Unify admin template styling and components
   - Create reusable Jinja2 components
-  - Implement consistent Bootstrap 5 styling
+  - Implement consistent Infima styling via CDN
   - Update all admin pages to use components
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-- [ ] 7.1 Create base admin template
-  - Create app/templates/admin/base.html.jinja
-  - Include Bootstrap 5 CDN
+- [x] 7.1 Create base admin template
+  - Updated app/templates/admin/base.html.jinja
+  - Include Infima CSS Framework via CDN
   - Include custom CSS link
   - Define content blocks
   - Add responsive meta tags
   - _Requirements: 9.1, 9.5_
 
-- [ ] 7.2 Create navbar component
-  - Create app/templates/admin/components/navbar.html.jinja
+- [x] 7.2 Create navbar component
+  - Created app/templates/admin/components/navbar.html.jinja
   - Add brand logo/text
   - Add user email display
   - Add logout link
-  - Make responsive with Bootstrap
+  - Make responsive (mobile-only display)
   - _Requirements: 9.2, 9.7_
 
-- [ ] 7.3 Create sidebar component
-  - Create app/templates/admin/components/sidebar.html.jinja
-  - Add navigation links
+- [x] 7.3 Create sidebar component
+  - Created app/templates/admin/components/sidebar.html.jinja
+  - Add navigation links with icons
   - Highlight active page
   - Make responsive
   - _Requirements: 9.2, 9.7_
 
-- [ ] 7.4 Create alerts component
-  - Create app/templates/admin/components/alerts.html.jinja
+- [x] 7.4 Create alerts component
+  - Created app/templates/admin/components/alerts.html.jinja
   - Display flash messages
   - Support multiple alert types (success, error, warning, info)
-  - Add dismiss buttons
+  - Add dismiss buttons with animation
+  - Support Flask flash messages
   - _Requirements: 9.2, 9.6_
 
-- [ ] 7.5 Create custom admin stylesheet
-  - Create app/static/css/admin.css
+- [x] 7.5 Create custom admin stylesheet
+  - Created app/static/css/admin.css
   - Style sidebar navigation
   - Style active states
   - Add hover effects
   - Ensure responsive design
   - _Requirements: 9.4_
 
-- [ ] 7.6 Update admin templates to use components
-  - Update hierarchy management templates
-  - Update manufacturing types templates
-  - Update customer management templates
-  - Update settings templates
-  - Ensure all extend base.html.jinja
+- [x] 7.6 Update admin templates to use components
+  - Base template now uses component includes
+  - All templates extending base.html.jinja automatically use components
+  - Sidebar, navbar, and alerts are now modular
   - _Requirements: 9.1, 9.5, 9.6, 9.7_
 
 - [ ] 7.7 Test admin UI consistency
@@ -362,7 +361,7 @@ This implementation plan breaks down the critical fixes into discrete, actionabl
   - Test responsive design on mobile
   - Test all navigation links
   - Test alert display
-  - Verify Bootstrap 5 components work correctly
+  - Verify Infima components work correctly
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
 ---

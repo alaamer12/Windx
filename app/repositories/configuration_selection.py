@@ -16,6 +16,7 @@ Features:
 from decimal import Decimal
 
 from sqlalchemy import delete, select
+from sqlalchemy.engine.cursor import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.configuration_selection import ConfigurationSelection
@@ -102,6 +103,7 @@ class ConfigurationSelectionRepository(
         await self.db.flush()
         return created_selections
 
+    # noinspection PyTypeChecker
     async def delete_by_configuration(self, config_id: int) -> int:
         """Delete all selections for a configuration.
 
@@ -116,7 +118,9 @@ class ConfigurationSelectionRepository(
                 ConfigurationSelection.configuration_id == config_id
             )
         )
-        return result.rowcount or 0
+        # Cast or assert for type checkers
+        cursor_result: CursorResult = result
+        return cursor_result.rowcount or 0
 
     async def get_price_impacts(self, config_id: int) -> list[dict]:
         """Get price impacts for all selections in a configuration.

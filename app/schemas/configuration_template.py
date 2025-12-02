@@ -17,12 +17,15 @@ Features:
     - Type-safe with Annotated types
     - Automatic ORM conversion support
 """
+from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
+
+from app.schemas.template_selection import TemplateSelection
 
 __all__ = [
     "ConfigurationTemplateBase",
@@ -281,7 +284,7 @@ class ConfigurationTemplateWithSelections(ConfigurationTemplate):
     """
 
     selections: Annotated[
-        list["TemplateSelection"],
+        list[TemplateSelection],
         Field(
             default_factory=list,
             description="Template selections",
@@ -290,8 +293,5 @@ class ConfigurationTemplateWithSelections(ConfigurationTemplate):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-# Forward reference resolution
-from app.schemas.template_selection import TemplateSelection
 
 ConfigurationTemplateWithSelections.model_rebuild()

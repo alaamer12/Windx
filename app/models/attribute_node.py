@@ -1,8 +1,8 @@
 """AttributeNode model for hierarchical product configuration system."""
+from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -21,9 +21,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.types import LTREE
-
-if TYPE_CHECKING:
-    from app.models.manufacturing_type import ManufacturingType
 
 
 class AttributeNode(Base):
@@ -191,17 +188,17 @@ class AttributeNode(Base):
     )
 
     # Relationships
-    manufacturing_type: Mapped["ManufacturingType | None"] = relationship(
+    manufacturing_type: Mapped[ManufacturingType | None] = relationship(
         "ManufacturingType",
         back_populates="attribute_nodes",
     )
-    parent: Mapped["AttributeNode | None"] = relationship(
+    parent: Mapped[AttributeNode | None] = relationship(
         "AttributeNode",
         remote_side=[id],
         back_populates="children",
         foreign_keys=[parent_node_id],
     )
-    children: Mapped[list["AttributeNode"]] = relationship(
+    children: Mapped[list[AttributeNode]] = relationship(
         "AttributeNode",
         back_populates="parent",
         foreign_keys=[parent_node_id],

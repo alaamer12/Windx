@@ -246,10 +246,6 @@ Designed for growth:
 
 ## Documentation
 
-### Business Documentation
-- [WindX System Overview](docs/windx-overview.md) - Complete business and system guide
-- [Database Design Rationale](docs/windx-sql-traits.md) - Why we built it this way
-- [Data Flow Explanations](docs/windx-sql-explanations.md) - How data moves through the system
 
 ### Technical Documentation
 - [Architecture Guide](docs/ARCHITECTURE.md) - System architecture and patterns
@@ -757,13 +753,13 @@ Returns:
 
 ### Performance Benchmarks
 
-| Operation | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| Dashboard Stats (10k users) | 500ms | 20ms | 25x |
-| Dashboard Stats (cached) | 500ms | <1ms | 500x+ |
-| User List (filtered) | 200ms | 20ms | 10x |
-| User Search | 600ms | 30ms | 20x |
-| Bulk Create (10 users) | 1000ms | 150ms | 6.7x |
+| Operation                   | Before | After | Improvement |
+|-----------------------------|--------|-------|-------------|
+| Dashboard Stats (10k users) | 500ms  | 20ms  | 25x         |
+| Dashboard Stats (cached)    | 500ms  | <1ms  | 500x+       |
+| User List (filtered)        | 200ms  | 20ms  | 10x         |
+| User Search                 | 600ms  | 30ms  | 20x         |
+| Bulk Create (10 users)      | 1000ms | 150ms | 6.7x        |
 
 ### Configuration
 
@@ -788,7 +784,6 @@ LIMITER_REDIS_DB=1
 For detailed performance information, see:
 - [Performance Guide](docs/PERFORMANCE.md) - Comprehensive benchmarks and optimization strategies
 - [Architecture](docs/ARCHITECTURE.md) - System architecture and design patterns
-- [Testing](docs/TESTING.md) - Testing strategies and coverage
 
 ### Monitoring Recommendations
 

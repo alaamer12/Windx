@@ -17,6 +17,7 @@ Features:
     - Automatic ORM conversion support
     - Flexible address structure
 """
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Annotated

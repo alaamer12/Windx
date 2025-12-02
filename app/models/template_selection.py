@@ -14,6 +14,7 @@ Features:
     - Unique constraint per template and attribute
     - Automatic timestamp management
 """
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -131,12 +132,12 @@ class TemplateSelection(Base):
     )
 
     # Relationships
-    template: Mapped["ConfigurationTemplate"] = relationship(
+    template: Mapped[ConfigurationTemplate] = relationship(
         "ConfigurationTemplate",
         back_populates="selections",
         doc="Related configuration template",
     )
-    attribute_node: Mapped["AttributeNode"] = relationship(
+    attribute_node: Mapped[AttributeNode] = relationship(
         "AttributeNode",
         doc="Related attribute node",
     )

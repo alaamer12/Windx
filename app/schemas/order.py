@@ -17,6 +17,7 @@ Features:
     - Automatic ORM conversion support
     - Date validation for required_date
 """
+from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Annotated

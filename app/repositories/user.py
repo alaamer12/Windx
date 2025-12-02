@@ -12,6 +12,7 @@ Features:
     - Inherits base CRUD operations
     - Type-safe async operations
 """
+from __future__ import annotations
 
 from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession

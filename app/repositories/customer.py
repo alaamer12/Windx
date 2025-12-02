@@ -11,6 +11,7 @@ Features:
     - Get by email lookup
     - Get active customers
 """
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -79,9 +80,9 @@ class CustomerRepository(BaseRepository[Customer, CustomerCreate, CustomerUpdate
         )
         return list(result.scalars().all())
 
+    @staticmethod
     def get_filtered(
-        self,
-        is_active: bool | None = None,
+            is_active: bool | None = None,
         customer_type: str | None = None,
     ):
         """Build filtered query for customers.

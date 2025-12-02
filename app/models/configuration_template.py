@@ -14,6 +14,7 @@ Features:
     - Relationships with manufacturing types, users, and selections
     - Automatic timestamp management
 """
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -35,7 +36,6 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.models.manufacturing_type import ManufacturingType
     from app.models.template_selection import TemplateSelection
-    from app.models.user import User
 
 __all__ = ["ConfigurationTemplate"]
 

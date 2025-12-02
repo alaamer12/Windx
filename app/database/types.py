@@ -60,6 +60,7 @@ Usage with queries:
     )
     ```
 """
+from __future__ import annotations
 
 from typing import Any
 
@@ -327,7 +328,7 @@ def compile_ltree_subpath(element: Any, compiler: Any, **kw: Any) -> str:
     Returns:
         str: Compiled SQL string
     """
-    return "subpath(%s)" % compiler.process(element.clauses, **kw)
+    return "subpath({})".format(compiler.process(element.clauses, **kw))
 
 
 class ltree_nlevel(expression.FunctionElement):
@@ -357,4 +358,4 @@ def compile_ltree_nlevel(element: Any, compiler: Any, **kw: Any) -> str:
     Returns:
         str: Compiled SQL string
     """
-    return "nlevel(%s)" % compiler.process(element.clauses, **kw)
+    return "nlevel({})".format(compiler.process(element.clauses, **kw))

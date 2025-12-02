@@ -13,6 +13,7 @@ Features:
     - Order number generation
     - Authorization checks
 """
+from __future__ import annotations
 
 from datetime import date, datetime
 

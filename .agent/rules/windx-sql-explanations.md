@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # WindX Database Schema Explanations
 
 This document provides a comprehensive explanation of the WindX database schema, including the Entity-Relationship Diagram (ERD), table purposes, design decisions, and data flow patterns.

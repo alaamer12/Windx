@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Windx API Documentation
 
 Complete API documentation for the Windx product configuration system with request/response examples, authentication requirements, and authorization rules.

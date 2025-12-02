@@ -12,6 +12,7 @@ Features:
     - Get by status
     - Eager loading of selections
 """
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

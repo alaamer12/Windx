@@ -13,6 +13,7 @@ Features:
     - Full tree structure retrieval
     - O(log n) performance with GiST indexes
 """
+from __future__ import annotations
 
 from typing import Generic
 

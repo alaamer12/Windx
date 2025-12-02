@@ -12,6 +12,7 @@ Features:
     - Get by quote
     - Eager loading of order items
 """
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

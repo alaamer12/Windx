@@ -15,6 +15,7 @@ Features:
     - Relationships with quotes and order items
     - Automatic timestamp management
 """
+from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING

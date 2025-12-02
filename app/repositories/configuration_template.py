@@ -12,6 +12,7 @@ Features:
     - Get by manufacturing type
     - Increment usage count
 """
+from __future__ import annotations
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,7 +96,7 @@ class ConfigurationTemplateRepository(
         result = await self.db.execute(
             select(ConfigurationTemplate)
             .where(ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id)
-            .where(ConfigurationTemplate.is_active == True)
+            .where(ConfigurationTemplate.is_active)
             .order_by(ConfigurationTemplate.usage_count.desc())
         )
         return list(result.scalars().all())
@@ -121,9 +122,9 @@ class ConfigurationTemplateRepository(
         )
         await self.db.commit()
 
+    @staticmethod
     def get_filtered(
-        self,
-        is_public: bool | None = None,
+            is_public: bool | None = None,
         manufacturing_type_id: int | None = None,
         template_type: str | None = None,
         is_active: bool | None = None,

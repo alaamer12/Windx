@@ -399,7 +399,8 @@ class PricingService(BaseService):
                 details={"node_type": type(node).__name__},
             )
 
-    def _build_formula_context(self, selection: ConfigurationSelection) -> dict[str, Any]:
+    @staticmethod
+    def _build_formula_context(selection: ConfigurationSelection) -> dict[str, Any]:
         """Build context dictionary for formula evaluation.
 
         Extracts relevant values from the selection to use as variables

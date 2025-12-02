@@ -12,6 +12,7 @@ Features:
     - LTREE selection path for hierarchical context
     - Unique constraint per configuration and attribute
 """
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -152,11 +153,11 @@ class ConfigurationSelection(Base):
     )
 
     # Relationships
-    configuration: Mapped["Configuration"] = relationship(
+    configuration: Mapped[Configuration] = relationship(
         "Configuration",
         back_populates="selections",
     )
-    attribute_node: Mapped["AttributeNode"] = relationship(
+    attribute_node: Mapped[AttributeNode] = relationship(
         "AttributeNode",
     )
 

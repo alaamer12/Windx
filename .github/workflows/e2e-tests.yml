@@ -112,8 +112,58 @@ jobs:
       - name: Install Playwright browsers
         run: uv run playwright install --with-deps chromium
 
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+        env:
+          ENV: test
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: windx_test
+          SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+
+      - name: Start FastAPI server in background
+        run: |
+          uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
+          echo $! > server.pid
+          echo "Server started with PID $(cat server.pid)"
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null; then
+              echo "✅ Server is ready!"
+              break
+            fi
+            echo "Waiting for server... ($i/30)"
+            sleep 1
+          done
+        env:
+          ENV: test
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: windx_test
+          SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+          DEBUG: "True"
+
       - name: Run E2E tests
         run: uv run pytest tests/e2e/ -v --tb=short -m e2e --cov=app --cov-report=xml --cov-report=term
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: windx_test
+
+      - name: Stop FastAPI server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+            echo "✅ Server stopped"
+          fi
 
       - name: Upload Playwright screenshots on failure
         if: failure()

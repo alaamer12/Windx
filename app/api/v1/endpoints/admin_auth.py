@@ -49,7 +49,7 @@ async def login_page(request: Request):
     Returns:
         HTMLResponse: Rendered login page template
     """
-    return templates.TemplateResponse(request, "admin/login.html.jinja", {"request": request})
+    return templates.TemplateResponse(request, "admin/login.html.jinja")
 
 
 @router.post(
@@ -104,7 +104,7 @@ async def login(
         return templates.TemplateResponse(
             request,
             "admin/login.html.jinja",
-            {"request": request, "error": "Invalid username or password"},
+            {"error": "Invalid username or password"},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
@@ -112,7 +112,7 @@ async def login(
         return templates.TemplateResponse(
             request,
             "admin/login.html.jinja",
-            {"request": request, "error": "User account is inactive"},
+            {"error": "User account is inactive"},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -120,7 +120,7 @@ async def login(
         return templates.TemplateResponse(
             request,
             "admin/login.html.jinja",
-            {"request": request, "error": "Not enough permissions"},
+            {"error": "Not enough permissions"},
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
@@ -224,6 +224,7 @@ async def dashboard(
         HTMLResponse: Rendered dashboard template with admin context
     """
     return templates.TemplateResponse(
+        request,
         "admin/index.html.jinja",
         get_admin_context(
             request,

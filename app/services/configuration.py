@@ -500,7 +500,7 @@ class ConfigurationService(BaseService):
         await self.refresh(config)
 
         # Add initial selections if provided
-        if config_in.selections:
+        if hasattr(config_in, 'selections') and config_in.selections:
             for selection_value in config_in.selections:
                 await self._add_selection_internal(config.id, selection_value)
 

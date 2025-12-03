@@ -134,3 +134,80 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             await self.db.delete(db_obj)
             await self.db.commit()
         return db_obj
+
+    async def get_by_field(
+        self,
+        field_name: str,
+        value: Any,
+    ) -> ModelType | None:
+        """Get a single record by any field name.
+
+        Args:
+            field_name (str): Name of the model field to filter by
+            value (Any): Value to match
+
+        Returns:
+            ModelType | None: Model instance or None if not found
+
+        Raises:
+            ValueError: If field_name is not a valid model attribute
+
+        Example:
+            user = await repo.get_by_field("email", "user@example.com")
+        """
+        # Validate field exists on model
+        if not hasattr(self.model, field_name):
+            raise ValueError(f"Invalid field name: {field_name}")
+
+        stmt = select(self.model).where(getattr(self.model, field_name) == value)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def exists(self, id: PositiveInt) -> bool:
+        """Check if a record exists by ID.
+
+        Args:
+            id (PositiveInt): Primary key value
+
+        Returns:
+            bool: True if record exists, False otherwise
+
+        Example:
+            if await repo.exists(123):
+                print("Record found")
+        """
+        from sqlalchemy import func as sql_func
+
+        stmt = select(sql_func.count()).select_from(self.model).where(self.model.id == id)
+        result = await self.db.execute(stmt)
+        count = result.scalar_one()
+        return count > 0
+
+    async def count(
+        self,
+        filters: dict[str, Any] | None = None,
+    ) -> int:
+        """Count records with optional filters.
+
+        Args:
+            filters (dict[str, Any] | None): Dictionary of field names to values
+
+        Returns:
+            int: Count of matching records
+
+        Example:
+            active_count = await repo.count({"is_active": True})
+        """
+        from sqlalchemy import func as sql_func
+
+        stmt = select(sql_func.count()).select_from(self.model)
+
+        if filters:
+            for field_name, filter_value in filters.items():
+                # Validate field exists on model
+                if not hasattr(self.model, field_name):
+                    raise ValueError(f"Invalid field name: {field_name}")
+                stmt = stmt.where(getattr(self.model, field_name) == filter_value)
+
+        result = await self.db.execute(stmt)
+        return result.scalar_one()

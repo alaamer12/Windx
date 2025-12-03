@@ -122,6 +122,48 @@ class ConfigurationTemplateRepository(
         )
         await self.db.commit()
 
+    async def get_popular(
+        self,
+        limit: int = 10,
+        manufacturing_type_id: int | None = None,
+    ) -> list[ConfigurationTemplate]:
+        """Get most popular templates by usage count.
+
+        Returns the most popular templates (highest usage_count) that are
+        both public and active. Optionally filters by manufacturing type.
+
+        Args:
+            limit (int): Maximum number of templates to return (default: 10)
+            manufacturing_type_id (int | None): Optional filter by manufacturing type
+
+        Returns:
+            list[ConfigurationTemplate]: List of templates ordered by usage_count descending
+
+        Example:
+            ```python
+            # Get top 5 popular templates
+            popular = await repo.get_popular(limit=5)
+
+            # Get top 10 popular window templates
+            window_popular = await repo.get_popular(limit=10, manufacturing_type_id=1)
+            ```
+        """
+        stmt = (
+            select(ConfigurationTemplate)
+            .where(ConfigurationTemplate.is_active == True)
+            .where(ConfigurationTemplate.is_public == True)
+            .order_by(ConfigurationTemplate.usage_count.desc())
+            .limit(limit)
+        )
+
+        if manufacturing_type_id is not None:
+            stmt = stmt.where(
+                ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id
+            )
+
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
     @staticmethod
     def get_filtered(
             is_public: bool | None = None,

@@ -702,6 +702,22 @@ class Settings(BaseSettings):
         ),
     ]
 
+    # Currency settings
+    currency: Annotated[
+        str,
+        Field(
+            default="USD",
+            description="Currency code (ISO 4217)",
+        ),
+    ]
+    currency_symbol: Annotated[
+        str,
+        Field(
+            default="$",
+            description="Currency symbol for display",
+        ),
+    ]
+
     # Nested settings
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)

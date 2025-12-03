@@ -13,9 +13,9 @@ Endpoints:
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Form, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
@@ -187,6 +187,7 @@ async def hierarchy_dashboard(
             # Convert to dict for template
             if tree:
                 context["tree_nodes"] = [node.model_dump() for node in tree]
+                context["attribute_nodes"] = [node.model_dump() for node in tree]  # For enhanced template
 
             # Get ASCII tree visualization
             context["ascii_tree"] = await hierarchy_service.asciify(manufacturing_type_id)
@@ -252,7 +253,7 @@ async def create_node_form(
     manufacturing_type = await mfg_repo.get(manufacturing_type_id)
     if not manufacturing_type:
         return build_redirect_response(
-            url="/admin/hierarchy",
+            url="/api/v1/admin/hierarchy",
             message="Manufacturing type not found",
             message_type="error",
         )
@@ -263,7 +264,7 @@ async def create_node_form(
         parent_node = await attr_repo.get(parent_id)
         if not parent_node:
             return build_redirect_response(
-                url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+                url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
                 message="Parent node not found",
                 message_type="error",
             )
@@ -320,11 +321,27 @@ class NodeFormDataProcessor:
         """
         from decimal import Decimal
 
+        # Convert parent_node_id: empty string -> None, string number -> int
+        parsed_parent_id = None
+        if parent_node_id and str(parent_node_id).strip():
+            try:
+                parsed_parent_id = int(parent_node_id)
+            except (ValueError, TypeError):
+                parsed_parent_id = None
+        
+        # Convert sort_order: ensure it's an int
+        parsed_sort_order = 0
+        if sort_order is not None:
+            try:
+                parsed_sort_order = int(sort_order)
+            except (ValueError, TypeError):
+                parsed_sort_order = 0
+        
         return {
             "manufacturing_type_id": manufacturing_type_id,
             "name": name,
             "node_type": node_type,
-            "parent_node_id": parent_node_id,
+            "parent_node_id": parsed_parent_id,
             "data_type": data_type or None,
             "required": required,
             "price_impact_type": price_impact_type,
@@ -338,7 +355,7 @@ class NodeFormDataProcessor:
             "technical_impact_formula": FormDataProcessor.normalize_optional_string(
                 technical_impact_formula
             ),
-            "sort_order": sort_order,
+            "sort_order": parsed_sort_order,
             "ui_component": ui_component or None,
             "description": FormDataProcessor.normalize_optional_string(description),
             "help_text": FormDataProcessor.normalize_optional_string(help_text),
@@ -618,7 +635,7 @@ class NodeSaveHandler:
     def _redirect_with_success(manufacturing_type_id: int, message: str):
         """Create redirect response with success message."""
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message=message,
             message_type="success",
         )
@@ -627,7 +644,7 @@ class NodeSaveHandler:
     def _redirect_with_error(manufacturing_type_id: int, message: str):
         """Create redirect response with error message."""
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message=message,
             message_type="error",
         )
@@ -660,7 +677,7 @@ async def save_node(
     manufacturing_type_id: RequiredIntForm = ...,
     name: RequiredStrForm = ...,
     node_type: RequiredStrForm = ...,
-    parent_node_id: OptionalIntForm = None,
+    parent_node_id: Annotated[str | None, Form()] = None,
     data_type: OptionalStrForm = None,
     required: OptionalBoolForm = False,
     price_impact_type: RequiredStrForm = "fixed",
@@ -670,7 +687,7 @@ async def save_node(
     weight_formula: OptionalStrForm = None,
     technical_property_type: OptionalStrForm = None,
     technical_impact_formula: OptionalStrForm = None,
-    sort_order: OptionalIntForm = 0,
+    sort_order: Annotated[str | int, Form()] = 0,
     ui_component: OptionalStrForm = None,
     description: OptionalStrForm = None,
     help_text: OptionalStrForm = None,
@@ -748,13 +765,13 @@ async def save_node(
 
     except ValueError as ve:
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message=f"Invalid numeric value: {str(ve)}",
             message_type="error",
         )
     except Exception as e:
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message=f"Error saving node: {str(e)}",
             message_type="error",
         )
@@ -808,7 +825,7 @@ async def edit_node_form(
     node = await attr_repo.get(node_id)
     if not node:
         return build_redirect_response(
-            url="/admin/hierarchy",
+            url="/api/v1/admin/hierarchy",
             message="Node not found",
             message_type="error",
         )
@@ -817,7 +834,7 @@ async def edit_node_form(
     manufacturing_type = await mfg_repo.get(node.manufacturing_type_id)
     if not manufacturing_type:
         return build_redirect_response(
-            url="/admin/hierarchy",
+            url="/api/v1/admin/hierarchy",
             message="Manufacturing type not found",
             message_type="error",
         )
@@ -895,7 +912,7 @@ async def delete_node(
     node = await attr_repo.get(node_id)
     if not node:
         return build_redirect_response(
-            url="/admin/hierarchy",
+            url="/api/v1/admin/hierarchy",
             message="Node not found",
             message_type="error",
         )
@@ -906,7 +923,7 @@ async def delete_node(
     children = await attr_repo.get_children(node_id)
     if children:
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message="Cannot delete node with children. Delete children first.",
             message_type="error",
         )
@@ -917,14 +934,14 @@ async def delete_node(
         await db.commit()
 
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message="Node deleted successfully",
             message_type="success",
         )
 
     except Exception as e:
         return build_redirect_response(
-            url=f"/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
+            url=f"/api/v1/admin/hierarchy?manufacturing_type_id={manufacturing_type_id}",
             message=f"Failed to delete node: {str(e)}",
             message_type="error",
         )

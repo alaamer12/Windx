@@ -121,15 +121,16 @@ async def authenticated_page(
     # Wait for page to load
     await page.wait_for_load_state("networkidle")
     
-    # Fill login form
+    # Fill login form (admin login uses form data, not JSON)
     await page.fill('input[name="username"]', "e2e_admin")
     await page.fill('input[name="password"]', "AdminPassword123!")
     
     # Submit form
     await page.click('button[type="submit"]')
     
-    # Wait for redirect to dashboard
-    await page.wait_for_url(f"{base_url}/api/v1/admin/", timeout=5000)
+    # Wait for redirect to dashboard (admin login redirects to /admin/dashboard)
+    # The actual URL will be /api/v1/admin/dashboard
+    await page.wait_for_url(f"{base_url}/api/v1/admin/dashboard*", timeout=10000)
     
     yield page
 

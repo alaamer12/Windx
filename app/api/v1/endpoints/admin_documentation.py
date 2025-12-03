@@ -22,6 +22,7 @@ async def documentation(
 ):
     """Display system documentation."""
     return templates.TemplateResponse(
+        request,
         "admin/documentation.html.jinja",
         get_admin_context(
             request,

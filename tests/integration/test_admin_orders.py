@@ -382,7 +382,9 @@ class TestUpdateOrderStatus:
 
         # Should redirect to order detail with success message
         assert response.status_code == 303
-        assert f"/api/v1/admin/orders/{order.id}" in response.headers["location"]
+        location = response.headers["location"]
+        assert f"/api/v1/admin/orders/{order.id}" in location
+        assert "success" in location.lower()
 
         # Verify status was updated
         from app.repositories.order import OrderRepository
@@ -599,8 +601,8 @@ class TestOrderFeatureFlag:
 
         order = await OrderFactory.create(db_session)
 
-        # Mock the feature flag to be disabled
-        with patch("app.api.v1.endpoints.admin_orders.get_settings") as mock_settings:
+        # Mock the feature flag to be disabled - patch where it's called in admin_utils
+        with patch("app.api.admin_utils.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_orders_page = False
 
             response = await client.get(
@@ -625,13 +627,16 @@ class TestOrderFeatureFlag:
 
         order = await OrderFactory.create(db_session)
 
-        # Mock the feature flag to be disabled
-        with patch("app.api.v1.endpoints.admin_orders.get_settings") as mock_settings:
+        # Mock the feature flag to be disabled - patch where it's called
+        with patch("app.api.admin_utils.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_orders_page = False
 
+            # Add Accept header for HTML to trigger redirect instead of JSON error
+            headers = {**superuser_auth_headers, "Accept": "text/html"}
+            
             response = await client.post(
                 f"/api/v1/admin/orders/{order.id}/status",
-                headers=superuser_auth_headers,
+                headers=headers,
                 data={"new_status": "production"},
                 follow_redirects=False,
             )

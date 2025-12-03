@@ -33,6 +33,7 @@ async def list_manufacturing_types(
     manufacturing_types = await mfg_repo.get_multi(limit=1000)
 
     return templates.TemplateResponse(
+        request,
         "admin/manufacturing_list.html.jinja",
         get_admin_context(
             request,
@@ -50,6 +51,7 @@ async def create_manufacturing_type_form(
 ):
     """Render create manufacturing type form."""
     return templates.TemplateResponse(
+        request,
         "admin/manufacturing_form.html.jinja",
         get_admin_context(
             request,
@@ -99,6 +101,7 @@ async def create_manufacturing_type(
         )
     except Exception as e:
         return templates.TemplateResponse(
+            request,
             "admin/manufacturing_form.html.jinja",
             get_admin_context(
                 request,
@@ -135,6 +138,7 @@ async def edit_manufacturing_type_form(
         )
 
     return templates.TemplateResponse(
+        request,
         "admin/manufacturing_form.html.jinja",
         get_admin_context(
             request,
@@ -184,6 +188,7 @@ async def edit_manufacturing_type(
         )
     except Exception as e:
         return templates.TemplateResponse(
+            request,
             "admin/manufacturing_form.html.jinja",
             get_admin_context(
                 request,

@@ -33,6 +33,7 @@ async def settings_page(
 ):
     """Render settings page with shared admin context."""
     return templates.TemplateResponse(
+        request,
         "admin/settings.html.jinja",
         get_admin_context(request, current_user, active_page="settings"),
     )

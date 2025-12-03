@@ -613,20 +613,20 @@ class WindxSettings(BaseSettings):
     experimental_customers_page: Annotated[
         bool,
         Field(
-            default=False,
+            default=True,  # Default to True for development and testing
             description="Enable experimental customers admin page (may be renamed/removed)",
             alias_priority=2,  # Allow flexible renaming
         ),
-    ] = False
+    ] = True
 
     experimental_orders_page: Annotated[
         bool,
         Field(
-            default=False,
+            default=True,  # Default to True for development and testing
             description="Enable experimental orders admin page (may be renamed/removed)",
             alias_priority=2,  # Allow flexible renaming
         ),
-    ] = False
+    ] = True
 
     @computed_field
     @property

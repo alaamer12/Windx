@@ -241,8 +241,12 @@ class TestFeatureFlagMessages:
 
         customer = await CustomerFactory.create(db_session)
 
-        with patch("app.api.v1.endpoints.admin_customers.get_settings") as mock_settings:
-            mock_settings.return_value.windx.experimental_customers_page = False
+        # Patch both locations where get_settings is called
+        with patch("app.api.v1.endpoints.admin_customers.get_settings") as mock_settings1, \
+             patch("app.api.admin_utils.get_settings") as mock_settings2:
+            
+            mock_settings1.return_value.windx.experimental_customers_page = False
+            mock_settings2.return_value.windx.experimental_customers_page = False
 
             # Test all customer endpoints
             endpoints = [
@@ -252,14 +256,17 @@ class TestFeatureFlagMessages:
                 f"/api/v1/admin/customers/{customer.id}/edit",
             ]
 
+            # Add Accept header for HTML to trigger redirect instead of JSON error
+            headers = {**superuser_auth_headers, "Accept": "text/html"}
+
             for endpoint in endpoints:
                 response = await client.get(
                     endpoint,
-                    headers=superuser_auth_headers,
+                    headers=headers,
                     follow_redirects=False,
                 )
 
-                # All should redirect to dashboard
+                # All should redirect to dashboard (303)
                 assert response.status_code == 303
                 # Check base URL (may have query params for error message)
                 location = response.headers["location"]
@@ -293,8 +300,9 @@ class TestNavigationMenuFeatureFlags:
         superuser_auth_headers: dict[str, str],
     ):
         """Test dashboard hides customers link when feature is disabled."""
-        with patch("app.api.v1.endpoints.dashboard.get_settings") as mock_settings:
+        with patch("app.core.config.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_customers_page = False
+            mock_settings.return_value.windx.experimental_orders_page = True
 
             response = await client.get(
                 "/api/v1/admin/dashboard",
@@ -328,7 +336,8 @@ class TestNavigationMenuFeatureFlags:
         superuser_auth_headers: dict[str, str],
     ):
         """Test dashboard hides orders link when feature is disabled."""
-        with patch("app.api.v1.endpoints.dashboard.get_settings") as mock_settings:
+        with patch("app.core.config.get_settings") as mock_settings:
+            mock_settings.return_value.windx.experimental_customers_page = True
             mock_settings.return_value.windx.experimental_orders_page = False
 
             response = await client.get(

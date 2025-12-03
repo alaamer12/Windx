@@ -76,7 +76,9 @@ class TestCustomerFeatureFlag:
 
             # Should redirect to dashboard
             assert response.status_code == 303
-            assert response.headers["location"] == "/api/v1/admin/dashboard"
+            # Check base URL (may have query params for error message)
+            location = response.headers["location"]
+            assert location.startswith("/api/v1/admin/dashboard")
 
     async def test_customers_new_form_with_flag_disabled(
         self,
@@ -95,7 +97,9 @@ class TestCustomerFeatureFlag:
             )
 
             assert response.status_code == 303
-            assert response.headers["location"] == "/api/v1/admin/dashboard"
+            # Check base URL (may have query params for error message)
+            location = response.headers["location"]
+            assert location.startswith("/api/v1/admin/dashboard")
 
     async def test_customers_create_with_flag_disabled(
         self,
@@ -196,7 +200,9 @@ class TestOrderFeatureFlag:
 
             # Should redirect to dashboard
             assert response.status_code == 303
-            assert response.headers["location"] == "/api/v1/admin/dashboard"
+            # Check base URL (may have query params for error message)
+            location = response.headers["location"]
+            assert location.startswith("/api/v1/admin/dashboard")
 
 
 class TestFeatureFlagMessages:
@@ -255,7 +261,9 @@ class TestFeatureFlagMessages:
 
                 # All should redirect to dashboard
                 assert response.status_code == 303
-                assert response.headers["location"] == "/api/v1/admin/dashboard"
+                # Check base URL (may have query params for error message)
+                location = response.headers["location"]
+                assert location.startswith("/api/v1/admin/dashboard")
 
 
 class TestNavigationMenuFeatureFlags:
@@ -285,7 +293,7 @@ class TestNavigationMenuFeatureFlags:
         superuser_auth_headers: dict[str, str],
     ):
         """Test dashboard hides customers link when feature is disabled."""
-        with patch("app.api.v1.endpoints.admin_dashboard.get_settings") as mock_settings:
+        with patch("app.api.v1.endpoints.dashboard.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_customers_page = False
 
             response = await client.get(
@@ -320,7 +328,7 @@ class TestNavigationMenuFeatureFlags:
         superuser_auth_headers: dict[str, str],
     ):
         """Test dashboard hides orders link when feature is disabled."""
-        with patch("app.api.v1.endpoints.admin_dashboard.get_settings") as mock_settings:
+        with patch("app.api.v1.endpoints.dashboard.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_orders_page = False
 
             response = await client.get(

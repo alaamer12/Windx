@@ -134,14 +134,13 @@ class AuthService(BaseService):
         access_token_expires = timedelta(minutes=self.settings.security.access_token_expire_minutes)
         expires_at = datetime.now(UTC) + access_token_expires
 
-        # Create session
+        # Create session (repository.create() commits internally)
         session_data = SessionCreate(
             user_id=user.id,
             token=access_token,
             expires_at=expires_at,
         )
         await self.session_repo.create(session_data)
-        await self.commit()
 
         return access_token, user
 

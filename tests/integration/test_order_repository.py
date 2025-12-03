@@ -47,9 +47,11 @@ async def create_test_order_with_dependencies(
     Returns:
         Order: Created order with all dependencies
     """
-    # Create manufacturing type
+    # Create manufacturing type with unique name
+    import uuid
+    unique_suffix = str(uuid.uuid4())[:8]
     mfg_type = ManufacturingType(
-        name=f"Test Type {id(db_session)}",
+        name=f"Test Type {unique_suffix}",
         description="Test manufacturing type",
         base_category="window",
         base_price=Decimal("200.00"),

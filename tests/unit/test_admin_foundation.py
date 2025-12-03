@@ -17,7 +17,7 @@ from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 import pytest
-from fastapi import HTTPException, status
+from fastapi import status
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ValidationError
 from starlette.requests import Request
@@ -39,6 +39,7 @@ from app.api.types import (
     SearchQuery,
     SortOrderQuery,
 )
+from app.core.exceptions import FeatureDisabledException
 
 
 class TestQueryParameterTypes:
@@ -174,28 +175,30 @@ class TestCheckFeatureFlag:
 
     @patch("app.api.admin_utils.get_settings")
     def test_check_feature_flag_disabled(self, mock_get_settings):
-        """Test check_feature_flag raises 404 when flag is disabled."""
+        """Test check_feature_flag raises FeatureDisabledException when flag is disabled."""
         mock_settings = MagicMock()
         mock_settings.windx.experimental_customers_page = False
         mock_get_settings.return_value = mock_settings
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(FeatureDisabledException) as exc_info:
             check_feature_flag("experimental_customers_page")
 
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
-        assert "disabled" in exc_info.value.detail.lower()
+        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+        assert "disabled" in exc_info.value.message.lower()
+        assert exc_info.value.details.get("feature_name") == "experimental_customers_page"
 
     @patch("app.api.admin_utils.get_settings")
     def test_check_feature_flag_nonexistent(self, mock_get_settings):
-        """Test check_feature_flag raises 404 for nonexistent flag."""
+        """Test check_feature_flag raises FeatureDisabledException for nonexistent flag."""
         mock_settings = MagicMock()
         mock_settings.windx = MagicMock(spec=[])  # No attributes
         mock_get_settings.return_value = mock_settings
 
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(FeatureDisabledException) as exc_info:
             check_feature_flag("nonexistent_flag")
 
-        assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
+        assert exc_info.value.details.get("feature_name") == "nonexistent_flag"
 
 
 class TestBuildRedirectResponse:

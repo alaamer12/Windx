@@ -82,8 +82,12 @@ async def list_orders(
             message_type="error",
         )
 
-    # Build query with customer relationship
-    query = select(Order).options(selectinload(Order.quote)).order_by(Order.order_date.desc())
+    # Build query with customer relationship and items
+    query = (
+        select(Order)
+        .options(selectinload(Order.quote), selectinload(Order.items))
+        .order_by(Order.order_date.desc())
+    )
 
     # Apply status filter
     if status_filter and status_filter in VALID_ORDER_STATUSES:
@@ -120,8 +124,9 @@ async def list_orders(
     orders = result.scalars().all()
 
     return templates.TemplateResponse(
-        "admin/orders_list.html.jinja",
-        get_admin_context(
+        request=request,
+        name="admin/orders_list.html.jinja",
+        context=get_admin_context(
             request,
             current_superuser,
             active_page="orders",
@@ -186,8 +191,9 @@ async def view_order(
         )
 
     return templates.TemplateResponse(
-        "admin/order_detail.html.jinja",
-        get_admin_context(
+        request=request,
+        name="admin/order_detail.html.jinja",
+        context=get_admin_context(
             request,
             current_superuser,
             active_page="orders",

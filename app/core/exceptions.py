@@ -49,6 +49,7 @@ __all__ = [
     "InvalidConfigurationException",
     "InvalidFormulaException",
     "InvalidHierarchyException",
+    "FeatureDisabledException",
     "setup_exception_handlers",
 ]
 
@@ -395,6 +396,37 @@ class InvalidHierarchyException(AppException):
             message=message,
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             error_type="invalid_hierarchy_error",
+            details=details,
+        )
+
+
+class FeatureDisabledException(AppException):
+    """Feature disabled exceptions.
+
+    Raised when attempting to access a disabled feature.
+    """
+
+    def __init__(
+        self,
+        message: str = "This feature is currently disabled",
+        feature_name: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize feature disabled exception.
+
+        Args:
+            message (str): Error message
+            feature_name (str | None): Name of the disabled feature
+            details (dict | None): Additional error details
+        """
+        if feature_name:
+            details = details or {}
+            details["feature_name"] = feature_name
+
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            error_type="feature_disabled_error",
             details=details,
         )
 

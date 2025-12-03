@@ -26,10 +26,11 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING
 
-from fastapi import HTTPException, status
+from fastapi import status
 from fastapi.responses import RedirectResponse
 
 from app.core.config import get_settings
+from app.core.exceptions import FeatureDisabledException
 
 if TYPE_CHECKING:
     from pydantic import ValidationError
@@ -43,21 +44,21 @@ __all__ = [
 
 
 def check_feature_flag(flag_name: str) -> None:
-    """Check if a feature flag is enabled, raise 404 if not.
+    """Check if a feature flag is enabled, raise exception if not.
 
     This function validates that a specific experimental feature is enabled
-    in the application settings. If the feature is disabled, it raises an
-    HTTP 404 exception with a descriptive message.
+    in the application settings. If the feature is disabled, it raises a
+    FeatureDisabledException.
 
     Args:
         flag_name: Name of the feature flag to check (e.g., 'experimental_customers_page')
 
     Raises:
-        HTTPException: 404 if feature is disabled
+        FeatureDisabledException: If feature is disabled
 
     Example:
         >>> check_feature_flag('experimental_customers_page')
-        # Raises HTTPException if customers page is disabled
+        # Raises FeatureDisabledException if customers page is disabled
 
     Note:
         This function is typically called at the beginning of admin endpoints
@@ -70,9 +71,9 @@ def check_feature_flag(flag_name: str) -> None:
         # Convert flag name to human-readable format
         # e.g., 'experimental_customers_page' -> 'Experimental Customers Page'
         readable_name = flag_name.replace("_", " ").title()
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"{readable_name} is currently disabled",
+        raise FeatureDisabledException(
+            message=f"{readable_name} is currently disabled",
+            feature_name=flag_name,
         )
 
 

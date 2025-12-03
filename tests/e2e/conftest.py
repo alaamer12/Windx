@@ -26,7 +26,7 @@ def base_url() -> str:
     return os.getenv("E2E_BASE_URL", "http://localhost:8000")
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def browser() -> AsyncGenerator[Browser, None]:
     """Create Playwright browser instance.
     
@@ -40,6 +40,26 @@ async def browser() -> AsyncGenerator[Browser, None]:
         )
         yield browser
         await browser.close()
+
+# Another way to do it if you need "session" scope
+# The problem with the function above is bad timing which leads to "The test is hanging during collection"
+# @pytest_asyncio.fixture(scope="session")
+# async def browser() -> AsyncGenerator[Browser, None]:
+#     # 1. Start playwright (engine)
+#     p = await async_playwright().start()
+
+#     # 2. Launch browser after engine is ready
+#     browser = await p.chromium.launch(
+#         headless=True,
+#         args=["--disable-dev-shm-usage"],
+#     )
+
+#     # 3. Give the browser to tests
+#     yield browser
+
+#     # 4. Cleanup when all tests finish
+#     await browser.close()
+#     await p.stop()
 
 
 @pytest_asyncio.fixture
@@ -116,7 +136,7 @@ async def authenticated_page(
         Page: Authenticated browser page
     """
     # Navigate to login page
-    await page.goto(f"{base_url}/api/v1/admin/auth/login")
+    await page.goto(f"{base_url}/api/v1/admin/login")
     
     # Wait for page to load
     await page.wait_for_load_state("networkidle")

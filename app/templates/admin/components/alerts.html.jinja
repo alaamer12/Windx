@@ -1,4 +1,4 @@
-{# Alerts Component - Flash messages and notifications #}
+t{# Alerts Component - Flash messages and notifications #}
 
 {# Display error messages #}
 {% if error %}
@@ -36,21 +36,5 @@
 </div>
 {% endif %}
 
-{# Flask flash messages support #}
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }}" role="alert">
-                <span class="alert-icon">
-                    {% if category == 'error' or category == 'danger' %}⚠️
-                    {% elif category == 'success' %}✅
-                    {% elif category == 'warning' %}⚡
-                    {% else %}ℹ️
-                    {% endif %}
-                </span>
-                <span class="alert-message">{{ message }}</span>
-                <button type="button" class="alert-close" onclick="this.parentElement.remove()" aria-label="Close">×</button>
-            </div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
+{# Note: Flask flash messages not supported in FastAPI #}
+{# Use error, success, warning, or info context variables instead #}

@@ -72,7 +72,8 @@ E2E tests require a running application instance. You can either:
 
 ### Test Files
 
-- `test_admin_hierarchy.py`: Tests for attribute node CRUD operations
+- `test_basic_pages.py`: Simple tests for basic page loading (no auth required) - **START HERE**
+- `test_admin_hierarchy.py`: Tests for attribute node CRUD operations (requires auth)
 
 ## Writing E2E Tests
 

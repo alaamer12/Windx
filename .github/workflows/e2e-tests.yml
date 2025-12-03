@@ -116,12 +116,17 @@ jobs:
         run: uv run alembic upgrade head
         env:
           ENV: test
+          DEBUG: "True"
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
           DATABASE_USER: postgres
           DATABASE_PASSWORD: postgres
           DATABASE_NAME: windx_test
+          DATABASE_PROVIDER: postgresql
+          DATABASE_CONNECTION_MODE: direct
           SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+          BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+          DATABASE_DISABLE_POOLER_WARNING: "True"
 
       - name: Start FastAPI server in background
         run: |
@@ -139,22 +144,33 @@ jobs:
           done
         env:
           ENV: test
+          DEBUG: "True"
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
           DATABASE_USER: postgres
           DATABASE_PASSWORD: postgres
           DATABASE_NAME: windx_test
+          DATABASE_PROVIDER: postgresql
+          DATABASE_CONNECTION_MODE: direct
           SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
-          DEBUG: "True"
+          BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+          DATABASE_DISABLE_POOLER_WARNING: "True"
 
       - name: Run E2E tests
         run: uv run pytest tests/e2e/ -v --tb=short -m e2e --cov=app --cov-report=xml --cov-report=term
         env:
+          ENV: test
+          DEBUG: "True"
           DATABASE_HOST: localhost
           DATABASE_PORT: 5432
           DATABASE_USER: postgres
           DATABASE_PASSWORD: postgres
           DATABASE_NAME: windx_test
+          DATABASE_PROVIDER: postgresql
+          DATABASE_CONNECTION_MODE: direct
+          SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+          BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+          DATABASE_DISABLE_POOLER_WARNING: "True"
 
       - name: Stop FastAPI server
         if: always()

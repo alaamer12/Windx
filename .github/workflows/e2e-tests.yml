@@ -1,4 +1,4 @@
-name: Tests with Coverage
+name: E2E Tests with Playwright
 
 on:
   push:
@@ -7,10 +7,12 @@ on:
   pull_request:
     branches:
       - main
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
-  test:
+  e2e-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     services:
       postgres:
@@ -107,36 +109,50 @@ jobs:
 
           echo "✅ .env.test created successfully for CI"
 
-      - name: Run tests with coverage (excluding E2E)
-        run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term -m "not e2e"
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: uv run pytest tests/e2e/ -v --tb=short -m e2e --cov=app --cov-report=xml --cov-report=term
+
+      - name: Upload Playwright screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: tests/e2e/screenshots/
+          retention-days: 7
+
+      - name: Upload Playwright videos on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos
+          path: tests/e2e/videos/
+          retention-days: 7
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         if: always()
         with:
           file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
+          flags: e2e
+          name: codecov-e2e
           fail_ci_if_error: false
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Generate coverage badge
-        if: success()
-        run: |
-          COVERAGE=$(uv run pytest tests/ -m "not e2e" --cov=app --cov-report=term | grep "TOTAL" | awk '{print $4}')
-          echo "Coverage: $COVERAGE"
-          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
-
       - name: Test Summary
         if: always()
         run: |
-          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎭 E2E Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+            echo "✅ All E2E tests passed!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Coverage:** ${{ env.COVERAGE }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Browser:** Chromium (Playwright)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Tests failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "❌ E2E tests failed. Check the logs and screenshots for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📸 Screenshots and videos have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
           fi

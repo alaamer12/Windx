@@ -6,14 +6,15 @@ and server-rendered templates.
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.api.deps import get_admin_context
-from app.api.types import CurrentSuperuser, DBSession, RequiredStrForm, UserRepo
+from app.api.types import CurrentSuperuser, DBSession, RequiredStrForm, UserOrRedirect, UserRepo
 from app.core.config import get_settings
 from app.core.security import create_access_token
+from app.models.user import User
 from app.repositories.session import SessionRepository
 from app.schemas.responses import get_common_responses
 from app.schemas.session import SessionCreate
@@ -49,7 +50,11 @@ async def login_page(request: Request):
     Returns:
         HTMLResponse: Rendered login page template
     """
-    return templates.TemplateResponse(request, "admin/login.html.jinja")
+    return templates.TemplateResponse(
+        request,
+        "admin/login.html.jinja",
+        {"is_development": settings.debug},
+    )
 
 
 @router.post(
@@ -192,6 +197,44 @@ async def logout(response: Response):
     return response
 
 
+async def get_current_superuser_or_redirect(
+    request: Request,
+) -> UserOrRedirect:
+    """Get current superuser or redirect to login page.
+
+    This is a custom dependency for HTML endpoints that redirects
+    unauthenticated users to the login page instead of returning 401.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        User: Current authenticated superuser
+        RedirectResponse: Redirect to login if not authenticated
+    """
+    from app.api.deps import get_current_user
+    from app.core.exceptions import UnauthorizedException
+
+    try:
+        # Try to get current user from cookie
+        current_user = await get_current_user(request)
+
+        # Check if user is superuser
+        if not current_user.is_superuser:
+            return RedirectResponse(
+                url=f"{settings.api_v1_prefix}/admin/login?error=Not enough permissions",
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        return current_user
+    except (UnauthorizedException, Exception):
+        # Redirect to login page if not authenticated
+        return RedirectResponse(
+            url=f"{settings.api_v1_prefix}/admin/login",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+
 @router.get(
     "/dashboard",
     response_class=HTMLResponse,
@@ -204,31 +247,40 @@ async def logout(response: Response):
             "description": "Successfully rendered dashboard",
             "content": {"text/html": {"example": "<html>...</html>"}},
         },
+        302: {
+            "description": "Redirect to login if not authenticated",
+        },
         **get_common_responses(401, 403, 500),
     },
 )
 async def dashboard(
     request: Request,
-    current_user: CurrentSuperuser,
+    user_or_redirect: UserOrRedirect = Depends(get_current_superuser_or_redirect),
 ):
     """Render main admin dashboard.
 
     Displays the admin dashboard with navigation menu and overview.
-    Requires superuser authentication.
+    Requires superuser authentication. Redirects to login if not authenticated.
 
     Args:
         request: FastAPI request object
-        current_user: Current authenticated superuser
+        user_or_redirect: Current authenticated superuser or redirect response
 
     Returns:
         HTMLResponse: Rendered dashboard template with admin context
+        RedirectResponse: Redirect to login if not authenticated
     """
+    # If we got a redirect response, return it
+    if isinstance(user_or_redirect, Response):
+        return user_or_redirect
+
+    # Otherwise, render the dashboard
     return templates.TemplateResponse(
         request,
         "admin/index.html.jinja",
         get_admin_context(
             request,
-            current_user,
+            user_or_redirect,
             active_page="dashboard",
         ),
     )

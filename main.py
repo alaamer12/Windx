@@ -18,9 +18,12 @@ Features:
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi_pagination import add_pagination
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,35 +83,12 @@ async def lifespan(application: FastAPI):
 
 app = FastAPI(
     title="WindX Product Configurator API",
-    description="""
-    **WindX** - Automated Product Configurator for Custom Manufacturing
-
-    Transform how customers design and order custom manufactured products with:
-    - 🎨 **Dynamic Product Configuration** - Hierarchical attribute trees with unlimited depth
-    - 💰 **Real-time Pricing** - Instant price calculations with formula support
-    - 📋 **Template System** - Pre-configured products for quick start
-    - 📄 **Quote Generation** - Professional quotes with price protection
-    - 📦 **Order Management** - Complete order lifecycle tracking
-
-    Perfect for windows, doors, furniture, cabinets, and any customizable manufactured products.
-     **Key Features:**
-    - Self-service configuration with instant feedback
-    - Automated pricing with validation
-    - Template-based quick configuration
-    - Quote-to-order workflow
-    - Customer and order management
-
-     **Technology:**
-    - PostgreSQL with LTREE for hierarchical data
-    - Type-safe with SQLAlchemy 2.0 and Pydantic V2
-    - High-performance caching and rate limiting
-    - Comprehensive API documentation
-    """,
+    summary="Automated Product Configurator for Custom Manufacturing",
+    description="API for dynamic product configuration with real-time pricing, templates, quotes, and order management.",
     version="1.0.0",
     lifespan=lifespan,
-    swagger_ui_parameters={
-        "persistAuthorization": True,
-    },
+    docs_url=None,
+    redoc_url="/redoc",
     contact={
         "name": "WindX Support",
         "email": "support@windx.example.com",
@@ -117,7 +97,52 @@ app = FastAPI(
         "name": "MIT License",
         "url": "https://opensource.org/licenses/MIT",
     },
+    openapi_tags=[
+        {
+            "name": "Manufacturing Types",
+            "description": "Manage product categories and base configurations",
+        },
+        {
+            "name": "Attribute Nodes",
+            "description": "Hierarchical product attributes and options",
+        },
+        {
+            "name": "Configurations",
+            "description": "Customer product designs and selections",
+        },
+        {
+            "name": "Templates",
+            "description": "Pre-configured product templates",
+        },
+        {
+            "name": "Quotes",
+            "description": "Price quotes with snapshots",
+        },
+        {
+            "name": "Orders",
+            "description": "Order management and tracking",
+        },
+        {
+            "name": "Customers",
+            "description": "Customer information management",
+        },
+    ],
+    swagger_ui_parameters={
+        "persistAuthorization": True,
+        "displayOperationId": False,
+        "displayRequestDuration": True,
+        "filter": True,
+        "tryItOutEnabled": True,
+        "syntaxHighlight.theme": "monokai",
+    },
 )
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html() -> FileResponse:
+    """Serve custom Swagger UI documentation."""
+    static_path = Path(__file__).parent / "app" / "static" / "swagger-ui.html"
+    return FileResponse(static_path)
 
 
 @app.get("/")
@@ -257,6 +282,11 @@ async def health_check(
 
 # Get settings
 settings = get_settings()
+
+# Mount static files
+static_path = Path(__file__).parent / "app" / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 # Setup middleware (includes CORS, security headers, logging, etc.)
 setup_middleware(app, settings)

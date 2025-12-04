@@ -20,6 +20,28 @@
         </div>
         {% endif %}
 
+        {% if is_development %}
+        <div class="dev-credentials-card">
+            <div class="dev-credentials-header">
+                <span class="dev-badge">🔧 Development Mode</span>
+            </div>
+            <div class="dev-credentials-body">
+                <p class="dev-credentials-title">Default Credentials</p>
+                <div class="dev-credential-item">
+                    <span class="dev-credential-label">Username:</span>
+                    <code class="dev-credential-value">admin</code>
+                </div>
+                <div class="dev-credential-item">
+                    <span class="dev-credential-label">Password:</span>
+                    <code class="dev-credential-value">Admin123!</code>
+                </div>
+                <p class="dev-credentials-note">
+                    💡 Run <code>python manage.py seed_data</code> if credentials don't work
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
         <form action="/api/v1/admin/login" method="post">
             <div class="form-group">
                 <label for="username" class="form-label">Username</label>
@@ -37,4 +59,76 @@
         </form>
     </div>
 </div>
+
+<style>
+.dev-credentials-card {
+    background: #fef3c7;
+    border: 2px solid #fbbf24;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.dev-credentials-header {
+    margin-bottom: 12px;
+}
+
+.dev-badge {
+    display: inline-block;
+    background: #f59e0b;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.dev-credentials-body {
+    font-size: 14px;
+}
+
+.dev-credentials-title {
+    font-weight: 600;
+    color: #92400e;
+    margin-bottom: 8px;
+}
+
+.dev-credential-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.dev-credential-label {
+    color: #78350f;
+    font-weight: 500;
+}
+
+.dev-credential-value {
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #1f2937;
+    border: 1px solid #fbbf24;
+}
+
+.dev-credentials-note {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #fbbf24;
+    color: #78350f;
+    font-size: 12px;
+}
+
+.dev-credentials-note code {
+    background: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    border: 1px solid #fbbf24;
+}
+</style>
 {% endblock %}

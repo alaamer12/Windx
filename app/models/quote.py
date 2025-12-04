@@ -15,6 +15,7 @@ Features:
     - Relationships with configurations and customers
     - Automatic timestamp management
 """
+from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
@@ -33,10 +34,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.models import Customer
 
 if TYPE_CHECKING:
     from app.models.configuration import Configuration
-    from app.models.customer import Customer
     from app.models.order import Order
 
 __all__ = ["Quote"]
@@ -180,17 +181,17 @@ class Quote(Base):
     )
 
     # Relationships
-    configuration: Mapped["Configuration"] = relationship(
+    configuration: Mapped[Configuration] = relationship(
         "Configuration",
         back_populates="quotes",
         doc="Related configuration",
     )
-    customer: Mapped["Customer | None"] = relationship(
+    customer: Mapped[Customer | None] = relationship(
         "Customer",
         back_populates="quotes",
         doc="Related customer",
     )
-    orders: Mapped[list["Order"]] = relationship(
+    orders: Mapped[list[Order]] = relationship(
         "Order",
         back_populates="quote",
         doc="Related orders",

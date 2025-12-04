@@ -13,6 +13,7 @@ Features:
     - Order number generation
     - Authorization checks
 """
+from __future__ import annotations
 
 from datetime import date, datetime
 
@@ -243,7 +244,8 @@ class OrderService(BaseService):
                 timestamp_micro = datetime.now().strftime("%Y%m%d%H%M%S%f")
                 return f"O-{timestamp_micro}"
 
-    def get_user_orders_query(self, user, status: str | None = None):
+    @staticmethod
+    def get_user_orders_query(user, status: str | None = None):
         """Build query for user's orders with authorization.
 
         Regular users see only their own orders (via quote ownership).
@@ -271,6 +273,7 @@ class OrderService(BaseService):
 
         # Apply filters
         if status:
+            # noinspection PyTypeChecker
             query = query.where(Order.status == status)
 
         # Order by most recent first

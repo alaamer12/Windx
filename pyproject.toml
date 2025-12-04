@@ -73,6 +73,8 @@ dev = [
     "pytest-mock",
     "ruff",
     "httpx",
+    "playwright",
+    "pytest-playwright",
 ]
 
 [project.urls]
@@ -128,6 +130,7 @@ addopts = [
 markers = [
     "unit: Unit tests (fast, isolated)",
     "integration: Integration tests (slower, full stack)",
+    "e2e: End-to-end tests (browser-based, requires running app)",
     "slow: Slow tests",
     "auth: Authentication tests",
     "users: User management tests",

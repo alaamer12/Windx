@@ -12,6 +12,7 @@ Features:
     - Template usage tracking
     - Template metrics calculation
 """
+from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
@@ -144,7 +145,7 @@ class TemplateService(BaseService):
     async def apply_template_to_configuration(
         self,
         template_id: int,
-        customer_id: int | None = None,
+        user: Any,
         config_name: str | None = None,
     ) -> Configuration:
         """Apply a template to create a new configuration.
@@ -153,7 +154,7 @@ class TemplateService(BaseService):
 
         Args:
             template_id (int): Template ID to apply
-            customer_id (int | None): Optional customer ID
+            user (Any): Current user (for customer_id assignment)
             config_name (str | None): Optional configuration name
 
         Returns:
@@ -180,8 +181,16 @@ class TemplateService(BaseService):
         if not config_name:
             config_name = f"{template.name} - Copy"
 
-        # Convert template selections to configuration selection values
-        selection_values = []
+        # Create configuration without selections first
+        config_data = ConfigurationCreate(
+            name=config_name,
+            manufacturing_type_id=template.manufacturing_type_id,
+            customer_id=user.id,  # Use user.id for customer_id
+        )
+
+        config = await self.config_service.create_configuration(config_data, user)
+        
+        # Add selections from template to the new configuration
         for ts in template_selections:
             selection_value = ConfigurationSelectionValue(
                 attribute_node_id=ts.attribute_node_id,
@@ -190,20 +199,16 @@ class TemplateService(BaseService):
                 boolean_value=ts.boolean_value,
                 json_value=ts.json_value,
             )
-            selection_values.append(selection_value)
-
-        # Create configuration with selections
-        config_data = ConfigurationCreate(
-            name=config_name,
-            manufacturing_type_id=template.manufacturing_type_id,
-            customer_id=customer_id,
-            selections=selection_values,
-        )
-
-        config = await self.config_service.create_configuration(config_data)
+            # Add each selection to the configuration
+            await self.config_service.add_selection(config.id, selection_value)
+        
+        # Recalculate totals after adding all selections
+        if template_selections:
+            await self.config_service.calculate_totals(config.id)
+            await self.refresh(config)
 
         # Track template usage
-        await self.track_template_usage(template_id, config.id, customer_id)
+        await self.track_template_usage(template_id, config.id, user.id)
 
         return config
 
@@ -495,29 +500,37 @@ class TemplateService(BaseService):
 
         # Build configuration data
         from app.schemas.configuration import ConfigurationCreate
-        from app.schemas.configuration_selection import ConfigurationSelectionCreate
 
-        # Convert template selections to configuration selections
-        selections = []
+        # Create configuration without selections first
+        config_in = ConfigurationCreate(
+            manufacturing_type_id=template.manufacturing_type_id,
+            customer_id=user.id,
+            name=configuration_name or f"{template.name} - Copy",
+            description=f"Created from template: {template.name}",
+        )
+
+        config = await config_service.create_configuration(config_in, user)
+
+        # Add selections from template to the new configuration
         for ts in template.selections:
-            selection = ConfigurationSelectionCreate(
+            selection_value = ConfigurationSelectionValue(
                 attribute_node_id=ts.attribute_node_id,
                 string_value=ts.string_value,
                 numeric_value=ts.numeric_value,
                 boolean_value=ts.boolean_value,
                 json_value=ts.json_value,
             )
-            selections.append(selection)
-
-        config_in = ConfigurationCreate(
-            manufacturing_type_id=template.manufacturing_type_id,
-            customer_id=user.id,
-            name=configuration_name or f"{template.name} - Copy",
-            description=f"Created from template: {template.name}",
-            selections=selections,
-        )
-
-        config = await config_service.create_configuration(config_in, user)
+            await config_service.add_selection(config.id, selection_value)
+        
+        # Recalculate totals after adding all selections
+        if template.selections:
+            await config_service.calculate_totals(config.id)
+            # Refresh config to get updated totals
+            from sqlalchemy import select
+            result = await self.db.execute(
+                select(Configuration).where(Configuration.id == config.id)
+            )
+            config = result.scalar_one()
 
         # Track template usage
         await self.track_template_usage(template_id, config.id, user.id)

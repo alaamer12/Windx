@@ -13,6 +13,7 @@ Features:
     - JSONB for flexible technical specifications
     - Relationships with manufacturing types, customers, and selections
 """
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -171,26 +172,26 @@ class Configuration(Base):
     )
 
     # Relationships
-    manufacturing_type: Mapped["ManufacturingType"] = relationship(
+    manufacturing_type: Mapped[ManufacturingType] = relationship(
         "ManufacturingType",
         back_populates="configurations",
     )
-    customer: Mapped["Customer | None"] = relationship(
+    customer: Mapped[Customer | None] = relationship(
         "Customer",
         back_populates="configurations",
     )
-    selections: Mapped[list["ConfigurationSelection"]] = relationship(
+    selections: Mapped[list[ConfigurationSelection]] = relationship(
         "ConfigurationSelection",
         back_populates="configuration",
         cascade="all, delete-orphan",
         doc="Related configuration selections",
     )
-    quotes: Mapped[list["Quote"]] = relationship(
+    quotes: Mapped[list[Quote]] = relationship(
         "Quote",
         back_populates="configuration",
         doc="Related quotes",
     )
-    order_items: Mapped[list["OrderItem"]] = relationship(
+    order_items: Mapped[list[OrderItem]] = relationship(
         "OrderItem",
         back_populates="configuration",
         doc="Related order items",

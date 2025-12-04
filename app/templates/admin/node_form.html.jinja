@@ -54,7 +54,7 @@
                     {% endif %}
                 </p>
             </div>
-            <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
+            <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
                class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Back to Dashboard
             </a>
@@ -74,7 +74,7 @@
         {% endif %}
 
         <!-- Form -->
-        <form method="POST" action="/admin/hierarchy/node/save" id="nodeForm">
+        <form method="POST" action="/api/v1/admin/hierarchy/node/save" id="nodeForm">
             {% if node %}
             <input type="hidden" name="node_id" value="{{ node.id }}">
             {% endif %}
@@ -369,7 +369,7 @@
             <!-- Form Actions -->
             <div class="form-actions">
                 <div class="d-flex justify-content-between">
-                    <a href="/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
+                    <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
                        class="btn btn-outline-secondary btn-lg">
                         <i class="bi bi-x-circle"></i> Cancel
                     </a>
@@ -402,6 +402,16 @@
             alert('Node type is required');
             return false;
         }
+        
+        // Convert empty string values to null for optional integer fields
+        // This prevents FastAPI validation errors for optional int fields
+        const optionalIntFields = ['parent_node_id', 'sort_order'];
+        optionalIntFields.forEach(fieldName => {
+            const field = form.querySelector(`[name="${fieldName}"]`);
+            if (field && field.value === '') {
+                field.removeAttribute('name'); // Remove from form submission
+            }
+        });
     });
     
     // Add visual styling to parent node selector based on depth

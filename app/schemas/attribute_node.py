@@ -1,4 +1,5 @@
 """Pydantic schemas for AttributeNode model."""
+from __future__ import annotations
 
 import re
 from datetime import datetime

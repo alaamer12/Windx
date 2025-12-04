@@ -12,12 +12,14 @@ Features:
     - Get by quote
     - Eager loading of order items
 """
+from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.order import Order
+from app.models.quote import Quote
 from app.repositories.base import BaseRepository
 from app.schemas.order import OrderCreate, OrderUpdate
 

@@ -12,7 +12,7 @@ Features:
     - Query by template or attribute node
 """
 
-from sqlalchemy import delete, select
+from sqlalchemy import CursorResult, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.template_selection import TemplateSelection
@@ -108,7 +108,8 @@ class TemplateSelectionRepository(
         Returns:
             int: Number of deleted selections
         """
-        result = await self.db.execute(
+        # noinspection PyTypeChecker
+        result: CursorResult = await self.db.execute(
             delete(TemplateSelection).where(TemplateSelection.template_id == template_id)
         )
         return result.rowcount or 0

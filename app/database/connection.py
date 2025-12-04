@@ -33,7 +33,7 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.config import get_settings
 
-__all__ = ["get_engine", "get_session_maker", "get_db", "init_db", "close_db"]
+__all__ = ["get_engine", "get_session_maker", "get_db", "get_async_session", "init_db", "close_db"]
 
 
 @lru_cache
@@ -123,6 +123,10 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+# Backward compatibility alias
+get_async_session = get_db
 
 
 async def init_db() -> None:

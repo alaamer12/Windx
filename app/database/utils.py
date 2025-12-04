@@ -16,6 +16,7 @@ Features:
     - Transaction helpers
     - PostgreSQL extension management
 """
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -98,8 +99,8 @@ async def get_table_names() -> list[str]:
         result = await conn.execute(
             text(
                 """
-                SELECT tablename 
-                FROM pg_tables 
+                SELECT tablename
+                FROM pg_tables
                 WHERE schemaname = 'public'
                 ORDER BY tablename
                 """

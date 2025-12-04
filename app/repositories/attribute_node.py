@@ -14,6 +14,7 @@ Features:
     - Efficient tree traversal
     - Tree building utilities
 """
+from __future__ import annotations
 
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -38,9 +39,7 @@ class AttributeNodeRepository(
     queries for attribute nodes. Includes methods for filtering by
     manufacturing type and pattern matching.
 
-    Attributes:
-        model: AttributeNode model class
-        db: Database session
+
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -69,6 +68,7 @@ class AttributeNodeRepository(
             window_attrs = await repo.get_by_manufacturing_type(1)
             ```
         """
+        # noinspection PyTypeChecker
         result = await self.db.execute(
             select(AttributeNode)
             .where(AttributeNode.manufacturing_type_id == manufacturing_type_id)
@@ -146,9 +146,9 @@ class AttributeNodeRepository(
         )
         return list(result.scalars().all())
 
+    @staticmethod
     def get_filtered(
-        self,
-        manufacturing_type_id: int | None = None,
+            manufacturing_type_id: int | None = None,
         parent_node_id: int | None = None,
         node_type: str | None = None,
     ) -> Select:

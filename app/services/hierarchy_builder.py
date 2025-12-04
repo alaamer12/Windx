@@ -81,6 +81,7 @@ Usage Example:
 For more examples, see: examples/hierarchy_insertion.py
 For dashboard documentation, see: docs/HIERARCHY_ADMIN_DASHBOARD.md
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
@@ -170,7 +171,8 @@ class HierarchyBuilderService(BaseService):
         self.mfg_type_repo = ManufacturingTypeRepository(db)
         self.attr_node_repo = AttributeNodeRepository(db)
 
-    def _sanitize_for_ltree(self, name: str) -> str:
+    @staticmethod
+    def _sanitize_for_ltree(name: str) -> str:
         """Sanitize input string for LTREE path compatibility.
 
         Performs comprehensive sanitization to ensure the name is valid for
@@ -342,7 +344,8 @@ class HierarchyBuilderService(BaseService):
             # Child node - append to parent's path
             return f"{parent.ltree_path}.{sanitized_name}"
 
-    def _calculate_depth(self, parent: AttributeNode | None) -> int:
+    @staticmethod
+    def _calculate_depth(parent: AttributeNode | None) -> int:
         """Calculate depth level for a new node.
 
         Determines the nesting level of a node in the hierarchy based on
@@ -724,7 +727,7 @@ class HierarchyBuilderService(BaseService):
 
             # Update descendant's depth (add the depth change)
             depth_change = new_depth - node.depth
-            descendant.depth = descendant.depth + depth_change
+            descendant.depth += depth_change
 
         await self.commit()
         await self.refresh(node)
@@ -1312,9 +1315,9 @@ class HierarchyBuilderService(BaseService):
 
         return fig
 
+    @staticmethod
     def _plot_tree_with_networkx(
-        self,
-        nodes: list[AttributeNode],
+            nodes: list[AttributeNode],
         children_map: dict[int | None, list[AttributeNode]],
         title: str,
     ):

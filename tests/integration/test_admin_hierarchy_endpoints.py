@@ -868,12 +868,6 @@ async def test_flash_message_error_displayed(
     assert "⚠️" in response.text or "alert-error" in response.text
 
 
-
-
-
-
-
-
 @pytest.mark.asyncio
 async def test_create_node_redirects_with_success_message(
     client: AsyncClient,

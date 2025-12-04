@@ -4,60 +4,123 @@ This module provides endpoints for admin authentication using cookies
 and server-rendered templates.
 """
 
-from typing import Annotated
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Form, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_superuser, get_admin_context
+from app.api.deps import get_admin_context
+from app.api.types import CurrentSuperuser, DBSession, RequiredStrForm, UserRepo
 from app.core.config import get_settings
 from app.core.security import create_access_token
-from app.database import get_db
-from app.models.user import User
-from app.repositories.user import UserRepository
+from app.repositories.session import SessionRepository
+from app.schemas.responses import get_common_responses
+from app.schemas.session import SessionCreate
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 settings = get_settings()
 
 
-@router.get("/login", response_class=HTMLResponse)
+@router.get(
+    "/login",
+    response_class=HTMLResponse,
+    summary="Admin Login Page",
+    description="Render the admin login page with authentication form",
+    response_description="HTML page with login form",
+    operation_id="adminLoginPage",
+    responses={
+        200: {
+            "description": "Successfully rendered login page",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+    },
+)
 async def login_page(request: Request):
-    """Render login page."""
-    return templates.TemplateResponse("admin/login.html.jinja", {"request": request})
+    """Render admin login page.
+
+    Displays the login form for admin users to authenticate.
+    No authentication required to access this page.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        HTMLResponse: Rendered login page template
+    """
+    return templates.TemplateResponse(request, "admin/login.html.jinja")
 
 
-@router.post("/login", response_class=HTMLResponse)
+@router.post(
+    "/login",
+    response_class=HTMLResponse,
+    summary="Admin Login",
+    description="Authenticate admin user and create session with cookie",
+    response_description="Redirect to dashboard on success or re-render form with errors",
+    operation_id="adminLogin",
+    responses={
+        302: {
+            "description": "Redirect to dashboard on successful authentication",
+        },
+        400: {
+            "description": "Bad request - inactive user account",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+        **get_common_responses(401, 403),
+    },
+)
 async def login(
     request: Request,
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: DBSession,
+    user_repo: UserRepo,
+    username: RequiredStrForm = ...,
+    password: RequiredStrForm = ...,
 ):
-    """Handle login form submission."""
-    user_repo = UserRepository(db)
+    """Handle admin login form submission.
+
+    Authenticates the user credentials, validates superuser status,
+    creates a session, and sets an authentication cookie.
+
+    Args:
+        request: FastAPI request object
+        db: Database session
+        user_repo: User repository for authentication
+        username: Username from form submission
+        password: Password from form submission
+
+    Returns:
+        RedirectResponse: Redirect to dashboard on success
+        HTMLResponse: Re-rendered login form with error message on failure
+
+    Raises:
+        Returns 401 for invalid credentials
+        Returns 400 for inactive accounts
+        Returns 403 for non-superuser accounts
+    """
     user = await user_repo.authenticate(username=username, password=password)
 
     if not user:
         return templates.TemplateResponse(
+            request,
             "admin/login.html.jinja",
-            {"request": request, "error": "Invalid username or password"},
+            {"error": "Invalid username or password"},
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
     if not user.is_active:
         return templates.TemplateResponse(
+            request,
             "admin/login.html.jinja",
-            {"request": request, "error": "User account is inactive"},
+            {"error": "User account is inactive"},
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if not user.is_superuser:
         return templates.TemplateResponse(
+            request,
             "admin/login.html.jinja",
-            {"request": request, "error": "Not enough permissions"},
+            {"error": "Not enough permissions"},
             status_code=status.HTTP_403_FORBIDDEN,
         )
 
@@ -65,11 +128,6 @@ async def login(
     access_token = create_access_token(subject=user.id)
 
     # Create session record in database
-    from datetime import UTC, datetime, timedelta
-
-    from app.repositories.session import SessionRepository
-    from app.schemas.session import SessionCreate
-
     session_repo = SessionRepository(db)
     session_in = SessionCreate(
         user_id=user.id,
@@ -84,7 +142,8 @@ async def login(
 
     # Create redirect response
     redirect_response = RedirectResponse(
-        url=f"{settings.api_v1_prefix}/admin/dashboard", status_code=status.HTTP_302_FOUND
+        url=f"{settings.api_v1_prefix}/admin/dashboard",
+        status_code=status.HTTP_302_FOUND,
     )
 
     # Set cookie
@@ -101,23 +160,71 @@ async def login(
     return redirect_response
 
 
-@router.get("/logout")
+@router.get(
+    "/logout",
+    summary="Admin Logout",
+    description="Log out admin user by clearing authentication cookie",
+    response_description="Redirect to login page",
+    operation_id="adminLogout",
+    responses={
+        302: {
+            "description": "Redirect to login page after logout",
+        },
+    },
+)
 async def logout(response: Response):
-    """Handle logout."""
+    """Handle admin logout.
+
+    Clears the authentication cookie and redirects to the login page.
+    No authentication required to access this endpoint.
+
+    Args:
+        response: FastAPI response object
+
+    Returns:
+        RedirectResponse: Redirect to login page with cleared cookie
+    """
     response = RedirectResponse(
-        url=f"{settings.api_v1_prefix}/admin/login", status_code=status.HTTP_302_FOUND
+        url=f"{settings.api_v1_prefix}/admin/login",
+        status_code=status.HTTP_302_FOUND,
     )
     response.delete_cookie("access_token")
     return response
 
 
-@router.get("/dashboard", response_class=HTMLResponse)
+@router.get(
+    "/dashboard",
+    response_class=HTMLResponse,
+    summary="Admin Dashboard",
+    description="Render the main admin dashboard with navigation and overview",
+    response_description="HTML page with admin dashboard",
+    operation_id="adminDashboard",
+    responses={
+        200: {
+            "description": "Successfully rendered dashboard",
+            "content": {"text/html": {"example": "<html>...</html>"}},
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
 async def dashboard(
     request: Request,
-    current_user: Annotated[User, Depends(get_current_active_superuser)],
+    current_user: CurrentSuperuser,
 ):
-    """Render main dashboard."""
+    """Render main admin dashboard.
+
+    Displays the admin dashboard with navigation menu and overview.
+    Requires superuser authentication.
+
+    Args:
+        request: FastAPI request object
+        current_user: Current authenticated superuser
+
+    Returns:
+        HTMLResponse: Rendered dashboard template with admin context
+    """
     return templates.TemplateResponse(
+        request,
         "admin/index.html.jinja",
         get_admin_context(
             request,

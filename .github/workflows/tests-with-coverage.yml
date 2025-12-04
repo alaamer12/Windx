@@ -107,8 +107,8 @@ jobs:
 
           echo "✅ .env.test created successfully for CI"
 
-      - name: Run tests with coverage
-        run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term
+      - name: Run tests with coverage (excluding E2E)
+        run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term -m "not e2e"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -124,7 +124,7 @@ jobs:
       - name: Generate coverage badge
         if: success()
         run: |
-          COVERAGE=$(uv run pytest tests/ --cov=app --cov-report=term | grep "TOTAL" | awk '{print $4}')
+          COVERAGE=$(uv run pytest tests/ -m "not e2e" --cov=app --cov-report=term | grep "TOTAL" | awk '{print $4}')
           echo "Coverage: $COVERAGE"
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 

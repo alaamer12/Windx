@@ -49,6 +49,7 @@ __all__ = [
     "InvalidConfigurationException",
     "InvalidFormulaException",
     "InvalidHierarchyException",
+    "FeatureDisabledException",
     "setup_exception_handlers",
 ]
 
@@ -399,6 +400,37 @@ class InvalidHierarchyException(AppException):
         )
 
 
+class FeatureDisabledException(AppException):
+    """Feature disabled exceptions.
+
+    Raised when attempting to access a disabled feature.
+    """
+
+    def __init__(
+        self,
+        message: str = "This feature is currently disabled",
+        feature_name: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize feature disabled exception.
+
+        Args:
+            message (str): Error message
+            feature_name (str | None): Name of the disabled feature
+            details (dict | None): Additional error details
+        """
+        if feature_name:
+            details = details or {}
+            details["feature_name"] = feature_name
+
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_403_FORBIDDEN,
+            error_type="feature_disabled_error",
+            details=details,
+        )
+
+
 # ============================================================================
 # Exception Handlers
 # ============================================================================
@@ -426,6 +458,19 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
         },
     )
 
+    # Special handling for FeatureDisabledException - always redirect to dashboard for HTML requests
+    if isinstance(exc, FeatureDisabledException):
+        from fastapi.responses import RedirectResponse
+
+        # Check if request accepts HTML (browser request)
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept or request.url.path.startswith("/api/v1/admin"):
+            # Admin routes should always redirect even without explicit Accept header
+            return RedirectResponse(
+                url=f"/api/v1/admin/dashboard?error={exc.message}",
+                status_code=status.HTTP_303_SEE_OTHER,
+            )
+
     # Check if request accepts HTML (browser) and error is 401/403
     accept = request.headers.get("accept", "")
     if "text/html" in accept and exc.status_code in [
@@ -434,6 +479,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
     ]:
         from fastapi.responses import RedirectResponse
 
+        # For 401/403 errors, redirect to login
         return RedirectResponse(
             url=f"/api/v1/admin/login?next={request.url.path}",
             status_code=status.HTTP_302_FOUND,

@@ -18,8 +18,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi_cache.decorator import cache
 
-from app.api.types import CurrentSuperuser, DBSession
 from app.api.deps import get_admin_context
+from app.api.types import CurrentSuperuser, DBSession
 from app.schemas.responses import get_common_responses
 from app.services.dashboard import DashboardService
 from app.services.user import UserService

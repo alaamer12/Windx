@@ -80,7 +80,7 @@
                         {{ order.items|length }}
                     </td>
                     <td class="px-6 py-4 font-medium">
-                        ${{ "%.2f"|format(order.total_amount) }}
+                        ${{ "%.2f"|format(order.quote.total_amount) }}
                     </td>
                     <td class="px-6 py-4 text-right">
                         <a href="/api/v1/admin/orders/{{ order.id }}" class="btn btn-outline py-1 px-3 text-xs">

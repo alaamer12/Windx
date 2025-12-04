@@ -13,6 +13,7 @@ Features:
     - Configuration validation
     - Detailed configuration retrieval
 """
+from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
@@ -68,53 +69,6 @@ class ConfigurationService(BaseService):
         self.attr_node_repo = AttributeNodeRepository(db)
         self.pricing_service = PricingService(db)
 
-    async def create_configuration(self, config_in: ConfigurationCreate) -> Configuration:
-        """Create new configuration with initial selections.
-
-        Creates a configuration and optionally adds initial attribute selections.
-        Sets the base price from the manufacturing type.
-
-        Args:
-            config_in (ConfigurationCreate): Configuration creation data
-
-        Returns:
-            Configuration: Created configuration instance
-
-        Raises:
-            NotFoundException: If manufacturing type not found
-            ValidationException: If selections are invalid
-        """
-        # Validate manufacturing type exists
-        mfg_type = await self.mfg_type_repo.get(config_in.manufacturing_type_id)
-        if not mfg_type:
-            raise NotFoundException(
-                resource="ManufacturingType",
-                details={"manufacturing_type_id": config_in.manufacturing_type_id},
-            )
-
-        # Create configuration with base price from manufacturing type
-        config_data = config_in.model_dump(exclude={"selections"})
-        config = Configuration(
-            **config_data,
-            base_price=mfg_type.base_price,
-            total_price=mfg_type.base_price,  # Initial total is base price
-            calculated_weight=mfg_type.base_weight,
-        )
-
-        self.config_repo.db.add(config)
-        await self.commit()
-        await self.refresh(config)
-
-        # Add initial selections if provided
-        if config_in.selections:
-            for selection_value in config_in.selections:
-                await self._add_selection_internal(config.id, selection_value)
-
-            # Recalculate totals after adding selections
-            await self.calculate_totals(config.id)
-
-        return config
-
     async def get_configuration(self, config_id: PositiveInt) -> Configuration:
         """Get configuration by ID.
 
@@ -169,71 +123,6 @@ class ConfigurationService(BaseService):
 
         return config
 
-    async def update_configuration(
-        self, config_id: PositiveInt, config_update: ConfigurationUpdate
-    ) -> Configuration:
-        """Update configuration.
-
-        Updates configuration metadata and optionally updates selections.
-
-        Args:
-            config_id (PositiveInt): Configuration ID
-            config_update (ConfigurationUpdate): Update data
-
-        Returns:
-            Configuration: Updated configuration instance
-
-        Raises:
-            NotFoundException: If configuration not found
-        """
-        config = await self.get_configuration(config_id)
-
-        # Update configuration fields
-        update_data = config_update.model_dump(exclude_unset=True, exclude={"selections"})
-        for field, value in update_data.items():
-            setattr(config, field, value)
-
-        await self.commit()
-        await self.refresh(config)
-
-        # Update selections if provided
-        if config_update.selections is not None:
-            await self.update_selections(config_id, config_update.selections)
-
-        return config
-
-    async def update_selections(
-        self, config_id: PositiveInt, selections: list[ConfigurationSelectionValue]
-    ) -> Configuration:
-        """Update attribute selections for a configuration.
-
-        Replaces all existing selections with the provided selections.
-
-        Args:
-            config_id (PositiveInt): Configuration ID
-            selections (list[ConfigurationSelectionValue]): New selections
-
-        Returns:
-            Configuration: Updated configuration with recalculated totals
-
-        Raises:
-            NotFoundException: If configuration not found
-            ValidationException: If selections are invalid
-        """
-        config = await self.get_configuration(config_id)
-
-        # Delete existing selections
-        await self.selection_repo.delete_by_configuration(config_id)
-
-        # Add new selections
-        for selection_value in selections:
-            await self._add_selection_internal(config_id, selection_value)
-
-        # Recalculate totals
-        await self.calculate_totals(config_id)
-
-        await self.refresh(config)
-        return config
 
     async def add_selection(
         self, config_id: PositiveInt, selection_value: ConfigurationSelectionValue
@@ -373,20 +262,6 @@ class ConfigurationService(BaseService):
 
         return totals
 
-    async def delete_configuration(self, config_id: PositiveInt) -> None:
-        """Delete a configuration.
-
-        Deletes the configuration and all related selections (cascade).
-
-        Args:
-            config_id (PositiveInt): Configuration ID
-
-        Raises:
-            NotFoundException: If configuration not found
-        """
-        config = await self.get_configuration(config_id)
-        await self.config_repo.delete(config.id)
-        await self.commit()
 
     async def list_configurations(
         self,
@@ -424,9 +299,9 @@ class ConfigurationService(BaseService):
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    @staticmethod
     def get_user_configurations_query(
-        self,
-        user: Any,
+            user: Any,
         manufacturing_type_id: int | None = None,
         status: str | None = None,
     ):
@@ -625,7 +500,7 @@ class ConfigurationService(BaseService):
         await self.refresh(config)
 
         # Add initial selections if provided
-        if config_in.selections:
+        if hasattr(config_in, 'selections') and config_in.selections:
             for selection_value in config_in.selections:
                 await self._add_selection_internal(config.id, selection_value)
 

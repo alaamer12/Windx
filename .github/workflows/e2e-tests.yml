@@ -1,0 +1,224 @@
+name: E2E Tests with Playwright
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: windx_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Install dev dependencies
+        run: uv sync --dev
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Enable LTREE extension
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d windx_test -c "CREATE EXTENSION IF NOT EXISTS ltree;"
+
+      - name: Create .env.test for CI
+        run: |
+          cat > .env.test << EOF
+          # Application
+          APP_NAME="Backend API Test"
+          APP_VERSION="1.0.0"
+          DEBUG=True
+          API_V1_PREFIX="/api/v1"
+
+          # Database Configuration - Local PostgreSQL for CI
+          DATABASE_PROVIDER=postgresql
+          DATABASE_CONNECTION_MODE=direct
+          DATABASE_HOST=localhost
+          DATABASE_PORT=5432
+          DATABASE_USER=postgres
+          DATABASE_PASSWORD=postgres
+          DATABASE_NAME=windx_test
+          DATABASE_POOL_SIZE=5
+          DATABASE_MAX_OVERFLOW=5
+          DATABASE_POOL_PRE_PING=True
+          DATABASE_ECHO=False
+          DATABASE_DISABLE_POOLER_WARNING=True
+
+          # Security - Test keys
+          SECRET_KEY="test-secret-key-for-testing-only-min-32-characters-long"
+          ALGORITHM="HS256"
+          ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+          # CORS - Allow all for testing
+          BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000","http://127.0.0.1:3000","http://127.0.0.1:8000"]
+
+          # Cache (Redis) - Disabled for tests
+          CACHE_ENABLED=False
+          CACHE_REDIS_HOST=localhost
+          CACHE_REDIS_PORT=6379
+          CACHE_REDIS_PASSWORD=
+          CACHE_REDIS_DB=2
+          CACHE_PREFIX=testapi:cache
+          CACHE_DEFAULT_TTL=300
+
+          # Rate Limiter (Redis) - Disabled for tests
+          LIMITER_ENABLED=False
+          LIMITER_REDIS_HOST=localhost
+          LIMITER_REDIS_PORT=6379
+          LIMITER_REDIS_PASSWORD=
+          LIMITER_REDIS_DB=3
+          LIMITER_PREFIX=testapi:limiter
+          LIMITER_DEFAULT_TIMES=1000
+          LIMITER_DEFAULT_SECONDS=60
+          EOF
+
+          echo "✅ .env.test created successfully for CI"
+
+      - name: Install Playwright browsers
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+        env:
+          ENV: test
+          DEBUG: "True"
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: windx_test
+          DATABASE_PROVIDER: postgresql
+          DATABASE_CONNECTION_MODE: direct
+          SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+          BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+          DATABASE_DISABLE_POOLER_WARNING: "True"
+
+      - name: Start FastAPI server in background
+        run: |
+          uv run uvicorn main:app --host 0.0.0.0 --port 8000 &
+          echo $! > server.pid
+          echo "Server started with PID $(cat server.pid)"
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/health > /dev/null; then
+              echo "✅ Server is ready!"
+              break
+            fi
+            echo "Waiting for server... ($i/30)"
+            sleep 1
+          done
+        env:
+          ENV: test
+          DEBUG: "True"
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: windx_test
+          DATABASE_PROVIDER: postgresql
+          DATABASE_CONNECTION_MODE: direct
+          SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+          BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+          DATABASE_DISABLE_POOLER_WARNING: "True"
+
+      - name: Run E2E tests
+        run: uv run pytest tests/e2e/ -v --tb=short -m e2e --cov=app --cov-report=xml --cov-report=term
+        env:
+          ENV: test
+          DEBUG: "True"
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_NAME: windx_test
+          DATABASE_PROVIDER: postgresql
+          DATABASE_CONNECTION_MODE: direct
+          SECRET_KEY: "test-secret-key-for-testing-only-min-32-characters-long"
+          BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+          DATABASE_DISABLE_POOLER_WARNING: "True"
+
+      - name: Stop FastAPI server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+            rm server.pid
+            echo "✅ Server stopped"
+          fi
+
+      - name: Upload Playwright screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-screenshots
+          path: tests/e2e/screenshots/
+          retention-days: 7
+
+      - name: Upload Playwright videos on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos
+          path: tests/e2e/videos/
+          retention-days: 7
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          flags: e2e
+          name: codecov-e2e
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "## 🎭 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ All E2E tests passed!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Browser:** Chromium (Playwright)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ E2E tests failed. Check the logs and screenshots for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📸 Screenshots and videos have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+          fi

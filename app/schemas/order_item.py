@@ -17,6 +17,7 @@ Features:
     - Automatic ORM conversion support
     - Quantity validation (must be positive)
 """
+from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal

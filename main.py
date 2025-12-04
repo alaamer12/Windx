@@ -15,6 +15,8 @@ Features:
     - Health check endpoint
 """
 
+from __future__ import annotations
+
 from contextlib import asynccontextmanager
 from typing import Annotated
 
@@ -80,24 +82,23 @@ app = FastAPI(
     title="WindX Product Configurator API",
     description="""
     **WindX** - Automated Product Configurator for Custom Manufacturing
-    
+
     Transform how customers design and order custom manufactured products with:
     - 🎨 **Dynamic Product Configuration** - Hierarchical attribute trees with unlimited depth
     - 💰 **Real-time Pricing** - Instant price calculations with formula support
     - 📋 **Template System** - Pre-configured products for quick start
     - 📄 **Quote Generation** - Professional quotes with price protection
     - 📦 **Order Management** - Complete order lifecycle tracking
-    
+
     Perfect for windows, doors, furniture, cabinets, and any customizable manufactured products.
-    
-    **Key Features:**
+     **Key Features:**
     - Self-service configuration with instant feedback
     - Automated pricing with validation
     - Template-based quick configuration
     - Quote-to-order workflow
     - Customer and order management
-    
-    **Technology:**
+
+     **Technology:**
     - PostgreSQL with LTREE for hierarchical data
     - Type-safe with SQLAlchemy 2.0 and Pydantic V2
     - High-performance caching and rate limiting

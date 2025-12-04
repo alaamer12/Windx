@@ -17,6 +17,7 @@ Features:
     - LRU cache for settings singleton
     - Type-safe configuration with validation
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -612,20 +613,20 @@ class WindxSettings(BaseSettings):
     experimental_customers_page: Annotated[
         bool,
         Field(
-            default=False,
+            default=True,  # Default to True for development and testing
             description="Enable experimental customers admin page (may be renamed/removed)",
             alias_priority=2,  # Allow flexible renaming
         ),
-    ] = False
+    ] = True
 
     experimental_orders_page: Annotated[
         bool,
         Field(
-            default=False,
+            default=True,  # Default to True for development and testing
             description="Enable experimental orders admin page (may be renamed/removed)",
             alias_priority=2,  # Allow flexible renaming
         ),
-    ] = False
+    ] = True
 
     @computed_field
     @property
@@ -698,6 +699,22 @@ class Settings(BaseSettings):
         Field(
             default_factory=list,
             description="List of allowed CORS origins",
+        ),
+    ]
+
+    # Currency settings
+    currency: Annotated[
+        str,
+        Field(
+            default="USD",
+            description="Currency code (ISO 4217)",
+        ),
+    ]
+    currency_symbol: Annotated[
+        str,
+        Field(
+            default="$",
+            description="Currency symbol for display",
         ),
     ]
 

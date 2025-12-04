@@ -13,7 +13,10 @@ Features:
     - Comprehensive OpenAPI documentation
 """
 
+import asyncio
+
 from fastapi import APIRouter, status
+from sqlalchemy.pool import QueuePool
 
 from app.api.types import CurrentSuperuser
 from app.database.connection import get_engine
@@ -77,12 +80,20 @@ async def database_metrics(
             - total_connections: Total connections (pool_size + overflow)
     """
     engine = get_engine()
-    pool = engine.pool
+    sync_pool = engine.sync_engine.pool  # Access the underlying sync pool
+
+    # Assert that it's a QueuePool (which supports the metrics methods)
+    assert isinstance(sync_pool, QueuePool), "Expected QueuePool for metrics"
+
+    pool_size = await asyncio.to_thread(sync_pool.size)
+    checked_in = await asyncio.to_thread(sync_pool.checkedin)
+    checked_out = await asyncio.to_thread(sync_pool.checkedout)
+    overflow = await asyncio.to_thread(sync_pool.overflow)
 
     return {
-        "pool_size": pool.size(),
-        "checked_in": pool.checkedin(),
-        "checked_out": pool.checkedout(),
-        "overflow": pool.overflow(),
-        "total_connections": pool.size() + pool.overflow(),
+        "pool_size": pool_size,
+        "checked_in": checked_in,
+        "checked_out": checked_out,
+        "overflow": overflow,
+        "total_connections": pool_size + overflow,
     }

@@ -16,6 +16,7 @@ Features:
     - Type-safe with Annotated types
     - Automatic ORM conversion support
 """
+from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal

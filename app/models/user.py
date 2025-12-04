@@ -13,6 +13,7 @@ Features:
     - Automatic timestamp management
     - One-to-many relationship with sessions
 """
+from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -108,7 +109,7 @@ class User(Base):
     )
 
     # Relationships
-    sessions: Mapped[list["Session"]] = relationship(
+    sessions: Mapped[list[Session]] = relationship(
         "Session",
         back_populates="user",
         cascade="all, delete-orphan",

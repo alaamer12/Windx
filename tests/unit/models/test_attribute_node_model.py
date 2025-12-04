@@ -98,6 +98,7 @@ async def test_attribute_node_hierarchy(db_session: AsyncSession):
     from sqlalchemy.orm import selectinload
 
     # Reload parent with children eagerly loaded
+    # noinspection PyTypeChecker
     result = await db_session.execute(
         select(AttributeNode)
         .where(AttributeNode.id == parent.id)
@@ -109,6 +110,7 @@ async def test_attribute_node_hierarchy(db_session: AsyncSession):
     assert parent_with_children.children[0].id == child.id
 
     # Reload child with parent eagerly loaded
+    # noinspection PyTypeChecker
     result = await db_session.execute(
         select(AttributeNode)
         .where(AttributeNode.id == child.id)

@@ -27,6 +27,7 @@ Features:
     - Reduced boilerplate in endpoints
     - Full Windx configurator system support
 """
+
 from __future__ import annotations
 
 from typing import Annotated, Optional
@@ -70,6 +71,12 @@ __all__ = [
     "RequiredIntQuery",
     "OptionalStrQuery",
     "RequiredStrQuery",
+    "IsSuperuserQuery",
+    "IsActiveQuery",
+    "SearchQuery",
+    "PageQuery",
+    "PageSizeQuery",
+    "SortOrderQuery",
     # Form parameter types
     "OptionalIntForm",
     "RequiredIntForm",
@@ -169,6 +176,98 @@ Usage:
         name: RequiredStrQuery,
     ):
         # name is required
+        pass
+    ```
+"""
+
+IsSuperuserQuery = Annotated[bool | None, Query()]
+"""Optional boolean query parameter for filtering by superuser status.
+
+Usage:
+    ```python
+    @router.get("/users")
+    async def list_users(
+        is_superuser: IsSuperuserQuery = None,
+    ):
+        # Filter users by superuser status if provided
+        pass
+    ```
+"""
+
+IsActiveQuery = Annotated[bool | None, Query()]
+"""Optional boolean query parameter for filtering by active status.
+
+Usage:
+    ```python
+    @router.get("/customers")
+    async def list_customers(
+        is_active: IsActiveQuery = None,
+    ):
+        # Filter customers by active status if provided
+        pass
+    ```
+"""
+
+SearchQuery = Annotated[str | None, Query(min_length=1, max_length=200)]
+"""Optional string query parameter for search with validation.
+
+Validates that search string is between 1 and 200 characters.
+
+Usage:
+    ```python
+    @router.get("/customers")
+    async def list_customers(
+        search: SearchQuery = None,
+    ):
+        # Search customers by name, email, etc.
+        pass
+    ```
+"""
+
+PageQuery = Annotated[int, Query(ge=1)]
+"""Required integer query parameter for pagination page number.
+
+Validates that page number is >= 1.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        page: PageQuery = 1,
+    ):
+        # page is validated to be >= 1
+        pass
+    ```
+"""
+
+PageSizeQuery = Annotated[int, Query(ge=1, le=100)]
+"""Required integer query parameter for pagination page size.
+
+Validates that page size is between 1 and 100.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        page_size: PageSizeQuery = 50,
+    ):
+        # page_size is validated to be between 1 and 100
+        pass
+    ```
+"""
+
+SortOrderQuery = Annotated[str, Query(pattern="^(asc|desc)$")]
+"""Required string query parameter for sort order.
+
+Validates that sort order is either 'asc' or 'desc'.
+
+Usage:
+    ```python
+    @router.get("/items")
+    async def list_items(
+        sort_order: SortOrderQuery = "asc",
+    ):
+        # sort_order is validated to be 'asc' or 'desc'
         pass
     ```
 """

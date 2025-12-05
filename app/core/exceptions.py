@@ -41,6 +41,7 @@ __all__ = [
     "AppException",
     "DatabaseException",
     "AuthenticationException",
+    "UnauthorizedException",
     "AuthorizationException",
     "ValidationException",
     "NotFoundException",
@@ -176,6 +177,27 @@ class AuthenticationException(AppException):
             error_type="authentication_error",
             details=details,
         )
+
+
+class UnauthorizedException(AuthenticationException):
+    """Unauthorized access exceptions.
+
+    Alias for AuthenticationException for backward compatibility.
+    Raised when user is not authenticated.
+    """
+
+    def __init__(
+        self,
+        message: str = "Not authenticated",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        """Initialize unauthorized exception.
+
+        Args:
+            message (str): Error message
+            details (dict | None): Additional error details
+        """
+        super().__init__(message=message, details=details)
 
 
 class AuthorizationException(AppException):

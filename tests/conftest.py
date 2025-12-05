@@ -275,32 +275,53 @@ async def client(
 
 
 @pytest.fixture
-def test_user_data() -> dict[str, Any]:
-    """Get test user data.
+def test_user_data(test_settings: TestSettings) -> dict[str, Any]:
+    """Get test user data from environment.
+
+    Args:
+        test_settings: Test settings with credentials
 
     Returns:
         dict[str, Any]: Test user data
     """
     return {
-        "email": "test@example.com",
-        "username": "testuser",
-        "password": "TestPassword123!",
+        "email": test_settings.test_user_email,
+        "username": test_settings.test_user_username,
+        "password": test_settings.test_user_password,
         "full_name": "Test User",
     }
 
 
 @pytest.fixture
-def test_superuser_data() -> dict[str, Any]:
-    """Get test superuser data.
+def test_admin_data(test_settings: TestSettings) -> dict[str, Any]:
+    """Get test admin data from environment.
+
+    Args:
+        test_settings: Test settings with credentials
+
+    Returns:
+        dict[str, Any]: Test admin data
+    """
+    return {
+        "email": test_settings.test_admin_email,
+        "username": test_settings.test_admin_username,
+        "password": test_settings.test_admin_password,
+        "full_name": "Test Admin",
+    }
+
+
+@pytest.fixture
+def test_superuser_data(test_admin_data: dict[str, Any]) -> dict[str, Any]:
+    """Get test superuser data from environment.
+
+    Args:
+        test_admin_data: Admin credentials from environment
 
     Returns:
         dict[str, Any]: Test superuser data
     """
     return {
-        "email": "admin@example.com",
-        "username": "admin",
-        "password": "AdminPassword123!",
-        "full_name": "Admin User",
+        **test_admin_data,
         "is_superuser": True,
     }
 
@@ -323,6 +344,25 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
     user_in = UserCreate(**test_user_data)
     user = await user_service.create_user(user_in)
     return user
+
+
+@pytest.fixture
+def test_passwords(test_settings: TestSettings) -> dict[str, str]:
+    """Get test passwords from settings.
+
+    This fixture provides a single source of truth for test passwords,
+    preventing hardcoded passwords in test files.
+
+    Args:
+        test_settings: Test settings with credentials
+
+    Returns:
+        dict[str, str]: Dictionary with password keys
+    """
+    return {
+        "admin": test_settings.test_admin_password,
+        "user": test_settings.test_user_password,
+    }
 
 
 @pytest_asyncio.fixture

@@ -280,12 +280,23 @@ class TestNavigationMenuFeatureFlags:
         self,
         client: AsyncClient,
         test_superuser: User,
-        superuser_auth_headers: dict[str, str],
+        test_passwords: dict[str, str],
     ):
         """Test dashboard shows customers link when feature is enabled."""
+        # Login to get cookie
+        login_response = await client.post(
+            "/api/v1/admin/login",
+            data={
+                "username": test_superuser.username,
+                "password": test_passwords["admin"],
+            },
+            follow_redirects=False,
+        )
+        cookie_value = login_response.cookies["access_token"]
+        client.cookies.set("access_token", cookie_value)
+        
         response = await client.get(
             "/api/v1/admin/dashboard",
-            headers=superuser_auth_headers,
         )
 
         assert response.status_code == 200
@@ -297,16 +308,27 @@ class TestNavigationMenuFeatureFlags:
         self,
         client: AsyncClient,
         test_superuser: User,
-        superuser_auth_headers: dict[str, str],
+        test_passwords: dict[str, str],
     ):
         """Test dashboard hides customers link when feature is disabled."""
+        # Login to get cookie
+        login_response = await client.post(
+            "/api/v1/admin/login",
+            data={
+                "username": test_superuser.username,
+                "password": test_passwords["admin"],
+            },
+            follow_redirects=False,
+        )
+        cookie_value = login_response.cookies["access_token"]
+        client.cookies.set("access_token", cookie_value)
+        
         with patch("app.core.config.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_customers_page = False
             mock_settings.return_value.windx.experimental_orders_page = True
 
             response = await client.get(
                 "/api/v1/admin/dashboard",
-                headers=superuser_auth_headers,
             )
 
             assert response.status_code == 200
@@ -317,12 +339,23 @@ class TestNavigationMenuFeatureFlags:
         self,
         client: AsyncClient,
         test_superuser: User,
-        superuser_auth_headers: dict[str, str],
+        test_passwords: dict[str, str],
     ):
         """Test dashboard shows orders link when feature is enabled."""
+        # Login to get cookie
+        login_response = await client.post(
+            "/api/v1/admin/login",
+            data={
+                "username": test_superuser.username,
+                "password": test_passwords["admin"],
+            },
+            follow_redirects=False,
+        )
+        cookie_value = login_response.cookies["access_token"]
+        client.cookies.set("access_token", cookie_value)
+        
         response = await client.get(
             "/api/v1/admin/dashboard",
-            headers=superuser_auth_headers,
         )
 
         assert response.status_code == 200
@@ -333,16 +366,27 @@ class TestNavigationMenuFeatureFlags:
         self,
         client: AsyncClient,
         test_superuser: User,
-        superuser_auth_headers: dict[str, str],
+        test_passwords: dict[str, str],
     ):
         """Test dashboard hides orders link when feature is disabled."""
+        # Login to get cookie
+        login_response = await client.post(
+            "/api/v1/admin/login",
+            data={
+                "username": test_superuser.username,
+                "password": test_passwords["admin"],
+            },
+            follow_redirects=False,
+        )
+        cookie_value = login_response.cookies["access_token"]
+        client.cookies.set("access_token", cookie_value)
+        
         with patch("app.core.config.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_customers_page = True
             mock_settings.return_value.windx.experimental_orders_page = False
 
             response = await client.get(
                 "/api/v1/admin/dashboard",
-                headers=superuser_auth_headers,
             )
 
             assert response.status_code == 200

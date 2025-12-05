@@ -105,6 +105,14 @@ jobs:
           LIMITER_PREFIX=testapi:limiter
           LIMITER_DEFAULT_TIMES=1000
           LIMITER_DEFAULT_SECONDS=60
+
+          # Test User Credentials
+          TEST_ADMIN_USERNAME=test_admin
+          TEST_ADMIN_EMAIL=test_admin@example.com
+          TEST_ADMIN_PASSWORD=AdminPassword123!
+          TEST_USER_USERNAME=test_user
+          TEST_USER_EMAIL=test_user@example.com
+          TEST_USER_PASSWORD=UserPassword123!
           EOF
 
           echo "✅ .env.test created successfully for CI"

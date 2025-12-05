@@ -37,7 +37,7 @@ VALID_ORDER_STATUSES = {"confirmed", "production", "shipped", "installed"}
     summary="List Orders",
     description="List all orders with optional filtering by status and search term. Supports pagination.",
     response_description="HTML page with order list",
-    operation_id="listOrders",
+    operation_id="adminListOrders",
     responses={
         200: {
             "description": "Successfully retrieved orders page",
@@ -223,7 +223,7 @@ async def update_order_status(
     current_superuser: CurrentSuperuser,
     db: DBSession,
     order_repo: OrderRepo,
-    new_status: RequiredStrForm = ...,
+    new_status: RequiredStrForm,
 ):
     """Update order status.
 

@@ -39,7 +39,7 @@ templates = Jinja2Templates(directory="app/templates")
     summary="List Customers",
     description="List all customers with optional filtering by status, type, and search term. Supports pagination.",
     response_description="HTML page with customer list",
-    operation_id="listCustomers",
+    operation_id="adminListCustomers",
     responses={
         200: {
             "description": "Successfully retrieved customers page",
@@ -200,7 +200,7 @@ async def new_customer_form(
     summary="Create Customer",
     description="Create a new customer from form submission",
     response_description="Redirect to customer list or form with errors",
-    operation_id="createCustomer",
+    operation_id="adminCreateCustomer",
     responses={
         302: {
             "description": "Redirect to customer list on success",
@@ -506,7 +506,7 @@ async def edit_customer_form(
     summary="Update Customer",
     description="Update an existing customer from form submission",
     response_description="Redirect to customer detail or form with errors",
-    operation_id="updateCustomer",
+    operation_id="adminUpdateCustomer",
     responses={
         302: {
             "description": "Redirect to customer detail on success",

@@ -328,7 +328,7 @@ class NodeFormDataProcessor:
                 parsed_parent_id = int(parent_node_id)
             except (ValueError, TypeError):
                 parsed_parent_id = None
-        
+
         # Convert sort_order: ensure it's an int
         parsed_sort_order = 0
         if sort_order is not None:
@@ -336,7 +336,7 @@ class NodeFormDataProcessor:
                 parsed_sort_order = int(sort_order)
             except (ValueError, TypeError):
                 parsed_sort_order = 0
-        
+
         return {
             "manufacturing_type_id": manufacturing_type_id,
             "name": name,
@@ -673,10 +673,10 @@ async def save_node(
     db: DBSession,
     attr_repo: AttributeNodeRepo,
     mfg_repo: ManufacturingTypeRepo,
+    manufacturing_type_id: RequiredIntForm,
+    name: RequiredStrForm,
+    node_type: RequiredStrForm,
     node_id: OptionalIntForm = None,
-    manufacturing_type_id: RequiredIntForm = ...,
-    name: RequiredStrForm = ...,
-    node_type: RequiredStrForm = ...,
     parent_node_id: Annotated[str | None, Form()] = None,
     data_type: OptionalStrForm = None,
     required: OptionalBoolForm = False,

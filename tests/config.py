@@ -68,6 +68,32 @@ class TestSettings(Settings):
         description="Rate limiter enabled (disabled in tests)",
     )
 
+    # Test user credentials
+    test_admin_username: str = Field(
+        default="test_admin",
+        description="Test admin username",
+    )
+    test_admin_email: str = Field(
+        default="test_admin@example.com",
+        description="Test admin email",
+    )
+    test_admin_password: str = Field(
+        default="AdminPassword123!",
+        description="Test admin password",
+    )
+    test_user_username: str = Field(
+        default="test_user",
+        description="Test regular user username",
+    )
+    test_user_email: str = Field(
+        default="test_user@example.com",
+        description="Test regular user email",
+    )
+    test_user_password: str = Field(
+        default="UserPassword123!",
+        description="Test regular user password",
+    )
+
 
 @lru_cache
 def get_test_settings() -> TestSettings:

@@ -12,6 +12,9 @@ Commands:
     reset_password <username> Reset password for a user
     check_env                Validate environment configuration
     seed_data                Create sample data for development
+    clean_db                 Clean orphaned types and recreate database
+    verify_setup             Verify complete setup is working
+    stamp_alembic            Stamp Alembic to current version
 
 Examples:
     python manage.py createsuperuser
@@ -22,6 +25,9 @@ Examples:
     python manage.py reset_password admin
     python manage.py check_env
     python manage.py seed_data
+    python manage.py clean_db
+    python manage.py verify_setup
+    python manage.py stamp_alembic
 """
 
 import argparse
@@ -422,6 +428,204 @@ def print_help():
     print(__doc__)
 
 
+async def clean_db_types_command(args: argparse.Namespace):
+    """Clean orphaned PostgreSQL types and recreate database."""
+    print("=== Cleaning Database Types ===\n")
+    
+    engine = get_engine()
+    
+    try:
+        async with engine.begin() as conn:
+            print("Step 1: Dropping all tables...")
+            await conn.run_sync(Base.metadata.drop_all)
+            print("✅ Tables dropped")
+            
+            print("\nStep 2: Dropping orphaned types...")
+            # Get all custom types in public schema
+            result = await conn.execute(text("""
+                SELECT typname 
+                FROM pg_type t
+                JOIN pg_namespace n ON t.typnamespace = n.oid
+                WHERE n.nspname = 'public' 
+                AND t.typtype = 'c'
+                AND typname IN (
+                    'users', 'sessions', 'customers', 'manufacturing_types',
+                    'attribute_nodes', 'configurations', 'configuration_selections',
+                    'configuration_templates', 'template_selections',
+                    'quotes', 'orders', 'order_items'
+                )
+            """))
+            
+            types_to_drop = [row[0] for row in result]
+            if types_to_drop:
+                print(f"Found {len(types_to_drop)} orphaned types: {types_to_drop}")
+                
+                for type_name in types_to_drop:
+                    try:
+                        await conn.execute(text(f"DROP TYPE IF EXISTS {type_name} CASCADE"))
+                        print(f"  ✅ Dropped type: {type_name}")
+                    except Exception as e:
+                        print(f"  ⚠️  Could not drop {type_name}: {e}")
+            else:
+                print("No orphaned types found")
+            
+            print("\nStep 3: Creating LTREE extension...")
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
+            print("✅ LTREE extension created")
+            
+            print("\nStep 4: Creating all tables...")
+            await conn.run_sync(Base.metadata.create_all)
+            print("✅ All tables created")
+            
+        print("\n" + "="*50)
+        print("✅ Database cleaned and recreated!")
+        print("\nNext steps:")
+        print("1. Stamp alembic to current version:")
+        print("   python manage.py stamp_alembic")
+        print("\n2. Seed initial data:")
+        print("   python manage.py seed_data")
+        
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
+async def verify_setup_command(args: argparse.Namespace):
+    """Verify complete setup is working."""
+    print("="*60)
+    print("WINDX APPLICATION SETUP VERIFICATION")
+    print("="*60)
+    
+    engine = get_engine()
+    all_ok = True
+    
+    try:
+        async with engine.begin() as conn:
+            # 1. Check LTREE extension
+            print("\n1. Checking LTREE extension...")
+            result = await conn.execute(
+                text("SELECT 1 FROM pg_extension WHERE extname = 'ltree'")
+            )
+            if result.scalar():
+                print("   ✅ LTREE extension installed")
+            else:
+                print("   ❌ LTREE extension missing")
+                all_ok = False
+            
+            # 2. Check all tables exist
+            print("\n2. Checking database tables...")
+            result = await conn.execute(
+                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename")
+            )
+            tables = [row[0] for row in result]
+            expected_tables = [
+                'alembic_version', 'attribute_nodes', 'configuration_selections',
+                'configuration_templates', 'configurations', 'customers',
+                'manufacturing_types', 'order_items', 'orders', 'quotes',
+                'sessions', 'template_selections', 'users'
+            ]
+            
+            missing = set(expected_tables) - set(tables)
+            if missing:
+                print(f"   ❌ Missing tables: {missing}")
+                all_ok = False
+            else:
+                print(f"   ✅ All {len(expected_tables)} tables exist")
+            
+            # 3. Check admin user
+            print("\n3. Checking admin user...")
+            result = await conn.execute(
+                text("SELECT username, email, is_superuser, is_active FROM users WHERE username = 'admin'")
+            )
+            admin = result.fetchone()
+            if admin:
+                print(f"   ✅ Admin user found")
+                print(f"      Username: {admin[0]}")
+                print(f"      Email: {admin[1]}")
+                print(f"      Superuser: {admin[2]}")
+                print(f"      Active: {admin[3]}")
+                
+                if not admin[2]:
+                    print("   ❌ Admin user is not a superuser!")
+                    all_ok = False
+                if not admin[3]:
+                    print("   ❌ Admin user is not active!")
+                    all_ok = False
+            else:
+                print("   ⚠️  Admin user not found (run: python manage.py seed_data)")
+            
+            # 4. Check Alembic version
+            print("\n4. Checking Alembic migrations...")
+            result = await conn.execute(
+                text("SELECT version_num FROM alembic_version")
+            )
+            version = result.scalar()
+            if version:
+                print(f"   ✅ Alembic version: {version}")
+            else:
+                print("   ⚠️  No Alembic version found (run: python manage.py stamp_alembic)")
+            
+            # 5. Check user count
+            print("\n5. Checking user accounts...")
+            result = await conn.execute(text("SELECT COUNT(*) FROM users"))
+            user_count = result.scalar()
+            print(f"   ✅ Total users: {user_count}")
+            
+        print("\n" + "="*60)
+        if all_ok:
+            print("✅ ALL CHECKS PASSED - SETUP COMPLETE!")
+            print("="*60)
+            print("\nYou can now:")
+            print("1. Start the server:")
+            print(f"   {get_python_executable()} -m uvicorn main:app --reload")
+            print("\n2. Login to admin panel:")
+            print("   http://127.0.0.1:8000/api/v1/admin/login")
+            print("   Username: admin")
+            print("   Password: Admin123!")
+            print("\n3. View API docs:")
+            print("   http://127.0.0.1:8000/docs")
+            return 0
+        else:
+            print("⚠️  SOME CHECKS FAILED OR INCOMPLETE")
+            print("="*60)
+            print("\nPlease review the warnings above.")
+            return 1
+            
+    except Exception as e:
+        print(f"\n❌ Error during verification: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+    finally:
+        await engine.dispose()
+
+
+async def stamp_alembic_command(args: argparse.Namespace):
+    """Stamp Alembic to current version without running migrations."""
+    print("=== Stamping Alembic Version ===\n")
+    
+    import subprocess
+    
+    python_exe = get_python_executable()
+    result = subprocess.run(
+        [python_exe, "-m", "alembic", "stamp", "head"],
+        capture_output=True,
+        text=True
+    )
+    
+    if result.returncode == 0:
+        print("✅ Alembic stamped to head version")
+        print(result.stdout)
+    else:
+        print("❌ Error stamping Alembic:")
+        print(result.stderr)
+        sys.exit(1)
+
+
 # Command registry mapping command names to functions
 COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "createsuperuser": lambda args: asyncio.run(create_superuser()),
@@ -432,6 +636,9 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "reset_password": lambda args: asyncio.run(reset_password_command(args)),
     "check_env": lambda args: asyncio.run(check_env_command(args)),
     "seed_data": lambda args: asyncio.run(seed_data_command(args)),
+    "clean_db": lambda args: asyncio.run(clean_db_types_command(args)),
+    "verify_setup": lambda args: sys.exit(asyncio.run(verify_setup_command(args))),
+    "stamp_alembic": lambda args: asyncio.run(stamp_alembic_command(args)),
 }
 
 

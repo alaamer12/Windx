@@ -299,7 +299,7 @@ Usage:
     ```python
     @router.post("/items")
     async def create_item(
-        manufacturing_type_id: RequiredIntForm = ...,
+        manufacturing_type_id: RequiredIntForm,
     ):
         # manufacturing_type_id is required
         pass
@@ -327,7 +327,7 @@ Usage:
     ```python
     @router.post("/items")
     async def create_item(
-        name: RequiredStrForm = ...,
+        name: RequiredStrForm,
     ):
         # name is required
         pass
@@ -355,7 +355,7 @@ Usage:
     ```python
     @router.post("/items")
     async def create_item(
-        is_active: RequiredBoolForm = ...,
+        is_active: RequiredBoolForm,
     ):
         # is_active is required
         pass

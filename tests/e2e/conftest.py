@@ -96,20 +96,25 @@ async def page(context: BrowserContext) -> AsyncGenerator[Page, None]:
 
 
 @pytest_asyncio.fixture
-async def admin_user(db_session: AsyncSession) -> User:
+async def admin_user(db_session: AsyncSession, test_settings) -> User:
     """Create admin user for E2E tests.
     
     Args:
         db_session: Database session
+        test_settings: Test settings with credentials
         
     Returns:
         User: Created admin user
     """
+    from tests.config import TestSettings
+    
+    settings = test_settings if test_settings else TestSettings()
+    
     admin = User(
         email="admin@e2e.test",
         username="e2e_admin",
         full_name="E2E Admin User",
-        hashed_password=get_password_hash("AdminPassword123!"),
+        hashed_password=get_password_hash(settings.test_admin_password),
         is_active=True,
         is_superuser=True,
     )
@@ -124,6 +129,7 @@ async def authenticated_page(
     page: Page,
     base_url: str,
     admin_user: User,
+    test_settings,
 ) -> AsyncGenerator[Page, None]:
     """Create authenticated page with admin login.
     
@@ -131,10 +137,15 @@ async def authenticated_page(
         page: Browser page
         base_url: Base URL for application
         admin_user: Admin user fixture
+        test_settings: Test settings with credentials
         
     Yields:
         Page: Authenticated browser page
     """
+    from tests.config import TestSettings
+    
+    settings = test_settings if test_settings else TestSettings()
+    
     # Navigate to login page
     await page.goto(f"{base_url}/api/v1/admin/login")
     
@@ -143,7 +154,7 @@ async def authenticated_page(
     
     # Fill login form (admin login uses form data, not JSON)
     await page.fill('input[name="username"]', "e2e_admin")
-    await page.fill('input[name="password"]', "AdminPassword123!")
+    await page.fill('input[name="password"]', settings.test_admin_password)
     
     # Submit form
     await page.click('button[type="submit"]')

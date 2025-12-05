@@ -11,10 +11,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app.api.deps import get_admin_context
-from app.api.types import CurrentSuperuser, DBSession, RequiredStrForm, UserOrRedirect, UserRepo
+from app.api.types import DBSession, RequiredStrForm, UserOrRedirect, UserRepo
 from app.core.config import get_settings
 from app.core.security import create_access_token
-from app.models.user import User
 from app.repositories.session import SessionRepository
 from app.schemas.responses import get_common_responses
 from app.schemas.session import SessionCreate
@@ -79,8 +78,8 @@ async def login(
     request: Request,
     db: DBSession,
     user_repo: UserRepo,
-    username: RequiredStrForm = ...,
-    password: RequiredStrForm = ...,
+    username: RequiredStrForm,
+    password: RequiredStrForm,
 ):
     """Handle admin login form submission.
 
@@ -177,7 +176,7 @@ async def login(
         },
     },
 )
-async def logout(response: Response):
+async def logout(response: Response) -> RedirectResponse:
     """Handle admin logout.
 
     Clears the authentication cookie and redirects to the login page.
@@ -199,6 +198,7 @@ async def logout(response: Response):
 
 async def get_current_superuser_or_redirect(
     request: Request,
+    db: DBSession,
 ) -> UserOrRedirect:
     """Get current superuser or redirect to login page.
 
@@ -207,28 +207,66 @@ async def get_current_superuser_or_redirect(
 
     Args:
         request: FastAPI request object
+        db: Database session
 
     Returns:
         User: Current authenticated superuser
         RedirectResponse: Redirect to login if not authenticated
     """
-    from app.api.deps import get_current_user
-    from app.core.exceptions import UnauthorizedException
+    from app.core.security import decode_access_token
+    from app.repositories.session import SessionRepository
+    from app.repositories.user import UserRepository
 
     try:
-        # Try to get current user from cookie
-        current_user = await get_current_user(request)
+        # Get token from cookie
+        token = request.cookies.get("access_token")
+        if token and token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
+        if not token:
+            return RedirectResponse(
+                url=f"{settings.api_v1_prefix}/admin/login",
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        # Decode token
+        user_id = decode_access_token(token)
+        if user_id is None:
+            return RedirectResponse(
+                url=f"{settings.api_v1_prefix}/admin/login",
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        # Check if session is active
+        session_repo = SessionRepository(db)
+        session = await session_repo.get_by_token(token)
+
+        if session is None or not session.is_active:
+            return RedirectResponse(
+                url=f"{settings.api_v1_prefix}/admin/login",
+                status_code=status.HTTP_302_FOUND,
+            )
+
+        # Get user
+        user_repo = UserRepository(db)
+        user = await user_repo.get(int(user_id))
+
+        if user is None or not user.is_active:
+            return RedirectResponse(
+                url=f"{settings.api_v1_prefix}/admin/login",
+                status_code=status.HTTP_302_FOUND,
+            )
 
         # Check if user is superuser
-        if not current_user.is_superuser:
+        if not user.is_superuser:
             return RedirectResponse(
                 url=f"{settings.api_v1_prefix}/admin/login?error=Not enough permissions",
                 status_code=status.HTTP_302_FOUND,
             )
 
-        return current_user
-    except (UnauthorizedException, Exception):
-        # Redirect to login page if not authenticated
+        return user
+    except Exception:
+        # Redirect to login page if any error occurs
         return RedirectResponse(
             url=f"{settings.api_v1_prefix}/admin/login",
             status_code=status.HTTP_302_FOUND,

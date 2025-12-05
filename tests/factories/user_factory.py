@@ -69,7 +69,7 @@ def create_user_data(
     data = {
         "email": email or f"user{unique_id}@example.com",
         "username": username or f"user{unique_id}",
-        "password": password or "TestPassword123!",
+        "password": password or "FactoryPassword123!",  # Secure default for factory-created users
         "full_name": full_name or f"Test User {unique_id}",
         "is_active": is_active,
         "is_superuser": is_superuser,

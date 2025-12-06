@@ -168,6 +168,15 @@ class DatabaseSettings(BaseSettings):
         ),
     ] = False
 
+    schema_: Annotated[
+        str,
+        Field(
+            default="public",
+            description="PostgreSQL schema to use (for test isolation)",
+            alias="schema",
+        ),
+    ] = "public"
+
     @computed_field
     @property
     def url(self) -> str:

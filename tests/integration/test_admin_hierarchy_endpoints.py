@@ -221,8 +221,56 @@ async def test_hierarchy_dashboard_diagram_failure_graceful(
     assert response.status_code == 200
     content = response.text
     assert "Frame Options" in content
-    # Diagram should show empty state when generation fails
-    assert "(Empty tree)" in content or "Frame Options" in content
+    # Diagram should be None when generation fails, but page should still render
+    # The ASCII tree should still be visible
+    assert "Frame Options [category]" in content
+
+
+@pytest.mark.asyncio
+async def test_hierarchy_dashboard_diagram_generation_success(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test dashboard successfully generates and displays diagram tree."""
+    # Create manufacturing type and hierarchy
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+
+    root = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Frame Options",
+        node_type="category",
+    )
+
+    child = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Aluminum",
+        node_type="option",
+        parent_node_id=root.id,
+        price_impact_value=Decimal("50.00"),
+    )
+
+    # Request dashboard
+    response = await client.get(
+        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
+        headers=superuser_auth_headers,
+    )
+
+    # Verify response
+    assert response.status_code == 200
+    content = response.text
+    
+    # Verify ASCII tree is present
+    assert "Frame Options [category]" in content
+    assert "Aluminum [option]" in content
+    
+    # Verify diagram image is embedded (base64 encoded PNG)
+    # The template should have an img tag with base64 data
+    assert 'data:image/png;base64,' in content or 'diagram_tree' in content
 
 
 @pytest.mark.asyncio

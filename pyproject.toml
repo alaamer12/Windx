@@ -63,6 +63,8 @@ dependencies = [
     "matplotlib",
     "networkx",
     # "pygraphviz",
+    "pandas>=2.3.3",
+    "rich"
 ]
 
 [dependency-groups]

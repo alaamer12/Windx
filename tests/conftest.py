@@ -152,7 +152,7 @@ async def test_engine():
     """Create test database engine with asyncpg driver.
 
     This fixture:
-    - Creates a fresh database engine for each test
+    - Creates a separate schema for test isolation (test_windx)
     - Enables LTREE extension (required for hierarchical attributes)
     - Drops and recreates all tables for isolation
     - Uses NullPool to prevent connection pooling issues in tests
@@ -167,32 +167,109 @@ async def test_engine():
         - Better JSONB performance
         - Full async/await support
         - Supabase compatibility
+        
+        Schema isolation ensures tests don't affect development data.
     """
+    test_settings = get_test_settings()
+    schema = test_settings.database.schema_
+    
+    # Create engine with schema in connect_args
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,  # Disable pooling for test isolation
-        # No connect_args needed for asyncpg (unlike aiosqlite)
+        connect_args={
+            "server_settings": {
+                "search_path": f"{schema}, public"
+            }
+        }
     )
 
-    # Create all tables with LTREE extension
+    # Create schema and tables with LTREE extension
     async with engine.begin() as conn:
-        # Drop first to ensure clean state between tests
-        await conn.run_sync(Base.metadata.drop_all)
-
-        # Enable LTREE extension for hierarchical attribute nodes
+        # Create schema if it doesn't exist
+        await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+        
+        # Set search path for this connection (include public for extensions)
+        await conn.execute(text(f"SET search_path TO {schema}, public"))
+        
+        # Enable LTREE extension in public schema (accessible from all schemas)
         # This is required by the Windx schema for efficient tree queries
-        # Use IF NOT EXISTS to avoid errors if extension already exists
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree"))
-
-        # Create all tables from SQLAlchemy models
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree SCHEMA public"))
+        
+        # Drop all tables in test schema if they exist
+        await conn.execute(text(f"""
+            DO $$ 
+            DECLARE
+                r RECORD;
+            BEGIN
+                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}') 
+                LOOP
+                    EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
+                END LOOP;
+            END $$;
+        """))
+        
+        # Create all tables in test schema
+        # The simplest approach: set schema on metadata, create tables, then reset
+        def create_tables_in_schema(connection):
+            # Temporarily bind all tables to the test schema
+            for table_name, table in Base.metadata.tables.items():
+                table.schema = schema
+            
+            # Create all tables
+            Base.metadata.create_all(bind=connection)
+            
+            # Reset schema to None for other code
+            for table_name, table in Base.metadata.tables.items():
+                table.schema = None
+        
+        await conn.run_sync(create_tables_in_schema)
+        
+        # Verify tables were created
+        result = await conn.execute(text(f"""
+            SELECT COUNT(*) FROM information_schema.tables 
+            WHERE table_schema = '{schema}'
+        """))
+        created_count = result.scalar()
+        
+        # Also check public schema
+        result = await conn.execute(text("""
+            SELECT COUNT(*) FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        """))
+        public_count = result.scalar()
+        
+        print(f"[DEBUG] Tables in {schema} schema: {created_count}")
+        print(f"[DEBUG] Tables in public schema: {public_count}")
+        
+        if created_count == 0:
+            # Debug: show where tables actually are
+            result = await conn.execute(text("""
+                SELECT DISTINCT table_schema 
+                FROM information_schema.tables 
+                WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+            """))
+            schemas = [row[0] for row in result]
+            print(f"[DEBUG] Schemas with tables: {schemas}")
 
     yield engine
 
-    # Cleanup: Drop all tables and dispose engine
+    # Cleanup: Drop all tables in test schema (not the schema itself for reuse)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(text(f"SET search_path TO {schema}, public"))
+        # Drop all tables in test schema
+        await conn.execute(text(f"""
+            DO $$ 
+            DECLARE
+                r RECORD;
+            BEGIN
+                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}') 
+                LOOP
+                    EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
+                END LOOP;
+            END $$;
+        """))
 
     await engine.dispose()
 

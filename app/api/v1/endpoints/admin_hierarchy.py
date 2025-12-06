@@ -194,9 +194,27 @@ async def hierarchy_dashboard(
 
             # Get diagram tree visualization (base64 encoded image)
             try:
-                context["diagram_tree"] = await hierarchy_service.plot_tree(manufacturing_type_id)
-            except Exception:
+                import base64
+                import io
+                
+                fig = await hierarchy_service.plot_tree(manufacturing_type_id)
+                if fig is not None:
+                    # Convert matplotlib figure to base64 PNG
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+                    buf.seek(0)
+                    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+                    context["diagram_tree"] = img_base64
+                    buf.close()
+                    
+                    # Close the figure to free memory
+                    import matplotlib.pyplot as plt
+                    plt.close(fig)
+                else:
+                    context["diagram_tree"] = None
+            except Exception as e:
                 # If diagram generation fails, just skip it
+                print(f"Diagram generation failed: {e}")
                 context["diagram_tree"] = None
 
     return templates.TemplateResponse(

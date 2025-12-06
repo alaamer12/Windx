@@ -16,10 +16,10 @@ Features:
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import SettingsConfigDict
 
-from app.core.config import Settings
+from app.core.config import Settings, DatabaseSettings
 
 __all__ = ["TestSettings", "get_test_settings"]
 
@@ -48,6 +48,13 @@ class TestSettings(Settings):
 
     # Override debug to always be True in tests
     debug: bool = Field(default=True, description="Debug mode (always True in tests)")
+    
+    @model_validator(mode='after')
+    def override_database_schema(self):
+        """Override database schema to test_windx for test isolation."""
+        # Force test schema to be test_windx
+        self.database.schema_ = "test_windx"
+        return self
 
     # Override database settings for testing
     # Now uses PostgreSQL with asyncpg for LTREE and JSONB support

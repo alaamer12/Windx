@@ -127,6 +127,35 @@ class TestAdminLogin:
         assert response.status_code == 403
         assert b"Not enough permissions" in response.content
 
+    async def test_login_database_error(
+        self,
+        client: AsyncClient,
+        monkeypatch,
+    ):
+        """Test login handles database errors gracefully."""
+        from app.repositories.user import UserRepository
+
+        # Mock the authenticate method to raise a database error
+        async def mock_authenticate(*args, **kwargs):
+            raise Exception("relation 'users' does not exist")
+
+        monkeypatch.setattr(UserRepository, "authenticate", mock_authenticate)
+
+        response = await client.post(
+            "/api/v1/admin/login",
+            data={
+                "username": "testuser",
+                "password": "testpass",
+            },
+            follow_redirects=False,
+        )
+
+        # Should return 500 with setup error message
+        assert response.status_code == 500
+        assert b"Database not initialized" in response.content
+        assert b"create_tables" in response.content
+        assert b"seed_data" in response.content
+
 
 @pytest.mark.asyncio
 class TestAdminLogout:

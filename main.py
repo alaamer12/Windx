@@ -69,6 +69,31 @@ async def lifespan(application: FastAPI):
     await init_db()
     await init_cache()
     await init_limiter()
+
+    # Check if database is set up
+    try:
+        from sqlalchemy import text
+
+        from app.database import get_db
+
+        async for db in get_db():
+            try:
+                # Try to query users table
+                result = await db.execute(text("SELECT COUNT(*) FROM users"))
+                user_count = result.scalar()
+                if user_count == 0:
+                    print("[!] WARNING: Database is empty. Run: python manage.py seed_data")
+                else:
+                    print(f"[OK] Database ready with {user_count} user(s)")
+            except Exception as db_error:
+                if "does not exist" in str(db_error).lower():
+                    print("[!] WARNING: Database tables not found!")
+                    print("    Run: python manage.py create_tables")
+                    print("    Then: python manage.py seed_data")
+            break
+    except Exception as e:
+        print(f"[!] Could not check database status: {e}")
+
     print("[+] Application started successfully")
 
     yield

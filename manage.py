@@ -15,6 +15,8 @@ Commands:
     clean_db                 Clean orphaned types and recreate database
     verify_setup             Verify complete setup is working
     stamp_alembic            Stamp Alembic to current version
+    create_sample_mfg        Create sample manufacturing data with hierarchy
+    delete_sample_mfg        Delete sample manufacturing data
 
 Examples:
     python manage.py createsuperuser
@@ -28,6 +30,8 @@ Examples:
     python manage.py clean_db
     python manage.py verify_setup
     python manage.py stamp_alembic
+    python manage.py create_sample_mfg
+    python manage.py delete_sample_mfg --force
 """
 
 import argparse
@@ -35,6 +39,12 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import Callable
+
+# Fix Windows CMD encoding issues with emojis
+if sys.platform == "win32":
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -626,6 +636,80 @@ async def stamp_alembic_command(args: argparse.Namespace):
         sys.exit(1)
 
 
+async def create_sample_mfg_command(args: argparse.Namespace):
+    """Create sample manufacturing data with hierarchy."""
+    from _manager_utils import create_sample_manufacturing_data
+    
+    print("=== Creating Sample Manufacturing Data ===\n")
+    
+    engine = get_engine()
+    session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        async with session_maker() as session:
+            result = await create_sample_manufacturing_data(session)
+            
+            print("[SUCCESS] Sample manufacturing data created successfully!")
+            print("\nSummary:")
+            print(f"   Manufacturing Type: {result['manufacturing_type_name']}")
+            print(f"   ID: {result['manufacturing_type_id']}")
+            print(f"   Total Nodes: {result['total_nodes']}")
+            print("\n   Nodes by Depth:")
+            for depth, count in result['nodes_by_depth'].items():
+                print(f"     Level {depth}: {count} nodes")
+            print("\n   Nodes by Type:")
+            for node_type, count in result['nodes_by_type'].items():
+                print(f"     {node_type.capitalize()}: {count} nodes")
+            print("\nYou can now:")
+            print("   - View in admin dashboard: http://127.0.0.1:8000/api/v1/admin/dashboard")
+            print("   - Create configurations using this manufacturing type")
+            print("   - Delete with: python manage.py delete_sample_mfg")
+    except Exception as e:
+        print(f"[ERROR] Error creating sample data: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
+async def delete_sample_mfg_command(args: argparse.Namespace):
+    """Delete sample manufacturing data."""
+    from _manager_utils import delete_sample_manufacturing_data
+    
+    print("=== Deleting Sample Manufacturing Data ===\n")
+    
+    # Confirm deletion unless --force is used
+    if not args.force:
+        confirm = input("[WARNING] This will delete 'Sample Casement Window' and all its nodes. Continue? (yes/no): ")
+        if confirm.lower() not in ["yes", "y"]:
+            print("[CANCELLED] Deletion cancelled")
+            sys.exit(0)
+    
+    engine = get_engine()
+    session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        async with session_maker() as session:
+            result = await delete_sample_manufacturing_data(session)
+            
+            if result['deleted']:
+                print(f"[SUCCESS] {result['message']}")
+                print("\nDeleted:")
+                print(f"   Manufacturing Type: {result['manufacturing_type_name']}")
+                print(f"   ID: {result['manufacturing_type_id']}")
+                print(f"   Attribute Nodes: {result['deleted_nodes']}")
+            else:
+                print(f"[INFO] {result['message']}")
+    except Exception as e:
+        print(f"[ERROR] Error deleting sample data: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
 # Command registry mapping command names to functions
 COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "createsuperuser": lambda args: asyncio.run(create_superuser()),
@@ -639,6 +723,8 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "clean_db": lambda args: asyncio.run(clean_db_types_command(args)),
     "verify_setup": lambda args: sys.exit(asyncio.run(verify_setup_command(args))),
     "stamp_alembic": lambda args: asyncio.run(stamp_alembic_command(args)),
+    "create_sample_mfg": lambda args: asyncio.run(create_sample_mfg_command(args)),
+    "delete_sample_mfg": lambda args: asyncio.run(delete_sample_mfg_command(args)),
 }
 
 

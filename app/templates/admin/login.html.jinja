@@ -15,7 +15,10 @@
         </div>
 
         {% if error %}
-        <div class="alert alert-error">
+        <div class="alert {% if is_setup_error %}alert-warning{% else %}alert-error{% endif %}">
+            {% if is_setup_error %}
+            <strong>⚠️ Setup Required</strong><br>
+            {% endif %}
             {{ error }}
         </div>
         {% endif %}
@@ -61,6 +64,32 @@
 </div>
 
 <style>
+.alert-warning {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    color: #78350f;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.alert-warning strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.alert-warning code {
+    background: white;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    border: 1px solid #fbbf24;
+}
+
 .dev-credentials-card {
     background: #fef3c7;
     border: 2px solid #fbbf24;

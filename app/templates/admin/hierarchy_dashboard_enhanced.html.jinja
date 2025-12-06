@@ -508,7 +508,7 @@
             
             <!-- Node Details Tab -->
             <div id="details-tab" class="tab-pane">
-                <div class="details-view-content">
+                <div class="details-view-content" id="node-details-content">
                     <div class="empty-state">
                         <div class="empty-state-icon">👈</div>
                         <h3>Select a Node</h3>
@@ -538,28 +538,85 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+    .node-details-panel { padding: 2rem; max-width: 800px; margin: 0 auto; }
+    .node-details-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 2px solid var(--border); }
+    .node-details-title { font-size: 1.5rem; font-weight: 700; color: var(--text); }
+    .node-detail-row { display: grid; grid-template-columns: 200px 1fr; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+    .node-detail-label { font-weight: 600; color: var(--text-light); }
+    .node-detail-value { color: var(--text); word-break: break-word; }
+    .node-type-badge { display: inline-block; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-size: 0.875rem; font-weight: 600; }
+    .tree-node-clickable { cursor: pointer; transition: background-color 0.2s; padding: 0.1rem 0.3rem; border-radius: 0.25rem; display: inline-block; }
+    .tree-node-clickable:hover { background-color: rgba(102, 126, 234, 0.1); }
+    .tree-node-selected { background-color: rgba(102, 126, 234, 0.2); font-weight: bold; }
+</style>
 <script>
+    const nodeData = {
+        {% if attribute_nodes %}
+        {% for node in attribute_nodes %}
+        {{ node.id }}: {
+            id: {{ node.id }},
+            name: "{{ node.name }}",
+            node_type: "{{ node.node_type }}",
+            depth: {{ node.depth }},
+            ltree_path: "{{ node.ltree_path }}",
+            price_impact_type: "{{ node.price_impact_type }}",
+            price_impact_value: {{ node.price_impact_value if node.price_impact_value else 'null' }},
+            weight_impact: {{ node.weight_impact if node.weight_impact else 'null' }},
+            data_type: "{{ node.data_type if node.data_type else '' }}",
+            required: {{ 'true' if node.required else 'false' }},
+            description: "{{ node.description if node.description else '' }}",
+            help_text: "{{ node.help_text if node.help_text else '' }}",
+            sort_order: {{ node.sort_order }},
+            parent_node_id: {{ node.parent_node_id if node.parent_node_id else 'null' }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+        {% endif %}
+    };
+    
     function switchTab(event, tabId) {
-        // Remove active class from all tabs and panes
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-        
-        // Add active class to clicked tab and corresponding pane
         event.target.classList.add('active');
         document.getElementById(tabId).classList.add('active');
     }
     
     function selectNode(nodeId) {
-        // Navigate to node edit page
-        window.location.href = `/api/v1/admin/hierarchy/node/${nodeId}/edit?manufacturing_type_id={{ selected_type_id }}`;
+        const node = nodeData[nodeId];
+        if (!node) return;
+        
+        document.querySelector('[onclick*="details-tab"]')?.click();
+        document.querySelectorAll('.tree-node-clickable').forEach(el => el.classList.remove('tree-node-selected'));
+        document.querySelector(`[data-node-id="${nodeId}"]`)?.classList.add('tree-node-selected');
+        
+        const colors = {category: '#FFE5B4', attribute: '#B4D7FF', option: '#B4FFB4', component: '#FFB4E5', technical_spec: '#E5B4FF'};
+        const html = `
+            <div class="node-details-panel">
+                <div class="node-details-header">
+                    <div class="node-details-title">${node.name}</div>
+                    <a href="/api/v1/admin/hierarchy/node/${node.id}/edit?manufacturing_type_id={{ selected_type_id }}" class="btn btn-primary btn-sm">✏️ Edit</a>
+                </div>
+                <div class="node-detail-row"><div class="node-detail-label">Node ID</div><div class="node-detail-value">#${node.id}</div></div>
+                <div class="node-detail-row"><div class="node-detail-label">Type</div><div class="node-detail-value"><span class="node-type-badge" style="background-color: ${colors[node.node_type] || '#CCC'}">${node.node_type}</span></div></div>
+                <div class="node-detail-row"><div class="node-detail-label">Path</div><div class="node-detail-value"><code>${node.ltree_path}</code></div></div>
+                <div class="node-detail-row"><div class="node-detail-label">Depth</div><div class="node-detail-value">${node.depth}</div></div>
+                <div class="node-detail-row"><div class="node-detail-label">Sort Order</div><div class="node-detail-value">${node.sort_order}</div></div>
+                ${node.data_type ? `<div class="node-detail-row"><div class="node-detail-label">Data Type</div><div class="node-detail-value">${node.data_type}</div></div>` : ''}
+                <div class="node-detail-row"><div class="node-detail-label">Required</div><div class="node-detail-value">${node.required ? '✅ Yes' : '❌ No'}</div></div>
+                <div class="node-detail-row"><div class="node-detail-label">Price Impact</div><div class="node-detail-value">${node.price_impact_type}${node.price_impact_value !== null ? ` ($${node.price_impact_value.toFixed(2)})` : ''}</div></div>
+                ${node.weight_impact !== null ? `<div class="node-detail-row"><div class="node-detail-label">Weight</div><div class="node-detail-value">${node.weight_impact.toFixed(2)} kg</div></div>` : ''}
+                ${node.description ? `<div class="node-detail-row"><div class="node-detail-label">Description</div><div class="node-detail-value">${node.description}</div></div>` : ''}
+                ${node.help_text ? `<div class="node-detail-row"><div class="node-detail-label">Help Text</div><div class="node-detail-value">${node.help_text}</div></div>` : ''}
+                <div class="node-detail-row"><div class="node-detail-label">Parent</div><div class="node-detail-value">${node.parent_node_id ? `<a href="#" onclick="selectNode(${node.parent_node_id}); return false;">#${node.parent_node_id} - ${nodeData[node.parent_node_id]?.name || 'Unknown'}</a>` : '<em>Root</em>'}</div></div>
+            </div>
+        `;
+        document.getElementById('node-details-content').innerHTML = html;
     }
     
     function toggleFullscreen() {
         const visualArea = document.querySelector('.visualization-area');
         if (!document.fullscreenElement) {
-            visualArea.requestFullscreen().catch(err => {
-                alert(`Error attempting to enable fullscreen: ${err.message}`);
-            });
+            visualArea.requestFullscreen().catch(err => alert(`Error: ${err.message}`));
         } else {
             document.exitFullscreen();
         }
@@ -572,5 +629,28 @@
         link.download = 'hierarchy-diagram.png';
         link.click();
     }
+    
+  document.addEventListener('DOMContentLoaded', function() {
+    const treeContent = document.querySelector('.sidebar-content pre');
+    if (treeContent && Object.keys(nodeData).length > 0) {
+        const lines = treeContent.innerHTML.split('\n');
+        const newLines = [];
+        for (let line of lines) {
+            let matched = false;
+            for (const node of Object.values(nodeData)) {
+                const escapedName = node.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // Match node_name [node_type] with anything after (like price)
+                const pattern = new RegExp(escapedName + '\\s*\\[' + node.node_type + '\\]');
+                if (pattern.test(line)) {
+                    line = `<span class="tree-node-clickable" data-node-id="${node.id}" onclick="selectNode(${node.id})">${line}</span>`;
+                    matched = true;
+                    break;
+                }
+            }
+            newLines.push(line);
+        }
+        treeContent.innerHTML = newLines.join('\n');
+    }
+});
 </script>
 {% endblock %}

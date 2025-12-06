@@ -463,23 +463,23 @@
                                 <option value="">-- Select Type --</option>
                                 <option value="category" 
                                         {% if (form_data and form_data.node_type == 'category') or (node and node.node_type == 'category') %}selected{% endif %}>
-                                    📁 Category
+                                    Category - Organizational grouping
                                 </option>
                                 <option value="attribute" 
                                         {% if (form_data and form_data.node_type == 'attribute') or (node and node.node_type == 'attribute') %}selected{% endif %}>
-                                    🔧 Attribute
+                                    Attribute - Configurable property
                                 </option>
                                 <option value="option" 
                                         {% if (form_data and form_data.node_type == 'option') or (node and node.node_type == 'option') %}selected{% endif %}>
-                                    ✓ Option
+                                    Option - Selectable choice
                                 </option>
                                 <option value="component" 
                                         {% if (form_data and form_data.node_type == 'component') or (node and node.node_type == 'component') %}selected{% endif %}>
-                                    🔩 Component
+                                    Component - Physical part
                                 </option>
                                 <option value="technical_spec" 
                                         {% if (form_data and form_data.node_type == 'technical_spec') or (node and node.node_type == 'technical_spec') %}selected{% endif %}>
-                                    📊 Technical Spec
+                                    Technical Spec - Calculated property
                                 </option>
                             </select>
                             <div class="field-help">
@@ -516,27 +516,27 @@
                                 <option value="">-- Select Data Type --</option>
                                 <option value="string" 
                                         {% if (form_data and form_data.data_type == 'string') or (node and node.data_type == 'string') %}selected{% endif %}>
-                                    📝 String (Text)
+                                    String - Text values
                                 </option>
                                 <option value="number" 
                                         {% if (form_data and form_data.data_type == 'number') or (node and node.data_type == 'number') %}selected{% endif %}>
-                                    🔢 Number
+                                    Number - Numeric values
                                 </option>
                                 <option value="boolean" 
                                         {% if (form_data and form_data.data_type == 'boolean') or (node and node.data_type == 'boolean') %}selected{% endif %}>
-                                    ✅ Boolean (Yes/No)
+                                    Boolean - Yes/No choices
                                 </option>
                                 <option value="formula" 
                                         {% if (form_data and form_data.data_type == 'formula') or (node and node.data_type == 'formula') %}selected{% endif %}>
-                                    🧮 Formula (Calculated)
+                                    Formula - Calculated values
                                 </option>
                                 <option value="dimension" 
                                         {% if (form_data and form_data.data_type == 'dimension') or (node and node.data_type == 'dimension') %}selected{% endif %}>
-                                    📏 Dimension
+                                    Dimension - Size measurements
                                 </option>
                                 <option value="selection" 
                                         {% if (form_data and form_data.data_type == 'selection') or (node and node.data_type == 'selection') %}selected{% endif %}>
-                                    🎯 Selection
+                                    Selection - Choice from options
                                 </option>
                             </select>
                             <div class="field-help">Type of data stored in this attribute</div>
@@ -591,15 +591,15 @@
                             <select name="price_impact_type">
                                 <option value="fixed" 
                                         {% if (form_data and form_data.price_impact_type == 'fixed') or (not form_data and (not node or node.price_impact_type == 'fixed')) %}selected{% endif %}>
-                                    💵 Fixed Amount
+                                    Fixed - Add/subtract dollar amount
                                 </option>
                                 <option value="percentage" 
                                         {% if (form_data and form_data.price_impact_type == 'percentage') or (node and node.price_impact_type == 'percentage') %}selected{% endif %}>
-                                    📈 Percentage
+                                    Percentage - Multiply by percentage
                                 </option>
                                 <option value="formula" 
                                         {% if (form_data and form_data.price_impact_type == 'formula') or (node and node.price_impact_type == 'formula') %}selected{% endif %}>
-                                    🧮 Formula
+                                    Formula - Calculate dynamically
                                 </option>
                             </select>
                             <div class="field-help">How this affects total price calculation</div>
@@ -724,23 +724,23 @@
                             <option value="">-- Select Component --</option>
                             <option value="dropdown" 
                                     {% if (form_data and form_data.ui_component == 'dropdown') or (node and node.ui_component == 'dropdown') %}selected{% endif %}>
-                                📋 Dropdown Menu
+                                Dropdown - Select from list
                             </option>
                             <option value="radio" 
                                     {% if (form_data and form_data.ui_component == 'radio') or (node and node.ui_component == 'radio') %}selected{% endif %}>
-                                🔘 Radio Buttons
+                                Radio - Single choice buttons
                             </option>
                             <option value="checkbox" 
                                     {% if (form_data and form_data.ui_component == 'checkbox') or (node and node.ui_component == 'checkbox') %}selected{% endif %}>
-                                ☑️ Checkboxes
+                                Checkbox - Multiple selections
                             </option>
                             <option value="slider" 
                                     {% if (form_data and form_data.ui_component == 'slider') or (node and node.ui_component == 'slider') %}selected{% endif %}>
-                                🎚️ Slider
+                                Slider - Range selection
                             </option>
                             <option value="input" 
                                     {% if (form_data and form_data.ui_component == 'input') or (node and node.ui_component == 'input') %}selected{% endif %}>
-                                ⌨️ Text Input
+                                Input - Text/number entry
                             </option>
                         </select>
                         <div class="field-help">Control type shown to users</div>

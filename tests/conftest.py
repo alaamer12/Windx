@@ -414,12 +414,33 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
     Returns:
         User: Created test user
     """
-    from app.schemas.user import UserCreate
-    from app.services.user import UserService
+    from app.core.security import get_password_hash
+    from app.models.user import User
+    from app.repositories.user import UserRepository
 
-    user_service = UserService(db_session)
-    user_in = UserCreate(**test_user_data)
-    user = await user_service.create_user(user_in)
+    user_repo = UserRepository(db_session)
+    
+    # Check if user already exists (in case of committed transaction from previous test)
+    existing_user = await user_repo.get_by_email(test_user_data["email"])
+    if existing_user:
+        # Return existing user
+        return existing_user
+    
+    # Create user directly without service (to avoid commit)
+    hashed_password = get_password_hash(test_user_data["password"])
+    user = User(
+        email=test_user_data["email"],
+        username=test_user_data["username"],
+        full_name=test_user_data.get("full_name"),
+        hashed_password=hashed_password,
+        is_superuser=False,
+        is_active=True,
+    )
+    
+    db_session.add(user)
+    await db_session.flush()  # Flush to get ID but don't commit
+    await db_session.refresh(user)
+
     return user
 
 
@@ -453,17 +474,31 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
     Returns:
         User: Created test superuser
     """
-    from app.schemas.user import UserCreate
-    from app.services.user import UserService
+    from app.core.security import get_password_hash
+    from app.models.user import User
+    from app.repositories.user import UserRepository
 
-    user_service = UserService(db_session)
-    user_in = UserCreate(**test_superuser_data)
-    user = await user_service.create_user(user_in)
-
-    # Make superuser
-    user.is_superuser = True
+    user_repo = UserRepository(db_session)
+    
+    # Check if user already exists (in case of committed transaction from previous test)
+    existing_user = await user_repo.get_by_email(test_superuser_data["email"])
+    if existing_user:
+        # Return existing user
+        return existing_user
+    
+    # Create user directly without service (to avoid commit)
+    hashed_password = get_password_hash(test_superuser_data["password"])
+    user = User(
+        email=test_superuser_data["email"],
+        username=test_superuser_data["username"],
+        full_name=test_superuser_data.get("full_name"),
+        hashed_password=hashed_password,
+        is_superuser=True,
+        is_active=True,
+    )
+    
     db_session.add(user)
-    await db_session.flush()  # Flush instead of commit to keep transaction open
+    await db_session.flush()  # Flush to get ID but don't commit
     await db_session.refresh(user)
 
     return user

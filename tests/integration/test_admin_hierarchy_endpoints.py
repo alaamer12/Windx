@@ -16,16 +16,20 @@ from app.services.hierarchy_builder import HierarchyBuilderService
 async def test_hierarchy_dashboard_no_type_selected(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test dashboard renders with no manufacturing type selected."""
-    # Create a manufacturing type for the selector
-    service = HierarchyBuilderService(db_session)
-    await service.create_manufacturing_type(
-        name="Test Window",
-        description="Test window type",
-        base_price=Decimal("200.00"),
+    # Create a manufacturing type for the selector via API
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": "Test Window Dashboard No Selection",
+            "description": "Test window type",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
 
     # Request dashboard without type selection
     response = await client.get(
@@ -48,34 +52,58 @@ async def test_hierarchy_dashboard_no_type_selected(
 async def test_hierarchy_dashboard_with_type_selected(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test dashboard renders with manufacturing type selected."""
-    # Create manufacturing type and hierarchy
-    service = HierarchyBuilderService(db_session)
-    mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
-        description="Test window type",
-        base_price=Decimal("200.00"),
+    import time
+    import random
+    # Create manufacturing type via API with timestamp and random to ensure uniqueness
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": f"Test Window Dashboard Selected {unique_id}",
+            "description": "Test window type",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
+    mfg_type_id = create_response.json()["id"]
 
-    # Create simple hierarchy
-    root = await service.create_node(
-        manufacturing_type_id=mfg_type.id,
-        name="Frame Options",
-        node_type="category",
+    # Create simple hierarchy via API
+    root_response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data={
+            "manufacturing_type_id": str(mfg_type_id),
+            "name": "Frame Options",
+            "node_type": "category",
+            "price_impact_type": "fixed",
+            "weight_impact": "0",
+            "sort_order": "0",
+        },
     )
+    assert root_response.status_code == 303  # Redirect after save
 
-    child = await service.create_node(
-        manufacturing_type_id=mfg_type.id,
-        name="Material Type",
-        node_type="attribute",
-        parent_node_id=root.id,
+    child_response = await client.post(
+        "/api/v1/admin/hierarchy/node/save",
+        headers=superuser_auth_headers,
+        data={
+            "manufacturing_type_id": str(mfg_type_id),
+            "name": "Material Type",
+            "node_type": "attribute",
+            "parent_node_id": "1",  # Assuming first node gets ID 1
+            "price_impact_type": "fixed",
+            "weight_impact": "0",
+            "sort_order": "0",
+        },
     )
+    assert child_response.status_code == 303  # Redirect after save
 
     # Request dashboard with type selection
     response = await client.get(
-        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
+        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type_id}",
         headers=superuser_auth_headers,
     )
 

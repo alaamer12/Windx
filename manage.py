@@ -218,11 +218,12 @@ async def create_tables(args: argparse.Namespace):
 
 async def drop_tables(args: argparse.Namespace):
     """Drop all database tables."""
-    print("=== Dropping Database Tables ===\n")
+    schema = getattr(args, 'schema', 'public')
+    print(f"=== Dropping Database Tables (Schema: {schema}) ===\n")
     
     # Confirmation prompt unless --force is specified
     if not args.force:
-        print("⚠️  WARNING: This will delete ALL data in the database!")
+        print(f"⚠️  WARNING: This will delete ALL data in the '{schema}' schema!")
         response = input("Are you sure you want to continue? (yes/no): ").strip().lower()
         if response != "yes":
             print("Operation cancelled.")
@@ -232,9 +233,17 @@ async def drop_tables(args: argparse.Namespace):
     
     try:
         async with engine.begin() as conn:
-            print("Dropping all tables...")
-            await conn.run_sync(Base.metadata.drop_all)
-            print("✅ All tables dropped successfully")
+            # If schema is not 'public', drop the entire schema
+            if schema != 'public':
+                print(f"Dropping schema '{schema}' and all its tables...")
+                await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+                print(f"Creating schema '{schema}'...")
+                await conn.execute(text(f"CREATE SCHEMA {schema}"))
+                print(f"✅ Schema '{schema}' dropped and recreated successfully")
+            else:
+                print("Dropping all tables in public schema...")
+                await conn.run_sync(Base.metadata.drop_all)
+                print("✅ All tables dropped successfully")
     except Exception as e:
         print(f"❌ Error dropping tables: {e}")
         sys.exit(1)
@@ -1294,7 +1303,7 @@ def main():
         "--schema",
         type=str,
         default="public",
-        help="Database schema name (for tables command, default: public)",
+        help="Database schema name (for tables and drop_tables commands, default: public)",
     )
     
     args = parser.parse_args()

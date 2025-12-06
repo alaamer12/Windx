@@ -4,19 +4,23 @@ Usage:
     python manage.py <command> [options]
 
 Commands:
-    createsuperuser          Create a new superuser account
-    promote <username>       Promote an existing user to superuser
-    create_tables            Create all database tables with LTREE extension
-    drop_tables              Drop all database tables (requires confirmation)
-    reset_db                 Drop and recreate all tables (requires confirmation)
-    reset_password <username> Reset password for a user
-    check_env                Validate environment configuration
-    seed_data                Create sample data for development
-    clean_db                 Clean orphaned types and recreate database
-    verify_setup             Verify complete setup is working
-    stamp_alembic            Stamp Alembic to current version
-    create_sample_mfg        Create sample manufacturing data with hierarchy
-    delete_sample_mfg        Delete sample manufacturing data
+    createsuperuser              Create a new superuser account
+    promote <username>           Promote an existing user to superuser
+    create_tables                Create all database tables with LTREE extension
+    drop_tables                  Drop all database tables (requires confirmation)
+    reset_db                     Drop and recreate all tables (requires confirmation)
+    reset_password <username>    Reset password for a user
+    check_env                    Validate environment configuration
+    seed_data                    Create sample data for development
+    clean_db                     Clean orphaned types and recreate database
+    verify_setup                 Verify complete setup is working
+    stamp_alembic                Stamp Alembic to current version
+    create_factory_mfg           Create factory-generated manufacturing data (configurable)
+    delete_factory_mfg           Delete factory-generated manufacturing data
+    create_factory_customers     Create factory-generated customer data
+    delete_factory_customers     Delete factory-generated customer data
+    check_db                     Check database connection and schema
+    tables                       Display table information with pandas
 
 Examples:
     python manage.py createsuperuser
@@ -30,8 +34,12 @@ Examples:
     python manage.py clean_db
     python manage.py verify_setup
     python manage.py stamp_alembic
-    python manage.py create_sample_mfg
-    python manage.py delete_sample_mfg --force
+    python manage.py create_factory_mfg --depth 3 --leaves 4
+    python manage.py delete_factory_mfg --force
+    python manage.py create_factory_customers --count 20
+    python manage.py delete_factory_customers --force
+    python manage.py check_db
+    python manage.py tables --schema public
 """
 
 import argparse
@@ -55,18 +63,34 @@ from app.database.base import Base
 from app.database.connection import get_engine
 from app.models.user import User
 
+# Rich imports for beautiful terminal output
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm, Prompt
+from rich import box
+from rich.text import Text
+
+# Initialize Rich console
+console = Console()
+
 
 async def create_superuser():
     """Create a new superuser account."""
-    print("=== Create Superuser ===\n")
+    console.print(Panel.fit(
+        "[bold cyan]Create Superuser Account[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
 
-    email = input("Email: ").strip()
-    username = input("Username: ").strip()
-    full_name = input("Full name (optional): ").strip()
-    password = input("Password: ").strip()
+    email = Prompt.ask("[cyan]Email[/cyan]").strip()
+    username = Prompt.ask("[cyan]Username[/cyan]").strip()
+    full_name = Prompt.ask("[cyan]Full name[/cyan] (optional)", default="").strip()
+    password = Prompt.ask("[cyan]Password[/cyan]", password=True).strip()
 
     if not all([email, username, password]):
-        print("\n❌ Error: Email, username, and password are required!")
+        console.print("\n[bold red]✗ Error:[/bold red] Email, username, and password are required!")
         sys.exit(1)
 
     engine = get_engine()
@@ -74,36 +98,53 @@ async def create_superuser():
 
     async with session_maker() as session:
         try:
-            # Check if user exists
-            # noinspection PyTypeChecker
-            result = await session.execute(
-                select(User).where((User.email == email) | (User.username == username))
-            )
-            if result.scalar_one_or_none():
-                print("\n❌ Error: User already exists!")
-                sys.exit(1)
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                console=console
+            ) as progress:
+                task = progress.add_task("[cyan]Creating superuser...", total=None)
+                
+                # Check if user exists
+                result = await session.execute(
+                    select(User).where((User.email == email) | (User.username == username))
+                )
+                if result.scalar_one_or_none():
+                    console.print("\n[bold red]✗ Error:[/bold red] User already exists!")
+                    sys.exit(1)
 
-            # Create superuser
-            superuser = User(
-                email=email,
-                username=username,
-                full_name=full_name or username,
-                hashed_password=get_password_hash(password),
-                is_active=True,
-                is_superuser=True,
-            )
+                # Create superuser
+                superuser = User(
+                    email=email,
+                    username=username,
+                    full_name=full_name or username,
+                    hashed_password=get_password_hash(password),
+                    is_active=True,
+                    is_superuser=True,
+                )
 
-            session.add(superuser)
-            await session.commit()
-            await session.refresh(superuser)
+                session.add(superuser)
+                await session.commit()
+                await session.refresh(superuser)
+                
+                progress.update(task, completed=True)
 
-            print("\n✅ Superuser created!")
-            print(f"   Email: {superuser.email}")
-            print(f"   Username: {superuser.username}")
+            # Success panel
+            success_table = Table(show_header=False, box=box.SIMPLE)
+            success_table.add_row("[cyan]Email:[/cyan]", f"[white]{superuser.email}[/white]")
+            success_table.add_row("[cyan]Username:[/cyan]", f"[white]{superuser.username}[/white]")
+            success_table.add_row("[cyan]Full Name:[/cyan]", f"[white]{superuser.full_name}[/white]")
+            
+            console.print()
+            console.print(Panel(
+                success_table,
+                title="[bold green]✓ Superuser Created Successfully[/bold green]",
+                border_style="green"
+            ))
 
         except Exception as e:
             await session.rollback()
-            print(f"\n❌ Error: {e}")
+            console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
             sys.exit(1)
         finally:
             await session.close()
@@ -636,36 +677,100 @@ async def stamp_alembic_command(args: argparse.Namespace):
         sys.exit(1)
 
 
-async def create_sample_mfg_command(args: argparse.Namespace):
-    """Create sample manufacturing data with hierarchy."""
-    from _manager_utils import create_sample_manufacturing_data
+async def create_factory_mfg_command(args: argparse.Namespace):
+    """Create factory-generated manufacturing data with configurable parameters."""
+    from _manager_utils import create_factory_manufacturing_data
     
-    print("=== Creating Sample Manufacturing Data ===\n")
+    console.print(Panel.fit(
+        "[bold cyan]Create Factory Manufacturing Data[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    depth = args.depth if hasattr(args, 'depth') and args.depth else 3
+    leaves = args.leaves if hasattr(args, 'leaves') and args.leaves else 3
+    
+    # Configuration table
+    config_table = Table(show_header=False, box=box.SIMPLE)
+    config_table.add_row("[cyan]Max Depth:[/cyan]", f"[yellow]{depth}[/yellow] levels")
+    config_table.add_row("[cyan]Root Categories:[/cyan]", f"[yellow]{leaves}[/yellow]")
+    console.print(config_table)
+    console.print()
     
     engine = get_engine()
     session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     try:
-        async with session_maker() as session:
-            result = await create_sample_manufacturing_data(session)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[cyan]Generating factory data...", total=None)
             
-            print("[SUCCESS] Sample manufacturing data created successfully!")
-            print("\nSummary:")
-            print(f"   Manufacturing Type: {result['manufacturing_type_name']}")
-            print(f"   ID: {result['manufacturing_type_id']}")
-            print(f"   Total Nodes: {result['total_nodes']}")
-            print("\n   Nodes by Depth:")
-            for depth, count in result['nodes_by_depth'].items():
-                print(f"     Level {depth}: {count} nodes")
-            print("\n   Nodes by Type:")
-            for node_type, count in result['nodes_by_type'].items():
-                print(f"     {node_type.capitalize()}: {count} nodes")
-            print("\nYou can now:")
-            print("   - View in admin dashboard: http://127.0.0.1:8000/api/v1/admin/dashboard")
-            print("   - Create configurations using this manufacturing type")
-            print("   - Delete with: python manage.py delete_sample_mfg")
+            async with session_maker() as session:
+                result = await create_factory_manufacturing_data(
+                    session,
+                    depth=depth,
+                    root_leaves=leaves,
+                )
+            
+            progress.update(task, description="[green]✓ Factory data created")
+        
+        # Summary table
+        summary_table = Table(title="[bold green]✓ Manufacturing Data Created[/bold green]", box=box.ROUNDED)
+        summary_table.add_column("Property", style="cyan", no_wrap=True)
+        summary_table.add_column("Value", style="white")
+        
+        summary_table.add_row("Manufacturing Type", result['manufacturing_type_name'])
+        summary_table.add_row("ID", str(result['manufacturing_type_id']))
+        summary_table.add_row("Base Price", f"${result['base_price']:.2f}")
+        summary_table.add_row("Base Weight", f"{result['base_weight']:.2f} kg")
+        summary_table.add_row("Total Nodes", f"{result['total_nodes']:,}")
+        summary_table.add_row("Max Depth", str(result['max_depth']))
+        summary_table.add_row("Root Categories", str(result['root_leaves']))
+        
+        console.print()
+        console.print(summary_table)
+        
+        # Nodes by depth
+        depth_table = Table(title="[bold]Nodes by Depth[/bold]", box=box.SIMPLE)
+        depth_table.add_column("Level", justify="center", style="cyan")
+        depth_table.add_column("Count", justify="right", style="yellow")
+        
+        for depth_level, count in sorted(result['nodes_by_depth'].items()):
+            depth_table.add_row(f"Level {depth_level}", str(count))
+        
+        console.print()
+        console.print(depth_table)
+        
+        # Nodes by type
+        type_table = Table(title="[bold]Nodes by Type[/bold]", box=box.SIMPLE)
+        type_table.add_column("Type", style="cyan")
+        type_table.add_column("Count", justify="right", style="yellow")
+        
+        for node_type, count in result['nodes_by_type'].items():
+            type_table.add_row(node_type.capitalize(), str(count))
+        
+        console.print()
+        console.print(type_table)
+        
+        if result.get('deepest_path'):
+            console.print()
+            console.print(f"[dim]Deepest Path:[/dim] [cyan]{result['deepest_path']}[/cyan]")
+        
+        # Next steps
+        console.print()
+        console.print(Panel(
+            "[cyan]•[/cyan] View in admin dashboard: [link]http://127.0.0.1:8000/api/v1/admin/dashboard[/link]\n"
+            "[cyan]•[/cyan] Create configurations using this manufacturing type\n"
+            "[cyan]•[/cyan] Delete with: [yellow]python manage.py delete_factory_mfg --force[/yellow]",
+            title="[bold]Next Steps[/bold]",
+            border_style="dim"
+        ))
+        
     except Exception as e:
-        print(f"[ERROR] Error creating sample data: {e}")
+        console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
@@ -673,36 +778,442 @@ async def create_sample_mfg_command(args: argparse.Namespace):
         await engine.dispose()
 
 
-async def delete_sample_mfg_command(args: argparse.Namespace):
-    """Delete sample manufacturing data."""
-    from _manager_utils import delete_sample_manufacturing_data
+async def delete_factory_mfg_command(args: argparse.Namespace):
+    """Delete factory-generated manufacturing data."""
+    from _manager_utils import delete_factory_manufacturing_data
     
-    print("=== Deleting Sample Manufacturing Data ===\n")
+    console.print(Panel.fit(
+        "[bold red]Delete Factory Manufacturing Data[/bold red]",
+        border_style="red"
+    ))
+    console.print()
     
     # Confirm deletion unless --force is used
     if not args.force:
-        confirm = input("[WARNING] This will delete 'Sample Casement Window' and all its nodes. Continue? (yes/no): ")
-        if confirm.lower() not in ["yes", "y"]:
-            print("[CANCELLED] Deletion cancelled")
+        console.print("[yellow]⚠ Warning:[/yellow] This will delete all 'Factory %' manufacturing types and their nodes.")
+        if not Confirm.ask("[red]Continue with deletion?[/red]", default=False):
+            console.print("[dim]Deletion cancelled[/dim]")
             sys.exit(0)
+        console.print()
     
     engine = get_engine()
     session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     try:
-        async with session_maker() as session:
-            result = await delete_sample_manufacturing_data(session)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[red]Deleting factory data...", total=None)
             
-            if result['deleted']:
-                print(f"[SUCCESS] {result['message']}")
-                print("\nDeleted:")
-                print(f"   Manufacturing Type: {result['manufacturing_type_name']}")
-                print(f"   ID: {result['manufacturing_type_id']}")
-                print(f"   Attribute Nodes: {result['deleted_nodes']}")
-            else:
-                print(f"[INFO] {result['message']}")
+            async with session_maker() as session:
+                result = await delete_factory_manufacturing_data(session)
+            
+            progress.update(task, description="[green]✓ Deletion complete")
+        
+        if result['deleted']:
+            # Deletion summary table
+            summary_table = Table(title="[bold green]✓ Deletion Complete[/bold green]", box=box.ROUNDED)
+            summary_table.add_column("Metric", style="cyan")
+            summary_table.add_column("Count", justify="right", style="yellow")
+            
+            summary_table.add_row("Manufacturing Types", str(result['deleted_types']))
+            summary_table.add_row("Total Nodes", f"{result['deleted_nodes']:,}")
+            
+            console.print()
+            console.print(summary_table)
+            
+            # Details table
+            if result['types']:
+                console.print()
+                details_table = Table(title="[bold]Deleted Types[/bold]", box=box.SIMPLE)
+                details_table.add_column("Name", style="cyan")
+                details_table.add_column("ID", justify="right", style="dim")
+                details_table.add_column("Nodes", justify="right", style="yellow")
+                
+                for type_info in result['types']:
+                    details_table.add_row(
+                        type_info['name'],
+                        str(type_info['id']),
+                        str(type_info['nodes'])
+                    )
+                
+                console.print(details_table)
+        else:
+            console.print(f"\n[dim]{result['message']}[/dim]")
+            
     except Exception as e:
-        print(f"[ERROR] Error deleting sample data: {e}")
+        console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
+async def create_factory_customers_command(args: argparse.Namespace):
+    """Create factory-generated customer data."""
+    from _manager_utils import create_factory_customers
+    
+    console.print(Panel.fit(
+        "[bold cyan]Create Factory Customer Data[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    count = args.count if hasattr(args, 'count') and args.count else 10
+    
+    console.print(f"[cyan]Number of Customers:[/cyan] [yellow]{count}[/yellow]")
+    console.print()
+    
+    engine = get_engine()
+    session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[cyan]Generating customer data...", total=None)
+            
+            async with session_maker() as session:
+                result = await create_factory_customers(session, count=count)
+            
+            progress.update(task, description="[green]✓ Customer data created")
+        
+        # Summary table
+        summary_table = Table(title="[bold green]✓ Customer Data Created[/bold green]", box=box.ROUNDED)
+        summary_table.add_column("Customer Type", style="cyan")
+        summary_table.add_column("Count", justify="right", style="yellow")
+        
+        for customer_type, type_count in result['customers_by_type'].items():
+            summary_table.add_row(customer_type.capitalize(), str(type_count))
+        
+        summary_table.add_row("[bold]Total[/bold]", f"[bold]{result['total_customers']}[/bold]")
+        
+        console.print()
+        console.print(summary_table)
+        
+        # Sample emails
+        if result['sample_emails']:
+            console.print()
+            email_table = Table(title="[bold]Sample Emails[/bold]", box=box.SIMPLE, show_header=False)
+            email_table.add_column("Email", style="cyan")
+            
+            for email in result['sample_emails']:
+                email_table.add_row(email)
+            
+            console.print(email_table)
+        
+        # Next steps
+        console.print()
+        console.print(Panel(
+            "[cyan]•[/cyan] View customers in admin panel\n"
+            "[cyan]•[/cyan] Create configurations for these customers\n"
+            "[cyan]•[/cyan] Delete with: [yellow]python manage.py delete_factory_customers --force[/yellow]",
+            title="[bold]Next Steps[/bold]",
+            border_style="dim"
+        ))
+        
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
+async def delete_factory_customers_command(args: argparse.Namespace):
+    """Delete factory-generated customer data."""
+    from _manager_utils import delete_factory_customers
+    
+    console.print(Panel.fit(
+        "[bold red]Delete Factory Customer Data[/bold red]",
+        border_style="red"
+    ))
+    console.print()
+    
+    # Confirm deletion unless --force is used
+    if not args.force:
+        console.print("[yellow]⚠ Warning:[/yellow] This will delete all factory-generated customers.")
+        if not Confirm.ask("[red]Continue with deletion?[/red]", default=False):
+            console.print("[dim]Deletion cancelled[/dim]")
+            sys.exit(0)
+        console.print()
+    
+    engine = get_engine()
+    session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[red]Deleting customer data...", total=None)
+            
+            async with session_maker() as session:
+                result = await delete_factory_customers(session)
+            
+            progress.update(task, description="[green]✓ Deletion complete")
+        
+        if result['deleted']:
+            # Deletion summary table
+            summary_table = Table(title="[bold green]✓ Deletion Complete[/bold green]", box=box.ROUNDED)
+            summary_table.add_column("Customer Type", style="cyan")
+            summary_table.add_column("Deleted", justify="right", style="yellow")
+            
+            for customer_type, count in result['deleted_by_type'].items():
+                summary_table.add_row(customer_type.capitalize(), str(count))
+            
+            summary_table.add_row("[bold]Total[/bold]", f"[bold]{result['deleted_customers']}[/bold]")
+            
+            console.print()
+            console.print(summary_table)
+        else:
+            console.print(f"\n[dim]{result['message']}[/dim]")
+            
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
+async def check_db_command(args: argparse.Namespace):
+    """Check database connection and schema."""
+    console.print(Panel.fit(
+        "[bold cyan]Database Connection Check[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    engine = get_engine()
+    
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[cyan]Connecting to database...", total=None)
+            
+            async with engine.begin() as conn:
+                # Check connection
+                await conn.execute(text("SELECT 1"))
+                progress.update(task, description="[green]✓ Connected successfully")
+                
+                # Get database info
+                result = await conn.execute(text("SELECT version()"))
+                version = result.scalar()
+                
+                # Check LTREE extension
+                result = await conn.execute(
+                    text("SELECT 1 FROM pg_extension WHERE extname = 'ltree'")
+                )
+                ltree_installed = bool(result.scalar())
+                
+                # List tables
+                result = await conn.execute(
+                    text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename")
+                )
+                tables = [row[0] for row in result]
+                
+                progress.update(task, completed=True)
+        
+        # Database info table
+        info_table = Table(title="[bold]Database Information[/bold]", box=box.ROUNDED)
+        info_table.add_column("Property", style="cyan", no_wrap=True)
+        info_table.add_column("Value", style="white")
+        
+        info_table.add_row("Status", "[green]✓ Connected[/green]")
+        info_table.add_row("PostgreSQL Version", version[:50] + "..." if len(version) > 50 else version)
+        info_table.add_row(
+            "LTREE Extension",
+            "[green]✓ Installed[/green]" if ltree_installed else "[red]✗ Not Installed[/red]"
+        )
+        info_table.add_row("Total Tables", str(len(tables)))
+        
+        console.print(info_table)
+        console.print()
+        
+        # Row counts table
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[cyan]Counting rows...", total=len(tables))
+            
+            counts_table = Table(title="[bold]Table Row Counts[/bold]", box=box.ROUNDED)
+            counts_table.add_column("Table", style="cyan", no_wrap=True)
+            counts_table.add_column("Rows", justify="right", style="yellow")
+            
+            async with engine.begin() as conn:
+                for table in tables:
+                    if table != 'alembic_version':
+                        result = await conn.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                        count = result.scalar()
+                        counts_table.add_row(table, f"{count:,}")
+                    progress.advance(task)
+        
+        console.print(counts_table)
+        
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
+        sys.exit(1)
+    finally:
+        await engine.dispose()
+
+
+async def tables_command(args: argparse.Namespace):
+    """Display first 5 rows from each table."""
+    console.print(Panel.fit(
+        "[bold cyan]Database Tables - First 5 Rows[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    schema = args.schema if hasattr(args, 'schema') and args.schema else 'public'
+    engine = get_engine()
+    
+    try:
+        # Collect all table data first
+        table_data_list = []
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("[cyan]Loading table data...", total=None)
+            
+            async with engine.begin() as conn:
+                # Get all tables
+                result = await conn.execute(
+                    text("SELECT tablename FROM pg_tables WHERE schemaname = :schema ORDER BY tablename"),
+                    {"schema": schema}
+                )
+                tables = [row[0] for row in result]
+                
+                if not tables:
+                    console.print(f"[yellow]No tables found in schema '{schema}'[/yellow]")
+                    return
+                
+                progress.update(task, description=f"[cyan]Loading {len(tables)} tables...")
+                
+                # Fetch data from all tables
+                for table_name in tables:
+                    try:
+                        # Get column names
+                        col_result = await conn.execute(
+                            text("""
+                                SELECT column_name, data_type 
+                                FROM information_schema.columns 
+                                WHERE table_schema = :schema 
+                                AND table_name = :table_name 
+                                ORDER BY ordinal_position
+                            """),
+                            {"schema": schema, "table_name": table_name}
+                        )
+                        columns = [(row[0], row[1]) for row in col_result]
+                        
+                        if not columns:
+                            continue
+                        
+                        # Get first 5 rows
+                        data_result = await conn.execute(
+                            text(f"SELECT * FROM {table_name} LIMIT 5")
+                        )
+                        rows = data_result.fetchall()
+                        
+                        # Get row count
+                        count_result = await conn.execute(
+                            text(f"SELECT COUNT(*) FROM {table_name}")
+                        )
+                        total_rows = count_result.scalar()
+                        
+                        # Store table data
+                        table_data_list.append({
+                            'name': table_name,
+                            'columns': columns,
+                            'rows': rows,
+                            'total_rows': total_rows
+                        })
+                        
+                    except Exception as e:
+                        table_data_list.append({
+                            'name': table_name,
+                            'error': str(e)
+                        })
+                
+                progress.update(task, description="[green]✓ Data loaded")
+        
+        # Now display all tables
+        console.print()
+        console.print(f"[cyan]Displaying {len(table_data_list)} tables from schema '[bold]{schema}[/bold]'[/cyan]")
+        console.print()
+        
+        for table_data in table_data_list:
+            if 'error' in table_data:
+                console.print(f"[yellow]⚠ Could not read table '{table_data['name']}': {table_data['error']}[/yellow]")
+                console.print()
+                continue
+            
+            # Create table
+            table = Table(
+                title=f"[bold]{table_data['name']}[/bold] ([dim]{table_data['total_rows']} total rows[/dim])",
+                box=box.ROUNDED,
+                show_lines=False
+            )
+            
+            # Add columns (limit to reasonable number for display)
+            max_cols = 8
+            display_columns = table_data['columns'][:max_cols]
+            
+            for col_name, col_type in display_columns:
+                display_name = col_name if len(col_name) <= 20 else col_name[:17] + "..."
+                table.add_column(display_name, style="cyan", overflow="fold")
+            
+            if len(table_data['columns']) > max_cols:
+                table.add_column(f"... +{len(table_data['columns']) - max_cols} more", style="dim")
+            
+            # Add rows
+            if table_data['rows']:
+                for row in table_data['rows']:
+                    str_values = []
+                    for i, val in enumerate(row[:max_cols]):
+                        if val is None:
+                            str_values.append("[dim]NULL[/dim]")
+                        else:
+                            str_val = str(val)
+                            if len(str_val) > 50:
+                                str_values.append(str_val[:47] + "...")
+                            else:
+                                str_values.append(str_val)
+                    
+                    if len(table_data['columns']) > max_cols:
+                        str_values.append("[dim]...[/dim]")
+                    
+                    table.add_row(*str_values)
+            else:
+                empty_row = ["[dim]No data[/dim]"] * len(display_columns)
+                if len(table_data['columns']) > max_cols:
+                    empty_row.append("")
+                table.add_row(*empty_row)
+            
+            console.print(table)
+            console.print()
+        
+        console.print(f"[green]✓ Displayed first 5 rows from {len(table_data_list)} tables[/green]")
+        
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Error:[/bold red] {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
@@ -723,8 +1234,12 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "clean_db": lambda args: asyncio.run(clean_db_types_command(args)),
     "verify_setup": lambda args: sys.exit(asyncio.run(verify_setup_command(args))),
     "stamp_alembic": lambda args: asyncio.run(stamp_alembic_command(args)),
-    "create_sample_mfg": lambda args: asyncio.run(create_sample_mfg_command(args)),
-    "delete_sample_mfg": lambda args: asyncio.run(delete_sample_mfg_command(args)),
+    "create_factory_mfg": lambda args: asyncio.run(create_factory_mfg_command(args)),
+    "delete_factory_mfg": lambda args: asyncio.run(delete_factory_mfg_command(args)),
+    "create_factory_customers": lambda args: asyncio.run(create_factory_customers_command(args)),
+    "delete_factory_customers": lambda args: asyncio.run(delete_factory_customers_command(args)),
+    "check_db": lambda args: asyncio.run(check_db_command(args)),
+    "tables": lambda args: asyncio.run(tables_command(args)),
 }
 
 
@@ -752,6 +1267,34 @@ def main():
         "--force",
         action="store_true",
         help="Skip confirmation prompts for destructive operations",
+    )
+    
+    parser.add_argument(
+        "--depth",
+        type=int,
+        default=3,
+        help="Maximum depth for factory manufacturing data (default: 3)",
+    )
+    
+    parser.add_argument(
+        "--leaves",
+        type=int,
+        default=3,
+        help="Number of root categories for factory manufacturing data (default: 3)",
+    )
+    
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=10,
+        help="Number of items to create (for factory customers, default: 10)",
+    )
+    
+    parser.add_argument(
+        "--schema",
+        type=str,
+        default="public",
+        help="Database schema name (for tables command, default: public)",
     )
     
     args = parser.parse_args()

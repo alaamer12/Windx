@@ -13,6 +13,33 @@ Features:
     - Reusable fixtures
 """
 
+__all__ = [
+    # Utility Functions
+    "check_redis_available",
+    "get_test_database_url",
+    # Fixtures - Session Scope
+    "event_loop",
+    "test_settings",
+    "setup_test_settings",
+    # Fixtures - Function Scope
+    "redis_test_settings",
+    "test_engine",
+    "test_session_maker",
+    "db_session",
+    "client",
+    # Test Data Fixtures
+    "test_user_data",
+    "test_admin_data",
+    "test_superuser_data",
+    "test_passwords",
+    # User Fixtures
+    "test_user",
+    "test_superuser",
+    # Auth Fixtures
+    "auth_headers",
+    "superuser_auth_headers",
+]
+
 import asyncio
 import os
 from collections.abc import AsyncGenerator, Generator
@@ -128,6 +155,7 @@ def check_redis_available(host: str = "localhost", port: int = 6379, timeout: fl
         import asyncio
         
         async def _check():
+            client = None
             try:
                 client = redis.Redis(
                     host=host,
@@ -136,10 +164,16 @@ def check_redis_available(host: str = "localhost", port: int = 6379, timeout: fl
                     socket_timeout=timeout,
                 )
                 await client.ping()
-                await client.close()
                 return True
             except Exception:
                 return False
+            finally:
+                # Ensure connection is properly closed
+                if client is not None:
+                    try:
+                        await client.aclose()
+                    except Exception:
+                        pass
         
         # Run async check
         loop = asyncio.get_event_loop()

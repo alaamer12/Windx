@@ -3,6 +3,22 @@
 Provides fixtures for Playwright browser automation and admin authentication.
 """
 
+__all__ = [
+    # Configuration Fixtures
+    "base_url",
+    # Browser Fixtures
+    "browser",
+    "context",
+    "page",
+    # User Fixtures
+    "admin_user",
+    # Authenticated Fixtures
+    "authenticated_page",
+    "hierarchy_page",
+    # Cleanup Fixtures
+    "cleanup_e2e_data",
+]
+
 import asyncio
 import os
 from collections.abc import AsyncGenerator

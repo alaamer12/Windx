@@ -130,7 +130,20 @@ jobs:
       - name: Verify Redis connection
         run: |
           echo "Testing Redis connection..."
-          redis-cli -h localhost -p 6379 ping
+          uv run python -c "
+          import redis.asyncio as redis
+          import asyncio
+          
+          async def check():
+              client = redis.Redis(host='localhost', port=6379)
+              result = await client.ping()
+              await client.close()
+              return result
+          
+          result = asyncio.run(check())
+          print(f'Redis ping: {result}')
+          assert result == True, 'Redis is not responding'
+          "
           echo "✅ Redis is ready!"
 
       - name: Run Redis-dependent tests (Cache & Rate Limiting)

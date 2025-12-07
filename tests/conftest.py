@@ -41,10 +41,21 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.database import Base, get_db
-from app.models.session import Session  # noqa: F401
 
 # Import all models to register them with Base.metadata
+# Import directly to avoid circular imports
 from app.models.user import User  # noqa: F401
+from app.models.manufacturing_type import ManufacturingType  # noqa: F401
+from app.models.attribute_node import AttributeNode  # noqa: F401
+from app.models.configuration import Configuration  # noqa: F401
+from app.models.configuration_selection import ConfigurationSelection  # noqa: F401
+from app.models.customer import Customer  # noqa: F401
+from app.models.quote import Quote  # noqa: F401
+from app.models.order import Order  # noqa: F401
+from app.models.order_item import OrderItem  # noqa: F401
+from app.models.configuration_template import ConfigurationTemplate  # noqa: F401
+from app.models.template_selection import TemplateSelection  # noqa: F401
+
 from main import app
 from tests.config import TestSettings, get_test_settings
 
@@ -99,6 +110,92 @@ def test_settings() -> TestSettings:
         TestSettings: Test configuration loaded from .env.test
     """
     return get_test_settings()
+
+
+def check_redis_available(host: str = "localhost", port: int = 6379, timeout: float = 1.0) -> bool:
+    """Check if Redis is available and accessible.
+
+    Args:
+        host: Redis host (default: localhost)
+        port: Redis port (default: 6379)
+        timeout: Connection timeout in seconds (default: 1.0)
+
+    Returns:
+        bool: True if Redis is available, False otherwise
+    """
+    try:
+        import redis.asyncio as redis
+        import asyncio
+        
+        async def _check():
+            try:
+                client = redis.Redis(
+                    host=host,
+                    port=port,
+                    socket_connect_timeout=timeout,
+                    socket_timeout=timeout,
+                )
+                await client.ping()
+                await client.close()
+                return True
+            except Exception:
+                return False
+        
+        # Run async check
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is already running, create a new one
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _check())
+                return future.result(timeout=timeout + 1)
+        else:
+            return loop.run_until_complete(_check())
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="function")
+def redis_test_settings(request, test_settings: TestSettings) -> TestSettings:
+    """Override test settings to enable Redis for tests marked with @pytest.mark.redis.
+
+    This fixture automatically enables cache and rate limiter for tests that need Redis.
+    It checks if the test is marked with @pytest.mark.redis and enables Redis accordingly.
+    
+    If Redis is not available, the test will be skipped with a helpful message.
+
+    Args:
+        request: Pytest request object to check markers
+        test_settings: Base test settings
+
+    Returns:
+        TestSettings: Modified settings with Redis enabled if test has redis marker
+        
+    Raises:
+        pytest.skip: If test has redis marker but Redis is not available
+    """
+    # Check if test has redis marker
+    has_redis_marker = request.node.get_closest_marker("redis") is not None
+    
+    if has_redis_marker:
+        # Check if Redis is available
+        redis_host = test_settings.cache.redis_host
+        redis_port = test_settings.cache.redis_port
+        
+        if not check_redis_available(redis_host, redis_port):
+            pytest.skip(
+                f"Redis is not available at {redis_host}:{redis_port}. "
+                "Start Redis with: docker run -d -p 6379:6379 redis:7-alpine"
+            )
+        
+        # Create a copy of settings with Redis enabled
+        from copy import deepcopy
+        redis_settings = deepcopy(test_settings)
+        redis_settings.cache.enabled = True
+        redis_settings.limiter.enabled = True
+        return redis_settings
+    
+    return test_settings
 
 
 # noinspection PyUnresolvedReferences

@@ -138,6 +138,7 @@ markers = [
     "users: User management tests",
     "services: Service layer tests",
     "repositories: Repository layer tests",
+    "redis: Tests requiring Redis (cache and rate limiting)",
 ]
 log_cli = false
 log_cli_level = "INFO"

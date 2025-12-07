@@ -32,9 +32,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
-from app.models import User
 
 if TYPE_CHECKING:
+    from app.models.user import User
     from app.models.manufacturing_type import ManufacturingType
     from app.models.template_selection import TemplateSelection
 

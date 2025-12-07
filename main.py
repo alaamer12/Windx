@@ -38,7 +38,7 @@ from app.database import close_db, get_db, init_db
 __all__ = ["app", "root", "health_check", "lifespan"]
 
 
-def check_db_setup():
+async def check_db_setup():
     from sqlalchemy import text
 
     from app.database import get_db
@@ -104,7 +104,7 @@ async def lifespan(application: FastAPI):
 
     # Check if database is set up
     try:
-        check_db_setup()
+        await check_db_setup()
     except Exception as e:
         print(f"[!] Could not check database status: {e}")
 

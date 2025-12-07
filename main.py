@@ -38,6 +38,45 @@ from app.database import close_db, get_db, init_db
 __all__ = ["app", "root", "health_check", "lifespan"]
 
 
+def check_db_setup():
+    from sqlalchemy import text
+
+    from app.database import get_db
+
+    async for db in get_db():
+        try:
+            # Try to query users table
+            result = await db.execute(text("SELECT COUNT(*) FROM users"))
+            user_count = result.scalar()
+            if user_count == 0:
+                print("[!] WARNING: Database is empty. Run: python manage.py seed_data")
+            else:
+                print(f"[OK] Database ready with {user_count} user(s)")
+        except Exception as db_error:
+            if "does not exist" in str(db_error).lower():
+                print("[!] WARNING: Database tables not found!")
+                print("    Run: python manage.py create_tables")
+                print("    Then: python manage.py seed_data")
+        break
+
+def validate_env_config():
+    settings = get_settings()
+    print(f"[+] Configuration loaded: {settings.app_name} v{settings.app_version}")
+    print(
+        f"    Database: {settings.database.provider} @ {settings.database.host}:{settings.database.port}"
+    )
+    print(f"    Connection mode: {settings.database.connection_mode}")
+
+async def init_services():
+    await init_db()
+    await init_cache()
+    await init_limiter()
+
+async def close_servicers():
+    await close_db()
+    await close_cache()
+    await close_limiter()
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """Application lifespan manager.
@@ -56,41 +95,16 @@ async def lifespan(application: FastAPI):
 
     # Validate environment configuration
     try:
-        settings = get_settings()
-        print(f"[+] Configuration loaded: {settings.app_name} v{settings.app_version}")
-        print(
-            f"    Database: {settings.database.provider} @ {settings.database.host}:{settings.database.port}"
-        )
-        print(f"    Connection mode: {settings.database.connection_mode}")
+        validate_env_config()
     except Exception as e:
         print(f"[-] Configuration error: {e}")
         raise
 
-    await init_db()
-    await init_cache()
-    await init_limiter()
+    await init_services() # db, cache, limiter
 
     # Check if database is set up
     try:
-        from sqlalchemy import text
-
-        from app.database import get_db
-
-        async for db in get_db():
-            try:
-                # Try to query users table
-                result = await db.execute(text("SELECT COUNT(*) FROM users"))
-                user_count = result.scalar()
-                if user_count == 0:
-                    print("[!] WARNING: Database is empty. Run: python manage.py seed_data")
-                else:
-                    print(f"[OK] Database ready with {user_count} user(s)")
-            except Exception as db_error:
-                if "does not exist" in str(db_error).lower():
-                    print("[!] WARNING: Database tables not found!")
-                    print("    Run: python manage.py create_tables")
-                    print("    Then: python manage.py seed_data")
-            break
+        check_db_setup()
     except Exception as e:
         print(f"[!] Could not check database status: {e}")
 
@@ -100,9 +114,7 @@ async def lifespan(application: FastAPI):
 
     # Shutdown
     print("[*] Shutting down application...")
-    await close_db()
-    await close_cache()
-    await close_limiter()
+    await close_servicers() # db, cache, limiter
     print("[+] Application shutdown complete")
 
 

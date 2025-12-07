@@ -21,6 +21,7 @@ Commands:
     delete_factory_customers     Delete factory-generated customer data
     check_db                     Check database connection and schema
     tables                       Display table information with pandas
+    start                        Start the server (auto-detects gunicorn/uvicorn)
 
 Examples:
     python manage.py createsuperuser
@@ -40,6 +41,9 @@ Examples:
     python manage.py delete_factory_customers --force
     python manage.py check_db
     python manage.py tables --schema public
+    python manage.py start
+    python manage.py start --use uvicorn
+    python manage.py start --use gunicorn --host 0.0.0.0 --port 8080
 """
 
 import argparse
@@ -1230,6 +1234,239 @@ async def tables_command(args: argparse.Namespace):
         await engine.dispose()
 
 
+def start_server_command(args: argparse.Namespace):
+    """Start the server in a separate process (non-blocking)."""
+    import subprocess
+    import shutil
+    import os
+    from dotenv import load_dotenv
+    
+    console.print(Panel.fit(
+        "[bold cyan]Starting Server[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    # Load .env file if it exists
+    env_file = Path(__file__).parent / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+        console.print(f"[dim]✓ Loaded configuration from .env[/dim]")
+    
+    # Priority: argv > .env > defaults
+    # Get values with proper priority
+    def get_config_value(arg_value, env_key, default_value, value_type=str):
+        """Get configuration value with priority: argv > .env > default."""
+        # 1. Check argv (highest priority)
+        if arg_value is not None:
+            return arg_value
+        
+        # 2. Check .env file
+        env_value = os.getenv(env_key)
+        if env_value is not None:
+            try:
+                if value_type == bool:
+                    return env_value.lower() in ('true', '1', 'yes', 'on')
+                elif value_type == int:
+                    return int(env_value)
+                else:
+                    return str(env_value)
+            except (ValueError, AttributeError):
+                pass
+        
+        # 3. Use default
+        return default_value
+    
+    # Determine which server to use
+    use_server = get_config_value(
+        args.use if hasattr(args, 'use') else None,
+        'SERVER_TYPE',
+        None
+    )
+    
+    host = get_config_value(
+        args.host if hasattr(args, 'host') else None,
+        'HOST',
+        "127.0.0.1"
+    )
+    
+    port = get_config_value(
+        args.port if hasattr(args, 'port') else None,
+        'PORT',
+        8000,
+        int
+    )
+    
+    workers = get_config_value(
+        args.workers if hasattr(args, 'workers') else None,
+        'WORKERS',
+        None,
+        int
+    )
+    
+    # For reload, check if --no-reload was explicitly passed
+    reload_from_args = args.reload if hasattr(args, 'reload') else None
+    if reload_from_args is not None:
+        reload = reload_from_args
+    else:
+        reload = get_config_value(None, 'RELOAD', True, bool)
+    
+    # Auto-detect if not specified
+    if use_server is None:
+        # Check if gunicorn is installed
+        if shutil.which("gunicorn"):
+            use_server = "gunicorn"
+            console.print("[cyan]✓ Detected:[/cyan] [green]gunicorn[/green] (production-ready)")
+        else:
+            use_server = "uvicorn"
+            console.print("[cyan]✓ Detected:[/cyan] [yellow]uvicorn[/yellow] (development)")
+    else:
+        # Validate forced choice
+        if use_server == "gunicorn" and not shutil.which("gunicorn"):
+            console.print("[bold red]✗ Error:[/bold red] gunicorn not installed!")
+            console.print("[dim]Install with:[/dim] pip install gunicorn")
+            sys.exit(1)
+        console.print(f"[cyan]✓ Using:[/cyan] [yellow]{use_server}[/yellow] (forced)")
+    
+    console.print()
+    
+    # Build command
+    python_exe = get_python_executable()
+    
+    if use_server == "gunicorn":
+        # Gunicorn command
+        cmd = [
+            python_exe, "-m", "gunicorn",
+            "main:app",
+            "--bind", f"{host}:{port}",
+            "--worker-class", "uvicorn.workers.UvicornWorker",
+        ]
+        
+        if workers:
+            cmd.extend(["--workers", str(workers)])
+        else:
+            # Default to 4 workers for gunicorn
+            cmd.extend(["--workers", "4"])
+        
+        if reload:
+            cmd.append("--reload")
+        
+        server_type = "Gunicorn (Production)"
+        
+    else:
+        # Uvicorn command
+        cmd = [
+            python_exe, "-m", "uvicorn",
+            "main:app",
+            "--host", host,
+            "--port", str(port),
+        ]
+        
+        if reload:
+            cmd.append("--reload")
+        
+        server_type = "Uvicorn (Development)"
+    
+    # Display configuration with source indicators
+    def get_source_indicator(arg_val, env_key):
+        """Get indicator showing where value came from."""
+        if arg_val is not None:
+            return "[yellow](argv)[/yellow]"
+        elif os.getenv(env_key):
+            return "[cyan](.env)[/cyan]"
+        else:
+            return "[dim](default)[/dim]"
+    
+    config_table = Table(show_header=False, box=box.SIMPLE)
+    config_table.add_row("[cyan]Server:[/cyan]", f"[yellow]{server_type}[/yellow]")
+    
+    host_source = get_source_indicator(
+        args.host if hasattr(args, 'host') else None,
+        'HOST'
+    )
+    config_table.add_row("[cyan]Host:[/cyan]", f"[white]{host}[/white] {host_source}")
+    
+    port_source = get_source_indicator(
+        args.port if hasattr(args, 'port') else None,
+        'PORT'
+    )
+    config_table.add_row("[cyan]Port:[/cyan]", f"[white]{port}[/white] {port_source}")
+    
+    if use_server == "gunicorn":
+        workers_source = get_source_indicator(
+            args.workers if hasattr(args, 'workers') else None,
+            'WORKERS'
+        )
+        config_table.add_row("[cyan]Workers:[/cyan]", f"[white]{workers or 4}[/white] {workers_source}")
+    
+    reload_source = "[yellow](argv)[/yellow]" if hasattr(args, 'reload') and args.reload is not None else (
+        "[cyan](.env)[/cyan]" if os.getenv('RELOAD') else "[dim](default)[/dim]"
+    )
+    config_table.add_row("[cyan]Reload:[/cyan]", f"[white]{'Yes' if reload else 'No'}[/white] {reload_source}")
+    config_table.add_row("[cyan]Process:[/cyan]", "[green]Background (non-blocking)[/green]")
+    
+    console.print(config_table)
+    console.print()
+    
+    # Start server in background
+    try:
+        console.print("[cyan]Starting server in background...[/cyan]")
+        
+        # Start process in background (detached)
+        if sys.platform == "win32":
+            # Windows: Use CREATE_NEW_PROCESS_GROUP and DETACHED_PROCESS
+            process = subprocess.Popen(
+                cmd,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
+            )
+        else:
+            # Unix: Use nohup-like behavior
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.DEVNULL,
+                start_new_session=True,  # Detach from parent
+            )
+        
+        # Give it a moment to start
+        import time
+        time.sleep(2)
+        
+        # Check if process is still running
+        if process.poll() is None:
+            console.print()
+            console.print(Panel(
+                f"[green]✓ Server started successfully![/green]\n\n"
+                f"[cyan]•[/cyan] Process ID: [yellow]{process.pid}[/yellow]\n"
+                f"[cyan]•[/cyan] API URL: [link]http://{host}:{port}[/link]\n"
+                f"[cyan]•[/cyan] API Docs: [link]http://{host}:{port}/docs[/link]\n"
+                f"[cyan]•[/cyan] Admin Panel: [link]http://{host}:{port}/api/v1/admin/login[/link]\n\n"
+                f"[dim]Server is running in the background.[/dim]\n"
+                f"[dim]To stop: kill {process.pid} (Unix) or taskkill /PID {process.pid} (Windows)[/dim]",
+                title="[bold green]Server Running[/bold green]",
+                border_style="green"
+            ))
+        else:
+            # Process died immediately
+            stdout, stderr = process.communicate()
+            console.print(f"\n[bold red]✗ Server failed to start![/bold red]")
+            if stderr:
+                console.print(f"\n[red]Error:[/red]\n{stderr.decode()}")
+            if stdout:
+                console.print(f"\n[dim]Output:[/dim]\n{stdout.decode()}")
+            sys.exit(1)
+            
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Error starting server:[/bold red] {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 # Command registry mapping command names to functions
 COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "createsuperuser": lambda args: asyncio.run(create_superuser()),
@@ -1249,6 +1486,7 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "delete_factory_customers": lambda args: asyncio.run(delete_factory_customers_command(args)),
     "check_db": lambda args: asyncio.run(check_db_command(args)),
     "tables": lambda args: asyncio.run(tables_command(args)),
+    "start": lambda args: start_server_command(args),
 }
 
 
@@ -1304,6 +1542,41 @@ def main():
         type=str,
         default="public",
         help="Database schema name (for tables and drop_tables commands, default: public)",
+    )
+    
+    # Server start arguments
+    parser.add_argument(
+        "--use",
+        type=str,
+        choices=["uvicorn", "gunicorn"],
+        help="Force specific server (auto-detects if not specified)",
+    )
+    
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Server host (default: 127.0.0.1)",
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Server port (default: 8000)",
+    )
+    
+    parser.add_argument(
+        "--workers",
+        type=int,
+        help="Number of worker processes (gunicorn only, default: 4)",
+    )
+    
+    parser.add_argument(
+        "--no-reload",
+        dest="reload",
+        action="store_false",
+        help="Disable auto-reload on code changes",
     )
     
     args = parser.parse_args()

@@ -51,7 +51,6 @@ dependencies = [
     "pydantic-settings",
     "python-jose[cryptography]",
     "passlib[bcrypt]",
-    "email-validator",
     "alembic",
     "fastapi-cache2[redis]",
     "fastapi-limiter",

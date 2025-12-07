@@ -3,8 +3,8 @@
 {% block title %}{% if node %}Edit Node{% else %}Create Node{% endif %}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/themes/light.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/themes/light.css">
 <style>
     /* Modern Form Container */
     .form-container {
@@ -792,8 +792,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.6/umd/popper.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy-bundle.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js"></script>
 <script>
     // Initialize tooltips
     document.addEventListener('DOMContentLoaded', function() {
@@ -803,8 +803,10 @@
             arrow: true,
             animation: 'scale',
             duration: [200, 150],
-            maxWidth: 300,
-            interactive: false
+            maxWidth: 400,
+            interactive: false,
+            allowHTML: true,  // ← Enable HTML in tooltip content
+            appendTo: document.body  // ← Append to body to avoid z-index issues
         });
         
         // Visual indentation for parent nodes

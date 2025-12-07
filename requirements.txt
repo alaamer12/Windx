@@ -7,7 +7,6 @@ pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
-email-validator
 alembic
 jinja2
 fastapi-pagination

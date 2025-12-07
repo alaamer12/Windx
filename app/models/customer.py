@@ -160,12 +160,12 @@ class Customer(Base):
     )
 
     # Relationships
-    configurations: Mapped[list["Configuration"]] = relationship(
+    configurations: Mapped[list[Configuration]] = relationship(
         "Configuration",
         back_populates="customer",
         doc="Related customer configurations",
     )
-    quotes: Mapped[list["Quote"]] = relationship(
+    quotes: Mapped[list[Quote]] = relationship(
         "Quote",
         back_populates="customer",
         doc="Related customer quotes",

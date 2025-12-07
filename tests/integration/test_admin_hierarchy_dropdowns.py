@@ -10,7 +10,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.hierarchy_builder import HierarchyBuilderService
-
+import time
+import random
 
 @pytest.mark.asyncio
 async def test_node_form_has_all_node_type_options(
@@ -18,8 +19,6 @@ async def test_node_form_has_all_node_type_options(
     superuser_auth_headers: dict,
 ):
     """Test that node form includes all 5 node type options."""
-    import time
-    import random
     # Create manufacturing type via API with timestamp and random to ensure uniqueness
     unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
     create_response = await client.post(
@@ -64,8 +63,6 @@ async def test_node_form_has_all_data_type_options(
     superuser_auth_headers: dict,
 ):
     """Test that node form includes all 6 data type options."""
-    import time
-    import random
     # Create manufacturing type via API with timestamp and random to ensure uniqueness
     unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
     create_response = await client.post(
@@ -112,8 +109,7 @@ async def test_node_form_has_all_price_impact_type_options(
     superuser_auth_headers: dict,
 ):
     """Test that node form includes all 3 price impact type options."""
-    import time
-    import random
+
     # Create manufacturing type via API with timestamp and random to ensure uniqueness
     unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
     create_response = await client.post(
@@ -154,8 +150,6 @@ async def test_node_form_has_all_ui_component_options(
     superuser_auth_headers: dict,
 ):
     """Test that node form includes all 5 UI component options."""
-    import time
-    import random
     # Create manufacturing type via API with timestamp and random to ensure uniqueness
     unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
     create_response = await client.post(

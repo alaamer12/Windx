@@ -29,6 +29,7 @@ from app.schemas.configuration_selection import (
 __all__ = ["ConfigurationSelectionRepository"]
 
 
+# noinspection PyTypeChecker
 class ConfigurationSelectionRepository(
     BaseRepository[
         ConfigurationSelection,

@@ -30,6 +30,7 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 __all__ = ["BaseRepository", "ModelType", "CreateSchemaType", "UpdateSchemaType"]
 
 
+# noinspection PyTypeChecker
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Base repository class with common CRUD operations.
 

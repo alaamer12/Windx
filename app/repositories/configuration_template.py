@@ -27,6 +27,7 @@ from app.schemas.configuration_template import (
 __all__ = ["ConfigurationTemplateRepository"]
 
 
+# noinspection PyTypeChecker
 class ConfigurationTemplateRepository(
     BaseRepository[
         ConfigurationTemplate,
@@ -69,7 +70,7 @@ class ConfigurationTemplateRepository(
         result = await self.db.execute(
             select(ConfigurationTemplate)
             .where(ConfigurationTemplate.is_public == True)
-            .where(ConfigurationTemplate.is_active == True)
+            .where(ConfigurationTemplate.is_active)
             .order_by(ConfigurationTemplate.usage_count.desc())
         )
         return list(result.scalars().all())

@@ -73,11 +73,11 @@ Complete pipeline with linting, testing, and deployment.
 
 Add these in: `Settings` → `Secrets and variables` → `Actions`
 
-| Secret | Required For | Description |
-|--------|-------------|-------------|
-| `CODECOV_TOKEN` | Coverage workflows | Token from codecov.io |
-| `DOCKER_USERNAME` | CI/CD pipeline | Docker Hub username |
-| `DOCKER_PASSWORD` | CI/CD pipeline | Docker Hub password/token |
+| Secret            | Required For       | Description               |
+|-------------------|--------------------|---------------------------|
+| `CODECOV_TOKEN`   | Coverage workflows | Token from codecov.io     |
+| `DOCKER_USERNAME` | CI/CD pipeline     | Docker Hub username       |
+| `DOCKER_PASSWORD` | CI/CD pipeline     | Docker Hub password/token |
 
 ### Environment Variables
 

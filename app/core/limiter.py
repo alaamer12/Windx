@@ -15,6 +15,7 @@ Features:
     - Automatic cleanup of expired limits
     - Integration with FastAPI
 """
+from __future__ import annotations
 
 from collections.abc import Callable
 from functools import lru_cache

@@ -3,17 +3,15 @@
 This module provides functions to create and delete sample manufacturing data
 with hierarchical attribute nodes for testing and demonstration purposes.
 """
+from __future__ import annotations
 
 import random
-from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.attribute_node import AttributeNode
-from app.models.manufacturing_type import ManufacturingType
 from _manager_factory import (
     ATTRIBUTES,
     BOOLEAN_OPTIONS,
@@ -25,9 +23,8 @@ from _manager_factory import (
     PRICE_IMPACT_TYPES,
     WEIGHT_FORMULAS,
 )
-
-
-
+from app.models.attribute_node import AttributeNode
+from app.models.manufacturing_type import ManufacturingType
 
 
 async def create_factory_manufacturing_data(

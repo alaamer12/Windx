@@ -7,8 +7,8 @@ to protect development data from being wiped by tests.
 import pytest
 from sqlalchemy import text
 
-from tests.config import get_test_settings
 from app.core.config import get_settings
+from tests.config import get_test_settings
 
 
 def test_schema_configuration():

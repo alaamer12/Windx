@@ -4,8 +4,6 @@ This module contains pre-defined data pools used by the factory to generate
 realistic but randomized product configuration hierarchies.
 """
 
-from typing import Any
-
 # Manufacturing Type Templates
 MANUFACTURING_TYPES = [
     {

@@ -23,6 +23,7 @@ from app.schemas.customer import CustomerCreate, CustomerUpdate
 __all__ = ["CustomerRepository"]
 
 
+# noinspection PyTypeChecker
 class CustomerRepository(BaseRepository[Customer, CustomerCreate, CustomerUpdate]):
     """Repository for Customer operations.
 

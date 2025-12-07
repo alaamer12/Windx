@@ -84,7 +84,7 @@ def get_engine() -> AsyncEngine:
         # Merge with existing connect_args if any
         if "connect_args" not in engine_kwargs:
             engine_kwargs["connect_args"] = {}
-        
+
         # Disable at asyncpg level
         engine_kwargs["connect_args"]["statement_cache_size"] = 0
 

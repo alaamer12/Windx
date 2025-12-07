@@ -19,7 +19,7 @@ from functools import lru_cache
 from pydantic import Field, model_validator
 from pydantic_settings import SettingsConfigDict
 
-from app.core.config import Settings, DatabaseSettings
+from app.core.config import Settings
 
 __all__ = ["TestSettings", "get_test_settings"]
 
@@ -48,7 +48,7 @@ class TestSettings(Settings):
 
     # Override debug to always be True in tests
     debug: bool = Field(default=True, description="Debug mode (always True in tests)")
-    
+
     @model_validator(mode='after')
     def override_database_schema(self):
         """Override database schema to test_windx for test isolation."""

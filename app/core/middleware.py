@@ -28,6 +28,7 @@ Features:
     - CSRF protection
     - Request timeout enforcement
 """
+from __future__ import annotations
 
 import asyncio
 import logging
@@ -559,6 +560,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 # ============================================================================
 
 
+# noinspection PyTypeChecker
 def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
     """Configure all middleware for the application.
 

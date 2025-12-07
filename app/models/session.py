@@ -100,7 +100,7 @@ class Session(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="sessions")
+    user: Mapped[User] = relationship("User", back_populates="sessions")
 
     def __repr__(self) -> str:
         """String representation of Session.

@@ -32,6 +32,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.models import User
 
 if TYPE_CHECKING:
     from app.models.manufacturing_type import ManufacturingType
@@ -177,18 +178,18 @@ class ConfigurationTemplate(Base):
     )
 
     # Relationships
-    manufacturing_type: Mapped["ManufacturingType"] = relationship(
+    manufacturing_type: Mapped[ManufacturingType] = relationship(
         "ManufacturingType",
         back_populates="templates",
         doc="Related manufacturing type",
     )
-    selections: Mapped[list["TemplateSelection"]] = relationship(
+    selections: Mapped[list[TemplateSelection]] = relationship(
         "TemplateSelection",
         back_populates="template",
         cascade="all, delete-orphan",
         doc="Related template selections",
     )
-    creator: Mapped["User | None"] = relationship(
+    creator: Mapped[User | None] = relationship(
         "User",
         doc="User who created the template",
     )

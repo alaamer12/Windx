@@ -25,6 +25,7 @@ Commands:
     stop                         Stop a running server by port
     curl                         Check server status, view logs, or make HTTP requests
     clean                        Stop all servers and clean up project directory
+    openapi                      Generate OpenAPI schema JSON file from running server
 
 Examples:
     python manage.py createsuperuser
@@ -55,6 +56,9 @@ Examples:
     python manage.py curl --lines 50
     python manage.py clean
     python manage.py clean --force
+    python manage.py openapi
+    python manage.py openapi --host 0.0.0.0 --port 8080
+    python manage.py openapi --output api_schema.json
 """
 
 import argparse
@@ -2269,6 +2273,117 @@ def curl_command(args: argparse.Namespace):
             sys.exit(1)
 
 
+def openapi_command(args: argparse.Namespace):
+    """Generate OpenAPI schema JSON file from running server.
+    
+    This command fetches the OpenAPI schema from a running server and saves it to a file.
+    
+    Configuration Priority: argv > .env > defaults
+    
+    Args:
+        args: Command line arguments
+            - host: Server host (default: 127.0.0.1)
+            - port: Server port (default: 8000)
+            - output: Output file path (default: openapi_schema.json)
+    
+    Examples:
+        python manage.py openapi
+        python manage.py openapi --host 0.0.0.0 --port 8080
+        python manage.py openapi --output api_schema.json
+    """
+    import json
+    import os
+    from dotenv import load_dotenv
+    
+    console.print(Panel.fit(
+        "[bold cyan]Generate OpenAPI Schema[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    # Load .env file if it exists
+    env_file = Path(__file__).parent / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+    
+    # Priority: argv > .env > defaults
+    host = args.host if hasattr(args, 'host') and args.host else None
+    if host is None:
+        host = os.getenv('HOST', '127.0.0.1')
+    
+    port = args.port if hasattr(args, 'port') and args.port else None
+    if port is None:
+        port = int(os.getenv('PORT', 8000))
+    
+    output = args.output if hasattr(args, 'output') and args.output else None
+    if output is None:
+        output = os.getenv('OPENAPI_OUTPUT', 'openapi_schema.json')
+    
+    # Build URL
+    url = f"http://{host}:{port}/openapi.json"
+    
+    console.print(f"[cyan]Fetching OpenAPI schema from:[/cyan] {url}")
+    console.print(f"[cyan]Output file:[/cyan] {output}")
+    console.print()
+    
+    try:
+        import requests
+        
+        # Fetch OpenAPI schema
+        console.print("[cyan]Fetching schema...[/cyan]")
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        
+        # Parse JSON
+        schema = response.json()
+        
+        # Save to file
+        console.print(f"[cyan]Writing to {output}...[/cyan]")
+        with open(output, 'w', encoding='utf-8') as f:
+            json.dump(schema, f, ensure_ascii=False, indent=2)
+        
+        # Get file size
+        file_size = os.path.getsize(output)
+        file_size_kb = file_size / 1024
+        
+        # Success message
+        console.print()
+        console.print(Panel(
+            f"[green]✓ OpenAPI schema generated successfully![/green]\n\n"
+            f"[cyan]File:[/cyan] {output}\n"
+            f"[cyan]Size:[/cyan] {file_size_kb:.2f} KB\n"
+            f"[cyan]Endpoints:[/cyan] {len(schema.get('paths', {}))}",
+            border_style="green"
+        ))
+        
+    except ImportError:
+        console.print("[red]✗ Error: 'requests' library not installed[/red]")
+        console.print("[dim]Install with: pip install requests[/dim]")
+        sys.exit(1)
+    except requests.exceptions.ConnectionError:
+        console.print(f"[red]✗ Error: Could not connect to server at {url}[/red]")
+        console.print()
+        console.print("[yellow]Make sure the server is running:[/yellow]")
+        console.print(f"[dim]  python manage.py start --host {host} --port {port}[/dim]")
+        console.print(f"[dim]  python manage.py curl --poke[/dim]")
+        sys.exit(1)
+    except requests.exceptions.Timeout:
+        console.print(f"[red]✗ Error: Request timed out[/red]")
+        console.print("[dim]Server may be slow to respond[/dim]")
+        sys.exit(1)
+    except requests.exceptions.HTTPError as e:
+        console.print(f"[red]✗ HTTP Error: {e}[/red]")
+        console.print(f"[dim]Status code: {response.status_code}[/dim]")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        console.print("[red]✗ Error: Invalid JSON response from server[/red]")
+        console.print("[dim]Server may not be returning valid OpenAPI schema[/dim]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+        sys.exit(1)
+
+
 # Command registry mapping command names to functions
 COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "createsuperuser": lambda args: asyncio.run(create_superuser()),
@@ -2292,6 +2407,7 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "stop": lambda args: stop_command(args),
     "curl": lambda args: curl_command(args),
     "clean": lambda args: clean_command(args),
+    "openapi": lambda args: openapi_command(args),
 }
 
 
@@ -2409,6 +2525,13 @@ def main():
         "--lines",
         type=int,
         help="Number of log lines to show (curl command, default: 50)",
+    )
+    
+    # OpenAPI command arguments
+    parser.add_argument(
+        "--output",
+        type=str,
+        help="Output file path for OpenAPI schema (openapi command, default: openapi_schema.json)",
     )
     
     args = parser.parse_args()

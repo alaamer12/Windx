@@ -1672,15 +1672,30 @@ def stop_command(args: argparse.Namespace):
                 console.print(f"[yellow]⚠ Process {process_info['pid']} is not running[/yellow]")
                 
                 # Ask to clean up slot directory
-                if not args.force:
-                    if Confirm.ask("[yellow]Clean up server slot directory?[/yellow]", default=True):
-                        import shutil
-                        shutil.rmtree(slot_dir)
-                        console.print(f"[green]✓ Cleaned up slot directory[/green]")
-                else:
+                should_clean = args.force or Confirm.ask("[yellow]Clean up server slot directory?[/yellow]", default=True)
+                
+                if should_clean:
                     import shutil
-                    shutil.rmtree(slot_dir)
-                    console.print(f"[green]✓ Cleaned up slot directory[/green]")
+                    import time
+                    
+                    max_retries = 5
+                    retry_delay = 0.5
+                    
+                    for attempt in range(max_retries):
+                        try:
+                            shutil.rmtree(slot_dir)
+                            console.print(f"[green]✓ Cleaned up slot directory[/green]")
+                            break
+                        except PermissionError:
+                            if attempt < max_retries - 1:
+                                time.sleep(retry_delay)
+                                retry_delay *= 2
+                            else:
+                                console.print(f"[yellow]⚠ Could not delete slot directory (files may be locked)[/yellow]")
+                                console.print(f"[dim]You can manually delete: {slot_dir}[/dim]")
+                        except Exception as e:
+                            console.print(f"[yellow]⚠ Error cleaning up: {e}[/yellow]")
+                            break
                 
                 return
             
@@ -1698,18 +1713,55 @@ def stop_command(args: argparse.Namespace):
                 process.kill()
                 console.print(f"[green]✓ Server force stopped[/green]")
             
-            # Clean up slot directory
+            # Clean up slot directory with retry for Windows file locking
             import shutil
-            shutil.rmtree(slot_dir)
-            console.print(f"[green]✓ Cleaned up slot directory[/green]")
+            import time
+            
+            max_retries = 5
+            retry_delay = 0.5  # seconds
+            
+            for attempt in range(max_retries):
+                try:
+                    shutil.rmtree(slot_dir)
+                    console.print(f"[green]✓ Cleaned up slot directory[/green]")
+                    break
+                except PermissionError as e:
+                    if attempt < max_retries - 1:
+                        # Windows file locking - wait and retry
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        console.print(f"[yellow]⚠ Could not delete slot directory (files may be locked)[/yellow]")
+                        console.print(f"[dim]You can manually delete: {slot_dir}[/dim]")
+                except Exception as e:
+                    console.print(f"[yellow]⚠ Error cleaning up: {e}[/yellow]")
+                    break
             
         except psutil.NoSuchProcess:
             console.print(f"[yellow]⚠ Process {process_info['pid']} not found[/yellow]")
             
             # Clean up slot directory anyway
             import shutil
-            shutil.rmtree(slot_dir)
-            console.print(f"[green]✓ Cleaned up slot directory[/green]")
+            import time
+            
+            max_retries = 5
+            retry_delay = 0.5
+            
+            for attempt in range(max_retries):
+                try:
+                    shutil.rmtree(slot_dir)
+                    console.print(f"[green]✓ Cleaned up slot directory[/green]")
+                    break
+                except PermissionError:
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        console.print(f"[yellow]⚠ Could not delete slot directory (files may be locked)[/yellow]")
+                        console.print(f"[dim]You can manually delete: {slot_dir}[/dim]")
+                except Exception as e:
+                    console.print(f"[yellow]⚠ Error cleaning up: {e}[/yellow]")
+                    break
             
     except ImportError:
         console.print("[red]✗ psutil not installed[/red]")
@@ -1802,6 +1854,8 @@ def clean_command(args: argparse.Namespace):
                     status = "[red]Not Found[/red]"
                 except ImportError:
                     status = "[dim]Unknown (psutil not installed)[/dim]"
+                except Exception as e:
+                    status = f"[red]Error: {e}[/red]"
                 
                 servers_table.add_row(
                     str(info['port']),
@@ -1817,12 +1871,31 @@ def clean_command(args: argparse.Namespace):
                 })
                 
             except Exception as e:
+                # Add row even if we can't load the pickle file
                 servers_table.add_row(
                     slot.name,
                     "N/A",
                     "N/A",
                     f"[red]Error: {e}[/red]"
                 )
+                servers_to_stop.append({
+                    'slot': slot,
+                    'info': None,
+                    'is_running': False
+                })
+        else:
+            # Slot exists but no process.pkl - add to table anyway
+            servers_table.add_row(
+                slot.name,
+                "N/A",
+                "N/A",
+                "[yellow]No process info[/yellow]"
+            )
+            servers_to_stop.append({
+                'slot': slot,
+                'info': None,
+                'is_running': False
+            })
     
     console.print(servers_table)
     console.print()
@@ -1847,21 +1920,45 @@ def clean_command(args: argparse.Namespace):
         task = progress.add_task("[cyan]Stopping servers...", total=len(servers_to_stop))
         
         for server in servers_to_stop:
-            if server['is_running']:
+            if server['is_running'] and server['info']:
                 try:
                     import psutil
-                    process = psutil.Process(server['info']['pid'])
-                    process.terminate()
                     
-                    # Wait for process to terminate (max 5 seconds)
                     try:
-                        process.wait(timeout=5)
-                        console.print(f"[green]✓ Stopped server on port {server['info']['port']} (PID {server['info']['pid']})[/green]")
-                        stopped_count += 1
-                    except psutil.TimeoutExpired:
-                        # Force kill if it doesn't terminate
-                        process.kill()
-                        console.print(f"[yellow]⚠ Force killed server on port {server['info']['port']} (PID {server['info']['pid']})[/yellow]")
+                        process = psutil.Process(server['info']['pid'])
+                        
+                        # Kill all child processes first (important for Windows)
+                        try:
+                            children = process.children(recursive=True)
+                            for child in children:
+                                try:
+                                    child.terminate()
+                                except psutil.NoSuchProcess:
+                                    pass
+                            
+                            # Wait for children to terminate
+                            if children:
+                                psutil.wait_procs(children, timeout=3)
+                        except Exception:
+                            pass  # Continue even if child cleanup fails
+                        
+                        # Now terminate the main process
+                        process.terminate()
+                        
+                        # Wait for process to terminate (max 5 seconds)
+                        try:
+                            process.wait(timeout=5)
+                            console.print(f"[green]✓ Stopped server on port {server['info']['port']} (PID {server['info']['pid']})[/green]")
+                            stopped_count += 1
+                        except psutil.TimeoutExpired:
+                            # Force kill if it doesn't terminate
+                            process.kill()
+                            console.print(f"[yellow]⚠ Force killed server on port {server['info']['port']} (PID {server['info']['pid']})[/yellow]")
+                            stopped_count += 1
+                    
+                    except psutil.NoSuchProcess:
+                        # Process already terminated
+                        console.print(f"[yellow]⚠ Server on port {server['info']['port']} (PID {server['info']['pid']}) already stopped[/yellow]")
                         stopped_count += 1
                         
                 except Exception as e:
@@ -1872,13 +1969,37 @@ def clean_command(args: argparse.Namespace):
     
     console.print()
     
-    # Delete project directory
-    try:
-        shutil.rmtree(project_dir)
-        console.print(f"[green]✓ Deleted project directory: {project_dir}[/green]")
-    except Exception as e:
-        console.print(f"[red]✗ Error deleting directory: {e}[/red]")
-        sys.exit(1)
+    # Give Windows time to release file handles
+    import time
+    if stopped_count > 0:
+        console.print("[dim]Waiting for file handles to be released...[/dim]")
+        time.sleep(2)  # Increased wait time for Windows
+    
+    # Delete project directory with retry for Windows file locking
+    
+    max_retries = 5
+    retry_delay = 0.5
+    
+    console.print("[cyan]Cleaning up project directory...[/cyan]")
+    
+    for attempt in range(max_retries):
+        try:
+            shutil.rmtree(project_dir)
+            console.print(f"[green]✓ Deleted project directory: {project_dir}[/green]")
+            break
+        except PermissionError as e:
+            if attempt < max_retries - 1:
+                # Windows file locking - wait and retry
+                console.print(f"[dim]Waiting for files to be released... (attempt {attempt + 1}/{max_retries})[/dim]")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                console.print(f"[yellow]⚠ Could not delete project directory (files may be locked)[/yellow]")
+                console.print(f"[dim]You can manually delete: {project_dir}[/dim]")
+                console.print(f"[dim]Error: {e}[/dim]")
+        except Exception as e:
+            console.print(f"[red]✗ Error deleting directory: {e}[/red]")
+            break
     
     # Summary
     console.print()

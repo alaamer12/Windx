@@ -51,7 +51,6 @@ dependencies = [
     "pydantic-settings",
     "python-jose[cryptography]",
     "passlib[bcrypt]",
-    "email-validator",
     "alembic",
     "fastapi-cache2[redis]",
     "fastapi-limiter",
@@ -63,6 +62,11 @@ dependencies = [
     "matplotlib",
     "networkx",
     # "pygraphviz",
+    "pandas>=2.3.3",
+    "rich",
+    "platformdirs",
+    "requests",
+    "email-validator", # Required by pydantic even if it is not used explicitly
 ]
 
 [dependency-groups]
@@ -75,6 +79,7 @@ dev = [
     "httpx",
     "playwright",
     "pytest-playwright",
+    "psutil"
 ]
 
 [project.urls]
@@ -136,6 +141,7 @@ markers = [
     "users: User management tests",
     "services: Service layer tests",
     "repositories: Repository layer tests",
+    "redis: Tests requiring Redis (cache and rate limiting)",
 ]
 log_cli = false
 log_cli_level = "INFO"

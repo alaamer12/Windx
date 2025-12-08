@@ -1,0 +1,7 @@
+FAILED tests/integration/test_admin_hierarchy_endpoints.py::test_hierarchy_dashboard_with_type_selected - assert 'Attribute Tree' in 
+FAILED tests/integration/test_bulk_operations.py::TestBulkUserCreation::test_create_users_bulk_transaction_rollback_on_duplicate_email - assert 1 == 2
+FAILED tests/integration/test_bulk_operations.py::TestBulkUserCreation::test_create_users_bulk_transaction_rollback_on_duplicate_username - assert 1 == 2
+
+failed tests, fix them, also do the pricing thing in the job requirement
+and we need to add new page for pricing, and we need to do this thing about profile
+

@@ -30,6 +30,7 @@ from app.schemas.attribute_node import (
 __all__ = ["AttributeNodeRepository"]
 
 
+# noinspection PyTypeChecker
 class AttributeNodeRepository(
     HierarchicalRepository[AttributeNode, AttributeNodeCreate, AttributeNodeUpdate]
 ):
@@ -195,7 +196,8 @@ class AttributeNodeRepository(
 
         return query
 
-    def build_tree(self, nodes: list[AttributeNode]) -> list[AttributeNodeTree]:
+    @staticmethod
+    def build_tree(nodes: list[AttributeNode]) -> list[AttributeNodeTree]:
         """Build hierarchical tree structure from flat list of nodes.
 
         Converts a flat list of attribute nodes into a nested tree structure

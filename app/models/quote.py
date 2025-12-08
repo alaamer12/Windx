@@ -34,9 +34,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
-from app.models import Customer
 
 if TYPE_CHECKING:
+    from app.models.customer import Customer
     from app.models.configuration import Configuration
     from app.models.order import Order
 

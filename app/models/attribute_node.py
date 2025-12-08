@@ -22,6 +22,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 from app.database.types import LTREE
 
+# Avoid circular import - use TYPE_CHECKING for type hints
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.manufacturing_type import ManufacturingType
+
 
 class AttributeNode(Base):
     """

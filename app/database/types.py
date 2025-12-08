@@ -153,6 +153,7 @@ class LTREE(UserDefinedType):
 
         return process
 
+    # noinspection PyPep8Naming
     class comparator_factory(UserDefinedType.Comparator):
         """Custom comparator for LTREE operators.
 
@@ -302,6 +303,7 @@ class LtreeType(TypeDecorator):
 
 
 # Custom SQL expressions for LTREE functions
+# noinspection PyPep8Naming
 class ltree_subpath(expression.FunctionElement):
     """Extract subpath from LTREE path.
 
@@ -328,9 +330,10 @@ def compile_ltree_subpath(element: Any, compiler: Any, **kw: Any) -> str:
     Returns:
         str: Compiled SQL string
     """
-    return "subpath({})".format(compiler.process(element.clauses, **kw))
+    return f"subpath({compiler.process(element.clauses, **kw)})"
 
 
+# noinspection PyPep8Naming
 class ltree_nlevel(expression.FunctionElement):
     """Get the depth (number of labels) in LTREE path.
 
@@ -358,4 +361,4 @@ def compile_ltree_nlevel(element: Any, compiler: Any, **kw: Any) -> str:
     Returns:
         str: Compiled SQL string
     """
-    return "nlevel({})".format(compiler.process(element.clauses, **kw))
+    return f"nlevel({compiler.process(element.clauses, **kw)})"

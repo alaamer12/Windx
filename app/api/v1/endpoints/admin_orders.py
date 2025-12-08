@@ -91,6 +91,7 @@ async def list_orders(
 
     # Apply status filter
     if status_filter and status_filter in VALID_ORDER_STATUSES:
+        # noinspection PyTypeChecker
         query = query.where(Order.status == status_filter)
 
     # Apply search if provided

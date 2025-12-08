@@ -25,6 +25,7 @@ from app.schemas.configuration import ConfigurationCreate, ConfigurationUpdate
 __all__ = ["ConfigurationRepository"]
 
 
+# noinspection PyTypeChecker
 class ConfigurationRepository(
     BaseRepository[Configuration, ConfigurationCreate, ConfigurationUpdate]
 ):

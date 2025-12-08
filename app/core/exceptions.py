@@ -26,6 +26,7 @@ Features:
     - HTTP status code mapping
     - Request ID tracking
 """
+from __future__ import annotations
 
 import logging
 import traceback
@@ -33,7 +34,7 @@ from typing import Any
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError, OperationalError
 
@@ -458,7 +459,7 @@ class FeatureDisabledException(AppException):
 # ============================================================================
 
 
-async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
+async def app_exception_handler(request: Request, exc: AppException) -> RedirectResponse | JSONResponse:
     """Handle custom application exceptions.
 
     Args:

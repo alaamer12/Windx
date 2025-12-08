@@ -21,6 +21,7 @@ async def test_create_attribute_node_workflow(
     hierarchy_page: Page,
     base_url: str,
     db_session: AsyncSession,
+    cleanup_e2e_data,
 ):
     """Test creating an attribute node through admin UI.
     
@@ -112,6 +113,7 @@ async def test_edit_attribute_node_workflow(
     hierarchy_page: Page,
     base_url: str,
     db_session: AsyncSession,
+    cleanup_e2e_data,
 ):
     """Test editing an attribute node through admin UI.
     
@@ -187,6 +189,7 @@ async def test_delete_attribute_node_with_confirmation(
     hierarchy_page: Page,
     base_url: str,
     db_session: AsyncSession,
+    cleanup_e2e_data,
 ):
     """Test deleting an attribute node with confirmation dialog.
     
@@ -253,6 +256,7 @@ async def test_cancel_delete_attribute_node(
     hierarchy_page: Page,
     base_url: str,
     db_session: AsyncSession,
+    cleanup_e2e_data,
 ):
     """Test canceling node deletion keeps the node.
     
@@ -305,6 +309,7 @@ async def test_navigation_and_display(
     hierarchy_page: Page,
     base_url: str,
     db_session: AsyncSession,
+    cleanup_e2e_data,
 ):
     """Test navigation and display of hierarchy dashboard.
     
@@ -355,6 +360,17 @@ async def test_navigation_and_display(
     await hierarchy_page.wait_for_load_state("networkidle")
     assert f"manufacturing_type_id={mfg_type.id}" in hierarchy_page.url
     
+    # Debug: Take screenshot and print page content
+    await hierarchy_page.screenshot(path="debug_hierarchy_page.png")
+    page_text = await hierarchy_page.locator('body').text_content()
+    print(f"\n📄 Page content (first 500 chars): {page_text[:500]}")
+    
+    # Check if there's an error message on the page
+    error_alert = hierarchy_page.locator('.alert-error, .alert-danger, .error')
+    if await error_alert.count() > 0:
+        error_text = await error_alert.first.text_content()
+        print(f"⚠️ Error on page: {error_text}")
+    
     # Verify tree displays nodes (enhanced template renders nodes in divs with strong tags)
     # The template shows nodes in a list format with ltree_path and name
     root_node = hierarchy_page.locator('strong:has-text("Root Category")')
@@ -387,6 +403,7 @@ async def test_form_validation_errors_display(
     hierarchy_page: Page,
     base_url: str,
     db_session: AsyncSession,
+    cleanup_e2e_data,
 ):
     """Test that form validation errors are displayed correctly.
     

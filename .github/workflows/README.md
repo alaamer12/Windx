@@ -34,6 +34,12 @@ Extended version with code coverage reporting.
 - Coverage upload to Codecov
 - Coverage badge generation
 - Detailed coverage report
+- **Excludes**: E2E tests and Redis-dependent tests
+
+**Test Markers:**
+```bash
+-m "not e2e and not redis"
+```
 
 **Setup Required:**
 1. Sign up at [codecov.io](https://codecov.io)
@@ -42,7 +48,59 @@ Extended version with code coverage reporting.
 
 ---
 
-### 3. `ci-cd.yml` - Full CI/CD Pipeline 🚀
+### 3. `redis-tests.yml` - Redis Tests (Cache & Rate Limiting) 🔴
+
+Runs tests that require Redis for caching and rate limiting.
+
+**Features:**
+- Redis service container
+- Cache health check tests
+- Rate limiter tests
+- Caching behavior validation
+- Connection cleanup tests
+
+**Test Markers:**
+```bash
+-m redis
+```
+
+**Services:**
+- PostgreSQL 15
+- Redis 7
+
+**Tests Included:**
+- `test_health_check_cache_when_enabled`
+- `test_health_check_rate_limiter_when_enabled`
+- `test_health_check_redis_cache_failure`
+- `test_health_check_redis_limiter_failure`
+- `test_health_check_redis_connection_cleanup`
+- `test_get_stats_caching_behavior`
+- `test_get_stats_cache_performance`
+
+---
+
+### 4. `e2e-tests.yml` - End-to-End Tests 🎭
+
+Runs browser-based E2E tests using Playwright.
+
+**Features:**
+- Playwright with Chromium
+- Full application testing
+- Screenshot/video capture on failure
+- Real browser automation
+
+**Test Markers:**
+```bash
+-m e2e
+```
+
+**Services:**
+- PostgreSQL 15
+- FastAPI server (background)
+
+---
+
+### 5. `ci-cd.yml` - Full CI/CD Pipeline 🚀
 
 Complete pipeline with linting, testing, and deployment.
 
@@ -73,11 +131,11 @@ Complete pipeline with linting, testing, and deployment.
 
 Add these in: `Settings` → `Secrets and variables` → `Actions`
 
-| Secret | Required For | Description |
-|--------|-------------|-------------|
-| `CODECOV_TOKEN` | Coverage workflows | Token from codecov.io |
-| `DOCKER_USERNAME` | CI/CD pipeline | Docker Hub username |
-| `DOCKER_PASSWORD` | CI/CD pipeline | Docker Hub password/token |
+| Secret            | Required For       | Description               |
+|-------------------|--------------------|---------------------------|
+| `CODECOV_TOKEN`   | Coverage workflows | Token from codecov.io     |
+| `DOCKER_USERNAME` | CI/CD pipeline     | Docker Hub username       |
+| `DOCKER_PASSWORD` | CI/CD pipeline     | Docker Hub password/token |
 
 ### Environment Variables
 
@@ -97,6 +155,24 @@ LIMITER_ENABLED=false
 
 ---
 
+## Test Markers
+
+Tests are organized using pytest markers defined in `pyproject.toml`:
+
+| Marker | Description | Example |
+|--------|-------------|---------|
+| `unit` | Fast, isolated unit tests | `pytest -m unit` |
+| `integration` | Full-stack integration tests | `pytest -m integration` |
+| `e2e` | Browser-based end-to-end tests | `pytest -m e2e` |
+| `redis` | Tests requiring Redis (cache/rate limiting) | `pytest -m redis` |
+| `slow` | Slow-running tests | `pytest -m slow` |
+| `auth` | Authentication tests | `pytest -m auth` |
+| `users` | User management tests | `pytest -m users` |
+| `services` | Service layer tests | `pytest -m services` |
+| `repositories` | Repository layer tests | `pytest -m repositories` |
+
+---
+
 ## Choosing a Workflow
 
 ### Use `tests.yml` if:
@@ -108,6 +184,17 @@ LIMITER_ENABLED=false
 - ✅ You want to track code coverage
 - ✅ You have Codecov set up
 - ✅ You want detailed test reports
+- ✅ You don't need Redis or E2E tests
+
+### Use `redis-tests.yml` if:
+- ✅ You need to test caching behavior
+- ✅ You need to test rate limiting
+- ✅ You have Redis available
+
+### Use `e2e-tests.yml` if:
+- ✅ You need browser-based testing
+- ✅ You want to test full user workflows
+- ✅ You need visual regression testing
 
 ### Use `ci-cd.yml` if:
 - ✅ You need full CI/CD pipeline
@@ -131,11 +218,25 @@ uv run ruff check app/ tests/
 # Run formatter check
 uv run ruff format --check app/ tests/
 
-# Run tests
-uv run pytest tests/ -v
+# Run all tests (except E2E and Redis)
+uv run pytest tests/ -v -m "not e2e and not redis"
+
+# Run only Redis tests (requires Redis running locally)
+# Start Redis first:
+docker run -d --name redis-test -p 6379:6379 redis:7-alpine
+# Then run tests:
+uv run pytest tests/ -v -m redis
+# Stop Redis after:
+docker stop redis-test && docker rm redis-test
+
+# Run only E2E tests (requires app running)
+uv run pytest tests/ -v -m e2e
 
 # Run tests with coverage
-uv run pytest tests/ --cov=app --cov-report=term
+uv run pytest tests/ --cov=app --cov-report=term -m "not e2e and not redis"
+
+# Run specific marker
+uv run pytest tests/ -v -m integration
 ```
 
 ---

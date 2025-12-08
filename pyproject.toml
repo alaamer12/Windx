@@ -63,7 +63,10 @@ dependencies = [
     "networkx",
     # "pygraphviz",
     "pandas>=2.3.3",
-    "rich"
+    "rich",
+    "platformdirs",
+    "requests",
+    "email-validator", # Required by pydantic even if it is not used explicitly
 ]
 
 [dependency-groups]
@@ -76,6 +79,7 @@ dev = [
     "httpx",
     "playwright",
     "pytest-playwright",
+    "psutil"
 ]
 
 [project.urls]

@@ -22,6 +22,9 @@ Commands:
     check_db                     Check database connection and schema
     tables                       Display table information with pandas
     start                        Start the server (auto-detects gunicorn/uvicorn)
+    stop                         Stop a running server by port
+    curl                         Check server status, view logs, or make HTTP requests
+    clean                        Stop all servers and clean up project directory
 
 Examples:
     python manage.py createsuperuser
@@ -44,6 +47,14 @@ Examples:
     python manage.py start
     python manage.py start --use uvicorn
     python manage.py start --use gunicorn --host 0.0.0.0 --port 8080
+    python manage.py stop
+    python manage.py stop --port 8000
+    python manage.py curl --poke
+    python manage.py curl --port 8000 --poke
+    python manage.py curl --url http://127.0.0.1:8000/api/v1/users
+    python manage.py curl --lines 50
+    python manage.py clean
+    python manage.py clean --force
 """
 
 import argparse
@@ -69,6 +80,89 @@ from app.models.user import User
 
 # Rich imports for beautiful terminal output
 from rich.console import Console
+
+
+def get_project_name(show_warning: bool = True) -> str:
+    """Get the project name from APP_NAME in .env or fallback to directory name.
+    
+    Priority:
+    1. APP_NAME from .env file (cleaned for directory use)
+    2. Current working directory basename (with warning)
+    
+    Args:
+        show_warning: Whether to show warning if APP_NAME not found
+    
+    Returns:
+        str: Project name for platformdirs
+    """
+    import os
+    from dotenv import load_dotenv
+    
+    # Try to load .env file
+    env_file = Path(__file__).parent / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+    
+    # Get APP_NAME from environment
+    app_name = os.getenv('APP_NAME')
+    
+    if app_name:
+        # Clean up app name for use as directory name
+        # Remove special characters, keep alphanumeric, spaces, and hyphens
+        import re
+        clean_name = re.sub(r'[^\w\s-]', '', app_name)
+        clean_name = re.sub(r'[-\s]+', '-', clean_name).strip('-').lower()
+        return clean_name
+    else:
+        # Fallback to directory name with warning
+        dir_name = Path.cwd().name
+        
+        if show_warning:
+            console.print(
+                f"[yellow]⚠ Warning:[/yellow] APP_NAME not found in .env, using directory name: [cyan]{dir_name}[/cyan]"
+            )
+            console.print(
+                "[dim]This can lead to unexpected bugs if you run from different directories.[/dim]"
+            )
+            console.print(
+                "[dim]Recommendation: Set APP_NAME in your .env file.[/dim]"
+            )
+            console.print()
+        
+        return dir_name.lower()
+
+
+def get_project_dir() -> Path:
+    """Get the project-specific directory for storing server data.
+    
+    Uses platformdirs to get the appropriate directory for the platform:
+    - Windows: C:\\Users\\<user>\\AppData\\Local\\<project_name>
+    - macOS: ~/Library/Application Support/<project_name>
+    - Linux: ~/.local/share/<project_name>
+    
+    Returns:
+        Path: Project directory path
+    """
+    from platformdirs import user_data_dir
+    
+    project_name = get_project_name()
+    project_dir = Path(user_data_dir(project_name, appauthor=False))
+    project_dir.mkdir(parents=True, exist_ok=True)
+    return project_dir
+
+
+def get_server_slot_dir(port: int) -> Path:
+    """Get the directory for a specific server slot (by port).
+    
+    Args:
+        port: Server port number
+        
+    Returns:
+        Path: Server slot directory path
+    """
+    slot_dir = get_project_dir() / str(port)
+    slot_dir.mkdir(parents=True, exist_ok=True)
+    return slot_dir
 from rich.panel import Panel
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -1239,6 +1333,8 @@ def start_server_command(args: argparse.Namespace):
     import subprocess
     import shutil
     import os
+    import pickle
+    from datetime import datetime
     from dotenv import load_dotenv
     
     console.print(Panel.fit(
@@ -1410,24 +1506,32 @@ def start_server_command(args: argparse.Namespace):
     
     # Start server in background
     try:
+        # Get server slot directory
+        slot_dir = get_server_slot_dir(port)
+        log_file = slot_dir / "server.log"
+        console.print(f"[dim]Server slot: {slot_dir}[/dim]")
+        console.print(f"[dim]Logging to: {log_file}[/dim]")
         console.print("[cyan]Starting server in background...[/cyan]")
         
-        # Start process in background (detached)
+        # Open log file for writing
+        log_handle = open(log_file, 'a', buffering=1)  # Line buffered
+        
+        # Start process in background (detached) with output redirected to log file
         if sys.platform == "win32":
             # Windows: Use CREATE_NEW_PROCESS_GROUP and DETACHED_PROCESS
             process = subprocess.Popen(
                 cmd,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.DETACHED_PROCESS,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,  # Redirect stderr to stdout (log file)
                 stdin=subprocess.DEVNULL,
             )
         else:
             # Unix: Use nohup-like behavior
             process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=log_handle,
+                stderr=subprocess.STDOUT,  # Redirect stderr to stdout (log file)
                 stdin=subprocess.DEVNULL,
                 start_new_session=True,  # Detach from parent
             )
@@ -1438,14 +1542,40 @@ def start_server_command(args: argparse.Namespace):
         
         # Check if process is still running
         if process.poll() is None:
+            # Store process info in pickle file
+            import pickle
+            from datetime import datetime
+            
+            process_info = {
+                'pid': process.pid,
+                'host': host,
+                'port': port,
+                'server_type': use_server,
+                'workers': workers or (4 if use_server == 'gunicorn' else 1),
+                'started_at': datetime.now().isoformat(),
+                'command': ' '.join(cmd),
+                'log_file': str(log_file),
+            }
+            
+            pickle_file = slot_dir / "process.pkl"
+            try:
+                with open(pickle_file, 'wb') as f:
+                    pickle.dump(process_info, f)
+                console.print(f"[dim]✓ Process info saved[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Could not save process info: {e}[/yellow]")
+            
             console.print()
             console.print(Panel(
                 f"[green]✓ Server started successfully![/green]\n\n"
                 f"[cyan]•[/cyan] Process ID: [yellow]{process.pid}[/yellow]\n"
                 f"[cyan]•[/cyan] API URL: [link]http://{host}:{port}[/link]\n"
                 f"[cyan]•[/cyan] API Docs: [link]http://{host}:{port}/docs[/link]\n"
-                f"[cyan]•[/cyan] Admin Panel: [link]http://{host}:{port}/api/v1/admin/login[/link]\n\n"
+                f"[cyan]•[/cyan] Admin Panel: [link]http://{host}:{port}/api/v1/admin/login[/link]\n"
+                f"[cyan]•[/cyan] Log File: [yellow]{log_file.name}[/yellow]\n\n"
                 f"[dim]Server is running in the background.[/dim]\n"
+                f"[dim]To check: python manage.py curl --poke[/dim]\n"
+                f"[dim]To view logs: python manage.py curl --lines 50[/dim]\n"
                 f"[dim]To stop: kill {process.pid} (Unix) or taskkill /PID {process.pid} (Windows)[/dim]",
                 title="[bold green]Server Running[/bold green]",
                 border_style="green"
@@ -1465,6 +1595,557 @@ def start_server_command(args: argparse.Namespace):
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+
+def stop_command(args: argparse.Namespace):
+    """Stop a running server by port."""
+    import pickle
+    import os
+    from dotenv import load_dotenv
+    
+    console.print(Panel.fit(
+        "[bold yellow]Stop Server[/bold yellow]",
+        border_style="yellow"
+    ))
+    console.print()
+    
+    # Load .env file if it exists
+    env_file = Path(__file__).parent / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+    
+    # Priority: argv > .env > defaults
+    port = args.port if hasattr(args, 'port') and args.port else None
+    if port is None:
+        port = int(os.getenv('PORT', 8000))
+    
+    # Get server slot
+    slot_dir = get_server_slot_dir(port)
+    pickle_file = slot_dir / "process.pkl"
+    
+    if not pickle_file.exists():
+        console.print(f"[yellow]⚠ No server found on port {port}[/yellow]")
+        console.print(f"[dim]Looking in: {slot_dir}[/dim]")
+        console.print()
+        
+        # List available servers
+        console.print("[cyan]Available servers:[/cyan]")
+        project_dir = get_project_dir()
+        if project_dir.exists():
+            slots = [d for d in project_dir.iterdir() if d.is_dir() and d.name.isdigit()]
+            if slots:
+                for slot in sorted(slots):
+                    pkl = slot / "process.pkl"
+                    if pkl.exists():
+                        try:
+                            with open(pkl, 'rb') as f:
+                                info = pickle.load(f)
+                            console.print(f"  • Port {info['port']}: PID {info['pid']} ({info['server_type']})")
+                        except Exception:
+                            pass
+            else:
+                console.print("  [dim]No servers found[/dim]")
+        
+        sys.exit(1)
+    
+    # Load process info
+    try:
+        with open(pickle_file, 'rb') as f:
+            process_info = pickle.load(f)
+    except Exception as e:
+        console.print(f"[red]✗ Error loading process info: {e}[/red]")
+        sys.exit(1)
+    
+    # Display server info
+    console.print(f"[cyan]Stopping server on port {port}...[/cyan]")
+    console.print(f"[dim]PID: {process_info['pid']}[/dim]")
+    console.print()
+    
+    # Try to stop the process
+    try:
+        import psutil
+        
+        try:
+            process = psutil.Process(process_info['pid'])
+            
+            if not process.is_running():
+                console.print(f"[yellow]⚠ Process {process_info['pid']} is not running[/yellow]")
+                
+                # Ask to clean up slot directory
+                if not args.force:
+                    if Confirm.ask("[yellow]Clean up server slot directory?[/yellow]", default=True):
+                        import shutil
+                        shutil.rmtree(slot_dir)
+                        console.print(f"[green]✓ Cleaned up slot directory[/green]")
+                else:
+                    import shutil
+                    shutil.rmtree(slot_dir)
+                    console.print(f"[green]✓ Cleaned up slot directory[/green]")
+                
+                return
+            
+            # Terminate gracefully
+            console.print("[cyan]Sending termination signal...[/cyan]")
+            process.terminate()
+            
+            # Wait for process to terminate (max 10 seconds)
+            try:
+                process.wait(timeout=10)
+                console.print(f"[green]✓ Server stopped gracefully[/green]")
+            except psutil.TimeoutExpired:
+                # Force kill if it doesn't terminate
+                console.print("[yellow]⚠ Process didn't stop, force killing...[/yellow]")
+                process.kill()
+                console.print(f"[green]✓ Server force stopped[/green]")
+            
+            # Clean up slot directory
+            import shutil
+            shutil.rmtree(slot_dir)
+            console.print(f"[green]✓ Cleaned up slot directory[/green]")
+            
+        except psutil.NoSuchProcess:
+            console.print(f"[yellow]⚠ Process {process_info['pid']} not found[/yellow]")
+            
+            # Clean up slot directory anyway
+            import shutil
+            shutil.rmtree(slot_dir)
+            console.print(f"[green]✓ Cleaned up slot directory[/green]")
+            
+    except ImportError:
+        console.print("[red]✗ psutil not installed[/red]")
+        console.print("[dim]Install with: pip install psutil[/dim]")
+        console.print()
+        console.print("[yellow]Attempting manual stop...[/yellow]")
+        
+        # Provide manual instructions
+        if sys.platform == "win32":
+            console.print(f"[dim]Run: taskkill /PID {process_info['pid']} /F[/dim]")
+        else:
+            console.print(f"[dim]Run: kill {process_info['pid']}[/dim]")
+        
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]✗ Error stopping server: {e}[/red]")
+        sys.exit(1)
+
+
+def clean_command(args: argparse.Namespace):
+    """Stop all running servers and clean up project directory."""
+    import pickle
+    import shutil
+    
+    console.print(Panel.fit(
+        "[bold red]Clean Server Data[/bold red]",
+        border_style="red"
+    ))
+    console.print()
+    
+    project_dir = get_project_dir()
+    
+    if not project_dir.exists():
+        console.print("[dim]No server data found[/dim]")
+        return
+    
+    console.print(f"[cyan]Project directory:[/cyan] {project_dir}")
+    console.print()
+    
+    # Find all server slots
+    slots = [d for d in project_dir.iterdir() if d.is_dir() and d.name.isdigit()]
+    
+    if not slots:
+        console.print("[dim]No servers found[/dim]")
+        
+        # Ask to delete empty directory
+        if not args.force:
+            if not Confirm.ask("[yellow]Delete empty project directory?[/yellow]", default=True):
+                console.print("[dim]Cleanup cancelled[/dim]")
+                return
+        
+        try:
+            shutil.rmtree(project_dir)
+            console.print("[green]✓ Project directory deleted[/green]")
+        except Exception as e:
+            console.print(f"[red]✗ Error deleting directory: {e}[/red]")
+        
+        return
+    
+    # Display servers to be stopped
+    console.print(f"[yellow]Found {len(slots)} server(s):[/yellow]")
+    
+    servers_table = Table(box=box.ROUNDED)
+    servers_table.add_column("Port", style="cyan")
+    servers_table.add_column("PID", style="yellow")
+    servers_table.add_column("Server", style="white")
+    servers_table.add_column("Status", style="white")
+    
+    servers_to_stop = []
+    
+    for slot in sorted(slots):
+        pkl = slot / "process.pkl"
+        if pkl.exists():
+            try:
+                with open(pkl, 'rb') as f:
+                    info = pickle.load(f)
+                
+                # Check if process is running
+                status = "Unknown"
+                is_running = False
+                try:
+                    import psutil
+                    process = psutil.Process(info['pid'])
+                    if process.is_running():
+                        status = f"[green]Running[/green] ({process.status()})"
+                        is_running = True
+                    else:
+                        status = "[red]Not Running[/red]"
+                except psutil.NoSuchProcess:
+                    status = "[red]Not Found[/red]"
+                except ImportError:
+                    status = "[dim]Unknown (psutil not installed)[/dim]"
+                
+                servers_table.add_row(
+                    str(info['port']),
+                    str(info['pid']),
+                    info['server_type'],
+                    status
+                )
+                
+                servers_to_stop.append({
+                    'slot': slot,
+                    'info': info,
+                    'is_running': is_running
+                })
+                
+            except Exception as e:
+                servers_table.add_row(
+                    slot.name,
+                    "N/A",
+                    "N/A",
+                    f"[red]Error: {e}[/red]"
+                )
+    
+    console.print(servers_table)
+    console.print()
+    
+    # Confirm cleanup
+    if not args.force:
+        if not Confirm.ask("[red]Stop all servers and delete project directory?[/red]", default=False):
+            console.print("[dim]Cleanup cancelled[/dim]")
+            return
+    
+    console.print()
+    
+    # Stop running processes
+    stopped_count = 0
+    failed_count = 0
+    
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console
+    ) as progress:
+        task = progress.add_task("[cyan]Stopping servers...", total=len(servers_to_stop))
+        
+        for server in servers_to_stop:
+            if server['is_running']:
+                try:
+                    import psutil
+                    process = psutil.Process(server['info']['pid'])
+                    process.terminate()
+                    
+                    # Wait for process to terminate (max 5 seconds)
+                    try:
+                        process.wait(timeout=5)
+                        console.print(f"[green]✓ Stopped server on port {server['info']['port']} (PID {server['info']['pid']})[/green]")
+                        stopped_count += 1
+                    except psutil.TimeoutExpired:
+                        # Force kill if it doesn't terminate
+                        process.kill()
+                        console.print(f"[yellow]⚠ Force killed server on port {server['info']['port']} (PID {server['info']['pid']})[/yellow]")
+                        stopped_count += 1
+                        
+                except Exception as e:
+                    console.print(f"[red]✗ Failed to stop server on port {server['info']['port']}: {e}[/red]")
+                    failed_count += 1
+            
+            progress.advance(task)
+    
+    console.print()
+    
+    # Delete project directory
+    try:
+        shutil.rmtree(project_dir)
+        console.print(f"[green]✓ Deleted project directory: {project_dir}[/green]")
+    except Exception as e:
+        console.print(f"[red]✗ Error deleting directory: {e}[/red]")
+        sys.exit(1)
+    
+    # Summary
+    console.print()
+    summary_table = Table(show_header=False, box=box.SIMPLE)
+    summary_table.add_row("[cyan]Servers stopped:[/cyan]", f"[green]{stopped_count}[/green]")
+    if failed_count > 0:
+        summary_table.add_row("[cyan]Failed:[/cyan]", f"[red]{failed_count}[/red]")
+    summary_table.add_row("[cyan]Slots cleaned:[/cyan]", f"[yellow]{len(slots)}[/yellow]")
+    
+    console.print(summary_table)
+    console.print()
+    console.print("[green]✓ Cleanup complete![/green]")
+
+
+def curl_command(args: argparse.Namespace):
+    """Check server status, view logs, or make HTTP requests."""
+    import pickle
+    import os
+    import requests
+    from dotenv import load_dotenv
+    
+    console.print(Panel.fit(
+        "[bold cyan]Server Status & Logs[/bold cyan]",
+        border_style="cyan"
+    ))
+    console.print()
+    
+    # Load .env file if it exists
+    env_file = Path(__file__).parent / ".env"
+    if env_file.exists():
+        load_dotenv(env_file)
+    
+    # Priority: argv > .env > defaults
+    def get_config_value(arg_value, env_key, default_value, value_type=str):
+        """Get configuration value with priority: argv > .env > default."""
+        if arg_value is not None:
+            return arg_value
+        
+        env_value = os.getenv(env_key)
+        if env_value is not None:
+            try:
+                if value_type == bool:
+                    return env_value.lower() in ('true', '1', 'yes', 'on')
+                elif value_type == int:
+                    return int(env_value)
+                else:
+                    return str(env_value)
+            except (ValueError, AttributeError):
+                pass
+        
+        return default_value
+    
+    # Get configuration
+    port = get_config_value(
+        args.port if hasattr(args, 'port') else None,
+        'PORT',
+        8000,
+        int
+    )
+    
+    host = get_config_value(
+        args.host if hasattr(args, 'host') else None,
+        'HOST',
+        "127.0.0.1"
+    )
+    
+    lines = get_config_value(
+        args.lines if hasattr(args, 'lines') else None,
+        'LOG_LINES',
+        50,
+        int
+    )
+    
+    # Check for server slot
+    slot_dir = get_server_slot_dir(port)
+    pickle_file = slot_dir / "process.pkl"
+    
+    if not pickle_file.exists():
+        console.print(f"[yellow]⚠ No server info found for port {port}[/yellow]")
+        console.print(f"[dim]Looking in: {slot_dir}[/dim]")
+        console.print()
+        console.print("[cyan]Available servers:[/cyan]")
+        
+        # List all server slots
+        project_dir = get_project_dir()
+        if project_dir.exists():
+            slots = [d for d in project_dir.iterdir() if d.is_dir() and d.name.isdigit()]
+            if slots:
+                for slot in sorted(slots):
+                    pkl = slot / "process.pkl"
+                    if pkl.exists():
+                        try:
+                            with open(pkl, 'rb') as f:
+                                info = pickle.load(f)
+                            console.print(f"  • Port {info['port']}: PID {info['pid']} ({info['server_type']})")
+                        except Exception:
+                            pass
+            else:
+                console.print("  [dim]No servers found[/dim]")
+        else:
+            console.print("  [dim]No servers found[/dim]")
+        
+        sys.exit(1)
+    
+    # Load process info
+    try:
+        with open(pickle_file, 'rb') as f:
+            process_info = pickle.load(f)
+    except Exception as e:
+        console.print(f"[red]✗ Error loading process info: {e}[/red]")
+        sys.exit(1)
+    
+    # Display process info
+    info_table = Table(title="[bold]Server Information[/bold]", box=box.ROUNDED)
+    info_table.add_column("Property", style="cyan", no_wrap=True)
+    info_table.add_column("Value", style="white")
+    
+    info_table.add_row("Process ID", str(process_info['pid']))
+    info_table.add_row("Host", process_info['host'])
+    info_table.add_row("Port", str(process_info['port']))
+    info_table.add_row("Server Type", process_info['server_type'])
+    info_table.add_row("Workers", str(process_info.get('workers', 'N/A')))
+    info_table.add_row("Started At", process_info['started_at'])
+    info_table.add_row("Log File", process_info.get('log_file', 'N/A'))
+    
+    console.print(info_table)
+    console.print()
+    
+    # Check if --poke flag is set (health check)
+    if hasattr(args, 'poke') and args.poke:
+        console.print("[cyan]Checking server health...[/cyan]")
+        
+        # Check if process is running
+        import psutil
+        try:
+            process = psutil.Process(process_info['pid'])
+            if process.is_running():
+                console.print(f"[green]✓ Process is running[/green] (Status: {process.status()})")
+            else:
+                console.print(f"[red]✗ Process is not running[/red]")
+                sys.exit(1)
+        except psutil.NoSuchProcess:
+            console.print(f"[red]✗ Process {process_info['pid']} not found[/red]")
+            sys.exit(1)
+        except ImportError:
+            console.print("[yellow]⚠ psutil not installed, skipping process check[/yellow]")
+            console.print("[dim]Install with: pip install psutil[/dim]")
+        
+        # HTTP health check
+        url = f"http://{process_info['host']}:{process_info['port']}/health"
+        try:
+            response = requests.get(url, timeout=5)
+            if response.status_code == 200:
+                console.print(f"[green]✓ HTTP health check passed[/green] ({response.status_code})")
+                
+                # Display health data
+                try:
+                    health_data = response.json()
+                    health_table = Table(show_header=False, box=box.SIMPLE)
+                    health_table.add_row("[cyan]Status:[/cyan]", f"[green]{health_data.get('status', 'N/A')}[/green]")
+                    health_table.add_row("[cyan]App:[/cyan]", health_data.get('app_name', 'N/A'))
+                    health_table.add_row("[cyan]Version:[/cyan]", health_data.get('version', 'N/A'))
+                    console.print(health_table)
+                except Exception:
+                    pass
+            else:
+                console.print(f"[yellow]⚠ HTTP health check returned {response.status_code}[/yellow]")
+        except requests.exceptions.ConnectionError:
+            console.print(f"[red]✗ Could not connect to {url}[/red]")
+            sys.exit(1)
+        except requests.exceptions.Timeout:
+            console.print(f"[red]✗ Request timed out[/red]")
+            sys.exit(1)
+        except Exception as e:
+            console.print(f"[red]✗ HTTP health check failed: {e}[/red]")
+            sys.exit(1)
+    
+    # If URL is provided, make HTTP request (curl functionality)
+    elif hasattr(args, 'url') and args.url:
+        url = args.url
+        method = args.method if hasattr(args, 'method') and args.method else 'GET'
+        
+        console.print(f"[cyan]Making {method} request to {url}...[/cyan]")
+        console.print()
+        
+        try:
+            if method == 'GET':
+                response = requests.get(url, timeout=10)
+            elif method == 'POST':
+                response = requests.post(url, timeout=10)
+            elif method == 'PUT':
+                response = requests.put(url, timeout=10)
+            elif method == 'DELETE':
+                response = requests.delete(url, timeout=10)
+            else:
+                console.print(f"[red]✗ Unsupported method: {method}[/red]")
+                sys.exit(1)
+            
+            # Display response
+            console.print(f"[cyan]Status:[/cyan] [yellow]{response.status_code}[/yellow]")
+            console.print(f"[cyan]Headers:[/cyan]")
+            for key, value in response.headers.items():
+                console.print(f"  {key}: {value}")
+            console.print()
+            console.print(f"[cyan]Body:[/cyan]")
+            
+            try:
+                # Try to pretty-print JSON
+                import json
+                json_data = response.json()
+                console.print(json.dumps(json_data, indent=2))
+            except Exception:
+                # Fall back to text
+                console.print(response.text)
+                
+        except Exception as e:
+            console.print(f"[red]✗ Request failed: {e}[/red]")
+            sys.exit(1)
+    
+    # Default: Show logs (tail last X lines)
+    else:
+        # Get log file from slot directory
+        log_file_path = slot_dir / "server.log"
+        if 'log_file' in process_info:
+            # Use stored path if available
+            log_file_path = Path(process_info['log_file'])
+        
+        if not log_file_path.exists():
+            console.print(f"[yellow]⚠ Log file not found: {log_file_path}[/yellow]")
+            console.print("[dim]The server may have been started without logging enabled.[/dim]")
+            sys.exit(1)
+        
+        console.print(f"[cyan]Showing last {lines} lines from {log_file_path.name}...[/cyan]")
+        console.print()
+        
+        try:
+            # Read last N lines from log file
+            with open(log_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                # Read all lines and get last N
+                all_lines = f.readlines()
+                last_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+                
+                if not last_lines:
+                    console.print("[dim]Log file is empty[/dim]")
+                else:
+                    # Display logs with syntax highlighting
+                    for line in last_lines:
+                        line = line.rstrip()
+                        
+                        # Color code based on log level
+                        if 'ERROR' in line or 'CRITICAL' in line:
+                            console.print(f"[red]{line}[/red]")
+                        elif 'WARNING' in line or 'WARN' in line:
+                            console.print(f"[yellow]{line}[/yellow]")
+                        elif 'INFO' in line:
+                            console.print(f"[cyan]{line}[/cyan]")
+                        elif 'DEBUG' in line:
+                            console.print(f"[dim]{line}[/dim]")
+                        else:
+                            console.print(line)
+                    
+                    console.print()
+                    console.print(f"[dim]Showing {len(last_lines)} of {len(all_lines)} total lines[/dim]")
+                    
+        except Exception as e:
+            console.print(f"[red]✗ Error reading log file: {e}[/red]")
+            sys.exit(1)
 
 
 # Command registry mapping command names to functions
@@ -1487,6 +2168,9 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "check_db": lambda args: asyncio.run(check_db_command(args)),
     "tables": lambda args: asyncio.run(tables_command(args)),
     "start": lambda args: start_server_command(args),
+    "stop": lambda args: stop_command(args),
+    "curl": lambda args: curl_command(args),
+    "clean": lambda args: clean_command(args),
 }
 
 
@@ -1577,6 +2261,33 @@ def main():
         dest="reload",
         action="store_false",
         help="Disable auto-reload on code changes",
+    )
+    
+    # Curl command arguments
+    parser.add_argument(
+        "--poke",
+        action="store_true",
+        help="Check if server is running and healthy (curl command)",
+    )
+    
+    parser.add_argument(
+        "--url",
+        type=str,
+        help="URL to make HTTP request to (curl command)",
+    )
+    
+    parser.add_argument(
+        "--method",
+        type=str,
+        choices=["GET", "POST", "PUT", "DELETE"],
+        default="GET",
+        help="HTTP method for curl request (default: GET)",
+    )
+    
+    parser.add_argument(
+        "--lines",
+        type=int,
+        help="Number of log lines to show (curl command, default: 50)",
     )
     
     args = parser.parse_args()

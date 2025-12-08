@@ -12,3 +12,7 @@ jinja2
 fastapi-pagination
 matplotlib
 networkx
+platformdirs
+psutil
+requests
+email-validator

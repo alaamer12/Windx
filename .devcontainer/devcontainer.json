@@ -1,0 +1,23 @@
+{
+  "name": "Windx Dev Container",
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "docker-compose.devcontainer.yml"
+  ],
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/Windx",
+  "runServices": ["postgres"],
+  "shutdownAction": "stopCompose",
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "postCreateCommand": "python -m pip install --upgrade pip && pip install -r requirements.txt || true",
+  "postStartCommand": "docker compose up -d postgres || true",
+  "remoteUser": "vscode",
+  "extensions": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-azuretools.vscode-docker",
+    "eamodio.gitlens"
+  ]
+}

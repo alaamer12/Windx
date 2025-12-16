@@ -8,7 +8,7 @@ This implementation plan addresses the critical architectural issue where `user.
 
 ## Task List
 
-- [ ] 1. Core RBAC Infrastructure and User Model Setup
+- [x] 1. Core RBAC Infrastructure and User Model Setup
   - Install casbin and casbin-sqlalchemy-adapter dependencies
   - Create Casbin model configuration file (`config/rbac_model.conf`)
   - Create initial policy file with full privileges for salesman, data_entry, partner roles (`config/rbac_policy.csv`)

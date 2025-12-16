@@ -67,6 +67,8 @@ dependencies = [
     "platformdirs",
     "requests",
     "email-validator", # Required by pydantic even if it is not used explicitly
+    "casbin",
+    "casbin-sqlalchemy-adapter",
 ]
 
 [dependency-groups]

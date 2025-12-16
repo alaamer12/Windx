@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import AuthorizationException, NotFoundException, ValidationException
+from app.core.rbac import Permission, require, ResourceOwnership
 from app.models.attribute_node import AttributeNode
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
@@ -41,6 +42,7 @@ from app.schemas.entry import (
     PreviewTable,
 )
 from app.services.base import BaseService
+from app.services.rbac import RBACService
 
 __all__ = ["ConditionEvaluator", "EntryService"]
 
@@ -163,6 +165,7 @@ class EntryService(BaseService):
         """
         super().__init__(db)
         self.condition_evaluator = ConditionEvaluator()
+        self.rbac_service = RBACService(db)
     
     async def get_profile_schema(self, manufacturing_type_id: int) -> ProfileSchema:
         """Get profile form schema for a manufacturing type.
@@ -387,6 +390,7 @@ class EntryService(BaseService):
         
         return None
     
+    @require(Permission("configuration", "create"))
     async def save_profile_configuration(self, data: ProfileEntryData, user: User) -> Configuration:
         """Save profile configuration data.
         
@@ -412,8 +416,8 @@ class EntryService(BaseService):
         if not manufacturing_type:
             raise NotFoundException(f"Manufacturing type {data.manufacturing_type_id} not found")
         
-        # Get or create customer for user
-        customer = await self._get_or_create_customer_for_user(user)
+        # Get or create customer for user using RBAC service
+        customer = await self.rbac_service.get_or_create_customer_for_user(user)
         
         # Create configuration
         config_data = {
@@ -452,6 +456,7 @@ class EntryService(BaseService):
         await self.commit()
         return configuration
     
+    @require(Permission("configuration", "read"), ResourceOwnership("configuration"))
     async def generate_preview_data(self, configuration_id: int, user: User) -> ProfilePreviewData:
         """Generate preview data for a configuration.
         
@@ -478,12 +483,8 @@ class EntryService(BaseService):
         if not configuration:
             raise NotFoundException(f"Configuration {configuration_id} not found")
         
-        # Check authorization (users can only see their own configurations)
-        if not user.is_superuser:
-            # Get user's customer to check ownership
-            user_customer = await self._get_or_create_customer_for_user(user)
-            if configuration.customer_id != user_customer.id:
-                raise AuthorizationException("Not authorized to access this configuration")
+        # Authorization is handled by the @require decorator
+        # No need for manual authorization checks
         
         # Generate preview table
         preview_table = self.generate_preview_table(configuration)
@@ -591,41 +592,8 @@ class EntryService(BaseService):
         else:
             return str(value)
     
-    async def _get_or_create_customer_for_user(self, user: User) -> Customer:
-        """Get existing customer or create one for the user.
-        
-        This method implements the User → Customer mapping for the entry page system.
-        Users who create configurations through the entry page automatically get
-        a corresponding customer record for the business workflow.
-        
-        Args:
-            user: Current user
-            
-        Returns:
-            Customer: Existing or newly created customer
-        """
-        # Try to find existing customer by email
-        stmt = select(Customer).where(Customer.email == user.email)
-        result = await self.db.execute(stmt)
-        customer = result.scalar_one_or_none()
-        
-        if customer:
-            return customer
-        
-        # Create new customer from user data
-        customer = Customer(
-            contact_person=user.full_name or user.username,
-            email=user.email,
-            customer_type="residential",  # Default for entry page users
-            is_active=True,
-            notes=f"Auto-created from user account: {user.username}"
-        )
-        
-        self.db.add(customer)
-        await self.commit()
-        await self.refresh(customer)
-        
-        return customer
+    # Customer management is now handled by RBACService
+    # This method is deprecated - use rbac_service.get_or_create_customer_for_user() instead
 
 
 # JavaScript equivalent for client-side evaluation

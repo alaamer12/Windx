@@ -16,3 +16,5 @@ platformdirs
 psutil
 requests
 email-validator
+casbin
+casbin-sqlalchemy-adapter

@@ -29,21 +29,21 @@ This implementation plan addresses the critical architectural issue where `user.
   - Configure initial policies with full privileges for salesman, data_entry, partner
   - _Requirements: 3.1, 3.2, 3.3, 6.1, 6.2, 6.4, 9.1, 9.2, 9.3_
 
-  - [ ] 1.1 Write property test for decorator authorization consistency
+  - [x] 1.1 Write property test for decorator authorization consistency
     - **Property: Multiple decorator OR logic evaluation**
     - **Validates: Requirements 9.1, 9.2**
 
-  - [ ] 1.2 Write property test for role assignment validity
+  - [x] 1.2 Write property test for role assignment validity
     - **Property 6: Role assignment validity**
     - **Validates: Requirements 3.3, 6.4**
 
-  - [ ] 1.3 Write unit tests for Casbin policy evaluation
+  - [x] 1.3 Write unit tests for Casbin policy evaluation
     - Test basic role-based permissions
     - Test customer-context permissions
     - Test policy loading and saving
     - _Requirements: 3.1, 3.2, 6.1_
 
-  - [ ] 1.4 Write unit tests for advanced RBAC decorators
+  - [x] 1.4 Write unit tests for advanced RBAC decorators
     - Test multiple `@require` decorators with OR logic
     - Test role composition with bitwise operators
     - Test Privilege object functionality
@@ -51,7 +51,7 @@ This implementation plan addresses the critical architectural issue where `user.
     - Test ResourceOwnership automatic parameter detection
     - _Requirements: 9.1, 9.2, 9.3, 9.5_
 
-  - [ ] 1.5 Write unit tests for User model role functionality
+  - [x] 1.5 Write unit tests for User model role functionality
     - Test role enum validation with bitwise operations
     - Test default role assignment
     - Test role field constraints

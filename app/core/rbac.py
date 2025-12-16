@@ -418,8 +418,13 @@ class RBACQueryFilter:
             return query
         
         # Get accessible customers for user
-        rbac_service = RBACService()
-        accessible_customers = await rbac_service.get_accessible_customers(user)
+        from app.services.rbac import RBACService
+        from app.database.connection import get_session_maker
+        
+        session_maker = get_session_maker()
+        async with session_maker() as db:
+            rbac_service = RBACService(db)
+            accessible_customers = await rbac_service.get_accessible_customers(user)
         
         if not accessible_customers:
             # User has no accessible customers - return empty result
@@ -445,8 +450,13 @@ class RBACQueryFilter:
             return query
         
         # Get accessible customers for user
-        rbac_service = RBACService()
-        accessible_customers = await rbac_service.get_accessible_customers(user)
+        from app.services.rbac import RBACService
+        from app.database.connection import get_session_maker
+        
+        session_maker = get_session_maker()
+        async with session_maker() as db:
+            rbac_service = RBACService(db)
+            accessible_customers = await rbac_service.get_accessible_customers(user)
         
         if not accessible_customers:
             # User has no accessible customers - return empty result
@@ -472,8 +482,13 @@ class RBACQueryFilter:
             return query
         
         # Get accessible customers for user
-        rbac_service = RBACService()
-        accessible_customers = await rbac_service.get_accessible_customers(user)
+        from app.services.rbac import RBACService
+        from app.database.connection import get_session_maker
+        
+        session_maker = get_session_maker()
+        async with session_maker() as db:
+            rbac_service = RBACService(db)
+            accessible_customers = await rbac_service.get_accessible_customers(user)
         
         if not accessible_customers:
             # User has no accessible customers - return empty result

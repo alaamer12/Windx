@@ -21,6 +21,7 @@ from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role
 from app.models.configuration import Configuration
 from app.models.configuration_template import ConfigurationTemplate
 from app.models.template_selection import TemplateSelection
@@ -37,8 +38,26 @@ from app.schemas.configuration_template import (
 )
 from app.services.base import BaseService
 from app.services.configuration import ConfigurationService
+from app.services.rbac import RBACService
 
 __all__ = ["TemplateService"]
+
+
+# Define reusable Privilege objects for Template Service operations
+TemplateManagement = Privilege(
+    roles=[Role.DATA_ENTRY, Role.SALESMAN],
+    permission=Permission("template", "create")
+)
+
+TemplateReader = Privilege(
+    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER, Role.DATA_ENTRY],
+    permission=Permission("template", "read")
+)
+
+AdminTemplateAccess = Privilege(
+    roles=Role.SUPERADMIN,
+    permission=Permission("*", "*")
+)
 
 
 class TemplateService(BaseService):
@@ -70,6 +89,7 @@ class TemplateService(BaseService):
         self.config_selection_repo = ConfigurationSelectionRepository(db)
         self.attr_node_repo = AttributeNodeRepository(db)
         self.config_service = ConfigurationService(db)
+        self.rbac_service = RBACService(db)
 
     async def create_template_from_configuration(
         self,
@@ -142,19 +162,20 @@ class TemplateService(BaseService):
 
         return template
 
+    @require(Permission("template", "apply"))
     async def apply_template_to_configuration(
         self,
         template_id: int,
         user: Any,
         config_name: str | None = None,
     ) -> Configuration:
-        """Apply a template to create a new configuration.
+        """Apply a template to create a new configuration with proper customer relationship.
 
         Creates a new configuration with all selections from the template.
 
         Args:
             template_id (int): Template ID to apply
-            user (Any): Current user (for customer_id assignment)
+            user (Any): Current user (for customer relationship)
             config_name (str | None): Optional configuration name
 
         Returns:
@@ -181,11 +202,14 @@ class TemplateService(BaseService):
         if not config_name:
             config_name = f"{template.name} - Copy"
 
+        # Get or create customer for user using RBAC service
+        customer = await self.rbac_service.get_or_create_customer_for_user(user)
+
         # Create configuration without selections first
         config_data = ConfigurationCreate(
             name=config_name,
             manufacturing_type_id=template.manufacturing_type_id,
-            customer_id=user.id,  # Use user.id for customer_id
+            customer_id=customer.id,  # Use proper customer ID
         )
 
         config = await self.config_service.create_configuration(config_data, user)
@@ -207,8 +231,8 @@ class TemplateService(BaseService):
             await self.config_service.calculate_totals(config.id)
             await self.refresh(config)
 
-        # Track template usage
-        await self.track_template_usage(template_id, config.id, user.id)
+        # Track template usage with proper customer association
+        await self.track_template_usage(template_id, config.id, customer.id)
 
         return config
 
@@ -248,7 +272,9 @@ class TemplateService(BaseService):
         # - converted_to_quote
         # - converted_to_order
 
-    async def get_template(self, template_id: PositiveInt) -> ConfigurationTemplate:
+    @require(TemplateReader)
+    @require(AdminTemplateAccess)
+    async def get_template(self, template_id: PositiveInt, user: Any = None) -> ConfigurationTemplate:
         """Get template by ID.
 
         Args:
@@ -429,6 +455,8 @@ class TemplateService(BaseService):
 
         return template
 
+    @require(TemplateManagement)
+    @require(AdminTemplateAccess)
     async def create_template(
         self, template_in: ConfigurationTemplateCreate, user: Any
     ) -> ConfigurationTemplate:

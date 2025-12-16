@@ -21,14 +21,35 @@ from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role, RBACQueryFilter
 from app.models.configuration import Configuration
 from app.models.quote import Quote
 from app.repositories.configuration import ConfigurationRepository
 from app.repositories.quote import QuoteRepository
 from app.schemas.quote import QuoteCreate, QuoteUpdate
 from app.services.base import BaseService
+from app.services.rbac import RBACService
 
 __all__ = ["QuoteService"]
+
+
+# Define reusable Privilege objects for Quote Service operations
+QuoteManagement = Privilege(
+    roles=[Role.SALESMAN, Role.PARTNER],
+    permission=Permission("quote", "create"),
+    resource=ResourceOwnership("customer")
+)
+
+QuoteReader = Privilege(
+    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
+    permission=Permission("quote", "read"),
+    resource=ResourceOwnership("quote")
+)
+
+AdminQuoteAccess = Privilege(
+    roles=Role.SUPERADMIN,
+    permission=Permission("*", "*")
+)
 
 
 class QuoteService(BaseService):
@@ -52,10 +73,13 @@ class QuoteService(BaseService):
         super().__init__(db)
         self.quote_repo = QuoteRepository(db)
         self.config_repo = ConfigurationRepository(db)
+        self.rbac_service = RBACService(db)
 
+    @require(Permission("quote", "create"))
     async def generate_quote(
         self,
         configuration_id: int,
+        user: Any,
         customer_id: int | None = None,
         tax_rate: Decimal = Decimal("0.00"),
         discount_amount: Decimal = Decimal("0.00"),
@@ -103,10 +127,13 @@ class QuoteService(BaseService):
         # Calculate validity date
         valid_until = date.today() + timedelta(days=valid_days)
 
+        # Use customer_id from configuration to maintain relationship consistency
+        quote_customer_id = customer_id or config.customer_id
+
         # Create quote
         quote_data = QuoteCreate(
             configuration_id=configuration_id,
-            customer_id=customer_id,
+            customer_id=quote_customer_id,
             quote_number=quote_number,
             subtotal=totals["subtotal"],
             tax_rate=tax_rate,
@@ -182,7 +209,9 @@ class QuoteService(BaseService):
             "total_amount": total_amount,
         }
 
-    async def get_quote(self, quote_id: PositiveInt) -> Quote:
+    @require(QuoteReader)
+    @require(AdminQuoteAccess)
+    async def get_quote(self, quote_id: PositiveInt, user: Any = None) -> Quote:
         """Get quote by ID.
 
         Args:
@@ -275,17 +304,20 @@ class QuoteService(BaseService):
 
         return quote
 
+    @require(Permission("quote", "read"))
     async def list_quotes(
         self,
+        user: Any,
         skip: int = 0,
         limit: int = 100,
         configuration_id: int | None = None,
         customer_id: int | None = None,
         status: str | None = None,
     ) -> list[Quote]:
-        """List quotes with filters.
+        """List quotes with automatic RBAC filtering.
 
         Args:
+            user: Current user for RBAC filtering
             skip (int): Number of records to skip
             limit (int): Maximum number of records to return
             configuration_id (int | None): Filter by configuration
@@ -293,18 +325,28 @@ class QuoteService(BaseService):
             status (str | None): Filter by status
 
         Returns:
-            list[Quote]: List of quotes
+            list[Quote]: List of quotes accessible to user
         """
+        from sqlalchemy import select
+        
+        query = select(Quote)
+        
+        # Apply RBAC filtering automatically
+        query = await RBACQueryFilter.filter_quotes(query, user)
+
         if configuration_id:
-            return await self.quote_repo.get_by_configuration(configuration_id)
+            query = query.where(Quote.configuration_id == configuration_id)
 
         if customer_id:
-            return await self.quote_repo.get_by_customer(customer_id)
+            query = query.where(Quote.customer_id == customer_id)
 
         if status:
-            return await self.quote_repo.get_by_status(status)
+            query = query.where(Quote.status == status)
 
-        return await self.quote_repo.get_multi(skip=skip, limit=limit)
+        query = query.offset(skip).limit(limit).order_by(Quote.created_at.desc())
+
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
 
     async def check_quote_validity(self, quote_id: PositiveInt) -> bool:
         """Check if a quote is still valid.

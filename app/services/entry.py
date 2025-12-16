@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import AuthorizationException, NotFoundException, ValidationException
-from app.core.rbac import Permission, require, ResourceOwnership
+from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role
 from app.models.attribute_node import AttributeNode
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
@@ -45,6 +45,24 @@ from app.services.base import BaseService
 from app.services.rbac import RBACService
 
 __all__ = ["ConditionEvaluator", "EntryService"]
+
+
+# Define reusable Privilege objects for Entry Service operations
+ConfigurationCreator = Privilege(
+    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
+    permission=Permission("configuration", "create")
+)
+
+ConfigurationViewer = Privilege(
+    roles=Role.CUSTOMER | Role.SALESMAN | Role.PARTNER,
+    permission=Permission("configuration", "read"),
+    resource=ResourceOwnership("configuration")
+)
+
+AdminAccess = Privilege(
+    roles=Role.SUPERADMIN,
+    permission=Permission("*", "*")
+)
 
 
 class ConditionEvaluator:
@@ -390,9 +408,9 @@ class EntryService(BaseService):
         
         return None
     
-    @require(Permission("configuration", "create"))
+    @require(ConfigurationCreator)
     async def save_profile_configuration(self, data: ProfileEntryData, user: User) -> Configuration:
-        """Save profile configuration data.
+        """Save profile configuration data with proper customer relationship.
         
         Args:
             data: Profile data to save
@@ -419,10 +437,10 @@ class EntryService(BaseService):
         # Get or create customer for user using RBAC service
         customer = await self.rbac_service.get_or_create_customer_for_user(user)
         
-        # Create configuration
+        # Create configuration with proper customer relationship
         config_data = {
             "manufacturing_type_id": data.manufacturing_type_id,
-            "customer_id": customer.id,  # Use proper customer ID
+            "customer_id": customer.id,  # Use proper customer ID instead of user.id
             "name": data.name,
             "description": f"Profile entry for {data.type}",
             "status": "draft",
@@ -456,7 +474,8 @@ class EntryService(BaseService):
         await self.commit()
         return configuration
     
-    @require(Permission("configuration", "read"), ResourceOwnership("configuration"))
+    @require(ConfigurationViewer)
+    @require(AdminAccess)  # Admins can view any configuration
     async def generate_preview_data(self, configuration_id: int, user: User) -> ProfilePreviewData:
         """Generate preview data for a configuration.
         

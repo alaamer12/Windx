@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     configurations,
     customers,
     dashboard,
+    entry,
     export,
     manufacturing_types,
     metrics,
@@ -67,3 +68,4 @@ api_router.include_router(orders.router, prefix="/orders")
 api_router.include_router(
     admin_hierarchy.router, prefix="/admin/hierarchy", tags=["Admin Hierarchy"]
 )
+api_router.include_router(entry.router)

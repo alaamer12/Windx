@@ -1,0 +1,730 @@
+{% extends "dashboard/base.html.jinja" %}
+
+{% block title %}Profile Entry - {{ super() }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Entry page specific styles */
+    .dual-view-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        min-height: calc(100vh - 200px);
+    }
+    
+    .input-view {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        overflow-y: auto;
+        max-height: calc(100vh - 200px);
+    }
+    
+    .preview-view {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        overflow: auto;
+        max-height: calc(100vh - 200px);
+    }
+    
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .form-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+    
+    .form-field {
+        margin-bottom: 1rem;
+    }
+    
+    .form-field.hidden {
+        display: none;
+    }
+    
+    .field-error {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    
+    .preview-table th,
+    .preview-table td {
+        border: 1px solid #d1d5db;
+        padding: 0.5rem;
+        text-align: left;
+        vertical-align: top;
+    }
+    
+    .preview-table th {
+        background-color: #f9fafb;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .preview-table td {
+        background-color: white;
+    }
+    
+    .preview-table .na-value {
+        color: #6b7280;
+        font-style: italic;
+    }
+    
+    .loading-spinner {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid #f3f4f6;
+        border-radius: 50%;
+        border-top-color: #3b82f6;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .navigation-tabs {
+        display: flex;
+        border-bottom: 2px solid #e5e7eb;
+        margin-bottom: 2rem;
+    }
+    
+    .nav-tab {
+        padding: 0.75rem 1.5rem;
+        border-bottom: 2px solid transparent;
+        color: #6b7280;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .nav-tab:hover {
+        color: #3b82f6;
+        border-bottom-color: #93c5fd;
+    }
+    
+    .nav-tab.active {
+        color: #3b82f6;
+        border-bottom-color: #3b82f6;
+    }
+    
+    @media (max-width: 1024px) {
+        .dual-view-container {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .input-view,
+        .preview-view {
+            max-height: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="profileEntryApp()" x-init="init()" class="space-y-6">
+    <!-- Navigation Tabs -->
+    <div class="navigation-tabs">
+        <a href="/api/v1/entry/profile" class="nav-tab active">
+            <i class="fas fa-user-cog mr-2"></i>Profile
+        </a>
+        <a href="/api/v1/entry/accessories" class="nav-tab">
+            <i class="fas fa-puzzle-piece mr-2"></i>Accessories
+        </a>
+        <a href="/api/v1/entry/glazing" class="nav-tab">
+            <i class="fas fa-window-maximize mr-2"></i>Glazing
+        </a>
+    </div>
+
+    <!-- Page Header -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Profile Data Entry</h1>
+                <p class="text-gray-600 mt-1">Enter product profile information with real-time preview</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="form-field">
+                    <label class="label">Manufacturing Type</label>
+                    <select x-model="manufacturingTypeId" @change="loadSchema()" class="input-field">
+                        <option value="">Select Manufacturing Type</option>
+                        <template x-for="type in manufacturingTypes" :key="type.id">
+                            <option :value="type.id" x-text="type.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <button @click="saveConfiguration()" 
+                        :disabled="!isFormValid || saving" 
+                        class="btn-primary flex items-center space-x-2">
+                    <span x-show="saving" class="loading-spinner"></span>
+                    <i x-show="!saving" class="fas fa-save"></i>
+                    <span x-text="saving ? 'Saving...' : 'Save Configuration'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading State -->
+    <div x-show="loading" class="text-center py-12">
+        <div class="loading-spinner mx-auto mb-4" style="width: 2rem; height: 2rem;"></div>
+        <p class="text-gray-600">Loading form schema...</p>
+    </div>
+
+    <!-- Error State -->
+    <div x-show="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div class="flex items-center">
+            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+            <span class="text-red-700" x-text="error"></span>
+        </div>
+    </div>
+
+    <!-- Dual View Layout -->
+    <div x-show="schema && !loading" class="dual-view-container">
+        <!-- Input View -->
+        <div class="input-view">
+            <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-edit text-blue-600 mr-2"></i>
+                Input Form
+            </h2>
+            
+            <form @submit.prevent="saveConfiguration()">
+                <!-- Dynamic Form Sections -->
+                <template x-for="section in schema.sections" :key="section.title">
+                    <div class="form-section">
+                        <h3 class="text-lg font-medium text-gray-800 mb-4" x-text="section.title"></h3>
+                        <p x-show="section.description" class="text-gray-600 text-sm mb-4" x-text="section.description"></p>
+                        
+                        <!-- Dynamic Form Fields -->
+                        <template x-for="field in section.fields" :key="field.name">
+                            <div class="form-field" 
+                                 :class="{ 'hidden': !isFieldVisible(field.name) }"
+                                 x-show="isFieldVisible(field.name)">
+                                
+                                <!-- Field Label -->
+                                <label class="label" :for="field.name">
+                                    <span x-text="field.label"></span>
+                                    <span x-show="field.required" class="text-red-500 ml-1">*</span>
+                                </label>
+                                
+                                <!-- Help Text -->
+                                <p x-show="field.help_text" class="text-gray-500 text-sm mb-2" x-text="field.help_text"></p>
+                                
+                                <!-- Dynamic Field Component -->
+                                <div x-html="renderField(field)"></div>
+                                
+                                <!-- Field Error -->
+                                <div x-show="fieldErrors[field.name]" class="field-error" x-text="fieldErrors[field.name]"></div>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </form>
+        </div>
+
+        <!-- Preview View -->
+        <div class="preview-view">
+            <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                <i class="fas fa-eye text-green-600 mr-2"></i>
+                Live Preview
+            </h2>
+            
+            <div class="overflow-auto">
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <template x-for="header in previewHeaders" :key="header">
+                                <th x-text="header"></th>
+                            </template>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <template x-for="header in previewHeaders" :key="header">
+                                <td>
+                                    <span :class="{ 'na-value': !getPreviewValue(header) || getPreviewValue(header) === 'N/A' }"
+                                          x-text="getPreviewValue(header) || 'N/A'"></span>
+                                </td>
+                            </template>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// JavaScript ConditionEvaluator (from service)
+class ConditionEvaluator {
+    static OPERATORS = {
+        // Comparison operators
+        equals: (a, b) => a == b,
+        not_equals: (a, b) => a != b,
+        greater_than: (a, b) => (a || 0) > (b || 0),
+        less_than: (a, b) => (a || 0) < (b || 0),
+        greater_equal: (a, b) => (a || 0) >= (b || 0),
+        less_equal: (a, b) => (a || 0) <= (b || 0),
+        
+        // String operators
+        contains: (a, b) => String(a || '').toLowerCase().includes(String(b).toLowerCase()),
+        starts_with: (a, b) => String(a || '').toLowerCase().startsWith(String(b).toLowerCase()),
+        ends_with: (a, b) => String(a || '').toLowerCase().endsWith(String(b).toLowerCase()),
+        matches_pattern: (a, b) => new RegExp(b).test(String(a || '')),
+        
+        // Collection operators
+        in: (a, b) => (Array.isArray(b) ? b : [b]).includes(a),
+        not_in: (a, b) => !(Array.isArray(b) ? b : [b]).includes(a),
+        any_of: (a, b) => b.some(item => (Array.isArray(a) ? a : [a]).includes(item)),
+        all_of: (a, b) => b.every(item => (Array.isArray(a) ? a : [a]).includes(item)),
+        
+        // Existence operators
+        exists: (a, b) => a !== null && a !== undefined && a !== '',
+        not_exists: (a, b) => a === null || a === undefined || a === '',
+        is_empty: (a, b) => !Boolean(a),
+        is_not_empty: (a, b) => Boolean(a),
+    };
+    
+    static evaluateCondition(condition, formData) {
+        if (!condition) return true;
+        
+        const operator = condition.operator;
+        if (!operator) return true;
+        
+        // Handle logical operators
+        if (operator === 'and') {
+            return (condition.conditions || []).every(c => 
+                ConditionEvaluator.evaluateCondition(c, formData)
+            );
+        } else if (operator === 'or') {
+            return (condition.conditions || []).some(c => 
+                ConditionEvaluator.evaluateCondition(c, formData)
+            );
+        } else if (operator === 'not') {
+            return !ConditionEvaluator.evaluateCondition(condition.condition, formData);
+        }
+        
+        // Handle field-based operators
+        const field = condition.field;
+        if (!field) return true;
+        
+        const fieldValue = ConditionEvaluator.getFieldValue(field, formData);
+        const expectedValue = condition.value;
+        
+        const operatorFn = ConditionEvaluator.OPERATORS[operator];
+        if (!operatorFn) {
+            throw new Error(`Unknown operator: ${operator}`);
+        }
+        
+        return operatorFn(fieldValue, expectedValue);
+    }
+    
+    static getFieldValue(fieldPath, formData) {
+        if (!fieldPath.includes('.')) {
+            return formData[fieldPath];
+        }
+        
+        // Support nested field access
+        let value = formData;
+        for (const part of fieldPath.split('.')) {
+            if (value && typeof value === 'object') {
+                value = value[part];
+            } else {
+                return undefined;
+            }
+        }
+        return value;
+    }
+}
+
+function profileEntryApp() {
+    return {
+        // State
+        manufacturingTypeId: {{ manufacturing_type_id or 'null' }},
+        manufacturingTypes: [],
+        schema: null,
+        formData: {},
+        fieldVisibility: {},
+        fieldErrors: {},
+        previewHeaders: [
+            "Name", "Type", "Company", "Material", "Opening System", "System Series",
+            "Code", "Length of beam", "Renovation", "Width", "Builtin Flyscreen Track",
+            "Total Width", "Flyscreen Track Height", "Front Height", "Rear Height",
+            "Glazing Height", "Renovation Height", "Glazing Undercut Height", "Pic",
+            "Sash Overlap", "Flying Mullion Horizontal Clearance", "Flying Mullion Vertical Clearance",
+            "Steel Material Thickness", "Weight per meter", "Reinforcement Steel", "Colours",
+            "Price per meter", "Price per beam", "UPVC Profile Discount"
+        ],
+        loading: false,
+        saving: false,
+        error: null,
+        
+        // Computed
+        get isFormValid() {
+            if (!this.schema) return false;
+            
+            // Check required fields
+            for (const section of this.schema.sections) {
+                for (const field of section.fields) {
+                    if (field.required && this.isFieldVisible(field.name)) {
+                        const value = this.formData[field.name];
+                        if (!value || value === '') {
+                            return false;
+                        }
+                    }
+                }
+            }
+            
+            // Check for validation errors
+            return Object.keys(this.fieldErrors).length === 0;
+        },
+        
+        // Methods
+        async init() {
+            await this.loadManufacturingTypes();
+            if (this.manufacturingTypeId) {
+                await this.loadSchema();
+            }
+        },
+        
+        async loadManufacturingTypes() {
+            try {
+                const response = await fetch('/api/v1/manufacturing-types/', {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load manufacturing types');
+                
+                const data = await response.json();
+                this.manufacturingTypes = data.items || [];
+            } catch (err) {
+                console.error('Error loading manufacturing types:', err);
+                this.error = 'Failed to load manufacturing types';
+            }
+        },
+        
+        async loadSchema() {
+            if (!this.manufacturingTypeId) {
+                this.schema = null;
+                return;
+            }
+            
+            this.loading = true;
+            this.error = null;
+            
+            try {
+                const response = await fetch(`/api/v1/entry/profile/schema/${this.manufacturingTypeId}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to load schema');
+                
+                this.schema = await response.json();
+                this.initializeFormData();
+                this.updateFieldVisibility();
+            } catch (err) {
+                console.error('Error loading schema:', err);
+                this.error = 'Failed to load form schema';
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        initializeFormData() {
+            this.formData = {
+                manufacturing_type_id: this.manufacturingTypeId,
+                name: '',
+                type: '',
+                upvc_profile_discount: 20.0
+            };
+            
+            // Initialize all fields with default values
+            if (this.schema) {
+                for (const section of this.schema.sections) {
+                    for (const field of section.fields) {
+                        if (!(field.name in this.formData)) {
+                            this.formData[field.name] = this.getDefaultValue(field);
+                        }
+                    }
+                }
+            }
+        },
+        
+        getDefaultValue(field) {
+            switch (field.data_type) {
+                case 'boolean':
+                    return false;
+                case 'number':
+                case 'float':
+                    return null;
+                case 'array':
+                    return [];
+                default:
+                    return '';
+            }
+        },
+        
+        updateFieldVisibility() {
+            if (!this.schema) return;
+            
+            // Evaluate all conditional logic
+            for (const [fieldName, condition] of Object.entries(this.schema.conditional_logic)) {
+                try {
+                    this.fieldVisibility[fieldName] = ConditionEvaluator.evaluateCondition(condition, this.formData);
+                } catch (err) {
+                    console.error(`Error evaluating condition for ${fieldName}:`, err);
+                    this.fieldVisibility[fieldName] = true; // Default to visible
+                }
+            }
+        },
+        
+        isFieldVisible(fieldName) {
+            // If no conditional logic, field is visible
+            if (!this.schema || !this.schema.conditional_logic[fieldName]) {
+                return true;
+            }
+            
+            return this.fieldVisibility[fieldName] !== false;
+        },
+        
+        renderField(field) {
+            const value = this.formData[field.name] || '';
+            const fieldId = field.name;
+            const onChange = `@input="updateField('${field.name}', $event.target.value)"`;
+            const onChangeCheckbox = `@change="updateField('${field.name}', $event.target.checked)"`;
+            
+            switch (field.ui_component) {
+                case 'dropdown':
+                case 'select':
+                    let options = '';
+                    if (field.options) {
+                        options = field.options.map(opt => 
+                            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
+                        ).join('');
+                    }
+                    return `<select id="${fieldId}" class="input-field" ${onChange}><option value="">Select...</option>${options}</select>`;
+                
+                case 'radio':
+                    if (field.options) {
+                        return field.options.map(opt => `
+                            <label class="flex items-center space-x-2 mb-2">
+                                <input type="radio" name="${fieldId}" value="${opt}" ${value === opt ? 'checked' : ''} ${onChange}>
+                                <span>${opt}</span>
+                            </label>
+                        `).join('');
+                    }
+                    break;
+                
+                case 'checkbox':
+                    return `<label class="flex items-center space-x-2">
+                        <input type="checkbox" id="${fieldId}" ${value ? 'checked' : ''} ${onChangeCheckbox}>
+                        <span>${field.label}</span>
+                    </label>`;
+                
+                case 'textarea':
+                    return `<textarea id="${fieldId}" class="input-field" rows="3" ${onChange}>${value}</textarea>`;
+                
+                case 'number':
+                case 'slider':
+                    const min = field.validation_rules?.min || '';
+                    const max = field.validation_rules?.max || '';
+                    const step = field.data_type === 'number' ? '1' : '0.1';
+                    return `<input type="number" id="${fieldId}" class="input-field" value="${value}" min="${min}" max="${max}" step="${step}" ${onChange}>`;
+                
+                default:
+                    // Default to text input
+                    const pattern = field.validation_rules?.pattern || '';
+                    return `<input type="text" id="${fieldId}" class="input-field" value="${value}" pattern="${pattern}" ${onChange}>`;
+            }
+            
+            return `<input type="text" id="${fieldId}" class="input-field" value="${value}" ${onChange}>`;
+        },
+        
+        updateField(fieldName, value) {
+            // Update form data
+            this.formData[fieldName] = value;
+            
+            // Clear field error
+            delete this.fieldErrors[fieldName];
+            
+            // Update field visibility based on new data
+            this.updateFieldVisibility();
+            
+            // Validate field
+            this.validateField(fieldName, value);
+        },
+        
+        validateField(fieldName, value) {
+            if (!this.schema) return;
+            
+            // Find field definition
+            let field = null;
+            for (const section of this.schema.sections) {
+                field = section.fields.find(f => f.name === fieldName);
+                if (field) break;
+            }
+            
+            if (!field) return;
+            
+            // Required validation
+            if (field.required && (!value || value === '')) {
+                this.fieldErrors[fieldName] = `${field.label} is required`;
+                return;
+            }
+            
+            // Validation rules
+            if (field.validation_rules && value) {
+                const rules = field.validation_rules;
+                
+                // Range validation
+                if (rules.min !== undefined && parseFloat(value) < rules.min) {
+                    this.fieldErrors[fieldName] = `${field.label} must be at least ${rules.min}`;
+                    return;
+                }
+                if (rules.max !== undefined && parseFloat(value) > rules.max) {
+                    this.fieldErrors[fieldName] = `${field.label} must be at most ${rules.max}`;
+                    return;
+                }
+                
+                // Pattern validation
+                if (rules.pattern && !new RegExp(rules.pattern).test(value)) {
+                    this.fieldErrors[fieldName] = `${field.label} format is invalid`;
+                    return;
+                }
+                
+                // Length validation
+                if (rules.min_length && value.length < rules.min_length) {
+                    this.fieldErrors[fieldName] = `${field.label} must be at least ${rules.min_length} characters`;
+                    return;
+                }
+                if (rules.max_length && value.length > rules.max_length) {
+                    this.fieldErrors[fieldName] = `${field.label} must be at most ${rules.max_length} characters`;
+                    return;
+                }
+            }
+            
+            // Clear error if validation passes
+            delete this.fieldErrors[fieldName];
+        },
+        
+        getPreviewValue(header) {
+            // Map CSV headers to form field names
+            const headerMapping = {
+                "Name": "name",
+                "Type": "type",
+                "Company": "company",
+                "Material": "material",
+                "Opening System": "opening_system",
+                "System Series": "system_series",
+                "Code": "code",
+                "Length of beam": "length_of_beam",
+                "Renovation": "renovation",
+                "Width": "width",
+                "Builtin Flyscreen Track": "builtin_flyscreen_track",
+                "Total Width": "total_width",
+                "Flyscreen Track Height": "flyscreen_track_height",
+                "Front Height": "front_height",
+                "Rear Height": "rear_height",
+                "Glazing Height": "glazing_height",
+                "Renovation Height": "renovation_height",
+                "Glazing Undercut Height": "glazing_undercut_height",
+                "Pic": "pic",
+                "Sash Overlap": "sash_overlap",
+                "Flying Mullion Horizontal Clearance": "flying_mullion_horizontal_clearance",
+                "Flying Mullion Vertical Clearance": "flying_mullion_vertical_clearance",
+                "Steel Material Thickness": "steel_material_thickness",
+                "Weight per meter": "weight_per_meter",
+                "Reinforcement Steel": "reinforcement_steel",
+                "Colours": "colours",
+                "Price per meter": "price_per_meter",
+                "Price per beam": "price_per_beam",
+                "UPVC Profile Discount": "upvc_profile_discount"
+            };
+            
+            const fieldName = headerMapping[header];
+            if (!fieldName) return 'N/A';
+            
+            const value = this.formData[fieldName];
+            
+            if (value === null || value === undefined || value === '') {
+                return 'N/A';
+            }
+            
+            // Format different data types
+            if (typeof value === 'boolean') {
+                return value ? 'Yes' : 'No';
+            } else if (Array.isArray(value)) {
+                return value.length > 0 ? value.join(', ') : 'N/A';
+            } else {
+                return String(value);
+            }
+        },
+        
+        async saveConfiguration() {
+            if (!this.isFormValid) {
+                showToast('Please fix validation errors before saving', 'error');
+                return;
+            }
+            
+            this.saving = true;
+            
+            try {
+                const response = await fetch('/api/v1/entry/profile/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: JSON.stringify(this.formData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 422 && errorData.field_errors) {
+                        // Handle validation errors
+                        this.fieldErrors = errorData.field_errors;
+                        showToast('Please fix validation errors', 'error');
+                    } else {
+                        throw new Error(errorData.message || 'Failed to save configuration');
+                    }
+                    return;
+                }
+                
+                const configuration = await response.json();
+                showToast('Configuration saved successfully!', 'success');
+                
+                // Optionally redirect or update UI
+                console.log('Saved configuration:', configuration);
+                
+            } catch (err) {
+                console.error('Error saving configuration:', err);
+                showToast(err.message || 'Failed to save configuration', 'error');
+            } finally {
+                this.saving = false;
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

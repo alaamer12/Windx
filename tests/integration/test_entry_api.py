@@ -211,14 +211,15 @@ class TestEntryAPIEndpoints:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
-    async def test_save_profile_data_success(
+    async def test_save_profile_data_success_with_customer_relationship(
         self,
         client: AsyncClient,
         test_superuser: User,
         superuser_auth_headers: dict[str, str],
         manufacturing_type_with_attributes: ManufacturingType,
+        db_session: AsyncSession,
     ):
-        """Test successful profile data saving."""
+        """Test successful profile data saving with proper customer relationship."""
         profile_data = {
             "manufacturing_type_id": manufacturing_type_with_attributes.id,
             "name": "Test Living Room Window",
@@ -252,9 +253,25 @@ class TestEntryAPIEndpoints:
         assert "calculated_weight" in data
         
         assert data["manufacturing_type_id"] == manufacturing_type_with_attributes.id
-        assert data["customer_id"] == test_superuser.id
         assert data["name"] == "Test Living Room Window"
         assert data["status"] == "draft"
+        
+        # Verify customer relationship (should NOT be user.id)
+        # The system should auto-create or find a customer record
+        customer_id = data["customer_id"]
+        assert customer_id is not None
+        assert isinstance(customer_id, int)
+        
+        # Verify customer was created/found in database
+        from sqlalchemy import select
+        from app.models.customer import Customer
+        
+        result = await db_session.execute(
+            select(Customer).where(Customer.id == customer_id)
+        )
+        customer = result.scalar_one_or_none()
+        assert customer is not None
+        assert customer.email == test_superuser.email
         
         # Verify pricing calculation (base price + any impacts)
         assert float(data["total_price"]) >= manufacturing_type_with_attributes.base_price
@@ -522,6 +539,201 @@ class TestEntryAPIEndpoints:
         assert response.status_code == 404
         data = response.json()
         assert "Manufacturing type 99999 not found" in data["message"]
+
+    @pytest.mark.asyncio
+    async def test_customer_auto_creation_for_new_users(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        user_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test that customer records are auto-created for new users."""
+        # Arrange - Ensure no existing customer for this user
+        from sqlalchemy import select
+        from app.models.customer import Customer
+        
+        result = await db_session.execute(
+            select(Customer).where(Customer.email == test_user.email)
+        )
+        existing_customer = result.scalar_one_or_none()
+        
+        # Delete existing customer if any (for clean test)
+        if existing_customer:
+            await db_session.delete(existing_customer)
+            await db_session.commit()
+        
+        profile_data = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Auto-Created Customer Test",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Auto800"
+        }
+        
+        # Act
+        response = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data,
+            headers=user_auth_headers
+        )
+        
+        # Assert
+        assert response.status_code == 201
+        data = response.json()
+        
+        # Verify customer was auto-created
+        customer_id = data["customer_id"]
+        result = await db_session.execute(
+            select(Customer).where(Customer.id == customer_id)
+        )
+        auto_created_customer = result.scalar_one_or_none()
+        
+        assert auto_created_customer is not None
+        assert auto_created_customer.email == test_user.email
+        assert auto_created_customer.contact_person == test_user.full_name or test_user.username
+        assert auto_created_customer.customer_type == "residential"
+        assert "Auto-created" in auto_created_customer.notes
+
+
+class TestEntryAPICasbinRBAC:
+    """Tests for Casbin RBAC functionality in Entry API."""
+
+    @pytest.mark.asyncio
+    async def test_casbin_decorator_authorization_on_save_profile(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        user_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+    ):
+        """Test Casbin decorator authorization on save_profile_configuration."""
+        profile_data = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Casbin Auth Test",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Auth800"
+        }
+        
+        # Act
+        response = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data,
+            headers=user_auth_headers
+        )
+        
+        # Assert - Regular users should be able to create configurations
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "Casbin Auth Test"
+
+    @pytest.mark.asyncio
+    async def test_casbin_decorator_authorization_on_preview(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        user_auth_headers: dict[str, str],
+        test_superuser: User,
+        superuser_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+    ):
+        """Test Casbin decorator authorization on generate_preview_data."""
+        # Arrange - Create configuration as regular user
+        profile_data = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Preview Auth Test",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Preview800"
+        }
+        
+        save_response = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data,
+            headers=user_auth_headers
+        )
+        assert save_response.status_code == 201
+        configuration_id = save_response.json()["id"]
+        
+        # Test 1: User can access their own configuration preview
+        response = await client.get(
+            f"/api/v1/entry/profile/preview/{configuration_id}",
+            headers=user_auth_headers
+        )
+        assert response.status_code == 200
+        
+        # Test 2: Superuser can access any configuration preview
+        response = await client.get(
+            f"/api/v1/entry/profile/preview/{configuration_id}",
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_customer_relationship_consistency_across_operations(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        user_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test that customer relationships remain consistent across multiple operations."""
+        # Create first configuration
+        profile_data_1 = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Consistency Test 1",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Consist800"
+        }
+        
+        response1 = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data_1,
+            headers=user_auth_headers
+        )
+        assert response1.status_code == 201
+        customer_id_1 = response1.json()["customer_id"]
+        
+        # Create second configuration
+        profile_data_2 = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Consistency Test 2",
+            "type": "Frame",
+            "material": "Wood",
+            "opening_system": "Sliding",
+            "system_series": "Consist900"
+        }
+        
+        response2 = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data_2,
+            headers=user_auth_headers
+        )
+        assert response2.status_code == 201
+        customer_id_2 = response2.json()["customer_id"]
+        
+        # Assert - Both configurations should use the same customer
+        assert customer_id_1 == customer_id_2
+        
+        # Verify in database
+        from sqlalchemy import select
+        from app.models.customer import Customer
+        
+        result = await db_session.execute(
+            select(Customer).where(Customer.id == customer_id_1)
+        )
+        customer = result.scalar_one_or_none()
+        assert customer is not None
+        assert customer.email == test_user.email
+
 
     @pytest.mark.asyncio
     async def test_all_endpoints_require_authentication(

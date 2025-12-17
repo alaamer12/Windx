@@ -1,10 +1,11 @@
-"""Integration tests for Quote API endpoints.
+"""Integration tests for Quote API endpoints with Casbin RBAC.
 
 Tests the complete quote workflow including:
-- Quote creation with price calculation
-- Quote retrieval and filtering
+- Quote creation with price calculation and customer relationships
+- Quote retrieval and filtering with Casbin authorization
 - Quote status management
-- Authorization checks
+- Casbin decorator authorization checks
+- Customer relationship consistency
 """
 
 from datetime import date, timedelta
@@ -201,14 +202,14 @@ class TestQuoteCreation:
         assert response.status_code == 404
         assert "not found" in response.json()["message"].lower()
 
-    async def test_create_quote_unauthorized_configuration(
+    async def test_create_quote_unauthorized_configuration_casbin(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
         configuration: Configuration,
         auth_headers: dict,
     ):
-        """Test quote creation for another user's configuration."""
+        """Test quote creation for another user's configuration with Casbin authorization."""
         # Arrange - Create another customer
         other_customer = Customer(
             company_name="Other Company",
@@ -237,8 +238,10 @@ class TestQuoteCreation:
             headers=auth_headers,
         )
 
-        # Assert
+        # Assert - Casbin should deny access due to customer ownership
         assert response.status_code == 403
+        response_data = response.json()
+        assert "Access denied" in response_data.get("detail", "") or "not authorized" in response_data.get("message", "").lower()
 
     async def test_create_quote_invalid_tax_rate(
         self,
@@ -610,6 +613,144 @@ class TestQuoteAuthorization:
         data = response.json()
         assert data["total"] == 1
         assert data["items"][0]["customer_id"] == test_customer.id
+
+
+class TestQuoteCasbinRBAC:
+    """Tests for Casbin RBAC functionality in quote operations."""
+
+    async def test_quote_creation_uses_customer_relationship(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_customer: Customer,
+        configuration: Configuration,
+        auth_headers: dict,
+    ):
+        """Test that quote creation properly uses customer relationships from configuration."""
+        # Arrange
+        quote_data = {
+            "configuration_id": configuration.id,
+            "tax_rate": "8.50",
+        }
+
+        # Act
+        response = await client.post(
+            "/api/v1/quotes/",
+            json=quote_data,
+            headers=auth_headers,
+        )
+
+        # Assert
+        assert response.status_code == 201
+        data = response.json()
+        
+        # Verify quote uses customer_id from configuration, not user.id
+        assert data["customer_id"] == test_customer.id
+        assert data["configuration_id"] == configuration.id
+
+    async def test_rbac_query_filter_automatic_filtering(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_customer: Customer,
+        configuration: Configuration,
+        auth_headers: dict,
+    ):
+        """Test that RBACQueryFilter automatically filters quotes by customer access."""
+        # Arrange - Create quotes for test customer
+        quote1 = Quote(
+            configuration_id=configuration.id,
+            customer_id=test_customer.id,
+            quote_number="Q-TEST-001",
+            subtotal=Decimal("525.00"),
+            tax_rate=Decimal("8.50"),
+            tax_amount=Decimal("44.63"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("569.63"),
+            status="draft",
+        )
+        db_session.add(quote1)
+
+        # Create quote for another customer (should not be visible)
+        other_customer = Customer(
+            company_name="Other Company",
+            contact_person="Other Person",
+            email="other@example.com",
+            phone="987-654-3210",
+            customer_type="commercial",
+            is_active=True,
+        )
+        db_session.add(other_customer)
+        await db_session.flush()
+
+        quote2 = Quote(
+            configuration_id=configuration.id,
+            customer_id=other_customer.id,
+            quote_number="Q-OTHER-001",
+            subtotal=Decimal("525.00"),
+            tax_rate=Decimal("8.50"),
+            tax_amount=Decimal("44.63"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("569.63"),
+            status="draft",
+        )
+        db_session.add(quote2)
+        await db_session.commit()
+
+        # Act
+        response = await client.get(
+            "/api/v1/quotes/",
+            headers=auth_headers,
+        )
+
+        # Assert - Should only see quotes for accessible customers
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Regular user should only see their own customer's quotes
+        assert data["total"] == 1
+        assert data["items"][0]["customer_id"] == test_customer.id
+
+    async def test_casbin_decorator_authorization_on_quote_operations(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_customer: Customer,
+        configuration: Configuration,
+        auth_headers: dict,
+    ):
+        """Test Casbin decorator authorization on various quote operations."""
+        # Arrange - Create a quote
+        quote = Quote(
+            configuration_id=configuration.id,
+            customer_id=test_customer.id,
+            quote_number="Q-CASBIN-001",
+            subtotal=Decimal("525.00"),
+            tax_rate=Decimal("8.50"),
+            tax_amount=Decimal("44.63"),
+            discount_amount=Decimal("0.00"),
+            total_amount=Decimal("569.63"),
+            status="draft",
+        )
+        db_session.add(quote)
+        await db_session.commit()
+        await db_session.refresh(quote)
+
+        # Test 1: Get quote (should be authorized for owner)
+        response = await client.get(
+            f"/api/v1/quotes/{quote.id}",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        
+        # Test 2: List quotes (should be filtered by Casbin)
+        response = await client.get(
+            "/api/v1/quotes/",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert any(item["id"] == quote.id for item in data["items"])
 
 
 class TestQuoteUnauthenticated:

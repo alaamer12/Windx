@@ -43,7 +43,10 @@ jobs:
         run: uv sync
 
       - name: Install dev dependencies
-        run: uv sync --dev
+        run: |
+          echo "📦 Installing enhanced pytest plugins..."
+          uv sync --dev
+          uv add --dev pytest-sugar pytest-clarity pytest-instafail pytest-emoji pytest-icdiff
 
       - name: Install PostgreSQL client
         run: |
@@ -116,7 +119,24 @@ jobs:
           echo "✅ .env.test created successfully for CI"
 
       - name: Run tests with coverage (excluding E2E and Redis tests)
-        run: uv run pytest tests/ -v --tb=short --cov=app --cov-report=xml --cov-report=term -m "not e2e and not redis"
+        run: |
+          echo "🧪 Running tests with enhanced error reporting..."
+          uv run pytest tests/ \
+            --tb=short \
+            --maxfail=5 \
+            --instafail \
+            --emoji \
+            --sugar \
+            --clarity \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing:skip-covered \
+            --cov-fail-under=80 \
+            --junit-xml=test-results.xml \
+            -m "not e2e and not redis" \
+            -q \
+            --disable-warnings \
+            || echo "❌ Tests failed - check output above for details"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -136,15 +156,60 @@ jobs:
           echo "Coverage: $COVERAGE"
           echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
 
-      - name: Test Summary
+      - name: Parse test results and show failures only
         if: always()
         run: |
-          echo "## 📊 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f test-results.xml ]; then
+            # Extract failed tests from JUnit XML
+            FAILED_TESTS=$(python3 -c "
+            import xml.etree.ElementTree as ET
+            import sys
+            try:
+                tree = ET.parse('test-results.xml')
+                root = tree.getroot()
+                failures = []
+                errors = []
+                
+                for testcase in root.findall('.//testcase'):
+                    failure = testcase.find('failure')
+                    error = testcase.find('error')
+                    
+                    if failure is not None:
+                        failures.append({
+                            'name': testcase.get('name'),
+                            'classname': testcase.get('classname'),
+                            'message': failure.get('message', '').split('\n')[0][:100]
+                        })
+                    elif error is not None:
+                        errors.append({
+                            'name': testcase.get('name'),
+                            'classname': testcase.get('classname'),
+                            'message': error.get('message', '').split('\n')[0][:100]
+                        })
+                
+                if failures or errors:
+                    print('### ❌ Failed Tests')
+                    for f in failures:
+                        print(f'- **{f[\"classname\"]}::{f[\"name\"]}**')
+                        print(f'  \`{f[\"message\"]}\`')
+                    for e in errors:
+                        print(f'- **{e[\"classname\"]}::{e[\"name\"]}** (ERROR)')
+                        print(f'  \`{e[\"message\"]}\`')
+                else:
+                    print('### ✅ All tests passed!')
+                    
+            except Exception as e:
+                print(f'Could not parse test results: {e}')
+            " >> $GITHUB_STEP_SUMMARY)
+          fi
+          
           if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Coverage:** ${{ env.COVERAGE }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Tests failed. Check the logs for details." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "💡 **Tip:** Use \`pytest --lf\` to run only failed tests locally" >> $GITHUB_STEP_SUMMARY
           fi

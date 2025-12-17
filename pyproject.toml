@@ -77,6 +77,15 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",
     "pytest-mock",
+    "pytest-xdist",           # Parallel test execution
+    "pytest-sugar",           # Better test output
+    "pytest-clarity",         # Better assertion diffs
+    "pytest-icdiff",          # Improved diff output
+    "pytest-html",            # HTML test reports
+    "pytest-json-report",     # JSON test reports
+    "pytest-emoji",           # Emoji test output
+    "pytest-instafail",       # Show failures instantly
+    "pytest-picked",          # Run only changed tests
     "ruff",
     "httpx",
     "playwright",
@@ -125,14 +134,19 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
-    "-v",
-    "-l",
-    "-ra",
-    "--strict-markers",
-    "-W", "default",
-    "--cov=app",
-    "--cov-report=html",
-    "--cov-report=term-missing",
+    "-v",                           # Verbose output
+    "-l",                           # Show local variables in tracebacks
+    "-ra",                          # Show all test results summary
+    "--strict-markers",             # Strict marker checking
+    "-W", "default",                # Show warnings
+    "--tb=short",                   # Short traceback format
+    "--cov-report=term-missing",    # Terminal coverage with missing lines
+    "--tb=short",                   # Short traceback format
+   # "--maxfail=5",                  # Stop after 5 failures
+    "--instafail",                  # Show failures instantly
+    "--emoji",                      # Use emoji in output
+    "--sugar",                      # Better test output formatting
+    "--clarity",                    # Better assertion diffs
 ]
 markers = [
     "unit: Unit tests (fast, isolated)",
@@ -154,3 +168,8 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+# Enhanced error reporting
+junit_family = "xunit2"
+junit_logging = "all"
+junit_log_passing_tests = false

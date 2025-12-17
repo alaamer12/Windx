@@ -103,7 +103,7 @@ class TestPolicyAdditionAndRemoval(TestPolicyManager):
             )
         
         assert "Failed to add policy for test_role" in str(exc_info.value)
-        assert exc_info.value.context["subject"] == "test_role"
+        assert exc_info.value.policy_context["subject"] == "test_role"
     
     @pytest.mark.asyncio
     async def test_remove_policy_success(self, policy_manager):
@@ -211,7 +211,7 @@ class TestCustomerAssignment(TestPolicyManager):
             )
         
         assert "Customer 999 not found" in str(exc_info.value)
-        assert exc_info.value.context["customer_id"] == 999
+        assert exc_info.value.policy_context["customer_id"] == 999
     
     @pytest.mark.asyncio
     async def test_remove_customer_assignment_success(self, policy_manager, customer, user):
@@ -362,7 +362,7 @@ class TestPolicyBackupRestore(TestPolicyManager):
             await policy_manager.restore_policies(invalid_backup)
         
         assert "Invalid backup data structure" in str(exc_info.value)
-        assert "required_keys" in exc_info.value.context
+        assert "required_keys" in exc_info.value.policy_context
 
 
 class TestPrivilegeManagement(TestPolicyManager):

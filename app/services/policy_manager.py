@@ -218,6 +218,9 @@ class PolicyManager(BaseService):
             
             return result
             
+        except PolicyEvaluationException:
+            # Re-raise PolicyEvaluationException without wrapping
+            raise
         except Exception as e:
             logger.error(f"Failed to assign customer: {e}")
             raise PolicyEvaluationException(
@@ -441,6 +444,9 @@ class PolicyManager(BaseService):
             
             return True
             
+        except PolicyEvaluationException:
+            # Re-raise PolicyEvaluationException without wrapping
+            raise
         except Exception as e:
             logger.error(f"Failed to restore policies: {e}")
             raise PolicyEvaluationException(
@@ -538,16 +544,16 @@ class PolicyManager(BaseService):
                     user = grouping[0]
                     group_type = grouping[1]
                     
-                    if group_type in [r.value for r in Role]:
-                        # Role assignment
-                        if user not in role_assignments:
-                            role_assignments[user] = []
-                        role_assignments[user].append(group_type)
-                    elif group_type == "customer" and len(grouping) >= 3:
-                        # Customer assignment
+                    if group_type == "customer" and len(grouping) >= 3:
+                        # Customer assignment (3 elements: user, "customer", customer_id)
                         if user not in customer_assignments:
                             customer_assignments[user] = []
                         customer_assignments[user].append(int(grouping[2]))
+                    elif group_type in [r.value for r in Role]:
+                        # Role assignment (2 elements: user, role)
+                        if user not in role_assignments:
+                            role_assignments[user] = []
+                        role_assignments[user].append(group_type)
             
             summary = {
                 "policies_by_role": policies_by_role,
@@ -631,6 +637,7 @@ class PolicyManager(BaseService):
                 ("customer", "configuration", "read", "allow"),
                 ("customer", "configuration", "create", "allow"),
                 ("customer", "quote", "read", "allow"),
+                ("customer", "quote", "create", "allow"),
             ]
             
             # Add all initial policies

@@ -145,16 +145,20 @@ class ConditionEvaluator:
             
         return self.OPERATORS[operator](field_value, expected_value)
     
-    def get_field_value(self, field_path: str, form_data: dict[str, Any]) -> Any:
+    def get_field_value(self, field_path: str | int, form_data: dict[str, Any]) -> Any:
         """Get field value supporting dot notation for nested fields.
         
         Args:
-            field_path: Field path (supports dot notation like "parent.child")
+            field_path: Field path (supports dot notation like "parent.child") or field key
             form_data: Form data dictionary
             
         Returns:
             Any: Field value or None if not found
         """
+        # Handle non-string field paths (convert to string)
+        if not isinstance(field_path, str):
+            field_path = str(field_path)
+            
         if '.' not in field_path:
             return form_data.get(field_path)
         
@@ -514,71 +518,81 @@ class EntryService(BaseService):
             last_updated=configuration.updated_at
         )
     
-    def generate_preview_table(self, configuration: Configuration) -> PreviewTable:
-        """Generate preview table from configuration data.
+    def generate_preview_table(self, data: Configuration | dict[str, Any]) -> PreviewTable:
+        """Generate preview table from configuration data or form data.
         
         Args:
-            configuration: Configuration with selections
+            data: Configuration with selections or form data dictionary
             
         Returns:
             PreviewTable: Preview table structure
         """
-        # Define CSV column headers (all 29 columns)
+        # Define CSV column headers (all 29 columns) - exact match with template
         headers = [
-            "Name", "Type", "Company", "Material", "Opening System", "System Series",
-            "Code", "Length of beam", "Renovation", "Width", "Builtin Flyscreen Track",
-            "Total Width", "Flyscreen Track Height", "Front Height", "Rear Height",
-            "Glazing Height", "Renovation Height", "Glazing Undercut Height", "Pic",
-            "Sash Overlap", "Flying Mullion Horizontal Clearance", "Flying Mullion Vertical Clearance",
-            "Steel Material Thickness", "Weight per meter", "Reinforcement Steel", "Colours",
-            "Price per meter", "Price per beam", "UPVC Profile Discount"
+            "Name", "Type", "Company", "Material", "opening system", "system series",
+            "Code", "Length of Beam\nm", "Renovation\nonly for frame", "width", 
+            "builtin Flyscreen track only for sliding frame", "Total width\nonly for frame with builtin flyscreen",
+            "flyscreen track height\nonly for frame with builtin flyscreen", "front Height mm", "Rear heightt",
+            "Glazing height", "Renovation height mm\nonly for frame", "Glazing undercut heigth\nonly for glazing bead",
+            "Pic", "Sash overlap only for sashs", "flying mullion horizontal clearance", 
+            "flying mullion vertical clearance", "Steel material thickness\nonly for reinforcement",
+            "Weight/m kg", "Reinforcement steel", "Colours", "Price/m", "Price per/beam", "UPVC Profile Discount%"
         ]
         
-        # Create row data from configuration selections
+        # Header to field mapping (exact match with template)
+        header_mapping = {
+            "Name": "name",
+            "Type": "type",
+            "Company": "company",
+            "Material": "material",
+            "opening system": "opening_system",
+            "system series": "system_series",
+            "Code": "code",
+            "Length of Beam\nm": "length_of_beam",
+            "Renovation\nonly for frame": "renovation",
+            "width": "width",
+            "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
+            "Total width\nonly for frame with builtin flyscreen": "total_width",
+            "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
+            "front Height mm": "front_height",
+            "Rear heightt": "rear_height",
+            "Glazing height": "glazing_height",
+            "Renovation height mm\nonly for frame": "renovation_height",
+            "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
+            "Pic": "pic",
+            "Sash overlap only for sashs": "sash_overlap",
+            "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
+            "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
+            "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
+            "Weight/m kg": "weight_per_meter",
+            "Reinforcement steel": "reinforcement_steel",
+            "Colours": "colours",
+            "Price/m": "price_per_meter",
+            "Price per/beam": "price_per_beam",
+            "UPVC Profile Discount%": "upvc_profile_discount"
+        }
+        
+        # Create row data
         row_data: dict[str, Any] = {}
         
-        # Initialize with configuration basic data
-        row_data["Name"] = configuration.name
-        
-        # Map selections to CSV columns
-        for selection in configuration.selections:
-            field_name = selection.selection_path
-            value = selection.string_value or selection.json_value or selection.numeric_value or selection.boolean_value
+        if isinstance(data, Configuration):
+            # Handle Configuration object
+            row_data["Name"] = data.name
             
-            # Map field names to CSV headers (simplified mapping)
-            header_mapping = {
-                "type": "Type",
-                "company": "Company", 
-                "material": "Material",
-                "opening_system": "Opening System",
-                "system_series": "System Series",
-                "code": "Code",
-                "length_of_beam": "Length of beam",
-                "renovation": "Renovation",
-                "width": "Width",
-                "builtin_flyscreen_track": "Builtin Flyscreen Track",
-                "total_width": "Total Width",
-                "flyscreen_track_height": "Flyscreen Track Height",
-                "front_height": "Front Height",
-                "rear_height": "Rear Height",
-                "glazing_height": "Glazing Height",
-                "renovation_height": "Renovation Height",
-                "glazing_undercut_height": "Glazing Undercut Height",
-                "pic": "Pic",
-                "sash_overlap": "Sash Overlap",
-                "flying_mullion_horizontal_clearance": "Flying Mullion Horizontal Clearance",
-                "flying_mullion_vertical_clearance": "Flying Mullion Vertical Clearance",
-                "steel_material_thickness": "Steel Material Thickness",
-                "weight_per_meter": "Weight per meter",
-                "reinforcement_steel": "Reinforcement Steel",
-                "colours": "Colours",
-                "price_per_meter": "Price per meter",
-                "price_per_beam": "Price per beam",
-                "upvc_profile_discount": "UPVC Profile Discount",
-            }
-            
-            header = header_mapping.get(field_name)
-            if header:
+            # Map selections to CSV columns
+            for selection in data.selections:
+                field_name = selection.selection_path
+                value = selection.string_value or selection.json_value or selection.numeric_value or selection.boolean_value
+                
+                # Find header for this field
+                for header, field in header_mapping.items():
+                    if field == field_name:
+                        row_data[header] = self.format_preview_value(value)
+                        break
+        else:
+            # Handle dictionary (form data)
+            for header, field_name in header_mapping.items():
+                value = data.get(field_name)
                 row_data[header] = self.format_preview_value(value)
         
         # Fill missing columns with N/A
@@ -600,12 +614,19 @@ class EntryService(BaseService):
         Returns:
             str: Formatted value
         """
-        if value is None:
+        if value is None or value == '':
             return "N/A"
         elif isinstance(value, bool):
-            return "Yes" if value else "No"
+            return "yes" if value else "no"  # Lowercase to match CSV format
         elif isinstance(value, list):
+            if len(value) == 0:
+                return "N/A"
             return ", ".join(str(v) for v in value)
+        elif isinstance(value, (int, float)):
+            # Format numbers appropriately
+            return str(value)
+        elif hasattr(value, '__str__'):  # Handle Decimal and other numeric types
+            return str(value)
         elif isinstance(value, dict):
             return str(value)  # TODO: Better dict formatting
         else:

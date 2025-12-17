@@ -36,6 +36,7 @@ from app.api.v1.endpoints import (
     templates,
     users,
 )
+from app.api.v1 import policy
 
 __all__ = ["api_router"]
 
@@ -68,4 +69,5 @@ api_router.include_router(orders.router, prefix="/orders")
 api_router.include_router(
     admin_hierarchy.router, prefix="/admin/hierarchy", tags=["Admin Hierarchy"]
 )
+api_router.include_router(policy.router, prefix="/admin")
 api_router.include_router(entry.router)

@@ -164,6 +164,10 @@ body {
     max-width: 100%;
 }
 
+.main-content.no-sidebar {
+    margin-left: 0;
+}
+
 .page-header {
     margin-bottom: 2rem;
     display: flex;

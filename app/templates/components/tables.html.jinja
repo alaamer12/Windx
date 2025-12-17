@@ -1,0 +1,165 @@
+{# Table Components - RBAC-aware table elements #}
+
+{% from "components/rbac_helpers.html.jinja" import rbac_button %}
+
+{# 
+  RBAC Table Actions Macro
+  Renders table row action buttons with automatic RBAC filtering
+  
+  Parameters:
+    - item: The data item (row) being acted upon
+    - actions: List of action configurations, each containing:
+        - title: Tooltip text for the action
+        - icon: Icon or text to display
+        - url: URL string with {id} placeholder OR callable function that takes item
+        - permission: Optional permission string
+        - role: Optional role requirement
+        - class: Optional CSS classes (default: "btn btn-sm btn-outline")
+        - onclick: Optional onclick handler
+  
+  Usage:
+    {{ rbac_table_actions(customer, [
+      {
+        "title": "Edit",
+        "icon": "✏️",
+        "url": "/customers/{id}/edit",
+        "permission": "customer:update",
+        "class": "btn btn-sm btn-outline"
+      },
+      {
+        "title": "Delete",
+        "icon": "🗑️",
+        "url": lambda item: f"/customers/{item.id}/delete",
+        "permission": "customer:delete",
+        "class": "btn btn-sm btn-danger"
+      }
+    ]) }}
+#}
+{% macro rbac_table_actions(item, actions) %}
+  <div class="flex justify-end gap-2">
+    {% for action in actions %}
+      {% if not action.get('permission') or can(action.permission) %}
+        {% if not action.get('role') or has.role(action.role) %}
+          {% set action_url = action.url.format(id=item.id) if action.url is string else action.url(item) %}
+          <a href="{{ action_url }}"
+             class="{{ action.get('class', 'btn btn-sm btn-outline') }}"
+             title="{{ action.title }}"
+             {% if action.get('onclick') %}onclick="{{ action.onclick }}"{% endif %}>
+            {{ action.icon }}
+          </a>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{# 
+  RBAC Table Header Macro
+  Renders a table header row with optional sortable columns
+  
+  Parameters:
+    - columns: List of column configurations, each containing:
+        - label: Column header text
+        - key: Data key for sorting (optional)
+        - sortable: Boolean indicating if column is sortable
+        - align: Text alignment ("left", "center", "right")
+        - width: Optional width specification
+  
+  Usage:
+    {{ rbac_table_header([
+      {"label": "Name", "key": "name", "sortable": True},
+      {"label": "Email", "key": "email"},
+      {"label": "Actions", "align": "right"}
+    ]) }}
+#}
+{% macro rbac_table_header(columns) %}
+  <thead>
+    <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+      {% for column in columns %}
+        <th style="padding: 1rem; font-weight: 600; color: var(--text-light); 
+                   {% if column.get('align') %}text-align: {{ column.align }};{% endif %}
+                   {% if column.get('width') %}width: {{ column.width }};{% endif %}">
+          {{ column.label }}
+          {% if column.get('sortable') %}
+            <span class="sort-indicator">⇅</span>
+          {% endif %}
+        </th>
+      {% endfor %}
+    </tr>
+  </thead>
+{% endmacro %}
+
+{# 
+  Empty State Macro
+  Renders an empty state message for tables with no data
+  
+  Parameters:
+    - icon: Emoji or icon to display
+    - title: Main heading text
+    - message: Descriptive message
+    - action_text: Optional button text
+    - action_href: Optional button URL
+    - action_permission: Optional permission for action button
+  
+  Usage:
+    {{ empty_state(
+      icon="🏭",
+      title="No Manufacturing Types",
+      message="Create your first product type to get started.",
+      action_text="Create First Type",
+      action_href="/types/new",
+      action_permission="manufacturing_type:create"
+    ) }}
+#}
+{% macro empty_state(icon, title, message, action_text=None, action_href=None, action_permission=None) %}
+  <div style="text-align: center; padding: 3rem 1rem; color: var(--text-light);">
+    <div style="font-size: 3rem; opacity: 0.5; margin-bottom: 1rem;">{{ icon }}</div>
+    <h3>{{ title }}</h3>
+    <p>{{ message }}</p>
+    {% if action_text and action_href %}
+      {{ rbac_button(
+        action_text,
+        action_href,
+        permission=action_permission,
+        class="btn btn-primary",
+        onclick=None
+      ) }}
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{# 
+  Status Badge Macro
+  Renders a status badge with appropriate styling
+  
+  Parameters:
+    - status: Status value (e.g., "active", "inactive", "pending")
+    - label: Optional custom label (defaults to status)
+    - type: Badge type ("success", "warning", "error", "info")
+  
+  Usage:
+    {{ status_badge("active", type="success") }}
+    {{ status_badge("pending", label="In Progress", type="warning") }}
+#}
+{% macro status_badge(status, label=None, type=None) %}
+  {% set badge_label = label or status|title %}
+  {% set badge_type = type or ("success" if status == "active" else "info") %}
+  
+  {% if badge_type == "success" %}
+    <span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
+      {{ badge_label }}
+    </span>
+  {% elif badge_type == "warning" %}
+    <span style="background: #fef3c7; color: #92400e; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
+      {{ badge_label }}
+    </span>
+  {% elif badge_type == "error" %}
+    <span style="background: #fee2e2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
+      {{ badge_label }}
+    </span>
+  {% else %}
+    <span style="background: #f1f5f9; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">
+      {{ badge_label }}
+    </span>
+  {% endif %}
+{% endmacro %}

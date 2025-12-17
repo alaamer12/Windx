@@ -17,10 +17,12 @@ from app.api.types import (
     CurrentSuperuser,
     ManufacturingTypeRepo,
 )
+from app.core.rbac_template_helpers import RBACTemplateMiddleware
 from app.schemas.manufacturing_type import ManufacturingTypeCreate, ManufacturingTypeUpdate
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+rbac_templates = RBACTemplateMiddleware(templates)
 
 
 @router.get("", response_class=HTMLResponse)
@@ -32,15 +34,28 @@ async def list_manufacturing_types(
     """List all manufacturing types."""
     manufacturing_types = await mfg_repo.get_multi(limit=1000)
 
-    return templates.TemplateResponse(
-        request,
+    # Store user in request state for RBAC middleware
+    request.state.user = current_superuser
+
+    # Define page actions with RBAC
+    page_actions = [
+        {
+            "text": "New Type",
+            "href": "/api/v1/admin/manufacturing-types/create",
+            "permission": "manufacturing_type:create",
+            "icon": "➕",
+            "class": "btn btn-primary"
+        }
+    ]
+
+    return await rbac_templates.render_with_rbac(
         "admin/manufacturing_list.html.jinja",
-        get_admin_context(
-            request,
-            current_superuser,
-            active_page="manufacturing",
-            manufacturing_types=manufacturing_types,
-        ),
+        request,
+        {
+            "active_page": "manufacturing",
+            "manufacturing_types": manufacturing_types,
+            "page_actions": page_actions,
+        },
     )
 
 

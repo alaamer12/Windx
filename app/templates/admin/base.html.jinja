@@ -1,3 +1,5 @@
+{% import "components/navigation.html.jinja" as nav with context %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,11 +20,16 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% if not hide_sidebar %}
-        {% include "admin/components/navbar.html.jinja" %}
-        {% include "admin/components/sidebar.html.jinja" %}
+        {# Use RBAC-aware navbar macro #}
+        {{ nav.rbac_navbar() }}
+        
+        {# Use RBAC-aware sidebar macro with conditional display #}
+        {% if has.admin_access() %}
+            {{ nav.rbac_sidebar(active_page) }}
+        {% endif %}
     {% endif %}
 
-    <main class="main-content" {% if hide_sidebar %}style="margin-left: 0; padding: 0;"{% endif %}>
+    <main class="main-content {% if not has.admin_access() or hide_sidebar %}no-sidebar{% endif %}" {% if hide_sidebar %}style="margin-left: 0; padding: 0;"{% endif %}>
         {% include "admin/components/alerts.html.jinja" %}
         
         {% block content %}{% endblock %}

@@ -17,6 +17,7 @@ Features:
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 from app.schemas.user import UserCreate
@@ -27,18 +28,23 @@ __all__ = [
     "create_multiple_users_data",
 ]
 
-_counter = 0
+
+def reset_counter() -> None:
+    """Reset the global counter for test isolation.
+    
+    Note: This function is kept for compatibility but is no longer needed
+    since we use UUIDs for uniqueness.
+    """
+    pass  # No-op since we use UUIDs now
 
 
-def _get_unique_id() -> int:
+def _get_unique_id() -> str:
     """Get unique ID for test data.
 
     Returns:
-        int: Unique counter value
+        str: Unique UUID-based identifier
     """
-    global _counter
-    _counter += 1
-    return _counter
+    return str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for readability
 
 
 def create_user_data(

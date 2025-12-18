@@ -36,16 +36,25 @@ __all__ = [
     "OrderFactory",
 ]
 
-_counter = 0
+import uuid
 
 
-def _get_unique_id() -> int:
+def reset_counter() -> None:
+    """Reset the global counter for test isolation.
+    
+    Note: This function is kept for compatibility but is no longer needed
+    since we use UUIDs for uniqueness.
+    """
+    pass  # No-op since we use UUIDs now
+
+
+def _get_unique_id() -> str:
     """Get unique ID for test data.
 
     Returns:
-        int: Unique counter value
+        str: Unique UUID-based identifier
     """
-    global _counter
+    return str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for readability
     _counter += 1
     return _counter
 
@@ -108,7 +117,7 @@ def create_order_data(
     # Generate default values
     if order_number is None:
         today = date.today()
-        order_number = f"ORD-{today.strftime('%Y%m%d')}-{unique_id:03d}"
+        order_number = f"ORD-{today.strftime('%Y%m%d')}-{unique_id}"
 
     if order_date is None:
         order_date = date.today()
@@ -121,10 +130,10 @@ def create_order_data(
             "street": f"{unique_id} Installation Street",
             "city": "Install City",
             "state": "IC",
-            "zip": f"{unique_id:05d}",
+            "zip": f"{unique_id[:5]}",
             "country": "USA",
             "contact_name": f"Contact Person {unique_id}",
-            "contact_phone": f"555-{unique_id:04d}",
+            "contact_phone": f"555-{unique_id}",
         }
 
     data = {

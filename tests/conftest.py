@@ -357,6 +357,21 @@ async def test_engine():
         
         await conn.run_sync(create_tables_in_schema)
         
+        # Ensure all tables are empty (cleanup any leftover data)
+        # This is a safety measure in case the DROP/CREATE didn't work properly
+        table_names = [
+            'template_selections', 'configuration_selections', 'order_items', 
+            'orders', 'quotes', 'configurations', 'configuration_templates',
+            'attribute_nodes', 'customers', 'sessions', 'users', 'manufacturing_types'
+        ]
+        
+        for table_name in table_names:
+            try:
+                await conn.execute(text(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE"))
+            except Exception as e:
+                # Table might not exist or might be empty, that's fine
+                print(f"[DEBUG] Could not truncate {table_name}: {e}")
+        
         # Verify tables were created
         result = await conn.execute(text(f"""
             SELECT COUNT(*) FROM information_schema.tables 
@@ -438,6 +453,22 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
     Yields:
         AsyncSession: Test database session
     """
+    # Reset factory counters for test isolation
+    try:
+        from tests.factories.customer_factory import reset_counter as reset_customer_counter
+        from tests.factories.user_factory import reset_counter as reset_user_counter
+        from tests.factories.quote_factory import reset_counter as reset_quote_counter
+        from tests.factories.order_factory import reset_counter as reset_order_counter
+        from tests.factories.configuration_factory import reset_counter as reset_configuration_counter
+        
+        reset_customer_counter()
+        reset_user_counter()
+        reset_quote_counter()
+        reset_order_counter()
+        reset_configuration_counter()
+    except ImportError:
+        pass
+    
     async with test_session_maker() as session:
         try:
             yield session

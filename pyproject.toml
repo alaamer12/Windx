@@ -144,9 +144,9 @@ addopts = [
     "--tb=short",                   # Short traceback format
    # "--maxfail=5",                  # Stop after 5 failures
     "--instafail",                  # Show failures instantly
-    "--emoji",                      # Use emoji in output
-    "--sugar",                      # Better test output formatting
-    "--clarity",                    # Better assertion diffs
+    # "--emoji",                      # Use emoji in output
+    # "--sugar",                      # Better test output formatting
+    # "--clarity",                    # Better assertion diffs
 ]
 markers = [
     "unit: Unit tests (fast, isolated)",

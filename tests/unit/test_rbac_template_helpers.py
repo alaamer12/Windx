@@ -30,11 +30,20 @@ class TestCanHelper:
         result = can('customer:read')
         assert result is True
         
-        # Non-superadmin should not have permissions
+        # Non-superadmin should use Casbin enforcer
         user_regular = User(id=2, email="user@example.com", username="user", role="customer")
         can_regular = Can(user_regular)
-        result_regular = can_regular('customer:read')
-        assert result_regular is False
+        
+        # Mock the enforcer directly through the property
+        with patch('app.core.rbac.rbac_service') as mock_rbac_service:
+            mock_rbac_service.enforcer.enforce.return_value = False
+            result_regular = can_regular('customer:read')
+            assert result_regular is False
+            
+            # Verify enforcer was called with correct parameters
+            mock_rbac_service.enforcer.enforce.assert_called_once_with(
+                "user@example.com", "customer", "read"
+            )
     
     def test_can_call_invalid_format(self):
         """Test Can helper with invalid permission format."""
@@ -51,15 +60,16 @@ class TestCanHelper:
         user = User(id=1, email="test@example.com", username="test", role="customer")
         can = Can(user)
         
-        # Mock RBAC service to deny permission
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return False
-            mock_service.check_permission.return_value = mock_check()
+        # Mock RBAC service enforcer to deny permission
+        with patch('app.core.rbac.rbac_service') as mock_rbac_service:
+            mock_rbac_service.enforcer.enforce.return_value = False
             
             result = can('customer:delete')
             
             assert result is False
+            mock_rbac_service.enforcer.enforce.assert_called_once_with(
+                "test@example.com", "customer", "delete"
+            )
     
     def test_can_create_shortcut(self):
         """Test Can.create() CRUD shortcut."""
@@ -90,14 +100,9 @@ class TestCanHelper:
         user = User(id=1, email="test@example.com", username="test", role="superadmin")
         can = Can(user)
         
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return True
-            mock_service.check_permission.return_value = mock_check()
-            
-            result = can.delete('customer')
-            
-            assert result is True
+        # Superadmin should have delete permission
+        result = can.delete('customer')
+        assert result is True
     
     def test_can_access_resource(self):
         """Test Can.access() for resource ownership."""
@@ -112,30 +117,92 @@ class TestCanHelper:
         user = User(id=1, email="test@example.com", username="test", role="customer")
         can = Can(user)
         
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return False
-            mock_service.check_resource_ownership.return_value = mock_check()
+        # Mock the async check to return False
+        with patch.object(can, '_run_async_check') as mock_async:
+            mock_async.return_value = False
             
             result = can.access('customer', 999)
             
             assert result is False
+            mock_async.assert_called_once()
     
     def test_can_error_handling(self):
         """Test Can helper error handling."""
         user = User(id=1, email="test@example.com", username="test", role="customer")
         can = Can(user)
         
-        # Mock RBAC service to raise exception
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                raise Exception("Test error")
-            mock_service.check_permission.return_value = mock_check()
+        # Mock RBAC service enforcer to raise exception
+        with patch('app.core.rbac.rbac_service') as mock_rbac_service:
+            mock_rbac_service.enforcer.enforce.side_effect = Exception("Test error")
             
             result = can('customer:read')
             
             # Should fail safely and return False
             assert result is False
+    
+    def test_can_access_with_async_check(self):
+        """Test Can.access() with async resource ownership check."""
+        user = User(id=1, email="test@example.com", username="test", role="customer")
+        can = Can(user)
+        
+        # Mock the async check to return True
+        with patch.object(can, '_run_async_check') as mock_async:
+            mock_async.return_value = True
+            
+            result = can.access('customer', 123)
+            
+            assert result is True
+            # Verify the async check was called with correct parameters
+            mock_async.assert_called_once_with(
+                can._check_resource_ownership, 'customer', 123
+            )
+    
+    def test_run_async_check_with_running_loop(self):
+        """Test _run_async_check when event loop is already running."""
+        user = User(id=1, email="test@example.com", username="test", role="customer")
+        can = Can(user)
+        
+        async def mock_async_func():
+            return True
+        
+        # Mock asyncio.get_running_loop to simulate running loop
+        with patch('asyncio.get_running_loop') as mock_get_loop:
+            mock_get_loop.return_value = MagicMock()
+            
+            # Mock ThreadPoolExecutor
+            with patch('concurrent.futures.ThreadPoolExecutor') as mock_executor:
+                mock_future = MagicMock()
+                mock_future.result.return_value = True
+                mock_executor.return_value.__enter__.return_value.submit.return_value = mock_future
+                
+                result = can._run_async_check(mock_async_func)
+                
+                assert result is True
+    
+    def test_run_async_check_no_running_loop(self):
+        """Test _run_async_check when no event loop is running."""
+        user = User(id=1, email="test@example.com", username="test", role="customer")
+        can = Can(user)
+        
+        async def mock_async_func():
+            return True
+        
+        # Mock asyncio.get_running_loop to raise RuntimeError (no loop)
+        with patch('asyncio.get_running_loop') as mock_get_loop:
+            mock_get_loop.side_effect = RuntimeError("No running loop")
+            
+            # Mock asyncio.run
+            with patch('asyncio.run') as mock_run:
+                mock_run.return_value = True
+                
+                result = can._run_async_check(mock_async_func)
+                
+                assert result is True
+                # The function is called as a coroutine, so we need to check the call differently
+                mock_run.assert_called_once()
+                # Verify the call was made with the function (it becomes a coroutine when called)
+                call_args = mock_run.call_args[0][0]
+                assert hasattr(call_args, '__await__')  # It's a coroutine
 
 
 class TestHasHelper:

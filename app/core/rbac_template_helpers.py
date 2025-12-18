@@ -85,15 +85,28 @@ class Can:
             
             resource, action = permission.split(':', 1)
             
-            # For now, grant all permissions to superadmin users
-            # This is a temporary fix for the async event loop issue
-            # TODO: Implement proper async-safe permission checking
+            # Quick check: SUPERADMIN has all permissions
             if hasattr(self.user, 'role') and self.user.role == 'superadmin':
                 return True
             
-            # For other users, return False for now
-            # TODO: Implement proper permission checking for non-superadmin users
-            return False
+            # For other users, use Casbin enforcer directly (synchronous)
+            # This avoids async event loop issues in template rendering
+            try:
+                result = self.rbac_service.enforcer.enforce(
+                    self.user.email, 
+                    resource, 
+                    action
+                )
+                logger.debug(
+                    f"Permission check: user={self.user.email}, "
+                    f"resource={resource}, action={action}, result={result}"
+                )
+                return result
+            except Exception as e:
+                logger.error(
+                    f"Casbin enforcer check failed for {permission}: {e}"
+                )
+                return False
                 
         except Exception as e:
             logger.error(f"Permission check failed for {permission}: {e}")
@@ -115,21 +128,94 @@ class Can:
             True if user can access resource, False otherwise
         """
         try:
-            # For now, grant all access to superadmin users
-            # This is a temporary fix for the async event loop issue
-            # TODO: Implement proper async-safe resource ownership checking
+            # Quick check: SUPERADMIN has access to everything
             if hasattr(self.user, 'role') and self.user.role == 'superadmin':
                 return True
             
-            # For other users, return False for now
-            # TODO: Implement proper resource ownership checking for non-superadmin users
-            return False
+            # For resource ownership, we need to run async code in sync context
+            # This is safe because we're creating a new event loop if needed
+            return self._run_async_check(self._check_resource_ownership, resource_type, resource_id)
                 
         except Exception as e:
             logger.error(
                 f"Resource access check failed for {resource_type}:{resource_id}: {e}"
             )
             return False
+    
+    def _run_async_check(self, async_func, *args) -> bool:
+        """Run async function in sync context safely.
+        
+        This handles the event loop creation needed for async operations
+        in template rendering context.
+        
+        Args:
+            async_func: Async function to run
+            *args: Arguments to pass to the function
+        
+        Returns:
+            Result of the async function, or False on error
+        """
+        try:
+            # Try to get current event loop
+            try:
+                loop = asyncio.get_running_loop()
+                # If we're in an event loop, we can't use asyncio.run()
+                # Instead, we'll use a thread pool to run the async code
+                import concurrent.futures
+                import threading
+                
+                def run_in_thread():
+                    # Create new event loop in thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        return new_loop.run_until_complete(async_func(*args))
+                    finally:
+                        new_loop.close()
+                
+                # Run in thread with timeout
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_in_thread)
+                    return future.result(timeout=5.0)  # 5 second timeout
+                    
+            except RuntimeError:
+                # No event loop running, we can use asyncio.run()
+                return asyncio.run(async_func(*args))
+                
+        except Exception as e:
+            logger.error(f"Async check failed: {e}")
+            return False
+    
+    async def _check_resource_ownership(self, resource_type: str, resource_id: int) -> bool:
+        """Check resource ownership asynchronously.
+        
+        Args:
+            resource_type: Type of resource
+            resource_id: ID of the resource
+        
+        Returns:
+            True if user owns or has access to resource
+        """
+        from app.database import get_db
+        
+        # Get database session
+        db_gen = get_db()
+        db = await anext(db_gen)
+        
+        try:
+            # Create RBAC service instance
+            from app.services.rbac import RBACService
+            rbac_service = RBACService(db)
+            
+            # Check resource ownership
+            result = await rbac_service.check_resource_ownership(
+                self.user, resource_type, resource_id
+            )
+            
+            return result
+            
+        finally:
+            await db.close()
     
     def create(self, resource: str) -> bool:
         """Check if user can create resource.

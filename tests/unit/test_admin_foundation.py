@@ -213,9 +213,10 @@ class TestCheckFeatureFlag:
         with pytest.raises(FeatureDisabledException) as exc_info:
             check_feature_flag("experimental_customers_page")
 
-        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-        assert "disabled" in exc_info.value.message.lower()
-        assert exc_info.value.details.get("feature_name") == "experimental_customers_page"
+        assert exc_info.value.status_code == 503
+        assert "disabled" in exc_info.value.detail.lower()
+        assert exc_info.value.feature_name == "experimental_customers_page"
+        assert exc_info.value.reason == "Experimental Customers Page is currently disabled"
 
     @patch("app.api.admin_utils.get_settings")
     def test_check_feature_flag_nonexistent(self, mock_get_settings):
@@ -227,8 +228,9 @@ class TestCheckFeatureFlag:
         with pytest.raises(FeatureDisabledException) as exc_info:
             check_feature_flag("nonexistent_flag")
 
-        assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-        assert exc_info.value.details.get("feature_name") == "nonexistent_flag"
+        assert exc_info.value.status_code == 503
+        assert exc_info.value.feature_name == "nonexistent_flag"
+        assert exc_info.value.reason == "Nonexistent Flag is currently disabled"
 
 
 class TestBuildRedirectResponse:

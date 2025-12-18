@@ -100,14 +100,21 @@ class TestFormParameterTypes:
 class TestGetAdminContext:
     """Tests for get_admin_context function."""
 
+    @patch("app.core.rbac_template_helpers.RBACHelper")
     @patch("app.api.deps.get_settings")
-    def test_get_admin_context_basic(self, mock_get_settings):
+    def test_get_admin_context_basic(self, mock_get_settings, mock_rbac_helper_class):
         """Test get_admin_context returns basic context."""
         # Mock settings
         mock_settings = MagicMock()
         mock_settings.windx.experimental_customers_page = True
         mock_settings.windx.experimental_orders_page = False
         mock_get_settings.return_value = mock_settings
+
+        # Mock RBAC helper
+        mock_rbac_helper = MagicMock()
+        mock_rbac_helper.can = MagicMock()
+        mock_rbac_helper.has = MagicMock()
+        mock_rbac_helper_class.return_value = mock_rbac_helper
 
         # Mock request and user
         mock_request = MagicMock(spec=Request)
@@ -122,14 +129,25 @@ class TestGetAdminContext:
         assert context["active_page"] == "dashboard"
         assert context["enable_customers"] is True
         assert context["enable_orders"] is False
+        # Check RBAC helpers are included
+        assert context["rbac"] == mock_rbac_helper
+        assert context["can"] == mock_rbac_helper.can
+        assert context["has"] == mock_rbac_helper.has
+        # Verify RBACHelper was created with the user
+        mock_rbac_helper_class.assert_called_once_with(mock_user)
 
+    @patch("app.core.rbac_template_helpers.RBACHelper")
     @patch("app.api.deps.get_settings")
-    def test_get_admin_context_custom_page(self, mock_get_settings):
+    def test_get_admin_context_custom_page(self, mock_get_settings, mock_rbac_helper_class):
         """Test get_admin_context with custom active page."""
         mock_settings = MagicMock()
         mock_settings.windx.experimental_customers_page = True
         mock_settings.windx.experimental_orders_page = True
         mock_get_settings.return_value = mock_settings
+
+        # Mock RBAC helper
+        mock_rbac_helper = MagicMock()
+        mock_rbac_helper_class.return_value = mock_rbac_helper
 
         mock_request = MagicMock(spec=Request)
         mock_user = MagicMock()
@@ -137,14 +155,22 @@ class TestGetAdminContext:
         context = get_admin_context(mock_request, mock_user, active_page="customers")
 
         assert context["active_page"] == "customers"
+        assert "rbac" in context
+        assert "can" in context
+        assert "has" in context
 
+    @patch("app.core.rbac_template_helpers.RBACHelper")
     @patch("app.api.deps.get_settings")
-    def test_get_admin_context_extra_kwargs(self, mock_get_settings):
+    def test_get_admin_context_extra_kwargs(self, mock_get_settings, mock_rbac_helper_class):
         """Test get_admin_context with extra keyword arguments."""
         mock_settings = MagicMock()
         mock_settings.windx.experimental_customers_page = True
         mock_settings.windx.experimental_orders_page = True
         mock_get_settings.return_value = mock_settings
+
+        # Mock RBAC helper
+        mock_rbac_helper = MagicMock()
+        mock_rbac_helper_class.return_value = mock_rbac_helper
 
         mock_request = MagicMock(spec=Request)
         mock_user = MagicMock()
@@ -158,6 +184,10 @@ class TestGetAdminContext:
 
         assert context["custom_key"] == "custom_value"
         assert context["another_key"] == 123
+        # RBAC helpers should still be present
+        assert "rbac" in context
+        assert "can" in context
+        assert "has" in context
 
 
 class TestCheckFeatureFlag:

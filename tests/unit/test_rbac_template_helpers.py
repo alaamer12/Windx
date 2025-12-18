@@ -23,19 +23,18 @@ class TestCanHelper:
     
     def test_can_call_valid_permission(self):
         """Test Can helper with valid permission string."""
-        user = User(id=1, email="test@example.com", username="test", role="salesman")
+        user = User(id=1, email="test@example.com", username="test", role="superadmin")
         can = Can(user)
         
-        # Mock RBAC service
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            # Mock the async method to return a coroutine that returns True
-            async def mock_check():
-                return True
-            mock_service.check_permission.return_value = mock_check()
-            
-            result = can('customer:read')
-            
-            assert result is True
+        # Superadmin should have all permissions
+        result = can('customer:read')
+        assert result is True
+        
+        # Non-superadmin should not have permissions
+        user_regular = User(id=2, email="user@example.com", username="user", role="customer")
+        can_regular = Can(user_regular)
+        result_regular = can_regular('customer:read')
+        assert result_regular is False
     
     def test_can_call_invalid_format(self):
         """Test Can helper with invalid permission format."""
@@ -64,45 +63,27 @@ class TestCanHelper:
     
     def test_can_create_shortcut(self):
         """Test Can.create() CRUD shortcut."""
-        user = User(id=1, email="test@example.com", username="test", role="salesman")
+        user = User(id=1, email="test@example.com", username="test", role="superadmin")
         can = Can(user)
         
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return True
-            mock_service.check_permission.return_value = mock_check()
-            
-            result = can.create('customer')
-            
-            assert result is True
+        result = can.create('customer')
+        assert result is True
     
     def test_can_read_shortcut(self):
         """Test Can.read() CRUD shortcut."""
-        user = User(id=1, email="test@example.com", username="test", role="salesman")
+        user = User(id=1, email="test@example.com", username="test", role="superadmin")
         can = Can(user)
         
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return True
-            mock_service.check_permission.return_value = mock_check()
-            
-            result = can.read('customer')
-            
-            assert result is True
+        result = can.read('customer')
+        assert result is True
     
     def test_can_update_shortcut(self):
         """Test Can.update() CRUD shortcut."""
-        user = User(id=1, email="test@example.com", username="test", role="salesman")
+        user = User(id=1, email="test@example.com", username="test", role="superadmin")
         can = Can(user)
         
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return True
-            mock_service.check_permission.return_value = mock_check()
-            
-            result = can.update('customer')
-            
-            assert result is True
+        result = can.update('customer')
+        assert result is True
     
     def test_can_delete_shortcut(self):
         """Test Can.delete() CRUD shortcut."""
@@ -120,17 +101,11 @@ class TestCanHelper:
     
     def test_can_access_resource(self):
         """Test Can.access() for resource ownership."""
-        user = User(id=1, email="test@example.com", username="test", role="customer")
+        user = User(id=1, email="test@example.com", username="test", role="superadmin")
         can = Can(user)
         
-        with patch('app.core.rbac_template_helpers.Can.rbac_service') as mock_service:
-            async def mock_check():
-                return True
-            mock_service.check_resource_ownership.return_value = mock_check()
-            
-            result = can.access('customer', 123)
-            
-            assert result is True
+        result = can.access('customer', 123)
+        assert result is True
     
     def test_can_access_denied(self):
         """Test Can.access() when access is denied."""

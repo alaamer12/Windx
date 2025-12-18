@@ -50,9 +50,11 @@ async def login_page(request: Request):
         HTMLResponse: Rendered login page template
     """
     return templates.TemplateResponse(
-        request,
         "admin/login.html.jinja",
-        {"is_development": settings.debug},
+        {
+            "request": request,
+            "is_development": settings.debug,
+        },
     )
 
 
@@ -108,9 +110,11 @@ async def login(
 
         if not user:
             return templates.TemplateResponse(
-                request,
                 "admin/login.html.jinja",
-                {"error": "Invalid username or password"},
+                {
+                    "request": request,
+                    "error": "Invalid username or password",
+                },
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
     except Exception as e:
@@ -118,9 +122,9 @@ async def login(
         error_msg = str(e).lower()
         if "does not exist" in error_msg or "relation" in error_msg:
             return templates.TemplateResponse(
-                request,
                 "admin/login.html.jinja",
                 {
+                    "request": request,
                     "error": "Database not initialized. Please run: python manage.py create_tables && python manage.py seed_data",
                     "is_setup_error": True,
                 },
@@ -131,17 +135,21 @@ async def login(
 
     if not user.is_active:
         return templates.TemplateResponse(
-            request,
             "admin/login.html.jinja",
-            {"error": "User account is inactive"},
+            {
+                "request": request,
+                "error": "User account is inactive",
+            },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
 
     if not user.is_superuser:
         return templates.TemplateResponse(
-            request,
             "admin/login.html.jinja",
-            {"error": "Not enough permissions"},
+            {
+                "request": request,
+                "error": "Not enough permissions",
+            },
             status_code=status.HTTP_403_FORBIDDEN,
         )
 

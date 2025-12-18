@@ -124,8 +124,8 @@ class TestCustomerFeatureFlag:
                 follow_redirects=False,
             )
 
-            # Should raise exception or redirect
-            assert response.status_code in [303, 400, 403]
+            # Should raise FeatureDisabledException (503)
+            assert response.status_code == 503
 
     async def test_customers_view_with_flag_disabled(
         self,
@@ -151,8 +151,8 @@ class TestCustomerFeatureFlag:
                 follow_redirects=False,
             )
 
-            # Should raise exception or redirect
-            assert response.status_code in [303, 400, 403]
+            # Should raise FeatureDisabledException (503)
+            assert response.status_code == 503
 
 
 class TestOrderFeatureFlag:
@@ -266,11 +266,16 @@ class TestFeatureFlagMessages:
                     follow_redirects=False,
                 )
 
-                # All should redirect to dashboard (303)
-                assert response.status_code == 303
-                # Check base URL (may have query params for error message)
-                location = response.headers["location"]
-                assert location.startswith("/api/v1/admin/dashboard")
+                # GET endpoints (list, new form) should redirect (303)
+                # POST/action endpoints should raise exception (503)
+                if endpoint.endswith("/new") or endpoint == "/api/v1/admin/customers":
+                    assert response.status_code == 303
+                    # Check base URL (may have query params for error message)
+                    location = response.headers["location"]
+                    assert location.startswith("/api/v1/admin/dashboard")
+                else:
+                    # View and edit endpoints use check_feature_flag() which raises 503
+                    assert response.status_code == 503
 
 
 class TestNavigationMenuFeatureFlags:
@@ -417,7 +422,8 @@ class TestFeatureFlagEdgeCases:
             )
 
             # Should check feature flag before checking if customer exists
-            assert response.status_code in [303, 400, 403]
+            # This endpoint uses check_feature_flag() which raises 503
+            assert response.status_code == 503
 
     async def test_feature_flag_with_post_request(
         self,
@@ -443,7 +449,8 @@ class TestFeatureFlagEdgeCases:
             )
 
             # Should check feature flag before processing form
-            assert response.status_code in [303, 400, 403]
+            # POST endpoints use check_feature_flag() which raises 503
+            assert response.status_code == 503
 
     async def test_multiple_feature_flags_independent(
         self,

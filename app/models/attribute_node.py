@@ -1,8 +1,12 @@
 """AttributeNode model for hierarchical product configuration system."""
+
 from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+
+# Avoid circular import - use TYPE_CHECKING for type hints
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -21,9 +25,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.types import LTREE
-
-# Avoid circular import - use TYPE_CHECKING for type hints
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.manufacturing_type import ManufacturingType

@@ -632,7 +632,7 @@ class TestOrderFeatureFlag:
 
             # Add Accept header for HTML to trigger redirect instead of JSON error
             headers = {**superuser_auth_headers, "Accept": "text/html"}
-            
+
             response = await client.post(
                 f"/api/v1/admin/orders/{order.id}/status",
                 headers=headers,

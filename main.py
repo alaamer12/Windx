@@ -59,6 +59,7 @@ async def check_db_setup():
                 print("    Then: python manage.py seed_data")
         break
 
+
 def validate_env_config():
     settings = get_settings()
     print(f"[+] Configuration loaded: {settings.app_name} v{settings.app_version}")
@@ -67,15 +68,18 @@ def validate_env_config():
     )
     print(f"    Connection mode: {settings.database.connection_mode}")
 
+
 async def init_services():
     await init_db()
     await init_cache()
     await init_limiter()
 
+
 async def close_servicers():
     await close_db()
     await close_cache()
     await close_limiter()
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
@@ -100,7 +104,7 @@ async def lifespan(application: FastAPI):
         print(f"[-] Configuration error: {e}")
         raise
 
-    await init_services() # db, cache, limiter
+    await init_services()  # db, cache, limiter
 
     # Check if database is set up
     try:
@@ -114,7 +118,7 @@ async def lifespan(application: FastAPI):
 
     # Shutdown
     print("[*] Shutting down application...")
-    await close_servicers() # db, cache, limiter
+    await close_servicers()  # db, cache, limiter
     print("[+] Application shutdown complete")
 
 

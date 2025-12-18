@@ -1,4 +1,5 @@
 """Test Redis availability check function."""
+
 import pytest
 
 from tests.conftest import check_redis_available

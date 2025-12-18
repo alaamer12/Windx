@@ -15,6 +15,7 @@ Features:
     - Namespace support for cache isolation
     - Easy decorator-based caching
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

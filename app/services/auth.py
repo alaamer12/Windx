@@ -189,7 +189,7 @@ class AuthService(BaseService):
                 details={"token": "invalid"},
             )
 
-        user_id = payload # already did payload.get("sub") in the inner function
+        user_id = payload  # already did payload.get("sub") in the inner function
         if not user_id:
             raise AuthenticationException(
                 message="Invalid token payload",

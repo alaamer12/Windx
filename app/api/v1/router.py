@@ -14,6 +14,7 @@ Features:
 
 from fastapi import APIRouter
 
+from app.api.v1 import policy
 from app.api.v1.endpoints import (
     admin_auth,
     admin_customers,
@@ -36,7 +37,6 @@ from app.api.v1.endpoints import (
     templates,
     users,
 )
-from app.api.v1 import policy
 
 __all__ = ["api_router"]
 

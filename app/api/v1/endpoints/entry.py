@@ -15,11 +15,12 @@ Features:
     - Authentication and authorization
     - Comprehensive error handling
 """
+
 from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import PositiveInt
@@ -64,18 +65,14 @@ templates = Jinja2Templates(directory="app/templates")
                                         "data_type": "string",
                                         "required": True,
                                         "ui_component": "dropdown",
-                                        "options": ["Frame", "Flying mullion"]
+                                        "options": ["Frame", "Flying mullion"],
                                     }
-                                ]
+                                ],
                             }
                         ],
                         "conditional_logic": {
-                            "renovation": {
-                                "operator": "equals",
-                                "field": "type",
-                                "value": "Frame"
-                            }
-                        }
+                            "renovation": {"operator": "equals", "field": "type", "value": "Frame"}
+                        },
                     }
                 }
             },
@@ -328,6 +325,7 @@ async def evaluate_display_conditions(
 
 # HTML Page Endpoints
 
+
 @router.get(
     "/profile",
     response_class=HTMLResponse,
@@ -367,7 +365,7 @@ async def profile_page(
         GET /api/v1/entry/profile?manufacturing_type_id=1
     """
     from app.services.entry import JAVASCRIPT_CONDITION_EVALUATOR
-    
+
     context = {
         "request": request,
         "user": current_user,

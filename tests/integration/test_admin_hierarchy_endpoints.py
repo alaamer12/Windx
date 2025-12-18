@@ -54,8 +54,9 @@ async def test_hierarchy_dashboard_with_type_selected(
     superuser_auth_headers: dict,
 ):
     """Test dashboard renders with manufacturing type selected."""
-    import time
     import random
+    import time
+
     # Create manufacturing type via API with timestamp and random to ensure uniqueness
     unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
     create_response = await client.post(
@@ -291,14 +292,14 @@ async def test_hierarchy_dashboard_diagram_generation_success(
     # Verify response
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify ASCII tree is present
     assert "Frame Options [category]" in content
     assert "Aluminum [option]" in content
-    
+
     # Verify diagram image is embedded (base64 encoded PNG)
     # The template should have an img tag with base64 data
-    assert 'data:image/png;base64,' in content or 'diagram_tree' in content
+    assert "data:image/png;base64," in content or "diagram_tree" in content
 
 
 @pytest.mark.asyncio

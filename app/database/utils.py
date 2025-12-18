@@ -16,6 +16,7 @@ Features:
     - Transaction helpers
     - PostgreSQL extension management
 """
+
 from __future__ import annotations
 
 from pathlib import Path

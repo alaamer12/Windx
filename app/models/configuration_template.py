@@ -14,6 +14,7 @@ Features:
     - Relationships with manufacturing types, users, and selections
     - Automatic timestamp management
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -34,9 +35,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 if TYPE_CHECKING:
-    from app.models.user import User
     from app.models.manufacturing_type import ManufacturingType
     from app.models.template_selection import TemplateSelection
+    from app.models.user import User
 
 __all__ = ["ConfigurationTemplate"]
 

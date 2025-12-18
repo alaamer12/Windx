@@ -15,6 +15,7 @@ Features:
     - Relationships with configurations and customers
     - Automatic timestamp management
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -36,8 +37,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 if TYPE_CHECKING:
-    from app.models.customer import Customer
     from app.models.configuration import Configuration
+    from app.models.customer import Customer
     from app.models.order import Order
 
 __all__ = ["Quote"]

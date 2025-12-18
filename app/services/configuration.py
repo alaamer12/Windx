@@ -13,6 +13,7 @@ Features:
     - Configuration validation
     - Detailed configuration retrieval
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -24,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundException, ValidationException
-from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role, RBACQueryFilter
+from app.core.rbac import Permission, Privilege, RBACQueryFilter, ResourceOwnership, Role, require
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
 from app.repositories.attribute_node import AttributeNodeRepository
@@ -47,25 +48,22 @@ __all__ = ["ConfigurationService"]
 ConfigurationManagement = Privilege(
     roles=[Role.SALESMAN, Role.PARTNER],
     permission=Permission("configuration", "update"),
-    resource=ResourceOwnership("customer")
+    resource=ResourceOwnership("customer"),
 )
 
 ConfigurationOwnership = Privilege(
     roles=Role.CUSTOMER,
     permission=Permission("configuration", "update"),
-    resource=ResourceOwnership("configuration")
+    resource=ResourceOwnership("configuration"),
 )
 
 ConfigurationReader = Privilege(
     roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
     permission=Permission("configuration", "read"),
-    resource=ResourceOwnership("configuration")
+    resource=ResourceOwnership("configuration"),
 )
 
-AdminPrivileges = Privilege(
-    roles=Role.SUPERADMIN,
-    permission=Permission("*", "*")
-)
+AdminPrivileges = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
 class ConfigurationService(BaseService):
@@ -120,7 +118,9 @@ class ConfigurationService(BaseService):
 
     @require(ConfigurationReader)
     @require(AdminPrivileges)
-    async def get_configuration_with_details(self, config_id: PositiveInt, user: Any = None) -> Configuration:
+    async def get_configuration_with_details(
+        self, config_id: PositiveInt, user: Any = None
+    ) -> Configuration:
         """Get configuration with full selection data.
 
         Loads configuration with all related data including selections,
@@ -153,7 +153,6 @@ class ConfigurationService(BaseService):
             )
 
         return config
-
 
     async def add_selection(
         self, config_id: PositiveInt, selection_value: ConfigurationSelectionValue
@@ -293,7 +292,6 @@ class ConfigurationService(BaseService):
 
         return totals
 
-
     @require(Permission("configuration", "read"))
     async def list_configurations(
         self,
@@ -338,7 +336,7 @@ class ConfigurationService(BaseService):
 
     @staticmethod
     def get_user_configurations_query(
-            user: Any,
+        user: Any,
         manufacturing_type_id: int | None = None,
         status: str | None = None,
     ):
@@ -402,8 +400,8 @@ class ConfigurationService(BaseService):
         return config
 
     @require(ConfigurationManagement)  # Salesmen can update configurations for their customers
-    @require(ConfigurationOwnership)   # Customers can update their own configurations  
-    @require(AdminPrivileges)          # Superadmins can update any configuration
+    @require(ConfigurationOwnership)  # Customers can update their own configurations
+    @require(AdminPrivileges)  # Superadmins can update any configuration
     async def update_configuration(
         self, config_id: PositiveInt, config_update: ConfigurationUpdate, user: Any
     ) -> Configuration:
@@ -434,8 +432,8 @@ class ConfigurationService(BaseService):
         return config
 
     @require(ConfigurationManagement)  # Salesmen can update selections for their customers
-    @require(ConfigurationOwnership)   # Customers can update their own selections  
-    @require(AdminPrivileges)          # Superadmins can update any selections
+    @require(ConfigurationOwnership)  # Customers can update their own selections
+    @require(AdminPrivileges)  # Superadmins can update any selections
     async def update_selections(
         self, config_id: PositiveInt, selections: list[ConfigurationSelectionCreate], user: Any
     ) -> Configuration:
@@ -469,8 +467,8 @@ class ConfigurationService(BaseService):
         return config
 
     @require(ConfigurationManagement)  # Salesmen can delete configurations for their customers
-    @require(ConfigurationOwnership)   # Customers can delete their own configurations  
-    @require(AdminPrivileges)          # Superadmins can delete any configuration
+    @require(ConfigurationOwnership)  # Customers can delete their own configurations
+    @require(AdminPrivileges)  # Superadmins can delete any configuration
     async def delete_configuration(self, config_id: PositiveInt, user: Any) -> None:
         """Delete configuration with Casbin authorization.
 
@@ -530,7 +528,7 @@ class ConfigurationService(BaseService):
         await self.refresh(config)
 
         # Add initial selections if provided
-        if hasattr(config_in, 'selections') and config_in.selections:
+        if hasattr(config_in, "selections") and config_in.selections:
             for selection_value in config_in.selections:
                 await self._add_selection_internal(config.id, selection_value)
 

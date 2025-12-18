@@ -5,6 +5,7 @@ Tests the new utility methods added to BaseRepository:
 - exists: Check if record exists by ID
 - count: Count records with optional filters
 """
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,9 +38,7 @@ class TestBaseRepositoryGetByField:
         assert found.email == "test@example.com"
         assert found.username == "testuser"
 
-    async def test_get_by_field_returns_none_when_not_found(
-        self, db_session: AsyncSession
-    ):
+    async def test_get_by_field_returns_none_when_not_found(self, db_session: AsyncSession):
         """Test get_by_field returns None when record doesn't exist."""
         # Arrange
         repo = BaseRepository(User, db_session)
@@ -70,9 +69,7 @@ class TestBaseRepositoryGetByField:
         assert found is not None
         assert found.username == "uniqueuser"
 
-    async def test_get_by_field_raises_error_for_invalid_field(
-        self, db_session: AsyncSession
-    ):
+    async def test_get_by_field_raises_error_for_invalid_field(self, db_session: AsyncSession):
         """Test get_by_field raises ValueError for invalid field name."""
         # Arrange
         repo = BaseRepository(User, db_session)
@@ -105,9 +102,7 @@ class TestBaseRepositoryExists:
         # Assert
         assert result is True
 
-    async def test_exists_returns_false_for_nonexistent_id(
-        self, db_session: AsyncSession
-    ):
+    async def test_exists_returns_false_for_nonexistent_id(self, db_session: AsyncSession):
         """Test exists returns False when record doesn't exist."""
         # Arrange
         repo = BaseRepository(User, db_session)
@@ -226,9 +221,7 @@ class TestBaseRepositoryCount:
         # Assert
         assert count == 0
 
-    async def test_count_raises_error_for_invalid_field(
-        self, db_session: AsyncSession
-    ):
+    async def test_count_raises_error_for_invalid_field(self, db_session: AsyncSession):
         """Test count raises ValueError for invalid field name."""
         # Arrange
         repo = BaseRepository(User, db_session)

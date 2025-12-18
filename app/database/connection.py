@@ -60,7 +60,7 @@ def get_engine() -> AsyncEngine:
 
     # Set schema search path if specified (for test isolation)
     schema = settings.database.schema_
-    if schema and schema != 'public':
+    if schema and schema != "public":
         if "connect_args" not in engine_kwargs:
             engine_kwargs["connect_args"] = {}
         # Include public schema for extensions like ltree

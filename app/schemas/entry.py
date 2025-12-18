@@ -18,6 +18,7 @@ Features:
     - Comprehensive validation rules
     - Type-safe with Annotated types
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -28,7 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
 __all__ = [
     "FieldDefinition",
-    "FormSection", 
+    "FormSection",
     "ProfileSchema",
     "ProfileEntryData",
     "PreviewTable",
@@ -38,7 +39,7 @@ __all__ = [
 
 class FieldDefinition(BaseModel):
     """Individual form field definition.
-    
+
     Attributes:
         name: Field name/identifier
         label: Display label for the field
@@ -51,7 +52,7 @@ class FieldDefinition(BaseModel):
         help_text: Additional help text
         options: Available options for select/radio fields
     """
-    
+
     name: Annotated[
         str,
         Field(
@@ -136,14 +137,14 @@ class FieldDefinition(BaseModel):
 
 class FormSection(BaseModel):
     """Logical grouping of form fields.
-    
+
     Attributes:
         title: Section title
         description: Optional section description
         fields: List of fields in this section
         sort_order: Display order
     """
-    
+
     title: Annotated[
         str,
         Field(
@@ -178,13 +179,13 @@ class FormSection(BaseModel):
 
 class ProfileSchema(BaseModel):
     """Complete profile form schema.
-    
+
     Attributes:
         manufacturing_type_id: Manufacturing type ID
         sections: List of form sections
         conditional_logic: Conditional display logic
     """
-    
+
     manufacturing_type_id: Annotated[
         PositiveInt,
         Field(
@@ -208,7 +209,7 @@ class ProfileSchema(BaseModel):
 
 class ProfileEntryData(BaseModel):
     """Profile page form data.
-    
+
     Attributes:
         manufacturing_type_id: Manufacturing type ID
         name: Configuration name
@@ -241,7 +242,7 @@ class ProfileEntryData(BaseModel):
         price_per_beam: Price per beam
         upvc_profile_discount: UPVC profile discount percentage
     """
-    
+
     manufacturing_type_id: Annotated[
         PositiveInt,
         Field(
@@ -499,12 +500,12 @@ class ProfileEntryData(BaseModel):
 
 class PreviewTable(BaseModel):
     """Preview table structure.
-    
+
     Attributes:
         headers: Column headers
         rows: Table rows data
     """
-    
+
     headers: Annotated[
         list[str],
         Field(
@@ -523,13 +524,13 @@ class PreviewTable(BaseModel):
 
 class ProfilePreviewData(BaseModel):
     """Profile preview response.
-    
+
     Attributes:
         configuration_id: Configuration ID
         table: Preview table
         last_updated: Last update timestamp
     """
-    
+
     configuration_id: Annotated[
         PositiveInt,
         Field(

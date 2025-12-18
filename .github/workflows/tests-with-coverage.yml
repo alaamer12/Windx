@@ -45,7 +45,7 @@ jobs:
       - name: Install dev dependencies
         run: |
           echo "📦 Installing dependencies..."
-          uv sync dev
+          uv sync --dev
           
           echo "🔍 Checking available pytest plugins..."
           uv run python -c "

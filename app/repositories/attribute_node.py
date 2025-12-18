@@ -14,6 +14,7 @@ Features:
     - Efficient tree traversal
     - Tree building utilities
 """
+
 from __future__ import annotations
 
 from sqlalchemy import Select, select
@@ -149,7 +150,7 @@ class AttributeNodeRepository(
 
     @staticmethod
     def get_filtered(
-            manufacturing_type_id: int | None = None,
+        manufacturing_type_id: int | None = None,
         parent_node_id: int | None = None,
         node_type: str | None = None,
     ) -> Select:

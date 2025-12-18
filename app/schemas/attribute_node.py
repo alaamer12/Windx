@@ -1,4 +1,5 @@
 """Pydantic schemas for AttributeNode model."""
+
 from __future__ import annotations
 
 import re
@@ -18,7 +19,7 @@ class DisplayCondition(BaseModel):
     field: Annotated[str | None, Field(default=None, description="Field to check")]
     value: Annotated[Any | None, Field(default=None, description="Value to compare")]
     conditions: Annotated[
-        list["DisplayCondition"] | None, Field(default=None, description="Nested conditions")
+        list[DisplayCondition] | None, Field(default=None, description="Nested conditions")
     ]
 
     model_config = ConfigDict(from_attributes=True)
@@ -278,7 +279,7 @@ class AttributeNodeTree(AttributeNode):
     """Schema for AttributeNode with children for tree representation."""
 
     children: Annotated[
-        list["AttributeNodeTree"],
+        list[AttributeNodeTree],
         Field(default_factory=list, description="Child nodes in the hierarchy"),
     ]
 

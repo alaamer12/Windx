@@ -16,26 +16,24 @@ Features:
     - Enhanced error handling and logging
     - Privilege object evaluation
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
-from functools import lru_cache
 from datetime import datetime, timedelta
+from typing import Optional
 
 import casbin
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.rbac import Role, Privilege
 from app.core.exceptions import (
-    CasbinAuthorizationException,
-    PolicyEvaluationException,
     CustomerCreationException,
-    UserCustomerMappingException,
-    DatabaseConstraintException
+    DatabaseConstraintException,
+    PolicyEvaluationException,
 )
+from app.core.rbac import Privilege, Role
 from app.models.customer import Customer
 from app.models.user import User
 from app.services.base import BaseService
@@ -47,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 class RBACService(BaseService):
     """Service for RBAC operations using Casbin.
-    
+
     Provides comprehensive authorization services including:
     - Policy-based access control with Casbin
     - User-Customer relationship management
@@ -58,52 +56,42 @@ class RBACService(BaseService):
     - Enhanced error handling and diagnostics
     - Privilege object evaluation
     """
-    
+
     def __init__(self, db: AsyncSession):
         """Initialize RBAC service.
-        
+
         Args:
             db: Database session for operations
         """
         super().__init__(db)
         try:
-            self.enforcer = casbin.Enforcer(
-                "config/rbac_model.conf",
-                "config/rbac_policy.csv"
-            )
+            self.enforcer = casbin.Enforcer("config/rbac_model.conf", "config/rbac_policy.csv")
             # Enable auto-save for policy changes
             self.enforcer.enable_auto_save(True)
         except Exception as e:
             logger.error(f"Failed to initialize Casbin enforcer: {e}")
-            raise PolicyEvaluationException(
-                "Failed to initialize RBAC system",
-                {"error": str(e)}
-            )
-        
+            raise PolicyEvaluationException("Failed to initialize RBAC system", {"error": str(e)})
+
         # Request-scoped caches for performance
-        self._permission_cache: Dict[str, bool] = {}
-        self._customer_cache: Dict[int, List[int]] = {}
-        self._privilege_cache: Dict[str, bool] = {}
+        self._permission_cache: dict[str, bool] = {}
+        self._customer_cache: dict[int, list[int]] = {}
+        self._privilege_cache: dict[str, bool] = {}
         self._cache_timestamp = datetime.utcnow()
-    
+
     async def check_permission(
-        self, 
-        user: User, 
-        resource: str, 
-        action: str, 
-        context: Optional[Dict] = None
+        self, user: User, resource: str, action: str, context: Optional[dict] = None
     ) -> bool:
         """Check if user has permission for action on resource.
-        
+
         Args:
             user: User to check permissions for
             resource: Resource type (e.g., "configuration", "quote")
             action: Action type (e.g., "read", "create", "update", "delete")
             context: Optional context for advanced permissions
-            
+
         Returns:
             True if user has permission, False otherwise
-            
+
         Raises:
             PolicyEvaluationException: If policy evaluation fails
         """
@@ -112,28 +100,28 @@ class RBACService(BaseService):
         if cache_key in self._permission_cache:
             logger.debug(f"Permission cache hit: {cache_key}")
             return self._permission_cache[cache_key]
-        
+
         try:
             # Check Casbin policy using user email as subject
             result = self.enforcer.enforce(user.email, resource, action)
-            
+
             # Cache result with timestamp
             self._permission_cache[cache_key] = result
-            
+
             logger.debug(
                 f"Permission check: user={user.email}, resource={resource}, "
                 f"action={action}, result={result}, context={context}"
             )
-            
+
             # Log authorization failures for security monitoring
             if not result:
                 logger.warning(
                     f"Authorization denied: user={user.email}, resource={resource}, "
                     f"action={action}, role={user.role}"
                 )
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(
                 f"Permission check failed: user={user.email}, resource={resource}, "
@@ -141,69 +129,64 @@ class RBACService(BaseService):
             )
             raise PolicyEvaluationException(
                 f"Failed to check permission for {user.email}",
-                {
-                    "user_email": user.email,
-                    "resource": resource,
-                    "action": action,
-                    "error": str(e)
-                }
+                {"user_email": user.email, "resource": resource, "action": action, "error": str(e)},
             )
-    
+
     async def check_resource_ownership(
-        self, 
-        user: User, 
-        resource_type: str, 
-        resource_id: int
+        self, user: User, resource_type: str, resource_id: int
     ) -> bool:
         """Check if user owns or has access to the resource.
-        
+
         Args:
             user: User to check ownership for
             resource_type: Type of resource (e.g., "configuration", "customer")
             resource_id: ID of the resource
-            
+
         Returns:
             True if user owns or has access to resource, False otherwise
         """
         # Superadmin has access to everything
         if user.role == Role.SUPERADMIN.value:
             return True
-        
+
         # Get accessible customers for user
         accessible_customers = await self.get_accessible_customers(user)
-        
+
         # For customer resources, check direct access
         if resource_type == "customer":
             return resource_id in accessible_customers
-        
+
         # For configuration resources, check through customer relationship
         if resource_type == "configuration":
             from app.models.configuration import Configuration
+
             stmt = select(Configuration.customer_id).where(Configuration.id == resource_id)
             result = await self.db.execute(stmt)
             customer_id = result.scalar_one_or_none()
-            
+
             if customer_id is None:
                 return False
-            
+
             return customer_id in accessible_customers
-        
+
         # For quote resources, check through customer relationship
         if resource_type == "quote":
             from app.models.quote import Quote
+
             stmt = select(Quote.customer_id).where(Quote.id == resource_id)
             result = await self.db.execute(stmt)
             customer_id = result.scalar_one_or_none()
-            
+
             if customer_id is None:
                 return False
-            
+
             return customer_id in accessible_customers
-        
+
         # For order resources, check through quote -> customer relationship
         if resource_type == "order":
             from app.models.order import Order
             from app.models.quote import Quote
+
             stmt = (
                 select(Quote.customer_id)
                 .select_from(Order)
@@ -212,31 +195,31 @@ class RBACService(BaseService):
             )
             result = await self.db.execute(stmt)
             customer_id = result.scalar_one_or_none()
-            
+
             if customer_id is None:
                 return False
-            
+
             return customer_id in accessible_customers
-        
+
         # Default: deny access for unknown resource types
         logger.warning(f"Unknown resource type for ownership check: {resource_type}")
         return False
-    
-    async def get_accessible_customers(self, user: User) -> List[int]:
+
+    async def get_accessible_customers(self, user: User) -> list[int]:
         """Get list of customer IDs user can access.
-        
+
         Args:
             user: User to get accessible customers for
-            
+
         Returns:
             List of customer IDs user can access
         """
         # Cache for performance
         if user.id in self._customer_cache:
             return self._customer_cache[user.id]
-        
+
         accessible = []
-        
+
         # Superadmin has access to all customers
         if user.role == Role.SUPERADMIN.value:
             stmt = select(Customer.id)
@@ -248,69 +231,69 @@ class RBACService(BaseService):
             stmt = select(Customer.id).where(Customer.email == user.email)
             result = await self.db.execute(stmt)
             customer_id = result.scalar_one_or_none()
-            
+
             if customer_id:
                 accessible = [customer_id]
-        
+
         # Cache result
         self._customer_cache[user.id] = accessible
-        
+
         logger.debug(f"Accessible customers for {user.email}: {accessible}")
         return accessible
-    
+
     async def get_or_create_customer_for_user(self, user: User) -> Customer:
         """Get existing customer or create one for the user.
-        
+
         This implements the auto-creation pattern where users get associated
         customers automatically when they first create configurations.
-        
+
         Args:
             user: User to get or create customer for
-            
+
         Returns:
             Customer associated with the user
-            
+
         Raises:
             DatabaseException: If customer creation fails
         """
         # First try to find existing customer by email
         customer = await self._find_customer_by_email(user.email)
-        
+
         if customer:
             logger.debug(f"Found existing customer {customer.id} for user {user.email}")
             return customer
-        
+
         # Create new customer from user data
         logger.info(f"Creating new customer for user {user.email}")
         customer = await self._create_customer_from_user(user)
-        
+
         # Clear customer cache since we added a new customer
         self._customer_cache.clear()
-        
+
         return customer
-    
+
     async def _find_customer_by_email(self, email: str) -> Optional[Customer]:
         """Find existing customer by email address.
-        
+
         Args:
             email: Email address to search for
-            
+
         Returns:
             Customer if found, None otherwise
         """
         stmt = select(Customer).where(Customer.email == email)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
-    
+
     async def _create_customer_from_user(self, user: User) -> Customer:
         """Create new customer record from user data.
-        
+
         Args:
             user: User to create customer from
-            
+
         Returns:
             Newly created customer
-            
+
         Raises:
             CustomerCreationException: If customer creation fails
             DatabaseConstraintException: If constraint violations occur
@@ -321,9 +304,9 @@ class RBACService(BaseService):
                 raise CustomerCreationException(
                     "Cannot create customer: user email is required",
                     user_email="<missing>",
-                    user_data={"username": user.username, "full_name": user.full_name}
+                    user_data={"username": user.username, "full_name": user.full_name},
                 )
-            
+
             # Create customer with user data
             customer_data = {
                 "email": user.email,
@@ -332,79 +315,81 @@ class RBACService(BaseService):
                 "is_active": True,
                 "notes": f"Auto-created from user: {user.username or user.email}",
             }
-            
+
             logger.info(f"Creating customer for user {user.email} with data: {customer_data}")
-            
+
             customer = Customer(**customer_data)
             self.db.add(customer)
             await self.commit()
             await self.refresh(customer)
-            
+
             logger.info(f"Successfully created customer {customer.id} for user {user.email}")
             return customer
-            
+
         except IntegrityError as e:
             await self.rollback()
-            
+
             # Handle specific constraint violations
             error_str = str(e)
             if "unique constraint" in error_str.lower() and "email" in error_str.lower():
                 logger.info(f"Customer with email {user.email} already exists (race condition)")
-                
+
                 # Check if another process created the customer
                 customer = await self._find_customer_by_email(user.email)
                 if customer:
                     logger.info(f"Found customer {customer.id} created by another process")
                     return customer
-                
+
                 raise DatabaseConstraintException(
                     f"Customer with email {user.email} already exists",
                     constraint_type="unique",
                     constraint_details={"field": "email", "value": user.email},
-                    suggested_action="Use existing customer or verify email uniqueness"
+                    suggested_action="Use existing customer or verify email uniqueness",
                 )
-            
+
             elif "foreign key" in error_str.lower():
                 raise DatabaseConstraintException(
                     "Foreign key constraint violation during customer creation",
                     constraint_type="foreign_key",
                     constraint_details={"error": error_str},
-                    suggested_action="Verify referenced records exist"
+                    suggested_action="Verify referenced records exist",
                 )
-            
+
             else:
                 logger.error(f"Database integrity error creating customer: {e}")
                 raise CustomerCreationException(
                     "Database constraint violation during customer creation",
                     user_email=user.email,
                     user_data=customer_data,
-                    original_error=e
+                    original_error=e,
                 )
-        
+
         except Exception as e:
             await self.rollback()
             logger.error(f"Unexpected error creating customer for user {user.email}: {e}")
-            
+
             # Check if it was a race condition - another process created the customer
             try:
                 customer = await self._find_customer_by_email(user.email)
                 if customer:
-                    logger.info(f"Customer {customer.id} was created by another process during error recovery")
+                    logger.info(
+                        f"Customer {customer.id} was created by another process during error recovery"
+                    )
                     return customer
             except Exception as recovery_error:
                 logger.error(f"Error during customer recovery check: {recovery_error}")
-            
+
             # Re-raise as CustomerCreationException
             raise CustomerCreationException(
                 f"Failed to create customer record: {str(e)}",
                 user_email=user.email,
                 user_data=customer_data,
-                original_error=e
+                original_error=e,
             )
-    
+
     async def assign_role_to_user(self, user: User, role: Role) -> None:
         """Assign role to user and update Casbin policies.
-        
+
         Args:
             user: User to assign role to
             role: Role to assign
@@ -412,22 +397,22 @@ class RBACService(BaseService):
         # Update user role in database
         user.role = role.value
         await self.commit()
-        
+
         # Update Casbin role assignment
         # Remove existing role assignments
         self.enforcer.remove_grouping_policy(user.email)
-        
+
         # Add new role assignment
         self.enforcer.add_grouping_policy(user.email, role.value)
-        
+
         # Clear caches
         self.clear_cache()
-        
+
         logger.info(f"Assigned role {role.value} to user {user.email}")
-    
+
     async def assign_customer_to_user(self, user: User, customer_id: int) -> None:
         """Assign customer access to user (for salesmen/partners).
-        
+
         Args:
             user: User to assign customer access to
             customer_id: Customer ID to grant access to
@@ -435,23 +420,23 @@ class RBACService(BaseService):
         # Add customer assignment in Casbin
         # This uses the g2 grouping for customer assignments
         self.enforcer.add_grouping_policy(user.email, "customer", str(customer_id))
-        
+
         # Clear customer cache
         if user.id in self._customer_cache:
             del self._customer_cache[user.id]
-        
+
         logger.info(f"Assigned customer {customer_id} access to user {user.email}")
-    
+
     async def check_privilege(self, user: User, privilege: Privilege) -> bool:
         """Check if user has the specified privilege.
-        
+
         Args:
             user: User to check privilege for
             privilege: Privilege to check
-            
+
         Returns:
             True if user has privilege, False otherwise
-            
+
         Raises:
             PrivilegeEvaluationException: If privilege evaluation fails
         """
@@ -460,53 +445,59 @@ class RBACService(BaseService):
         if cache_key in self._privilege_cache:
             logger.debug(f"Privilege cache hit: {cache_key}")
             return self._privilege_cache[cache_key]
-        
+
         try:
             # Check role requirement
             user_role = Role(user.role) if user.role in [r.value for r in Role] else None
             role_satisfied = False
-            
+
             if user_role:
                 # Check if user has any of the required roles
-                role_satisfied = any(
-                    user.role == role.value for role in privilege.roles
-                ) or user.role == Role.SUPERADMIN.value
-            
+                role_satisfied = (
+                    any(user.role == role.value for role in privilege.roles)
+                    or user.role == Role.SUPERADMIN.value
+                )
+
             if not role_satisfied:
                 self._privilege_cache[cache_key] = False
                 return False
-            
+
             # Check permission requirement
             permission_satisfied = await self.check_permission(
-                user, 
-                privilege.permission.resource, 
+                user,
+                privilege.permission.resource,
                 privilege.permission.action,
-                privilege.permission.context
+                privilege.permission.context,
             )
-            
+
             if not permission_satisfied:
                 self._privilege_cache[cache_key] = False
                 return False
-            
+
             # Resource ownership is checked by the decorator that calls this
             # since it needs access to function parameters
-            
+
             result = True
             self._privilege_cache[cache_key] = result
-            
-            logger.debug(f"Privilege check: user={user.email}, privilege={privilege}, result={result}")
-            
+
+            logger.debug(
+                f"Privilege check: user={user.email}, privilege={privilege}, result={result}"
+            )
+
             return result
-            
+
         except Exception as e:
-            logger.error(f"Privilege evaluation failed: user={user.email}, privilege={privilege}, error={e}")
+            logger.error(
+                f"Privilege evaluation failed: user={user.email}, privilege={privilege}, error={e}"
+            )
             from app.core.exceptions import PrivilegeEvaluationException
+
             raise PrivilegeEvaluationException(
                 f"Failed to evaluate privilege for {user.email}",
                 privilege_info={"privilege": str(privilege)},
-                evaluation_context={"user_email": user.email, "error": str(e)}
+                evaluation_context={"user_email": user.email, "error": str(e)},
             )
-    
+
     def clear_cache(self) -> None:
         """Clear permission and customer caches."""
         self._permission_cache.clear()
@@ -514,22 +505,22 @@ class RBACService(BaseService):
         self._privilege_cache.clear()
         self._cache_timestamp = datetime.utcnow()
         logger.debug("Cleared RBAC caches")
-    
+
     def is_cache_expired(self, max_age_minutes: int = 30) -> bool:
         """Check if cache is expired based on timestamp.
-        
+
         Args:
             max_age_minutes: Maximum age of cache in minutes
-            
+
         Returns:
             True if cache is expired
         """
         age = datetime.utcnow() - self._cache_timestamp
         return age > timedelta(minutes=max_age_minutes)
-    
-    def get_cache_stats(self) -> Dict[str, int]:
+
+    def get_cache_stats(self) -> dict[str, int]:
         """Get cache statistics for monitoring.
-        
+
         Returns:
             Dictionary with cache statistics
         """
@@ -537,23 +528,25 @@ class RBACService(BaseService):
             "permission_cache_size": len(self._permission_cache),
             "customer_cache_size": len(self._customer_cache),
             "privilege_cache_size": len(self._privilege_cache),
-            "cache_age_minutes": int((datetime.utcnow() - self._cache_timestamp).total_seconds() / 60)
+            "cache_age_minutes": int(
+                (datetime.utcnow() - self._cache_timestamp).total_seconds() / 60
+            ),
         }
-    
+
     async def initialize_user_policies(self, user: User) -> None:
         """Initialize Casbin policies for a user.
-        
+
         This should be called when a user is created or their role changes.
-        
+
         Args:
             user: User to initialize policies for
         """
         # Add role assignment
         self.enforcer.add_grouping_policy(user.email, user.role)
-        
+
         # For customers, assign them to their own customer record
         if user.role == Role.CUSTOMER.value:
             customer = await self.get_or_create_customer_for_user(user)
             self.enforcer.add_grouping_policy(user.email, "customer", str(customer.id))
-        
+
         logger.info(f"Initialized policies for user {user.email} with role {user.role}")

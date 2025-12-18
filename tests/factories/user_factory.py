@@ -31,7 +31,7 @@ __all__ = [
 
 def reset_counter() -> None:
     """Reset the global counter for test isolation.
-    
+
     Note: This function is kept for compatibility but is no longer needed
     since we use UUIDs for uniqueness.
     """

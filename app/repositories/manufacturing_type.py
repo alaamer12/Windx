@@ -13,6 +13,7 @@ Features:
     - Get by category filtering
     - Filtered queries with sorting
 """
+
 from __future__ import annotations
 
 from typing import Literal
@@ -118,7 +119,7 @@ class ManufacturingTypeRepository(
 
     @staticmethod
     def get_filtered(
-            is_active: bool | None = None,
+        is_active: bool | None = None,
         base_category: str | None = None,
         search: str | None = None,
         sort_by: Literal["created_at", "name", "base_price"] = "created_at",

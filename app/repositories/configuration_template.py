@@ -12,6 +12,7 @@ Features:
     - Get by manufacturing type
     - Increment usage count
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select, update
@@ -158,16 +159,14 @@ class ConfigurationTemplateRepository(
         )
 
         if manufacturing_type_id is not None:
-            stmt = stmt.where(
-                ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id
-            )
+            stmt = stmt.where(ConfigurationTemplate.manufacturing_type_id == manufacturing_type_id)
 
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
     @staticmethod
     def get_filtered(
-            is_public: bool | None = None,
+        is_public: bool | None = None,
         manufacturing_type_id: int | None = None,
         template_type: str | None = None,
         is_active: bool | None = None,

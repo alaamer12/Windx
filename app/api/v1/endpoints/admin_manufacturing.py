@@ -44,7 +44,7 @@ async def list_manufacturing_types(
             "href": "/api/v1/admin/manufacturing-types/create",
             "permission": "manufacturing_type:create",
             "icon": "➕",
-            "class": "btn btn-primary"
+            "class": "btn btn-primary",
         }
     ]
 

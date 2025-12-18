@@ -206,11 +206,11 @@ class TestAdminDashboard:
             },
             follow_redirects=False,
         )
-        
+
         # Extract cookie and set it on the client
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         # Access dashboard with cookie
         response = await client.get(
             "/api/v1/admin/dashboard",
@@ -243,13 +243,13 @@ class TestAdminDashboard:
         # Try to login as regular user via admin login (should fail)
         # But we can create a session manually for testing
         from app.core.security import create_access_token
-        
+
         # Create a token for the regular user
         token = create_access_token(subject=test_user.id)
-        
+
         # Set cookie on client instance to avoid deprecation warning
         client.cookies.set("access_token", f"Bearer {token}")
-        
+
         # Try to access admin dashboard with regular user cookie
         response = await client.get(
             "/api/v1/admin/dashboard",
@@ -282,7 +282,9 @@ class TestAdminDashboard:
     ):
         """Test dashboard redirects with expired authentication token."""
         # Create an expired token (this would need token creation with past expiry)
-        expired_token = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MDk0NTkyMDB9.invalid"
+        expired_token = (
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MDk0NTkyMDB9.invalid"
+        )
 
         response = await client.get(
             "/api/v1/admin/dashboard",
@@ -322,7 +324,7 @@ class TestAdminAuthFlow:
         # Step 2: Access dashboard with cookie
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         dashboard_response = await client.get(
             "/api/v1/admin/dashboard",
         )

@@ -156,12 +156,12 @@ def get_admin_context(
     Additional keyword arguments are merged into the context.
     """
     from app.core.rbac_template_helpers import RBACHelper
-    
+
     settings = get_settings()
-    
+
     # Create RBAC helper for template context
     rbac_helper = RBACHelper(current_user)
-    
+
     context: dict[str, Any] = {
         "request": request,
         "current_user": current_user,

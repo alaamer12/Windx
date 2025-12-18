@@ -12,6 +12,7 @@ Features:
     - Quote status management
     - Quote number generation
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
@@ -21,7 +22,7 @@ from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
-from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role, RBACQueryFilter
+from app.core.rbac import Permission, Privilege, RBACQueryFilter, ResourceOwnership, Role, require
 from app.models.configuration import Configuration
 from app.models.quote import Quote
 from app.repositories.configuration import ConfigurationRepository
@@ -37,19 +38,16 @@ __all__ = ["QuoteService"]
 QuoteManagement = Privilege(
     roles=[Role.SALESMAN, Role.PARTNER],
     permission=Permission("quote", "create"),
-    resource=ResourceOwnership("customer")
+    resource=ResourceOwnership("customer"),
 )
 
 QuoteReader = Privilege(
     roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
     permission=Permission("quote", "read"),
-    resource=ResourceOwnership("quote")
+    resource=ResourceOwnership("quote"),
 )
 
-AdminQuoteAccess = Privilege(
-    roles=Role.SUPERADMIN,
-    permission=Permission("*", "*")
-)
+AdminQuoteAccess = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
 class QuoteService(BaseService):
@@ -328,9 +326,9 @@ class QuoteService(BaseService):
             list[Quote]: List of quotes accessible to user
         """
         from sqlalchemy import select
-        
+
         query = select(Quote)
-        
+
         # Apply RBAC filtering automatically
         query = await RBACQueryFilter.filter_quotes(query, user)
 

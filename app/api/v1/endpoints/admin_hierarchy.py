@@ -187,7 +187,9 @@ async def hierarchy_dashboard(
             # Convert to dict for template
             if tree:
                 context["tree_nodes"] = [node.model_dump() for node in tree]
-                context["attribute_nodes"] = [node.model_dump() for node in tree]  # For enhanced template
+                context["attribute_nodes"] = [
+                    node.model_dump() for node in tree
+                ]  # For enhanced template
 
             # Get ASCII tree visualization
             context["ascii_tree"] = await hierarchy_service.asciify(manufacturing_type_id)
@@ -196,19 +198,20 @@ async def hierarchy_dashboard(
             try:
                 import base64
                 import io
-                
+
                 fig = await hierarchy_service.plot_tree(manufacturing_type_id)
                 if fig is not None:
                     # Convert matplotlib figure to base64 PNG
                     buf = io.BytesIO()
-                    fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+                    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
                     buf.seek(0)
-                    img_base64 = base64.b64encode(buf.read()).decode('utf-8')
+                    img_base64 = base64.b64encode(buf.read()).decode("utf-8")
                     context["diagram_tree"] = img_base64
                     buf.close()
-                    
+
                     # Close the figure to free memory
                     import matplotlib.pyplot as plt
+
                     plt.close(fig)
                 else:
                     context["diagram_tree"] = None

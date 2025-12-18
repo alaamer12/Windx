@@ -28,6 +28,7 @@ Features:
     - CSRF protection
     - Request timeout enforcement
 """
+
 from __future__ import annotations
 
 import asyncio

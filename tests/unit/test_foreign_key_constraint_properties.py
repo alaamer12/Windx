@@ -4,25 +4,28 @@ This module contains property-based tests that verify foreign key constraints
 are satisfied when configurations are created through the entry service.
 
 Property 5: Foreign key constraint satisfaction
-- For any configuration saved through the entry service, the customer_id should 
+- For any configuration saved through the entry service, the customer_id should
   satisfy database foreign key constraints
 
 Requirements: 1.5, 2.1
 """
-import pytest
-from hypothesis import given, strategies as st, assume, settings, HealthCheck
-from hypothesis.strategies import composite
-from unittest.mock import AsyncMock, patch
+
 from decimal import Decimal
+from unittest.mock import AsyncMock
+
+import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+from hypothesis.strategies import composite
 from sqlalchemy.exc import IntegrityError
 
-from app.models.user import User
-from app.models.customer import Customer
-from app.models.configuration import Configuration
-from app.models.manufacturing_type import ManufacturingType
-from app.services.entry import EntryService
-from app.schemas.entry import ProfileEntryData
 from app.core.rbac import Role
+from app.models.configuration import Configuration
+from app.models.customer import Customer
+from app.models.manufacturing_type import ManufacturingType
+from app.models.user import User
+from app.schemas.entry import ProfileEntryData
+from app.services.entry import EntryService
 
 
 @composite
@@ -31,11 +34,17 @@ def user_data(draw):
     return User(
         id=draw(st.integers(min_value=1, max_value=1000)),
         email=draw(st.emails()),
-        username=draw(st.text(min_size=3, max_size=20, alphabet=st.characters(whitelist_categories=('Lu', 'Ll', 'Nd')))),
+        username=draw(
+            st.text(
+                min_size=3,
+                max_size=20,
+                alphabet=st.characters(whitelist_categories=("Lu", "Ll", "Nd")),
+            )
+        ),
         full_name=draw(st.text(min_size=1, max_size=50)),
         role=draw(st.sampled_from([Role.CUSTOMER.value, Role.SALESMAN.value, Role.PARTNER.value])),
         is_active=True,
-        is_superuser=False
+        is_superuser=False,
     )
 
 
@@ -47,7 +56,7 @@ def customer_data(draw):
         email=draw(st.emails()),
         contact_person=draw(st.text(min_size=1, max_size=100)),
         customer_type=draw(st.sampled_from(["residential", "commercial", "contractor"])),
-        is_active=True
+        is_active=True,
     )
 
 
@@ -57,9 +66,13 @@ def manufacturing_type_data(draw):
     return ManufacturingType(
         id=draw(st.integers(min_value=1, max_value=100)),
         name=draw(st.text(min_size=1, max_size=100)),
-        base_price=draw(st.decimals(min_value=Decimal("1.00"), max_value=Decimal("10000.00"), places=2)),
-        base_weight=draw(st.decimals(min_value=Decimal("0.1"), max_value=Decimal("1000.0"), places=2)),
-        is_active=True
+        base_price=draw(
+            st.decimals(min_value=Decimal("1.00"), max_value=Decimal("10000.00"), places=2)
+        ),
+        base_weight=draw(
+            st.decimals(min_value=Decimal("0.1"), max_value=Decimal("1000.0"), places=2)
+        ),
+        is_active=True,
     )
 
 
@@ -72,7 +85,7 @@ def profile_entry_data(draw, manufacturing_type_id):
         type=draw(st.text(min_size=1, max_size=50)),
         material=draw(st.text(min_size=1, max_size=50)),
         opening_system=draw(st.text(min_size=1, max_size=50)),
-        system_series=draw(st.text(min_size=1, max_size=50))
+        system_series=draw(st.text(min_size=1, max_size=50)),
     )
 
 
@@ -88,56 +101,52 @@ class TestForeignKeyConstraintProperties:
         db.refresh = AsyncMock()
         return db
 
-    @given(
-        user=user_data(),
-        customer=customer_data(),
-        manufacturing_type=manufacturing_type_data()
+    @given(user=user_data(), customer=customer_data(), manufacturing_type=manufacturing_type_data())
+    @settings(
+        max_examples=100, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )
-    @settings(max_examples=100, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
     async def test_property_foreign_key_constraint_satisfaction(
-        self, 
-        mock_db, 
-        user: User, 
-        customer: Customer, 
-        manufacturing_type: ManufacturingType
+        self, mock_db, user: User, customer: Customer, manufacturing_type: ManufacturingType
     ):
         """
         **Feature: entry-page-customer-rbac-fix, Property 5: Foreign key constraint satisfaction**
-        
-        Property: For any configuration saved through the entry service, 
+
+        Property: For any configuration saved through the entry service,
         the customer_id should satisfy database foreign key constraints.
-        
+
         This property ensures that all configurations created through the entry service
         reference valid customer records, maintaining referential integrity.
         """
         # Arrange
         entry_service = EntryService(mock_db)
-        
+
         # Mock RBAC service customer auto-creation to return valid customer
-        entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(return_value=customer)
-        
+        entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(
+            return_value=customer
+        )
+
         # Mock database queries for manufacturing type
         mock_mfg_result = AsyncMock()
         mock_mfg_result.scalar_one_or_none.return_value = manufacturing_type
-        
+
         # Mock database queries for configuration creation
         mock_config_result = AsyncMock()
         mock_config_result.scalar_one_or_none.return_value = None  # No existing config
-        
+
         # Setup database execute mock to return appropriate results
         def mock_execute(stmt):
             # Simple check based on statement type - this is a simplified mock
-            if hasattr(stmt, 'column_descriptions') or 'ManufacturingType' in str(stmt):
+            if hasattr(stmt, "column_descriptions") or "ManufacturingType" in str(stmt):
                 return mock_mfg_result
             else:
                 return mock_config_result
-        
+
         mock_db.execute = AsyncMock(side_effect=mock_execute)
         mock_db.add = AsyncMock()
         mock_db.commit = AsyncMock()
         mock_db.refresh = AsyncMock()
-        
+
         # Generate profile data
         profile_data = ProfileEntryData(
             manufacturing_type_id=manufacturing_type.id,
@@ -145,18 +154,18 @@ class TestForeignKeyConstraintProperties:
             type="Frame",
             material="Aluminum",
             opening_system="Casement",
-            system_series="Test Series"
+            system_series="Test Series",
         )
-        
+
         # Act
         result = await entry_service.save_profile_configuration(profile_data, user)
-        
+
         # Assert - Verify customer relationship is used
         entry_service.rbac_service.get_or_create_customer_for_user.assert_called_once_with(user)
-        
+
         # Verify configuration was added to database with proper customer_id
         mock_db.add.assert_called()
-        
+
         # Get the configuration that was added
         added_config = mock_db.add.call_args[0][0]
         assert isinstance(added_config, Configuration)
@@ -165,36 +174,32 @@ class TestForeignKeyConstraintProperties:
         assert isinstance(added_config.customer_id, int)
         assert added_config.customer_id > 0
 
-    @given(
-        user=user_data(),
-        manufacturing_type=manufacturing_type_data()
+    @given(user=user_data(), manufacturing_type=manufacturing_type_data())
+    @settings(
+        max_examples=50, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )
-    @settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
     async def test_property_foreign_key_constraint_violation_handling(
-        self, 
-        mock_db, 
-        user: User, 
-        manufacturing_type: ManufacturingType
+        self, mock_db, user: User, manufacturing_type: ManufacturingType
     ):
         """
         Property: When foreign key constraints are violated, the entry service
         should handle the error gracefully and provide meaningful feedback.
-        
+
         This ensures the system doesn't crash on constraint violations and
         provides proper error handling.
         """
         # Arrange
         entry_service = EntryService(mock_db)
-        
+
         # Mock customer auto-creation to return None (simulating constraint violation)
         entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(return_value=None)
-        
+
         # Mock manufacturing type database query
         mock_mfg_result = AsyncMock()
         mock_mfg_result.scalar_one_or_none.return_value = manufacturing_type
         mock_db.execute = AsyncMock(return_value=mock_mfg_result)
-        
+
         # Generate profile data
         profile_data = ProfileEntryData(
             manufacturing_type_id=manufacturing_type.id,
@@ -202,26 +207,20 @@ class TestForeignKeyConstraintProperties:
             type="Frame",
             material="Aluminum",
             opening_system="Casement",
-            system_series="Test Series"
+            system_series="Test Series",
         )
-        
+
         # Act & Assert - Should handle None customer gracefully
         with pytest.raises(Exception):  # Should raise appropriate exception
             await entry_service.save_profile_configuration(profile_data, user)
 
-    @given(
-        user=user_data(),
-        customer=customer_data(),
-        manufacturing_type=manufacturing_type_data()
+    @given(user=user_data(), customer=customer_data(), manufacturing_type=manufacturing_type_data())
+    @settings(
+        max_examples=50, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
     )
-    @settings(max_examples=50, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
     async def test_property_database_integrity_error_handling(
-        self, 
-        mock_db, 
-        user: User, 
-        customer: Customer, 
-        manufacturing_type: ManufacturingType
+        self, mock_db, user: User, customer: Customer, manufacturing_type: ManufacturingType
     ):
         """
         Property: When database integrity errors occur during configuration creation,
@@ -230,18 +229,18 @@ class TestForeignKeyConstraintProperties:
         """
         # Arrange
         entry_service = EntryService(mock_db)
-        
+
         # Mock customer auto-creation
         entry_service._get_or_create_customer_for_user = AsyncMock(return_value=customer)
-        
+
         # Mock manufacturing type repository
         entry_service.mfg_type_repo.get = AsyncMock(return_value=manufacturing_type)
-        
+
         # Mock configuration repository to raise IntegrityError
         entry_service.config_repo.create = AsyncMock(
             side_effect=IntegrityError("Foreign key constraint violation", None, None)
         )
-        
+
         # Generate profile data
         profile_data = ProfileEntryData(
             manufacturing_type_id=manufacturing_type.id,
@@ -249,29 +248,27 @@ class TestForeignKeyConstraintProperties:
             type="Frame",
             material="Aluminum",
             opening_system="Casement",
-            system_series="Test Series"
+            system_series="Test Series",
         )
-        
+
         # Act & Assert - Should handle IntegrityError gracefully
         with pytest.raises(IntegrityError):
             await entry_service.save_profile_configuration(profile_data, user)
-        
+
         # Verify customer lookup was still performed
         entry_service._get_or_create_customer_for_user.assert_called_once_with(user)
 
     @given(
         users=st.lists(user_data(), min_size=1, max_size=10),
         customer=customer_data(),
-        manufacturing_type=manufacturing_type_data()
+        manufacturing_type=manufacturing_type_data(),
     )
-    @settings(max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     @pytest.mark.asyncio
     async def test_property_multiple_users_same_customer_constraint_satisfaction(
-        self, 
-        mock_db, 
-        users: list[User], 
-        customer: Customer, 
-        manufacturing_type: ManufacturingType
+        self, mock_db, users: list[User], customer: Customer, manufacturing_type: ManufacturingType
     ):
         """
         Property: When multiple users are associated with the same customer,
@@ -280,16 +277,16 @@ class TestForeignKeyConstraintProperties:
         """
         # Arrange
         entry_service = EntryService(mock_db)
-        
+
         # Mock customer auto-creation to return same customer for all users
         entry_service._get_or_create_customer_for_user = AsyncMock(return_value=customer)
-        
+
         # Mock manufacturing type repository
         entry_service.mfg_type_repo.get = AsyncMock(return_value=manufacturing_type)
-        
+
         # Mock configuration repository
         entry_service.config_repo.create = AsyncMock()
-        
+
         # Act - Create configurations for all users
         for i, user in enumerate(users):
             profile_data = ProfileEntryData(
@@ -298,14 +295,14 @@ class TestForeignKeyConstraintProperties:
                 type="Frame",
                 material="Aluminum",
                 opening_system="Casement",
-                system_series="Test Series"
+                system_series="Test Series",
             )
-            
+
             await entry_service.save_profile_configuration(profile_data, user)
-        
+
         # Assert - All configurations should use the same valid customer_id
         assert entry_service.config_repo.create.call_count == len(users)
-        
+
         for call in entry_service.config_repo.create.call_args_list:
             config_data = call[0][0]
             assert config_data.customer_id == customer.id
@@ -315,16 +312,14 @@ class TestForeignKeyConstraintProperties:
     @given(
         user=user_data(),
         customer=customer_data(),
-        manufacturing_types=st.lists(manufacturing_type_data(), min_size=1, max_size=5)
+        manufacturing_types=st.lists(manufacturing_type_data(), min_size=1, max_size=5),
     )
-    @settings(max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(
+        max_examples=20, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+    )
     @pytest.mark.asyncio
     async def test_property_multiple_manufacturing_types_constraint_satisfaction(
-        self, 
-        mock_db, 
-        user: User, 
-        customer: Customer, 
-        manufacturing_types: list[ManufacturingType]
+        self, mock_db, user: User, customer: Customer, manufacturing_types: list[ManufacturingType]
     ):
         """
         Property: When configurations are created for different manufacturing types,
@@ -333,39 +328,39 @@ class TestForeignKeyConstraintProperties:
         """
         # Arrange
         entry_service = EntryService(mock_db)
-        
+
         # Mock customer auto-creation
         entry_service._get_or_create_customer_for_user = AsyncMock(return_value=customer)
-        
+
         # Mock configuration repository
         entry_service.config_repo.create = AsyncMock()
-        
+
         # Act - Create configurations for different manufacturing types
         for i, mfg_type in enumerate(manufacturing_types):
             # Mock manufacturing type repository for this specific type
             entry_service.mfg_type_repo.get = AsyncMock(return_value=mfg_type)
-            
+
             profile_data = ProfileEntryData(
                 manufacturing_type_id=mfg_type.id,
                 name=f"Test Configuration {mfg_type.id}-{i}",
                 type="Frame",
                 material="Aluminum",
                 opening_system="Casement",
-                system_series="Test Series"
+                system_series="Test Series",
             )
-            
+
             await entry_service.save_profile_configuration(profile_data, user)
-        
+
         # Assert - All configurations should have valid foreign key references
         assert entry_service.config_repo.create.call_count == len(manufacturing_types)
-        
+
         for i, call in enumerate(entry_service.config_repo.create.call_args_list):
             config_data = call[0][0]
-            
+
             # Verify customer foreign key
             assert config_data.customer_id == customer.id
             assert config_data.customer_id is not None
-            
+
             # Verify manufacturing type foreign key
             assert config_data.manufacturing_type_id == manufacturing_types[i].id
             assert config_data.manufacturing_type_id is not None

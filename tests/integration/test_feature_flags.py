@@ -242,9 +242,10 @@ class TestFeatureFlagMessages:
         customer = await CustomerFactory.create(db_session)
 
         # Patch both locations where get_settings is called
-        with patch("app.api.v1.endpoints.admin_customers.get_settings") as mock_settings1, \
-             patch("app.api.admin_utils.get_settings") as mock_settings2:
-            
+        with (
+            patch("app.api.v1.endpoints.admin_customers.get_settings") as mock_settings1,
+            patch("app.api.admin_utils.get_settings") as mock_settings2,
+        ):
             mock_settings1.return_value.windx.experimental_customers_page = False
             mock_settings2.return_value.windx.experimental_customers_page = False
 
@@ -299,7 +300,7 @@ class TestNavigationMenuFeatureFlags:
         )
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         response = await client.get(
             "/api/v1/admin/dashboard",
         )
@@ -327,7 +328,7 @@ class TestNavigationMenuFeatureFlags:
         )
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         with patch("app.core.config.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_customers_page = False
             mock_settings.return_value.windx.experimental_orders_page = True
@@ -358,7 +359,7 @@ class TestNavigationMenuFeatureFlags:
         )
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         response = await client.get(
             "/api/v1/admin/dashboard",
         )
@@ -385,7 +386,7 @@ class TestNavigationMenuFeatureFlags:
         )
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         with patch("app.core.config.get_settings") as mock_settings:
             mock_settings.return_value.windx.experimental_customers_page = True
             mock_settings.return_value.windx.experimental_orders_page = False

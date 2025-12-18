@@ -8,6 +8,7 @@ and conditional display logic.
 Usage:
     python setup_profile_hierarchy.py
 """
+
 import asyncio
 import sys
 from decimal import Decimal
@@ -27,16 +28,16 @@ from app.models.manufacturing_type import ManufacturingType
 async def create_manufacturing_type(session: AsyncSession) -> ManufacturingType:
     """Create Window Profile Entry manufacturing type."""
     print("Creating Window Profile Entry manufacturing type...")
-    
+
     # Check if it already exists
     stmt = select(ManufacturingType).where(ManufacturingType.name == "Window Profile Entry")
     result = await session.execute(stmt)
     existing = result.scalar_one_or_none()
-    
+
     if existing:
         print(f"  ✅ Manufacturing type already exists (ID: {existing.id})")
         return existing
-    
+
     # Create new manufacturing type
     manufacturing_type = ManufacturingType(
         name="Window Profile Entry",
@@ -44,30 +45,32 @@ async def create_manufacturing_type(session: AsyncSession) -> ManufacturingType:
         base_category="window",
         base_price=Decimal("200.00"),
         base_weight=Decimal("15.00"),
-        is_active=True
+        is_active=True,
     )
-    
+
     session.add(manufacturing_type)
     await session.commit()
     await session.refresh(manufacturing_type)
-    
+
     print(f"  ✅ Created manufacturing type (ID: {manufacturing_type.id})")
     return manufacturing_type
 
 
-async def create_attribute_nodes(session: AsyncSession, manufacturing_type: ManufacturingType) -> None:
+async def create_attribute_nodes(
+    session: AsyncSession, manufacturing_type: ManufacturingType
+) -> None:
     """Create all 29 CSV column attribute nodes."""
     print("Creating attribute nodes for all 29 CSV columns...")
-    
+
     # Check if nodes already exist
     stmt = select(AttributeNode).where(AttributeNode.manufacturing_type_id == manufacturing_type.id)
     result = await session.execute(stmt)
     existing_nodes = result.scalars().all()
-    
+
     if existing_nodes:
         print(f"  ⚠️  Found {len(existing_nodes)} existing nodes, skipping creation")
         return
-    
+
     # Define all attribute nodes based on CSV structure
     attribute_definitions = [
         # Basic Information Section
@@ -82,12 +85,12 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 1,
             "ui_component": "input",
             "help_text": "Enter a descriptive name for this profile",
-            "validation_rules": {"min_length": 1, "max_length": 200}
+            "validation_rules": {"min_length": 1, "max_length": 200},
         },
         {
             "name": "type",
             "description": "Product type",
-            "node_type": "attribute", 
+            "node_type": "attribute",
             "data_type": "string",
             "required": True,
             "ltree_path": "basic_information.type",
@@ -95,7 +98,20 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 2,
             "ui_component": "dropdown",
             "help_text": "Select the product type",
-            "validation_rules": {"options": ["Frame", "Sash", "Mullion", "Flying mullion", "Glazing bead", "Interlock", "Track", "Auxiliary", "Coupling", "Tube"]}
+            "validation_rules": {
+                "options": [
+                    "Frame",
+                    "Sash",
+                    "Mullion",
+                    "Flying mullion",
+                    "Glazing bead",
+                    "Interlock",
+                    "Track",
+                    "Auxiliary",
+                    "Coupling",
+                    "Tube",
+                ]
+            },
         },
         {
             "name": "company",
@@ -108,20 +124,20 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 3,
             "ui_component": "input",
             "help_text": "Company or manufacturer name",
-            "validation_rules": {"max_length": 100}
+            "validation_rules": {"max_length": 100},
         },
         {
             "name": "material",
             "description": "Material",
             "node_type": "attribute",
-            "data_type": "string", 
+            "data_type": "string",
             "required": True,
             "ltree_path": "basic_information.material",
             "depth": 1,
             "sort_order": 4,
             "ui_component": "dropdown",
             "help_text": "Select the material type",
-            "validation_rules": {"options": ["UPVC", "Aluminum", "Wood", "Steel", "Composite"]}
+            "validation_rules": {"options": ["UPVC", "Aluminum", "Wood", "Steel", "Composite"]},
         },
         {
             "name": "opening_system",
@@ -134,7 +150,9 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 5,
             "ui_component": "dropdown",
             "help_text": "Select the opening system type",
-            "validation_rules": {"options": ["Casement", "Sliding", "Double-hung", "Tilt-turn", "Fixed", "All"]}
+            "validation_rules": {
+                "options": ["Casement", "Sliding", "Double-hung", "Tilt-turn", "Fixed", "All"]
+            },
         },
         {
             "name": "system_series",
@@ -147,7 +165,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 6,
             "ui_component": "input",
             "help_text": "Enter the system series (e.g., Kom700, Kom800)",
-            "validation_rules": {"max_length": 50}
+            "validation_rules": {"max_length": 50},
         },
         {
             "name": "code",
@@ -160,7 +178,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 7,
             "ui_component": "input",
             "help_text": "Product code or SKU",
-            "validation_rules": {"max_length": 50}
+            "validation_rules": {"max_length": 50},
         },
         {
             "name": "length_of_beam",
@@ -173,9 +191,8 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 8,
             "ui_component": "input",
             "help_text": "Length of beam in meters",
-            "validation_rules": {"min": 0, "max": 20}
+            "validation_rules": {"min": 0, "max": 20},
         },
-        
         # Conditional Fields Section
         {
             "name": "renovation",
@@ -188,7 +205,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 9,
             "ui_component": "checkbox",
             "help_text": "Check if this is for renovation purposes",
-            "display_condition": {"operator": "equals", "field": "type", "value": "Frame"}
+            "display_condition": {"operator": "equals", "field": "type", "value": "Frame"},
         },
         {
             "name": "builtin_flyscreen_track",
@@ -205,11 +222,10 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
                 "operator": "and",
                 "conditions": [
                     {"operator": "equals", "field": "type", "value": "Frame"},
-                    {"operator": "contains", "field": "opening_system", "value": "sliding"}
-                ]
-            }
+                    {"operator": "contains", "field": "opening_system", "value": "sliding"},
+                ],
+            },
         },
-        
         # Dimensions Section
         {
             "name": "width",
@@ -222,7 +238,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 11,
             "ui_component": "input",
             "help_text": "Width dimension in mm",
-            "validation_rules": {"min": 0, "max": 5000}
+            "validation_rules": {"min": 0, "max": 5000},
         },
         {
             "name": "total_width",
@@ -236,7 +252,11 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Total width including flyscreen track",
             "validation_rules": {"min": 0, "max": 5000},
-            "display_condition": {"operator": "equals", "field": "builtin_flyscreen_track", "value": True}
+            "display_condition": {
+                "operator": "equals",
+                "field": "builtin_flyscreen_track",
+                "value": True,
+            },
         },
         {
             "name": "flyscreen_track_height",
@@ -250,7 +270,11 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Height of flyscreen track in mm",
             "validation_rules": {"min": 0, "max": 200},
-            "display_condition": {"operator": "equals", "field": "builtin_flyscreen_track", "value": True}
+            "display_condition": {
+                "operator": "equals",
+                "field": "builtin_flyscreen_track",
+                "value": True,
+            },
         },
         {
             "name": "front_height",
@@ -263,7 +287,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 14,
             "ui_component": "input",
             "help_text": "Front height in mm",
-            "validation_rules": {"min": 0, "max": 5000}
+            "validation_rules": {"min": 0, "max": 5000},
         },
         {
             "name": "rear_height",
@@ -276,7 +300,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 15,
             "ui_component": "input",
             "help_text": "Rear height in mm",
-            "validation_rules": {"min": 0, "max": 5000}
+            "validation_rules": {"min": 0, "max": 5000},
         },
         {
             "name": "glazing_height",
@@ -289,7 +313,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 16,
             "ui_component": "input",
             "help_text": "Glazing height in mm",
-            "validation_rules": {"min": 0, "max": 5000}
+            "validation_rules": {"min": 0, "max": 5000},
         },
         {
             "name": "renovation_height",
@@ -303,7 +327,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Renovation height in mm",
             "validation_rules": {"min": 0, "max": 5000},
-            "display_condition": {"operator": "equals", "field": "type", "value": "Frame"}
+            "display_condition": {"operator": "equals", "field": "type", "value": "Frame"},
         },
         {
             "name": "glazing_undercut_height",
@@ -317,9 +341,8 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Glazing undercut height in mm",
             "validation_rules": {"min": 0, "max": 100},
-            "display_condition": {"operator": "equals", "field": "type", "value": "Glazing bead"}
+            "display_condition": {"operator": "equals", "field": "type", "value": "Glazing bead"},
         },
-        
         # Technical Specifications Section
         {
             "name": "pic",
@@ -332,7 +355,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 19,
             "ui_component": "input",
             "help_text": "Image filename or reference",
-            "validation_rules": {"max_length": 200}
+            "validation_rules": {"max_length": 200},
         },
         {
             "name": "sash_overlap",
@@ -346,7 +369,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Sash overlap in mm",
             "validation_rules": {"min": 0, "max": 50},
-            "display_condition": {"operator": "equals", "field": "type", "value": "Sash"}
+            "display_condition": {"operator": "equals", "field": "type", "value": "Sash"},
         },
         {
             "name": "flying_mullion_horizontal_clearance",
@@ -360,7 +383,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Horizontal clearance for flying mullion in mm",
             "validation_rules": {"min": 0, "max": 100},
-            "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"}
+            "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"},
         },
         {
             "name": "flying_mullion_vertical_clearance",
@@ -374,7 +397,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Vertical clearance for flying mullion in mm",
             "validation_rules": {"min": 0, "max": 100},
-            "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"}
+            "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"},
         },
         {
             "name": "steel_material_thickness",
@@ -388,7 +411,11 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "ui_component": "input",
             "help_text": "Steel thickness in mm",
             "validation_rules": {"min": 0, "max": 10},
-            "display_condition": {"operator": "is_not_empty", "field": "reinforcement_steel", "value": None}
+            "display_condition": {
+                "operator": "is_not_empty",
+                "field": "reinforcement_steel",
+                "value": None,
+            },
         },
         {
             "name": "weight_per_meter",
@@ -401,7 +428,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 24,
             "ui_component": "input",
             "help_text": "Weight per meter in kg",
-            "validation_rules": {"min": 0, "max": 50}
+            "validation_rules": {"min": 0, "max": 50},
         },
         {
             "name": "reinforcement_steel",
@@ -414,7 +441,9 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 25,
             "ui_component": "multiselect",
             "help_text": "Select reinforcement steel options",
-            "validation_rules": {"options": ["Standard", "Heavy duty", "Type A", "Type B", "Custom"]}
+            "validation_rules": {
+                "options": ["Standard", "Heavy duty", "Type A", "Type B", "Custom"]
+            },
         },
         {
             "name": "colours",
@@ -427,9 +456,19 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 26,
             "ui_component": "multiselect",
             "help_text": "Select available colors",
-            "validation_rules": {"options": ["White", "Black", "Brown", "Grey", "Nussbaum", "RAL9016", "RAL7016", "Custom"]}
+            "validation_rules": {
+                "options": [
+                    "White",
+                    "Black",
+                    "Brown",
+                    "Grey",
+                    "Nussbaum",
+                    "RAL9016",
+                    "RAL7016",
+                    "Custom",
+                ]
+            },
         },
-        
         # Pricing Section
         {
             "name": "price_per_meter",
@@ -442,7 +481,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 27,
             "ui_component": "input",
             "help_text": "Price per meter in currency units",
-            "validation_rules": {"min": 0, "max": 10000}
+            "validation_rules": {"min": 0, "max": 10000},
         },
         {
             "name": "price_per_beam",
@@ -455,7 +494,7 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 28,
             "ui_component": "input",
             "help_text": "Price per beam in currency units",
-            "validation_rules": {"min": 0, "max": 50000}
+            "validation_rules": {"min": 0, "max": 50000},
         },
         {
             "name": "upvc_profile_discount",
@@ -468,10 +507,10 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             "sort_order": 29,
             "ui_component": "input",
             "help_text": "Discount percentage for UPVC profiles",
-            "validation_rules": {"min": 0, "max": 100}
-        }
+            "validation_rules": {"min": 0, "max": 100},
+        },
     ]
-    
+
     # Create attribute nodes
     created_count = 0
     for attr_def in attribute_definitions:
@@ -489,11 +528,11 @@ async def create_attribute_nodes(session: AsyncSession, manufacturing_type: Manu
             ui_component=attr_def["ui_component"],
             help_text=attr_def["help_text"],
             validation_rules=attr_def.get("validation_rules"),
-            display_condition=attr_def.get("display_condition")
+            display_condition=attr_def.get("display_condition"),
         )
         session.add(node)
         created_count += 1
-    
+
     await session.commit()
     print(f"  ✅ Created {created_count} attribute nodes")
 
@@ -502,26 +541,27 @@ async def main():
     """Main setup function."""
     print("Setting up Window Profile Entry manufacturing type and attribute hierarchy...")
     print("=" * 70)
-    
+
     engine = get_engine()
     session_maker = get_session_maker()
-    
+
     try:
         async with session_maker() as session:
             # Create manufacturing type
             manufacturing_type = await create_manufacturing_type(session)
-            
+
             # Create attribute nodes
             await create_attribute_nodes(session, manufacturing_type)
-            
+
         print("\n" + "=" * 70)
         print("✅ Setup completed successfully!")
         print(f"Manufacturing Type ID: {manufacturing_type.id}")
         print("You can now use the Entry Page system with this manufacturing type.")
-        
+
     except Exception as e:
         print(f"\n❌ Error during setup: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
     finally:

@@ -6,6 +6,7 @@ Tests verify that:
 3. Different user roles see appropriate UI elements
 4. Template rendering works with RBAC middleware
 """
+
 from __future__ import annotations
 
 import pytest
@@ -13,18 +14,17 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.manufacturing_type import ManufacturingType
-from app.models.user import User
 
 
 @pytest.fixture
 async def manufacturing_type(db_session: AsyncSession) -> ManufacturingType:
     """Create a test manufacturing type."""
-    from decimal import Decimal
     import uuid
-    
+    from decimal import Decimal
+
     # Use unique name to avoid conflicts
     unique_name = f"Test Window Type RBAC {uuid.uuid4().hex[:8]}"
-    
+
     mfg_type = ManufacturingType(
         name=unique_name,
         description="Test manufacturing type for RBAC testing",
@@ -50,24 +50,24 @@ async def test_manufacturing_list_renders_with_rbac_context(
         "/api/v1/admin/manufacturing-types",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify page renders successfully
     assert "Manufacturing Types" in content
     assert manufacturing_type.name in content
-    
+
     # Verify RBAC context is available (check for RBAC-related elements)
     # The page should have the basic structure even if permissions deny actions
     assert "Actions" in content  # Actions column header should be present
     assert "New Type" in content or "Create" in content  # Page action should be present
-    
+
     # Verify the page uses RBAC-aware components
     # Check for elements that indicate RBAC template helpers are working
     assert "Manufacturing Types" in content  # Page title
     assert "Status" in content  # Status column (uses RBAC-aware status badge)
-    
+
     # The specific action buttons (Edit, Delete, etc.) may not be visible
     # if RBAC permissions are not properly configured in test environment,
     # but the page structure should be intact
@@ -84,10 +84,10 @@ async def test_manufacturing_list_shows_status_badge(
         "/api/v1/admin/manufacturing-types",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify status badge is rendered
     # Active status should show with success styling
     assert "Active" in content or "active" in content.lower()
@@ -102,11 +102,12 @@ async def test_manufacturing_list_empty_state(
     """Test that empty state is rendered when no manufacturing types exist."""
     # Delete all related data first to avoid foreign key constraints
     from sqlalchemy import delete
+
     from app.models.configuration import Configuration
     from app.models.configuration_selection import ConfigurationSelection
-    from app.models.template_selection import TemplateSelection
     from app.models.configuration_template import ConfigurationTemplate
-    
+    from app.models.template_selection import TemplateSelection
+
     # Delete in order to respect foreign key constraints
     await db_session.execute(delete(ConfigurationSelection))
     await db_session.execute(delete(TemplateSelection))
@@ -114,15 +115,15 @@ async def test_manufacturing_list_empty_state(
     await db_session.execute(delete(ConfigurationTemplate))
     await db_session.execute(delete(ManufacturingType))
     await db_session.commit()
-    
+
     response = await client.get(
         "/api/v1/admin/manufacturing-types",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify empty state message
     assert "No Manufacturing Types" in content
     assert "Create your first product type" in content or "Create First Type" in content
@@ -138,14 +139,14 @@ async def test_manufacturing_list_page_header_with_actions(
         "/api/v1/admin/manufacturing-types",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify page header elements
     assert "Manufacturing Types" in content
     assert "Manage product categories" in content or "page-header" in content
-    
+
     # Verify action button is present (superuser has create permission)
     assert "New Type" in content or "Create" in content
 
@@ -160,10 +161,10 @@ async def test_manufacturing_list_sidebar_visible_for_admin(
         "/api/v1/admin/manufacturing-types",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify sidebar elements are present
     assert "sidebar" in content.lower() or "nav" in content.lower()
     assert "Dashboard" in content
@@ -180,7 +181,7 @@ async def test_manufacturing_list_requires_authentication(
         "/api/v1/admin/manufacturing-types",
         follow_redirects=False,
     )
-    
+
     # Should redirect to login or return 401/403
     assert response.status_code in [401, 403, 307, 302]
 
@@ -196,17 +197,20 @@ async def test_manufacturing_list_table_structure(
         "/api/v1/admin/manufacturing-types",
         headers=superuser_auth_headers,
     )
-    
+
     assert response.status_code == 200
     content = response.text
-    
+
     # Verify table headers
     assert "Name" in content
     assert "Category" in content
     assert "Base Price" in content
     assert "Status" in content
     assert "Actions" in content
-    
+
     # Verify data is displayed
     assert manufacturing_type.name in content
-    assert str(manufacturing_type.base_price) in content or f"{manufacturing_type.base_price:.2f}" in content
+    assert (
+        str(manufacturing_type.base_price) in content
+        or f"{manufacturing_type.base_price:.2f}" in content
+    )

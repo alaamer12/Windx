@@ -81,6 +81,7 @@ Usage Example:
 For more examples, see: examples/hierarchy_insertion.py
 For dashboard documentation, see: docs/HIERARCHY_ADMIN_DASHBOARD.md
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -1128,7 +1129,7 @@ class HierarchyBuilderService(BaseService):
 
         # Add virtual root node showing manufacturing type name
         lines = [mfg_type.name]  # Virtual root at the top
-        
+
         # Build ASCII representation for each root node
         for i, root_node in enumerate(tree):
             is_last_root = i == len(tree) - 1
@@ -1320,7 +1321,7 @@ class HierarchyBuilderService(BaseService):
 
     @staticmethod
     def _plot_tree_with_networkx(
-            nodes: list[AttributeNode],
+        nodes: list[AttributeNode],
         children_map: dict[int | None, list[AttributeNode]],
         title: str,
     ):
@@ -1377,7 +1378,7 @@ class HierarchyBuilderService(BaseService):
 
         # Find root nodes (nodes with no parent or parent not in graph)
         root_nodes = [n.id for n in nodes if n.parent_node_id is None or n.parent_node_id not in G]
-        
+
         # Add VIRTUAL ROOT NODE for visualization (Option A implementation)
         # This shows the manufacturing type name at the top without changing database
         # NOTE: For true database root, see option_b_future_implementation.md
@@ -1385,7 +1386,7 @@ class HierarchyBuilderService(BaseService):
         G.add_node(virtual_root_id)
         node_labels[virtual_root_id] = f"{title}\\n(Manufacturing Type)"
         node_colors_map[virtual_root_id] = "#FFD700"  # Gold color for root
-        
+
         # Connect all actual roots to virtual root
         for root_id in root_nodes:
             G.add_edge(virtual_root_id, root_id)
@@ -1393,13 +1394,13 @@ class HierarchyBuilderService(BaseService):
         # Create PROPER hierarchical layout using custom algorithm
         # This ensures root is at top and children are arranged level by level
         pos = {}
-        
+
         # Define spacing first
         y_spacing = 2.0  # Vertical spacing between levels
-        
+
         # Position virtual root at the very top
         pos[virtual_root_id] = (0, 1 * y_spacing)  # Above all other nodes
-        
+
         # Group nodes by depth level
         levels = {}
         for node in nodes:
@@ -1407,28 +1408,29 @@ class HierarchyBuilderService(BaseService):
             if depth not in levels:
                 levels[depth] = []
             levels[depth].append(node.id)
-        
+
         # Calculate positions level by level
         max_depth = max(levels.keys()) if levels else 0
-        
+
         for depth in sorted(levels.keys()):
             level_nodes = levels[depth]
             num_nodes = len(level_nodes)
-            
+
             # Calculate horizontal spacing to spread nodes evenly
             if num_nodes == 1:
                 x_positions = [0]
             else:
                 # Spread nodes across width based on number of nodes
                 total_width = max(10, num_nodes * 2)
-                x_positions = [i * (total_width / (num_nodes - 1)) - total_width / 2 
-                              for i in range(num_nodes)]
-            
+                x_positions = [
+                    i * (total_width / (num_nodes - 1)) - total_width / 2 for i in range(num_nodes)
+                ]
+
             # Assign positions (y increases downward, so negate depth)
             y = -depth * y_spacing
             for i, node_id in enumerate(level_nodes):
                 pos[node_id] = (x_positions[i], y)
-        
+
         # Adjust positions to center children under parents
         for depth in sorted(levels.keys(), reverse=True)[1:]:  # Skip deepest level
             for node_id in levels[depth]:
@@ -1492,7 +1494,7 @@ class HierarchyBuilderService(BaseService):
         ax.legend(handles=legend_elements, loc="upper left", fontsize=11, framealpha=0.9)
 
         ax.axis("off")
-        
+
         # Use tight_layout with extra padding to prevent title cutoff
         plt.tight_layout(pad=2.0)
 
@@ -1552,29 +1554,30 @@ class HierarchyBuilderService(BaseService):
             if depth not in levels:
                 levels[depth] = []
             levels[depth].append(node.id)
-        
+
         # Calculate positions level by level
         max_depth = max(levels.keys()) if levels else 0
         y_spacing = 2.0  # Vertical spacing between levels
-        
+
         for depth in sorted(levels.keys()):
             level_nodes = levels[depth]
             num_nodes = len(level_nodes)
-            
+
             # Calculate horizontal spacing to spread nodes evenly
             if num_nodes == 1:
                 x_positions = [0]
             else:
                 # Spread nodes across width based on number of nodes
                 total_width = max(10, num_nodes * 2)
-                x_positions = [i * (total_width / (num_nodes - 1)) - total_width / 2 
-                              for i in range(num_nodes)]
-            
+                x_positions = [
+                    i * (total_width / (num_nodes - 1)) - total_width / 2 for i in range(num_nodes)
+                ]
+
             # Assign positions (y increases downward, so negate depth)
             y = -depth * y_spacing
             for i, node_id in enumerate(level_nodes):
                 positions[node_id] = (x_positions[i], y)
-        
+
         # Adjust positions to center children under parents
         for depth in sorted(levels.keys(), reverse=True)[1:]:  # Skip deepest level
             for node_id in levels[depth]:
@@ -1582,7 +1585,9 @@ class HierarchyBuilderService(BaseService):
                 children = children_map.get(node_id, [])
                 if children:
                     # Calculate average x position of children
-                    child_x_positions = [positions[child.id][0] for child in children if child.id in positions]
+                    child_x_positions = [
+                        positions[child.id][0] for child in children if child.id in positions
+                    ]
                     if child_x_positions:
                         avg_x = sum(child_x_positions) / len(child_x_positions)
                         # Update parent position to be centered above children

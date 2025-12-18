@@ -12,6 +12,7 @@ Features:
     - Template usage tracking
     - Template metrics calculation
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -21,7 +22,7 @@ from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
-from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role
+from app.core.rbac import Permission, Privilege, Role, require
 from app.models.configuration import Configuration
 from app.models.configuration_template import ConfigurationTemplate
 from app.models.template_selection import TemplateSelection
@@ -45,19 +46,15 @@ __all__ = ["TemplateService"]
 
 # Define reusable Privilege objects for Template Service operations
 TemplateManagement = Privilege(
-    roles=[Role.DATA_ENTRY, Role.SALESMAN],
-    permission=Permission("template", "create")
+    roles=[Role.DATA_ENTRY, Role.SALESMAN], permission=Permission("template", "create")
 )
 
 TemplateReader = Privilege(
     roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER, Role.DATA_ENTRY],
-    permission=Permission("template", "read")
+    permission=Permission("template", "read"),
 )
 
-AdminTemplateAccess = Privilege(
-    roles=Role.SUPERADMIN,
-    permission=Permission("*", "*")
-)
+AdminTemplateAccess = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
 class TemplateService(BaseService):
@@ -213,7 +210,7 @@ class TemplateService(BaseService):
         )
 
         config = await self.config_service.create_configuration(config_data, user)
-        
+
         # Add selections from template to the new configuration
         for ts in template_selections:
             selection_value = ConfigurationSelectionValue(
@@ -225,7 +222,7 @@ class TemplateService(BaseService):
             )
             # Add each selection to the configuration
             await self.config_service.add_selection(config.id, selection_value)
-        
+
         # Recalculate totals after adding all selections
         if template_selections:
             await self.config_service.calculate_totals(config.id)
@@ -274,7 +271,9 @@ class TemplateService(BaseService):
 
     @require(TemplateReader)
     @require(AdminTemplateAccess)
-    async def get_template(self, template_id: PositiveInt, user: Any = None) -> ConfigurationTemplate:
+    async def get_template(
+        self, template_id: PositiveInt, user: Any = None
+    ) -> ConfigurationTemplate:
         """Get template by ID.
 
         Args:
@@ -549,12 +548,13 @@ class TemplateService(BaseService):
                 json_value=ts.json_value,
             )
             await config_service.add_selection(config.id, selection_value)
-        
+
         # Recalculate totals after adding all selections
         if template.selections:
             await config_service.calculate_totals(config.id)
             # Refresh config to get updated totals
             from sqlalchemy import select
+
             result = await self.db.execute(
                 select(Configuration).where(Configuration.id == config.id)
             )

@@ -13,6 +13,7 @@ Features:
     - Order number generation
     - Authorization checks
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -25,7 +26,7 @@ from app.core.exceptions import (
     NotFoundException,
     ValidationException,
 )
-from app.core.rbac import Permission, require, ResourceOwnership, Privilege, Role, RBACQueryFilter
+from app.core.rbac import Permission, Privilege, ResourceOwnership, Role, require
 from app.models.order import Order
 from app.repositories.order import OrderRepository
 from app.repositories.quote import QuoteRepository
@@ -39,19 +40,16 @@ __all__ = ["OrderService"]
 OrderManagement = Privilege(
     roles=[Role.SALESMAN, Role.PARTNER],
     permission=Permission("order", "create"),
-    resource=ResourceOwnership("customer")
+    resource=ResourceOwnership("customer"),
 )
 
 OrderReader = Privilege(
     roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
     permission=Permission("order", "read"),
-    resource=ResourceOwnership("order")
+    resource=ResourceOwnership("order"),
 )
 
-AdminOrderAccess = Privilege(
-    roles=Role.SUPERADMIN,
-    permission=Permission("*", "*")
-)
+AdminOrderAccess = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
 class OrderService(BaseService):

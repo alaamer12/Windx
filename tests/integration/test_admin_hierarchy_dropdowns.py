@@ -3,6 +3,8 @@
 Tests that all dropdown options are present and functional.
 """
 
+import random
+import time
 from decimal import Decimal
 
 import pytest
@@ -10,8 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.hierarchy_builder import HierarchyBuilderService
-import time
-import random
+
 
 @pytest.mark.asyncio
 async def test_node_form_has_all_node_type_options(

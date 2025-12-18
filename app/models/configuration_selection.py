@@ -12,6 +12,7 @@ Features:
     - LTREE selection path for hierarchical context
     - Unique constraint per configuration and attribute
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

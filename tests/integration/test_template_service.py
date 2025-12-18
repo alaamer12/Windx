@@ -8,6 +8,7 @@ Tests the template service with real database operations:
 Note: These tests verify the user parameter fix for apply_template_to_configuration.
 The method now correctly accepts a user parameter and passes user.id as customer_id.
 """
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,25 +24,24 @@ from app.services.template import TemplateService
 class TestTemplateServiceUserParameter:
     """Test that user parameter is correctly handled in template service."""
 
-    async def test_apply_template_method_signature_accepts_user(
-        self, db_session: AsyncSession
-    ):
+    async def test_apply_template_method_signature_accepts_user(self, db_session: AsyncSession):
         """Test that apply_template_to_configuration accepts user parameter."""
         # Arrange
         service = TemplateService(db_session)
-        
+
         # Act & Assert - Verify method signature
         import inspect
+
         sig = inspect.signature(service.apply_template_to_configuration)
         params = list(sig.parameters.keys())
-        
+
         # Verify user parameter exists
-        assert 'user' in params
-        assert 'template_id' in params
-        assert 'config_name' in params
-        
+        assert "user" in params
+        assert "template_id" in params
+        assert "config_name" in params
+
         # Verify user is required (not optional with default None)
-        user_param = sig.parameters['user']
+        user_param = sig.parameters["user"]
         assert user_param.default == inspect.Parameter.empty  # No default value
 
     async def test_apply_template_raises_error_for_inactive_template(
@@ -88,9 +88,11 @@ class TestTemplateServiceUserParameter:
             )
 
 
-async def create_user_with_customer(db_session: AsyncSession, email: str, username: str) -> tuple[User, Customer]:
+async def create_user_with_customer(
+    db_session: AsyncSession, email: str, username: str
+) -> tuple[User, Customer]:
     """Helper to create a user and matching customer for tests.
-    
+
     In the Windx system, configurations reference customers, not users directly.
     This helper creates both and ensures they can work together.
     """
@@ -103,7 +105,7 @@ async def create_user_with_customer(db_session: AsyncSession, email: str, userna
     db_session.add(customer)
     await db_session.commit()
     await db_session.refresh(customer)
-    
+
     # Create user
     user = User(
         email=email,
@@ -113,7 +115,7 @@ async def create_user_with_customer(db_session: AsyncSession, email: str, userna
     db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
-    
+
     # Create a mock user object with customer_id for testing
     # In real app, the relationship would be properly managed
     class MockUser:
@@ -121,7 +123,7 @@ async def create_user_with_customer(db_session: AsyncSession, email: str, userna
             self.id = customer_id  # Use customer.id so foreign key works
             self.email = email
             self.username = username
-    
+
     return MockUser(user.id, customer.id), customer
 
 
@@ -129,7 +131,7 @@ async def create_user_with_customer(db_session: AsyncSession, email: str, userna
 @pytest.mark.slow
 class TestTemplateServiceApplyTemplate:
     """Test apply_template_to_configuration method with full integration.
-    
+
     Note: These tests are marked as slow due to complex async database operations.
     They verify the complete flow of template application including configuration creation.
     """
@@ -139,9 +141,7 @@ class TestTemplateServiceApplyTemplate:
     ):
         """Test template application creates configuration with correct customer_id."""
         # Arrange
-        user, customer = await create_user_with_customer(
-            db_session, "test@example.com", "testuser"
-        )
+        user, customer = await create_user_with_customer(db_session, "test@example.com", "testuser")
 
         mfg_type = ManufacturingType(
             name="Test Window",
@@ -265,12 +265,8 @@ class TestTemplateServiceApplyTemplate:
     async def test_apply_template_with_different_users(self, db_session: AsyncSession):
         """Test template application works correctly with different users."""
         # Arrange
-        user1, customer1 = await create_user_with_customer(
-            db_session, "user1@example.com", "user1"
-        )
-        user2, customer2 = await create_user_with_customer(
-            db_session, "user2@example.com", "user2"
-        )
+        user1, customer1 = await create_user_with_customer(db_session, "user1@example.com", "user1")
+        user2, customer2 = await create_user_with_customer(db_session, "user2@example.com", "user2")
 
         mfg_type = ManufacturingType(
             name="Test Window 4",
@@ -350,14 +346,19 @@ class TestTemplateServiceApplyTemplate:
         # Assert
         assert config is not None
         assert config.customer_id == customer.id
-        
+
         # Refresh config with selections relationship eagerly loaded
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
+
         from app.models.configuration import Configuration
-        
-        stmt = select(Configuration).where(Configuration.id == config.id).options(selectinload(Configuration.selections))
+
+        stmt = (
+            select(Configuration)
+            .where(Configuration.id == config.id)
+            .options(selectinload(Configuration.selections))
+        )
         result = await db_session.execute(stmt)
         config_with_selections = result.scalar_one()
-        
+
         assert len(config_with_selections.selections) == 0  # No selections copied

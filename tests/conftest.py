@@ -68,21 +68,20 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.database import Base, get_db
+from app.models.attribute_node import AttributeNode  # noqa: F401
+from app.models.configuration import Configuration  # noqa: F401
+from app.models.configuration_selection import ConfigurationSelection  # noqa: F401
+from app.models.configuration_template import ConfigurationTemplate  # noqa: F401
+from app.models.customer import Customer  # noqa: F401
+from app.models.manufacturing_type import ManufacturingType  # noqa: F401
+from app.models.order import Order  # noqa: F401
+from app.models.order_item import OrderItem  # noqa: F401
+from app.models.quote import Quote  # noqa: F401
+from app.models.template_selection import TemplateSelection  # noqa: F401
 
 # Import all models to register them with Base.metadata
 # Import directly to avoid circular imports
 from app.models.user import User  # noqa: F401
-from app.models.manufacturing_type import ManufacturingType  # noqa: F401
-from app.models.attribute_node import AttributeNode  # noqa: F401
-from app.models.configuration import Configuration  # noqa: F401
-from app.models.configuration_selection import ConfigurationSelection  # noqa: F401
-from app.models.customer import Customer  # noqa: F401
-from app.models.quote import Quote  # noqa: F401
-from app.models.order import Order  # noqa: F401
-from app.models.order_item import OrderItem  # noqa: F401
-from app.models.configuration_template import ConfigurationTemplate  # noqa: F401
-from app.models.template_selection import TemplateSelection  # noqa: F401
-
 from main import app
 from tests.config import TestSettings, get_test_settings
 
@@ -151,9 +150,10 @@ def check_redis_available(host: str = "localhost", port: int = 6379, timeout: fl
         bool: True if Redis is available, False otherwise
     """
     try:
-        import redis.asyncio as redis
         import asyncio
-        
+
+        import redis.asyncio as redis
+
         async def _check():
             client = None
             try:
@@ -174,12 +174,13 @@ def check_redis_available(host: str = "localhost", port: int = 6379, timeout: fl
                         await client.aclose()
                     except Exception:
                         pass
-        
+
         # Run async check
         loop = asyncio.get_event_loop()
         if loop.is_running():
             # If loop is already running, create a new one
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(asyncio.run, _check())
                 return future.result(timeout=timeout + 1)
@@ -195,7 +196,7 @@ def redis_test_settings(request, test_settings: TestSettings) -> TestSettings:
 
     This fixture automatically enables cache and rate limiter for tests that need Redis.
     It checks if the test is marked with @pytest.mark.redis and enables Redis accordingly.
-    
+
     If Redis is not available, the test will be skipped with a helpful message.
 
     Args:
@@ -204,31 +205,32 @@ def redis_test_settings(request, test_settings: TestSettings) -> TestSettings:
 
     Returns:
         TestSettings: Modified settings with Redis enabled if test has redis marker
-        
+
     Raises:
         pytest.skip: If test has redis marker but Redis is not available
     """
     # Check if test has redis marker
     has_redis_marker = request.node.get_closest_marker("redis") is not None
-    
+
     if has_redis_marker:
         # Check if Redis is available
         redis_host = test_settings.cache.redis_host
         redis_port = test_settings.cache.redis_port
-        
+
         if not check_redis_available(redis_host, redis_port):
             pytest.skip(
                 f"Redis is not available at {redis_host}:{redis_port}. "
                 "Start Redis with: docker run -d -p 6379:6379 redis:7-alpine"
             )
-        
+
         # Create a copy of settings with Redis enabled
         from copy import deepcopy
+
         redis_settings = deepcopy(test_settings)
         redis_settings.cache.enabled = True
         redis_settings.limiter.enabled = True
         return redis_settings
-    
+
     return test_settings
 
 
@@ -298,38 +300,35 @@ async def test_engine():
         - Better JSONB performance
         - Full async/await support
         - Supabase compatibility
-        
+
         Schema isolation ensures tests don't affect development data.
     """
     test_settings = get_test_settings()
     schema = test_settings.database.schema_
-    
+
     # Create engine with schema in connect_args
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,  # Disable pooling for test isolation
-        connect_args={
-            "server_settings": {
-                "search_path": f"{schema}, public"
-            }
-        }
+        connect_args={"server_settings": {"search_path": f"{schema}, public"}},
     )
 
     # Create schema and tables with LTREE extension
     async with engine.begin() as conn:
         # Create schema if it doesn't exist
         await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
-        
+
         # Set search path for this connection (include public for extensions)
         await conn.execute(text(f"SET search_path TO {schema}, public"))
-        
+
         # Enable LTREE extension in public schema (accessible from all schemas)
         # This is required by the Windx schema for efficient tree queries
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree SCHEMA public"))
-        
+
         # Drop all tables in test schema if they exist
-        await conn.execute(text(f"""
+        await conn.execute(
+            text(f"""
             DO $$ 
             DECLARE
                 r RECORD;
@@ -339,63 +338,79 @@ async def test_engine():
                     EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
                 END LOOP;
             END $$;
-        """))
-        
+        """)
+        )
+
         # Create all tables in test schema
         # The simplest approach: set schema on metadata, create tables, then reset
         def create_tables_in_schema(connection):
             # Temporarily bind all tables to the test schema
             for table_name, table in Base.metadata.tables.items():
                 table.schema = schema
-            
+
             # Create all tables
             Base.metadata.create_all(bind=connection)
-            
+
             # Reset schema to None for other code
             for table_name, table in Base.metadata.tables.items():
                 table.schema = None
-        
+
         await conn.run_sync(create_tables_in_schema)
-        
+
         # Ensure all tables are empty (cleanup any leftover data)
         # This is a safety measure in case the DROP/CREATE didn't work properly
         table_names = [
-            'template_selections', 'configuration_selections', 'order_items', 
-            'orders', 'quotes', 'configurations', 'configuration_templates',
-            'attribute_nodes', 'customers', 'sessions', 'users', 'manufacturing_types'
+            "template_selections",
+            "configuration_selections",
+            "order_items",
+            "orders",
+            "quotes",
+            "configurations",
+            "configuration_templates",
+            "attribute_nodes",
+            "customers",
+            "sessions",
+            "users",
+            "manufacturing_types",
         ]
-        
+
         for table_name in table_names:
             try:
                 await conn.execute(text(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE"))
             except Exception as e:
                 # Table might not exist or might be empty, that's fine
                 print(f"[DEBUG] Could not truncate {table_name}: {e}")
-        
+
         # Verify tables were created
-        result = await conn.execute(text(f"""
+        result = await conn.execute(
+            text(f"""
             SELECT COUNT(*) FROM information_schema.tables 
             WHERE table_schema = '{schema}'
-        """))
+        """)
+        )
         created_count = result.scalar()
-        
+
         # Also check public schema
-        result = await conn.execute(text("""
+        result = await conn.execute(
+            text("""
             SELECT COUNT(*) FROM information_schema.tables 
             WHERE table_schema = 'public'
-        """))
+        """)
+        )
         public_count = result.scalar()
-        
+
         print(f"[DEBUG] Tables in {schema} schema: {created_count}")
         print(f"[DEBUG] Tables in public schema: {public_count}")
-        
+
         if created_count == 0:
             # Debug: show where tables actually are
-            result = await conn.execute(text("""
+            result = await conn.execute(
+                text("""
                 SELECT DISTINCT table_schema 
                 FROM information_schema.tables 
                 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
-            """))
+            """)
+            )
             schemas = [row[0] for row in result]
             print(f"[DEBUG] Schemas with tables: {schemas}")
 
@@ -405,7 +420,8 @@ async def test_engine():
     async with engine.begin() as conn:
         await conn.execute(text(f"SET search_path TO {schema}, public"))
         # Drop all tables in test schema
-        await conn.execute(text(f"""
+        await conn.execute(
+            text(f"""
             DO $$ 
             DECLARE
                 r RECORD;
@@ -415,7 +431,8 @@ async def test_engine():
                     EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
                 END LOOP;
             END $$;
-        """))
+        """)
+        )
 
     await engine.dispose()
 
@@ -455,12 +472,14 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
     """
     # Reset factory counters for test isolation
     try:
+        from tests.factories.configuration_factory import (
+            reset_counter as reset_configuration_counter,
+        )
         from tests.factories.customer_factory import reset_counter as reset_customer_counter
-        from tests.factories.user_factory import reset_counter as reset_user_counter
-        from tests.factories.quote_factory import reset_counter as reset_quote_counter
         from tests.factories.order_factory import reset_counter as reset_order_counter
-        from tests.factories.configuration_factory import reset_counter as reset_configuration_counter
-        
+        from tests.factories.quote_factory import reset_counter as reset_quote_counter
+        from tests.factories.user_factory import reset_counter as reset_user_counter
+
         reset_customer_counter()
         reset_user_counter()
         reset_quote_counter()
@@ -468,7 +487,7 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
         reset_configuration_counter()
     except ImportError:
         pass
-    
+
     async with test_session_maker() as session:
         try:
             yield session
@@ -577,17 +596,16 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
         User: Created test user
     """
     from app.core.security import get_password_hash
-    from app.models.user import User
     from app.repositories.user import UserRepository
 
     user_repo = UserRepository(db_session)
-    
+
     # Check if user already exists (in case of committed transaction from previous test)
     existing_user = await user_repo.get_by_email(test_user_data["email"])
     if existing_user:
         # Return existing user
         return existing_user
-    
+
     # Create user directly without service (to avoid commit)
     hashed_password = get_password_hash(test_user_data["password"])
     user = User(
@@ -598,7 +616,7 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
         is_superuser=False,
         is_active=True,
     )
-    
+
     db_session.add(user)
     await db_session.flush()  # Flush to get ID but don't commit
     await db_session.refresh(user)
@@ -637,17 +655,16 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
         User: Created test superuser
     """
     from app.core.security import get_password_hash
-    from app.models.user import User
     from app.repositories.user import UserRepository
 
     user_repo = UserRepository(db_session)
-    
+
     # Check if user already exists (in case of committed transaction from previous test)
     existing_user = await user_repo.get_by_email(test_superuser_data["email"])
     if existing_user:
         # Return existing user
         return existing_user
-    
+
     # Create user directly without service (to avoid commit)
     hashed_password = get_password_hash(test_superuser_data["password"])
     user = User(
@@ -658,7 +675,7 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
         is_superuser=True,
         is_active=True,
     )
-    
+
     db_session.add(user)
     await db_session.flush()  # Flush to get ID but don't commit
     await db_session.refresh(user)

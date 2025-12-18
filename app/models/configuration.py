@@ -13,6 +13,7 @@ Features:
     - JSONB for flexible technical specifications
     - Relationships with manufacturing types, customers, and selections
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

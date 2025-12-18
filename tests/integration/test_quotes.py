@@ -241,7 +241,10 @@ class TestQuoteCreation:
         # Assert - Casbin should deny access due to customer ownership
         assert response.status_code == 403
         response_data = response.json()
-        assert "Access denied" in response_data.get("detail", "") or "not authorized" in response_data.get("message", "").lower()
+        assert (
+            "Access denied" in response_data.get("detail", "")
+            or "not authorized" in response_data.get("message", "").lower()
+        )
 
     async def test_create_quote_invalid_tax_rate(
         self,
@@ -643,7 +646,7 @@ class TestQuoteCasbinRBAC:
         # Assert
         assert response.status_code == 201
         data = response.json()
-        
+
         # Verify quote uses customer_id from configuration, not user.id
         assert data["customer_id"] == test_customer.id
         assert data["configuration_id"] == configuration.id
@@ -706,7 +709,7 @@ class TestQuoteCasbinRBAC:
         # Assert - Should only see quotes for accessible customers
         assert response.status_code == 200
         data = response.json()
-        
+
         # Regular user should only see their own customer's quotes
         assert data["total"] == 1
         assert data["items"][0]["customer_id"] == test_customer.id
@@ -742,7 +745,7 @@ class TestQuoteCasbinRBAC:
             headers=auth_headers,
         )
         assert response.status_code == 200
-        
+
         # Test 2: List quotes (should be filtered by Casbin)
         response = await client.get(
             "/api/v1/quotes/",

@@ -13,6 +13,7 @@ Features:
     - Automatic timestamp management
     - Relationships with attribute nodes and configurations
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

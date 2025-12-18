@@ -51,7 +51,7 @@ Convert the Entry Page system design into a series of implementation tasks that 
     - Test conditional logic inclusion in schema
     - _Requirements: 1.1, 5.1_
 
-- [ ] 3. Dynamic Frontend with Live Preview
+- [x] 3. Dynamic Frontend with Live Preview
   - Create profile entry page template extending dashboard/base.html.jinja
   - Build dual-view layout (Input View + Preview View) with Alpine.js integration
   - Implement dynamic form generation based on schema data types
@@ -64,19 +64,19 @@ Convert the Entry Page system design into a series of implementation tasks that 
   - Implement form validation with real-time feedback and smooth transitions
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 4.5, 6.1, 6.2_
 
-  - [ ] 3.1 Write property test for real-time conditional visibility
+  - [x] 3.1 Write property test for real-time conditional visibility
     - **Property 2: Real-time conditional field visibility**
     - **Validates: Requirements 1.3, 3.1-3.5**
 
-  - [ ] 3.2 Write property test for CSV structure preservation
+  - [x] 3.2 Write property test for CSV structure preservation
     - **Property 4: CSV structure preservation**
     - **Validates: Requirements 2.2, 7.1, 7.2**
 
-  - [ ] 3.3 Write property test for real-time preview synchronization
+  - [x] 3.3 Write property test for real-time preview synchronization
     - **Property 3: Real-time preview synchronization**
     - **Validates: Requirements 2.1, 2.4, 6.4**
 
-- [ ] 4. Data Persistence and Validation
+- [x] 4. Data Persistence and Validation
   - Implement save_profile_configuration service method creating Configuration and ConfigurationSelection records
   - Create load_profile_configuration service method populating form fields from stored selections
   - Build POST /entry/profile/save and GET /entry/profile/load/{configuration_id} API endpoints
@@ -89,19 +89,19 @@ Convert the Entry Page system design into a series of implementation tasks that 
   - Handle missing or invalid data gracefully with custom validation messages
   - _Requirements: 1.4, 1.5, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4_
 
-  - [ ]* 4.1 Write property test for configuration data persistence
+  - [x]* 4.1 Write property test for configuration data persistence
     - **Property 7: Configuration data persistence**
     - **Validates: Requirements 1.5, 5.4, 5.5**
 
-  - [ ]* 4.2 Write property test for graceful null value handling
+  - [x]* 4.2 Write property test for graceful null value handling
     - **Property 5: Graceful null value handling**
     - **Validates: Requirements 2.3, 7.3, 7.4, 7.5**
 
-  - [ ]* 4.3 Write property test for schema-based validation enforcement
+  - [x]* 4.3 Write property test for schema-based validation enforcement
     - **Property 6: Schema-based validation enforcement**
     - **Validates: Requirements 1.4, 5.3, 6.1, 6.2, 6.3**
 
-- [ ] 5. Scaffold Pages and Final Integration
+- [x] 5. Scaffold Pages and Final Integration
   - Create Accessories and Glazing scaffold pages (accessories.html.jinja, glazing.html.jinja)
   - Add clear TODO sections for future implementation with consistent styling
   - Implement navigation menu for Profile/Accessories/Glazing with active page state preservation

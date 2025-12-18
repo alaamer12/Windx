@@ -102,7 +102,11 @@ class User(Base):
     def __init__(self, **kwargs):
         """Initialize User with default role if not provided."""
         if 'role' not in kwargs:
-            kwargs['role'] = 'customer'
+            # Set role based on is_superuser flag
+            if kwargs.get('is_superuser', False):
+                kwargs['role'] = 'superadmin'
+            else:
+                kwargs['role'] = 'customer'
         super().__init__(**kwargs)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),

@@ -175,6 +175,57 @@ async def save_profile_data(
 
 
 @router.get(
+    "/profile/load/{configuration_id}",
+    response_model=ProfileEntryData,
+    summary="Load Profile Data",
+    description="Load profile configuration data and populate form fields",
+    response_description="Profile data for form population",
+    operation_id="loadProfileData",
+    responses={
+        200: {
+            "description": "Profile data successfully loaded",
+        },
+        403: {
+            "description": "Not authorized to access this configuration",
+        },
+        404: {
+            "description": "Configuration not found",
+        },
+        **get_common_responses(401, 500),
+    },
+)
+async def load_profile_data(
+    configuration_id: PositiveInt,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> ProfileEntryData:
+    """Load profile configuration data for form population.
+
+    Retrieves the configuration and its selections, then populates
+    the form data structure for editing.
+
+    Args:
+        configuration_id (PositiveInt): Configuration ID to load
+        current_user (User): Current authenticated user
+        db (AsyncSession): Database session
+
+    Returns:
+        ProfileEntryData: Populated form data
+
+    Raises:
+        NotFoundException: If configuration not found
+        AuthorizationException: If user lacks permission
+
+    Example:
+        GET /api/v1/entry/profile/load/123
+    """
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.load_profile_configuration(configuration_id, current_user)
+
+
+@router.get(
     "/profile/preview/{configuration_id}",
     response_model=ProfilePreviewData,
     summary="Get Profile Preview",

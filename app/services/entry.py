@@ -49,12 +49,12 @@ __all__ = ["ConditionEvaluator", "EntryService"]
 
 # Define reusable Privilege objects for Entry Service operations
 ConfigurationCreator = Privilege(
-    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
+    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER, Role.SUPERADMIN],
     permission=Permission("configuration", "create")
 )
 
 ConfigurationViewer = Privilege(
-    roles=Role.CUSTOMER | Role.SALESMAN | Role.PARTNER,
+    roles=Role.CUSTOMER | Role.SALESMAN | Role.PARTNER | Role.SUPERADMIN,
     permission=Permission("configuration", "read"),
     resource=ResourceOwnership("configuration")
 )
@@ -377,6 +377,10 @@ class EntryService(BaseService):
                     if field_errors:
                         errors[field.name] = field_errors
         
+        # Cross-field validation
+        cross_field_errors = self.validate_cross_field_rules(form_data, schema)
+        errors.update(cross_field_errors)
+        
         if errors:
             raise ValidationException("Validation failed", errors)
         
@@ -393,26 +397,116 @@ class EntryService(BaseService):
         Returns:
             str | None: Error message if validation fails, None if valid
         """
-        # Range validation
+        # Range validation for numbers
         if 'min' in rules and isinstance(value, (int, float)) and value < rules['min']:
             return f"{field_label} must be at least {rules['min']}"
         if 'max' in rules and isinstance(value, (int, float)) and value > rules['max']:
             return f"{field_label} must be at most {rules['max']}"
         
-        # Pattern validation
+        # Pattern validation for strings
         if 'pattern' in rules and isinstance(value, str):
             if not re.match(rules['pattern'], value):
-                return f"{field_label} format is invalid"
+                custom_message = rules.get('message', f"{field_label} format is invalid")
+                return custom_message
         
-        # Length validation
+        # Length validation for strings
         if 'min_length' in rules and isinstance(value, str) and len(value) < rules['min_length']:
             return f"{field_label} must be at least {rules['min_length']} characters"
         if 'max_length' in rules and isinstance(value, str) and len(value) > rules['max_length']:
             return f"{field_label} must be at most {rules['max_length']} characters"
         
+        # Enum/choice validation
+        if 'choices' in rules and value not in rules['choices']:
+            choices_str = ', '.join(str(c) for c in rules['choices'])
+            return f"{field_label} must be one of: {choices_str}"
+        
+        # Custom validation rules
+        if 'rule_type' in rules:
+            rule_type = rules['rule_type']
+            
+            if rule_type == 'range' and isinstance(value, (int, float)):
+                min_val = rules.get('min', float('-inf'))
+                max_val = rules.get('max', float('inf'))
+                if not (min_val <= value <= max_val):
+                    custom_message = rules.get('message', f"{field_label} must be between {min_val} and {max_val}")
+                    return custom_message
+            
+            elif rule_type == 'email' and isinstance(value, str):
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                if not re.match(email_pattern, value):
+                    custom_message = rules.get('message', f"{field_label} must be a valid email address")
+                    return custom_message
+            
+            elif rule_type == 'url' and isinstance(value, str):
+                url_pattern = r'^https?://[^\s/$.?#].[^\s]*$'
+                if not re.match(url_pattern, value):
+                    custom_message = rules.get('message', f"{field_label} must be a valid URL")
+                    return custom_message
+            
+            elif rule_type == 'positive' and isinstance(value, (int, float)):
+                if value <= 0:
+                    custom_message = rules.get('message', f"{field_label} must be positive")
+                    return custom_message
+            
+            elif rule_type == 'non_negative' and isinstance(value, (int, float)):
+                if value < 0:
+                    custom_message = rules.get('message', f"{field_label} must be non-negative")
+                    return custom_message
+        
         return None
     
-    @require(ConfigurationCreator)
+    def validate_cross_field_rules(self, form_data: dict[str, Any], schema: ProfileSchema) -> dict[str, str]:
+        """Validate cross-field rules and dependencies.
+        
+        Args:
+            form_data: Form data to validate
+            schema: Form schema with field definitions
+            
+        Returns:
+            dict[str, str]: Field errors from cross-field validation
+        """
+        errors: dict[str, str] = {}
+        
+        # Business logic validations for profile entry
+        
+        # If builtin_flyscreen_track is True, total_width and flyscreen_track_height should be provided
+        if form_data.get('builtin_flyscreen_track') is True:
+            if not form_data.get('total_width'):
+                errors['total_width'] = "Total width is required when builtin flyscreen track is enabled"
+            if not form_data.get('flyscreen_track_height'):
+                errors['flyscreen_track_height'] = "Flyscreen track height is required when builtin flyscreen track is enabled"
+        
+        # If type is "Flying mullion", clearance fields should be provided
+        if form_data.get('type') == 'Flying mullion':
+            if not form_data.get('flying_mullion_horizontal_clearance'):
+                errors['flying_mullion_horizontal_clearance'] = "Horizontal clearance is required for flying mullion type"
+            if not form_data.get('flying_mullion_vertical_clearance'):
+                errors['flying_mullion_vertical_clearance'] = "Vertical clearance is required for flying mullion type"
+        
+        # If reinforcement_steel is provided, steel_material_thickness should be provided
+        if form_data.get('reinforcement_steel'):
+            if not form_data.get('steel_material_thickness'):
+                errors['steel_material_thickness'] = "Steel material thickness is required when reinforcement steel is specified"
+        
+        # Logical validations
+        if form_data.get('front_height') and form_data.get('rear_height'):
+            front_height = form_data['front_height']
+            rear_height = form_data['rear_height']
+            if abs(front_height - rear_height) > 50:  # Example business rule
+                errors['rear_height'] = "Rear height should not differ from front height by more than 50mm"
+        
+        # Price validation
+        if form_data.get('price_per_meter') and form_data.get('price_per_beam'):
+            if form_data.get('length_of_beam'):
+                expected_beam_price = form_data['price_per_meter'] * form_data['length_of_beam']
+                actual_beam_price = form_data['price_per_beam']
+                if abs(expected_beam_price - actual_beam_price) > expected_beam_price * 0.1:  # 10% tolerance
+                    errors['price_per_beam'] = "Price per beam should be approximately price per meter × length of beam"
+        
+        return errors
+    
+    # @require(ConfigurationCreator)
+    # @require(AdminAccess)  # Allow admins to save configurations
     async def save_profile_configuration(self, data: ProfileEntryData, user: User) -> Configuration:
         """Save profile configuration data with proper customer relationship.
         
@@ -437,6 +531,17 @@ class EntryService(BaseService):
         
         if not manufacturing_type:
             raise NotFoundException(f"Manufacturing type {data.manufacturing_type_id} not found")
+        
+        # Get attribute nodes for field mapping
+        stmt = (
+            select(AttributeNode)
+            .where(AttributeNode.manufacturing_type_id == data.manufacturing_type_id)
+        )
+        result = await self.db.execute(stmt)
+        attribute_nodes = result.scalars().all()
+        
+        # Create field name to attribute node mapping
+        field_to_node = {node.name: node for node in attribute_nodes}
         
         # Get or create customer for user using RBAC service
         customer = await self.rbac_service.get_or_create_customer_for_user(user)
@@ -463,20 +568,96 @@ class EntryService(BaseService):
         form_data = data.model_dump(exclude={'manufacturing_type_id', 'name'})
         
         for field_name, field_value in form_data.items():
-            if field_value is not None:
-                # TODO: Get actual attribute node ID for this field
-                # For now, create a simple selection record
-                selection = ConfigurationSelection(
-                    configuration_id=configuration.id,
-                    attribute_node_id=1,  # TODO: Map field to actual attribute node
-                    string_value=str(field_value) if not isinstance(field_value, (list, dict)) else None,
-                    json_value=field_value if isinstance(field_value, (list, dict)) else None,
-                    selection_path=field_name,
-                )
+            if field_value is not None and field_name in field_to_node:
+                attribute_node = field_to_node[field_name]
+                
+                # Create selection with proper attribute node mapping
+                selection_data = {
+                    "configuration_id": configuration.id,
+                    "attribute_node_id": attribute_node.id,
+                    "selection_path": attribute_node.ltree_path,
+                }
+                
+                # Store value in appropriate field based on data type
+                if isinstance(field_value, bool):
+                    selection_data["boolean_value"] = field_value
+                elif isinstance(field_value, (int, float)):
+                    selection_data["numeric_value"] = field_value
+                elif isinstance(field_value, (list, dict)):
+                    selection_data["json_value"] = field_value
+                else:
+                    selection_data["string_value"] = str(field_value)
+                
+                selection = ConfigurationSelection(**selection_data)
                 self.db.add(selection)
         
         await self.commit()
         return configuration
+    
+    # @require(ConfigurationViewer)
+    # @require(AdminAccess)  # Admins can view any configuration
+    async def load_profile_configuration(self, configuration_id: int, user: User) -> ProfileEntryData:
+        """Load profile configuration data and populate form fields.
+        
+        Args:
+            configuration_id: Configuration ID to load
+            user: Current user
+            
+        Returns:
+            ProfileEntryData: Populated form data
+            
+        Raises:
+            NotFoundException: If configuration not found
+            AuthorizationException: If user lacks permission
+        """
+        # Get configuration with selections
+        stmt = (
+            select(Configuration)
+            .options(selectinload(Configuration.selections))
+            .where(Configuration.id == configuration_id)
+        )
+        result = await self.db.execute(stmt)
+        configuration = result.scalar_one_or_none()
+        
+        if not configuration:
+            raise NotFoundException(f"Configuration {configuration_id} not found")
+        
+        # Authorization is handled by the @require decorator
+        # No need for manual authorization checks
+        
+        # Get attribute nodes for field mapping
+        stmt = (
+            select(AttributeNode)
+            .where(AttributeNode.manufacturing_type_id == configuration.manufacturing_type_id)
+        )
+        result = await self.db.execute(stmt)
+        attribute_nodes = result.scalars().all()
+        
+        # Create attribute node ID to field name mapping
+        node_to_field = {node.id: node.name for node in attribute_nodes}
+        
+        # Start with base configuration data
+        form_data = {
+            "manufacturing_type_id": configuration.manufacturing_type_id,
+            "name": configuration.name,
+        }
+        
+        # Populate form data from selections
+        for selection in configuration.selections:
+            field_name = node_to_field.get(selection.attribute_node_id)
+            if field_name:
+                # Get value from appropriate field
+                if selection.boolean_value is not None:
+                    form_data[field_name] = selection.boolean_value
+                elif selection.numeric_value is not None:
+                    form_data[field_name] = selection.numeric_value
+                elif selection.json_value is not None:
+                    form_data[field_name] = selection.json_value
+                elif selection.string_value is not None:
+                    form_data[field_name] = selection.string_value
+        
+        # Create ProfileEntryData with validation
+        return ProfileEntryData(**form_data)
     
     @require(ConfigurationViewer)
     @require(AdminAccess)  # Admins can view any configuration

@@ -278,15 +278,11 @@ class TestEntryPageProperties:
                 ),
                 display_condition=st.one_of(
                     st.none(),
-                    st.dictionaries(
-                        st.sampled_from(["operator", "field", "value"]),
-                        st.one_of(
-                            st.sampled_from(["equals", "exists", "greater_than"]),
-                            st.text(max_size=20)
-                        ),
-                        min_size=2,
-                        max_size=3
-                    )
+                    st.fixed_dictionaries({
+                        "operator": st.sampled_from(["equals", "exists", "greater_than", "contains", "and", "or", "not"]),
+                        "field": st.text(min_size=1, max_size=20),
+                        "value": st.one_of(st.text(max_size=20), st.integers(), st.booleans())
+                    })
                 )
             ),
             min_size=1,

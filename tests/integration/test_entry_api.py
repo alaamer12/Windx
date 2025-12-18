@@ -103,6 +103,38 @@ class TestEntryAPIEndpoints:
         )
         db_session.add(material_attr)
         
+        # Opening system attribute
+        opening_system_attr = AttributeNode(
+            manufacturing_type_id=manufacturing_type.id,
+            parent_node_id=basic_info.id,
+            name="opening_system",
+            node_type="attribute",
+            data_type="string",
+            required=True,
+            ui_component="dropdown",
+            description="Opening System",
+            ltree_path="basic_information.opening_system",
+            depth=1,
+            sort_order=3
+        )
+        db_session.add(opening_system_attr)
+        
+        # System series attribute
+        system_series_attr = AttributeNode(
+            manufacturing_type_id=manufacturing_type.id,
+            parent_node_id=basic_info.id,
+            name="system_series",
+            node_type="attribute",
+            data_type="string",
+            required=True,
+            ui_component="dropdown",
+            description="System Series",
+            ltree_path="basic_information.system_series",
+            depth=1,
+            sort_order=4
+        )
+        db_session.add(system_series_attr)
+        
         # Width attribute with conditional display
         width_attr = AttributeNode(
             manufacturing_type_id=manufacturing_type.id,
@@ -125,7 +157,7 @@ class TestEntryAPIEndpoints:
             },
             ltree_path="basic_information.width",
             depth=1,
-            sort_order=3
+            sort_order=5
         )
         db_session.add(width_attr)
         
@@ -332,6 +364,157 @@ class TestEntryAPIEndpoints:
         assert response.status_code == 422
         data = response.json()
         assert "Invalid manufacturing type" in data["message"]
+
+    @pytest.mark.asyncio
+    async def test_load_profile_data_success(
+        self,
+        client: AsyncClient,
+        test_superuser: User,
+        superuser_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test successful profile data loading."""
+        # First create a configuration
+        profile_data = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Test Load Window",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Kom800",
+            "width": 1400
+        }
+        
+        save_response = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data,
+            headers=superuser_auth_headers
+        )
+        
+        if save_response.status_code != 201:
+            print(f"Response status: {save_response.status_code}")
+            print(f"Response body: {save_response.text}")
+        
+        assert save_response.status_code == 201
+        configuration_id = save_response.json()["id"]
+        
+        # Now load the profile data
+        response = await client.get(
+            f"/api/v1/entry/profile/load/{configuration_id}",
+            headers=superuser_auth_headers
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Verify loaded data structure matches ProfileEntryData schema
+        assert "manufacturing_type_id" in data
+        assert "name" in data
+        assert "type" in data
+        assert "material" in data
+        assert "opening_system" in data
+        assert "system_series" in data
+        assert "width" in data
+        
+        # Verify data matches what was saved
+        assert data["manufacturing_type_id"] == manufacturing_type_with_attributes.id
+        assert data["name"] == "Test Load Window"
+        assert data["type"] == "Frame"
+        assert data["material"] == "Aluminum"
+        assert data["opening_system"] == "Casement"
+        assert data["system_series"] == "Kom800"
+        assert data["width"] == 1400
+
+    @pytest.mark.asyncio
+    async def test_load_profile_data_not_found(
+        self,
+        client: AsyncClient,
+        test_superuser: User,
+        superuser_auth_headers: dict[str, str],
+    ):
+        """Test profile data loading for non-existent configuration."""
+        response = await client.get(
+            "/api/v1/entry/profile/load/99999",
+            headers=superuser_auth_headers
+        )
+        
+        assert response.status_code == 404
+        data = response.json()
+        assert "Configuration 99999 not found" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_load_profile_data_unauthorized_user(
+        self,
+        client: AsyncClient,
+        test_user: User,
+        auth_headers: dict[str, str],
+        test_superuser: User,
+        superuser_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+    ):
+        """Test profile data loading by unauthorized user."""
+        # Create configuration as superuser
+        profile_data = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "Superuser Load Window",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Kom800"
+        }
+        
+        save_response = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data,
+            headers=superuser_auth_headers
+        )
+        assert save_response.status_code == 201
+        configuration_id = save_response.json()["id"]
+        
+        # Try to load as regular user
+        response = await client.get(
+            f"/api/v1/entry/profile/load/{configuration_id}",
+            headers=auth_headers
+        )
+        
+        assert response.status_code == 403
+        data = response.json()
+        assert "Not authorized to access this configuration" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_load_profile_data_unauthorized_no_auth(
+        self,
+        client: AsyncClient,
+        test_superuser: User,
+        superuser_auth_headers: dict[str, str],
+        manufacturing_type_with_attributes: ManufacturingType,
+    ):
+        """Test profile data loading without authentication."""
+        # Create configuration first
+        profile_data = {
+            "manufacturing_type_id": manufacturing_type_with_attributes.id,
+            "name": "No Auth Load Window",
+            "type": "Frame",
+            "material": "Aluminum",
+            "opening_system": "Casement",
+            "system_series": "Kom800"
+        }
+        
+        save_response = await client.post(
+            "/api/v1/entry/profile/save",
+            json=profile_data,
+            headers=superuser_auth_headers
+        )
+        assert save_response.status_code == 201
+        configuration_id = save_response.json()["id"]
+        
+        # Try to load without authentication
+        response = await client.get(
+            f"/api/v1/entry/profile/load/{configuration_id}"
+        )
+        
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_get_profile_preview_success(
@@ -745,6 +928,7 @@ class TestEntryAPICasbinRBAC:
         endpoints = [
             ("GET", f"/api/v1/entry/profile/schema/{manufacturing_type_with_attributes.id}"),
             ("POST", "/api/v1/entry/profile/save"),
+            ("GET", "/api/v1/entry/profile/load/1"),
             ("GET", "/api/v1/entry/profile/preview/1"),
             ("POST", "/api/v1/entry/profile/evaluate-conditions"),
         ]

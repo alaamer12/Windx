@@ -20,6 +20,98 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade database schema."""
+    # First, ensure all columns exist that are referenced in indexes
+    # This handles cases where the model has evolved but migrations haven't kept up
+    
+    # Add missing columns to attribute_nodes table if they don't exist
+    op.execute("""
+        DO $$ 
+        BEGIN 
+            -- Add technical_property_type column if it doesn't exist
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'technical_property_type') THEN
+                ALTER TABLE attribute_nodes ADD COLUMN technical_property_type VARCHAR(50);
+                CREATE INDEX IF NOT EXISTS ix_attribute_nodes_technical_property_type ON attribute_nodes (technical_property_type);
+            END IF;
+            
+            -- Add technical_impact_formula column if it doesn't exist
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'technical_impact_formula') THEN
+                ALTER TABLE attribute_nodes ADD COLUMN technical_impact_formula TEXT;
+            END IF;
+            
+            -- Add required column if it doesn't exist (renamed from is_required)
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'required') THEN
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'is_required') THEN
+                    -- Rename existing column
+                    ALTER TABLE attribute_nodes RENAME COLUMN is_required TO required;
+                ELSE
+                    -- Add new column
+                    ALTER TABLE attribute_nodes ADD COLUMN required BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+            END IF;
+            
+            -- Add weight_impact column if it doesn't exist (renamed from weight_impact_value)
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'weight_impact') THEN
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'weight_impact_value') THEN
+                    -- Rename existing column
+                    ALTER TABLE attribute_nodes RENAME COLUMN weight_impact_value TO weight_impact;
+                ELSE
+                    -- Add new column
+                    ALTER TABLE attribute_nodes ADD COLUMN weight_impact NUMERIC(10,2) NOT NULL DEFAULT 0;
+                END IF;
+            END IF;
+            
+            -- Add sort_order column if it doesn't exist (renamed from display_order)
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'sort_order') THEN
+                IF EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'display_order') THEN
+                    -- Rename existing column
+                    ALTER TABLE attribute_nodes RENAME COLUMN display_order TO sort_order;
+                ELSE
+                    -- Add new column
+                    ALTER TABLE attribute_nodes ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+                END IF;
+            END IF;
+            
+            -- Add description column if it doesn't exist
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'description') THEN
+                ALTER TABLE attribute_nodes ADD COLUMN description TEXT;
+            END IF;
+            
+            -- Add help_text column if it doesn't exist
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'help_text') THEN
+                ALTER TABLE attribute_nodes ADD COLUMN help_text TEXT;
+            END IF;
+            
+            -- Add weight_formula column if it doesn't exist
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'attribute_nodes' AND column_name = 'weight_formula') THEN
+                ALTER TABLE attribute_nodes ADD COLUMN weight_formula TEXT;
+            END IF;
+            
+        END $$;
+    """)
+    
+    # Add missing columns to quotes table if they don't exist
+    op.execute("""
+        DO $$ 
+        BEGIN 
+            -- Add technical_requirements column if it doesn't exist
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name = 'quotes' AND column_name = 'technical_requirements') THEN
+                ALTER TABLE quotes ADD COLUMN technical_requirements JSONB;
+            END IF;
+        END $$;
+    """)
+    
     # Create all model-defined performance indexes using IF NOT EXISTS
     # This handles cases where some indexes may already exist from previous migrations
     

@@ -43,7 +43,7 @@ class ValidationRule(BaseModel):
 class AttributeNodeBase(BaseModel):
     """Base schema for AttributeNode with common fields."""
 
-    name: Annotated[str, Field(max_length=200, description="Display name of the attribute")]
+    name: Annotated[str, Field(min_length=1, max_length=200, description="Display name of the attribute")]
     node_type: Annotated[
         str, Field(description="Node type: category, attribute, option, component, technical_spec")
     ]

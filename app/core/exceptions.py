@@ -344,9 +344,68 @@ def setup_exception_handlers(app):
     Args:
         app: FastAPI application instance
     """
-    # This is a placeholder function for exception handler setup
-    # Can be expanded to add custom exception handlers
-    pass
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(ConflictException)
+    async def conflict_exception_handler(request: Request, exc: ConflictException):
+        """Handle ConflictException with standardized error response."""
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "conflict_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(AuthenticationException)
+    async def authentication_exception_handler(request: Request, exc: AuthenticationException):
+        """Handle AuthenticationException with standardized error response."""
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "authentication_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(AuthorizationException)
+    async def authorization_exception_handler(request: Request, exc: AuthorizationException):
+        """Handle AuthorizationException with standardized error response."""
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": "authorization_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(NotFoundException)
+    async def not_found_exception_handler(request: Request, exc: NotFoundException):
+        """Handle NotFoundException with standardized error response."""
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "not_found_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(ValidationException)
+    async def validation_exception_handler(request: Request, exc: ValidationException):
+        """Handle ValidationException with standardized error response."""
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "validation_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
 
 
 # Exception mapping for HTTP responses

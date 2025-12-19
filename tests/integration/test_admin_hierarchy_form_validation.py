@@ -19,10 +19,12 @@ async def test_save_node_with_invalid_name_shows_validation_error(
     db_session: AsyncSession,
 ):
     """Test that invalid node name triggers Pydantic validation error."""
-    # Create manufacturing type
+    # Create manufacturing type with unique name
+    import uuid
     service = HierarchyBuilderService(db_session)
+    unique_name = f"Test Window {uuid.uuid4().hex[:8]}"
     mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
+        name=unique_name,
         base_price=Decimal("200.00"),
     )
 

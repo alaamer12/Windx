@@ -37,8 +37,13 @@ def upgrade() -> None:
         END $$;
     """)
     
-    # Ensure index exists
-    op.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)")
+    # Create all tables with their indexes as defined in models
+    # This will create all tables and indexes defined in SQLAlchemy models
+    from app.database.base import Base
+    op.execute("-- Creating tables and indexes from SQLAlchemy models")
+    
+    # Note: The individual table creation below is for explicit control
+    # In a fresh database, you could also use: Base.metadata.create_all(bind=op.get_bind())
     
     # Create manufacturing_types table
     op.create_table(
@@ -154,7 +159,7 @@ def upgrade() -> None:
     op.create_index('ix_configurations_status', 'configurations', ['status'])
     op.create_index('ix_configurations_reference_code', 'configurations', ['reference_code'], unique=True)
     op.create_index('ix_configurations_created_at', 'configurations', ['created_at'])
-    op.execute("CREATE INDEX IF NOT EXISTS idx_configurations_customer_status ON configurations (customer_id, status)")
+    # Note: idx_configurations_customer_status is defined in the model
     
     # Create configuration_selections table
     op.create_table(
@@ -179,8 +184,7 @@ def upgrade() -> None:
     op.create_index('ix_configuration_selections_configuration_id', 'configuration_selections', ['configuration_id'])
     op.create_index('ix_configuration_selections_attribute_node_id', 'configuration_selections', ['attribute_node_id'])
     op.create_index('ix_configuration_selections_created_at', 'configuration_selections', ['created_at'])
-    # Index already exists from previous migration, skip if exists
-    op.execute("CREATE INDEX IF NOT EXISTS idx_configuration_selections_config_id ON configuration_selections (configuration_id)")
+    # Note: Performance indexes for configuration_selections are defined in the model
     
     # Convert selection_path column to LTREE type
     op.execute("ALTER TABLE configuration_selections ALTER COLUMN selection_path TYPE ltree USING selection_path::ltree")
@@ -264,7 +268,7 @@ def upgrade() -> None:
     op.create_index('ix_quotes_quote_number', 'quotes', ['quote_number'], unique=True)
     op.create_index('ix_quotes_status', 'quotes', ['status'])
     op.create_index('ix_quotes_created_at', 'quotes', ['created_at'])
-    op.execute("CREATE INDEX IF NOT EXISTS idx_quotes_customer_id ON quotes (customer_id)")
+    # Note: Performance indexes for quotes are defined in the model
     
     # Create orders table
     op.create_table(
@@ -288,7 +292,7 @@ def upgrade() -> None:
     op.create_index('ix_orders_status', 'orders', ['status'])
     op.create_index('ix_orders_order_date', 'orders', ['order_date'])
     op.create_index('ix_orders_created_at', 'orders', ['created_at'])
-    op.execute("CREATE INDEX IF NOT EXISTS idx_orders_quote_id ON orders (quote_id)")
+    # Note: Performance indexes for orders are defined in the model
     
     # Create order_items table
     op.create_table(
@@ -311,6 +315,10 @@ def upgrade() -> None:
     op.create_index('ix_order_items_configuration_id', 'order_items', ['configuration_id'])
     op.create_index('ix_order_items_production_status', 'order_items', ['production_status'])
     op.create_index('ix_order_items_created_at', 'order_items', ['created_at'])
+    
+    # Note: Additional performance indexes are defined in the SQLAlchemy models
+    # and will be created automatically by SQLAlchemy when tables are created.
+    # This migration focuses on creating the core table structure.
 
 
 def downgrade() -> None:

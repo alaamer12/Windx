@@ -63,32 +63,35 @@ jobs:
         run: |
           echo "📦 Installing dependencies..."
           uv sync --dev
-          uv add pkg_resources
           
           echo "🔍 Checking available pytest plugins..."
           uv run python -c "
-          import pkg_resources
           import sys
           
-          pytest_plugins = []
-          for dist in pkg_resources.working_set:
-              if 'pytest' in dist.project_name and dist.project_name != 'pytest':
-                  pytest_plugins.append(dist.project_name)
-          
-          if pytest_plugins:
-              print('Available pytest plugins:')
-              for plugin in sorted(pytest_plugins):
-                  print(f'  - {plugin}')
-          else:
-              print('No pytest plugins found')
-          
-          # Test basic imports
+          # Test basic imports first
           try:
               import pytest
               print(f'✅ pytest version: {pytest.__version__}')
           except ImportError:
               print('❌ pytest not available')
               sys.exit(1)
+          
+          # Try to check for pytest plugins
+          try:
+              import pkg_resources
+              pytest_plugins = []
+              for dist in pkg_resources.working_set:
+                  if 'pytest' in dist.project_name and dist.project_name != 'pytest':
+                      pytest_plugins.append(dist.project_name)
+              
+              if pytest_plugins:
+                  print('Available pytest plugins:')
+                  for plugin in sorted(pytest_plugins):
+                      print(f'  - {plugin}')
+              else:
+                  print('No pytest plugins found')
+          except ImportError:
+              print('pkg_resources not available, skipping plugin check')
           "
 
       - name: Install PostgreSQL client

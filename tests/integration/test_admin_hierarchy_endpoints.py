@@ -52,6 +52,7 @@ async def test_hierarchy_dashboard_no_type_selected(
 async def test_hierarchy_dashboard_with_type_selected(
     client: AsyncClient,
     superuser_auth_headers: dict,
+    db_session: AsyncSession,
 ):
     """Test dashboard renders with manufacturing type selected."""
     import random
@@ -72,35 +73,28 @@ async def test_hierarchy_dashboard_with_type_selected(
     assert create_response.status_code == 201
     mfg_type_id = create_response.json()["id"]
 
-    # Create simple hierarchy via API
-    root_response = await client.post(
-        "/api/v1/admin/hierarchy/node/save",
-        headers=superuser_auth_headers,
-        data={
-            "manufacturing_type_id": str(mfg_type_id),
-            "name": "Frame Options",
-            "node_type": "category",
-            "price_impact_type": "fixed",
-            "weight_impact": "0",
-            "sort_order": "0",
-        },
+    # Create simple hierarchy via service to get proper IDs
+    from app.services.hierarchy_builder import HierarchyBuilderService
+    service = HierarchyBuilderService(db_session)
+    
+    # Get the manufacturing type from database
+    from app.repositories.manufacturing_type import ManufacturingTypeRepository
+    mfg_repo = ManufacturingTypeRepository(db_session)
+    mfg_type = await mfg_repo.get(mfg_type_id)
+    
+    # Create hierarchy using service
+    root_node = await service.create_node(
+        manufacturing_type_id=mfg_type_id,
+        name="Frame Options",
+        node_type="category",
     )
-    assert root_response.status_code == 303  # Redirect after save
-
-    child_response = await client.post(
-        "/api/v1/admin/hierarchy/node/save",
-        headers=superuser_auth_headers,
-        data={
-            "manufacturing_type_id": str(mfg_type_id),
-            "name": "Material Type",
-            "node_type": "attribute",
-            "parent_node_id": "1",  # Assuming first node gets ID 1
-            "price_impact_type": "fixed",
-            "weight_impact": "0",
-            "sort_order": "0",
-        },
+    
+    child_node = await service.create_node(
+        manufacturing_type_id=mfg_type_id,
+        name="Material Type",
+        node_type="attribute",
+        parent_node_id=root_node.id,
     )
-    assert child_response.status_code == 303  # Redirect after save
 
     # Request dashboard with type selection
     response = await client.get(
@@ -410,6 +404,95 @@ async def test_hierarchy_dashboard_multiple_manufacturing_types(
     assert "Window Type" in content
     assert "Door Type" in content
     assert "Select Manufacturing Type" in content
+
+
+@pytest.mark.asyncio
+async def test_hierarchy_dashboard_flattened_attribute_nodes_structure(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that dashboard provides flattened attribute_nodes for JavaScript consumption."""
+    import random
+    import time
+    
+    # Create manufacturing type and complex hierarchy with unique name
+    service = HierarchyBuilderService(db_session)
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    mfg_type = await service.create_manufacturing_type(
+        name=f"Test Window Flattened {unique_id}",
+        base_price=Decimal("200.00"),
+    )
+
+    # Create nested hierarchy: Root -> Category -> Attribute -> Option
+    root = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Frame Options",
+        node_type="category",
+    )
+
+    category = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Material Type",
+        node_type="attribute",
+        parent_node_id=root.id,
+    )
+
+    option1 = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Aluminum",
+        node_type="option",
+        parent_node_id=category.id,
+        price_impact_value=Decimal("50.00"),
+    )
+
+    option2 = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Wood",
+        node_type="option",
+        parent_node_id=category.id,
+        price_impact_value=Decimal("120.00"),
+    )
+
+    # Request dashboard
+    response = await client.get(
+        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
+        headers=superuser_auth_headers,
+    )
+
+    assert response.status_code == 200
+    content = response.text
+
+    # Verify all nodes are present in the flattened structure
+    # The JavaScript should receive a flat list of all nodes without nested children
+    assert "Frame Options" in content
+    assert "Material Type" in content
+    assert "Aluminum" in content
+    assert "Wood" in content
+
+    # Verify that the attribute_nodes JavaScript data is present
+    # This should be a flat array, not nested tree structure
+    assert "var nodeData" in content or "nodeData" in content
+
+    # Verify the structure contains all expected node IDs
+    # The flattened structure should include all 4 nodes we created
+    import re
+    
+    # Look for JavaScript variable containing node data
+    # The template should render something like: var nodeData = [...];
+    js_data_match = re.search(r'nodeData\s*=\s*(\[.*?\]);', content, re.DOTALL)
+    if js_data_match:
+        js_data = js_data_match.group(1)
+        # Verify all node names appear in the JavaScript data
+        assert "Frame Options" in js_data
+        assert "Material Type" in js_data
+        assert "Aluminum" in js_data
+        assert "Wood" in js_data
+        
+        # Verify it's a flat structure (no nested "children" arrays)
+        # Count occurrences of "children" - should be 0 in flattened structure
+        children_count = js_data.count('"children"')
+        assert children_count == 0, f"Found {children_count} 'children' properties in flattened data, expected 0"
 
 
 # ============================================================================

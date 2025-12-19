@@ -187,9 +187,21 @@ async def hierarchy_dashboard(
             # Convert to dict for template
             if tree:
                 context["tree_nodes"] = [node.model_dump() for node in tree]
-                context["attribute_nodes"] = [
-                    node.model_dump() for node in tree
-                ]  # For enhanced template
+                # Flatten tree for attribute_nodes (needed for JavaScript nodeData)
+                def flatten_tree(nodes):
+                    """Flatten nested tree structure into a flat list of all nodes."""
+                    flat_list = []
+                    for node in nodes:
+                        # Add the node itself (without children to avoid circular refs)
+                        node_dict = node.model_dump()
+                        children = node_dict.pop('children', [])
+                        flat_list.append(node_dict)
+                        # Recursively add children
+                        if children:
+                            flat_list.extend(flatten_tree([type(node)(**child) for child in children]))
+                    return flat_list
+                
+                context["attribute_nodes"] = flatten_tree(tree)
 
             # Get ASCII tree visualization
             context["ascii_tree"] = await hierarchy_service.asciify(manufacturing_type_id)

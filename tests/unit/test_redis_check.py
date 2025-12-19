@@ -2,7 +2,7 @@
 
 import pytest
 
-from tests.conftest import check_redis_available
+from tests.config import check_redis_available
 
 
 class TestRedisCheck:

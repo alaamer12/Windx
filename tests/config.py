@@ -13,7 +13,7 @@ Features:
     - Disables caching and rate limiting
     - Safe test credentials
 """
-
+import concurrent.futures
 from functools import lru_cache
 
 from pydantic import Field, model_validator
@@ -116,3 +116,77 @@ def get_test_settings() -> TestSettings:
         ```
     """
     return TestSettings()
+
+
+def get_test_database_url() -> str:
+    """Get test database URL from settings.
+
+    Returns:
+        str: PostgreSQL connection string with asyncpg driver
+
+    Note:
+        Uses asyncpg driver for full PostgreSQL feature support including
+        LTREE extension and JSONB types required by the Windx schema.
+    """
+    test_settings = get_test_settings()
+
+    # Access database settings from the nested database object
+    db = test_settings.database
+
+    # Build PostgreSQL connection string with asyncpg driver
+    # Note: password is a SecretStr, so we need to get its value
+    password = db.password.get_secret_value() if db.password else ""
+
+    return f"postgresql+asyncpg://{db.user}:{password}@{db.host}:{db.port}/{db.name}"
+
+
+def check_redis_available(host: str = "localhost", port: int = 6379, timeout: float = 1.0) -> bool:
+    """Check if Redis is available and accessible.
+
+    Args:
+        host: Redis host (default: localhost)
+        port: Redis port (default: 6379)
+        timeout: Connection timeout in seconds (default: 1.0)
+
+    Returns:
+        bool: True if Redis is available, False otherwise
+    """
+    try:
+        import asyncio
+
+        import redis.asyncio as redis
+
+        async def _check():
+            client = None
+            try:
+                client = redis.Redis(
+                    host=host,
+                    port=port,
+                    socket_connect_timeout=timeout,
+                    socket_timeout=timeout,
+                )
+                await client.ping()
+                return True
+            except Exception:
+                return False
+            finally:
+                # Ensure connection is properly closed
+                if client is not None:
+                    try:
+                        await client.aclose()
+                    except Exception:
+                        pass
+
+        # Run async check
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            # If loop is already running, create a new one
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, _check())
+                return future.result(timeout=timeout + 1)
+        else:
+            return loop.run_until_complete(_check())
+    except Exception:
+        return False

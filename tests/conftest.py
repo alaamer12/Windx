@@ -15,8 +15,6 @@ Features:
 
 __all__ = [
     # Utility Functions
-    "check_redis_available",
-    "get_test_database_url",
     # Fixtures - Session Scope
     "event_loop",
     "test_settings",
@@ -83,34 +81,18 @@ from app.models.template_selection import TemplateSelection  # noqa: F401
 # Import directly to avoid circular imports
 from app.models.user import User  # noqa: F401
 from main import app
-from tests.config import TestSettings, get_test_settings
-
+from tests.config import (
+    TestSettings,
+    check_redis_available,
+    get_test_database_url,
+    get_test_settings,
+)
 
 # Test database URL - Use PostgreSQL with asyncpg (Supabase compatible)
 # asyncpg is required for:
 # - LTREE extension support (hierarchical data)
 # - JSONB native support (flexible metadata)
 # - Better async performance than psycopg
-def get_test_database_url() -> str:
-    """Get test database URL from settings.
-
-    Returns:
-        str: PostgreSQL connection string with asyncpg driver
-
-    Note:
-        Uses asyncpg driver for full PostgreSQL feature support including
-        LTREE extension and JSONB types required by the Windx schema.
-    """
-    test_settings = get_test_settings()
-
-    # Access database settings from the nested database object
-    db = test_settings.database
-
-    # Build PostgreSQL connection string with asyncpg driver
-    # Note: password is a SecretStr, so we need to get its value
-    password = db.password.get_secret_value() if db.password else ""
-
-    return f"postgresql+asyncpg://{db.user}:{password}@{db.host}:{db.port}/{db.name}"
 
 
 TEST_DATABASE_URL = get_test_database_url()
@@ -136,58 +118,6 @@ def test_settings() -> TestSettings:
         TestSettings: Test configuration loaded from .env.test
     """
     return get_test_settings()
-
-
-def check_redis_available(host: str = "localhost", port: int = 6379, timeout: float = 1.0) -> bool:
-    """Check if Redis is available and accessible.
-
-    Args:
-        host: Redis host (default: localhost)
-        port: Redis port (default: 6379)
-        timeout: Connection timeout in seconds (default: 1.0)
-
-    Returns:
-        bool: True if Redis is available, False otherwise
-    """
-    try:
-        import asyncio
-
-        import redis.asyncio as redis
-
-        async def _check():
-            client = None
-            try:
-                client = redis.Redis(
-                    host=host,
-                    port=port,
-                    socket_connect_timeout=timeout,
-                    socket_timeout=timeout,
-                )
-                await client.ping()
-                return True
-            except Exception:
-                return False
-            finally:
-                # Ensure connection is properly closed
-                if client is not None:
-                    try:
-                        await client.aclose()
-                    except Exception:
-                        pass
-
-        # Run async check
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # If loop is already running, create a new one
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, _check())
-                return future.result(timeout=timeout + 1)
-        else:
-            return loop.run_until_complete(_check())
-    except Exception:
-        return False
 
 
 @pytest.fixture(scope="function")
@@ -329,11 +259,11 @@ async def test_engine():
         # Drop all tables in test schema if they exist
         await conn.execute(
             text(f"""
-            DO $$ 
+            DO $$
             DECLARE
                 r RECORD;
             BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}') 
+                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}')
                 LOOP
                     EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
                 END LOOP;
@@ -345,14 +275,14 @@ async def test_engine():
         # The simplest approach: set schema on metadata, create tables, then reset
         def create_tables_in_schema(connection):
             # Temporarily bind all tables to the test schema
-            for table_name, table in Base.metadata.tables.items():
+            for _table_name, table in Base.metadata.tables.items():
                 table.schema = schema
 
             # Create all tables
             Base.metadata.create_all(bind=connection)
 
             # Reset schema to None for other code
-            for table_name, table in Base.metadata.tables.items():
+            for _table_namee, table in Base.metadata.tables.items():
                 table.schema = None
 
         await conn.run_sync(create_tables_in_schema)
@@ -384,7 +314,7 @@ async def test_engine():
         # Verify tables were created
         result = await conn.execute(
             text(f"""
-            SELECT COUNT(*) FROM information_schema.tables 
+            SELECT COUNT(*) FROM information_schema.tables
             WHERE table_schema = '{schema}'
         """)
         )
@@ -393,7 +323,7 @@ async def test_engine():
         # Also check public schema
         result = await conn.execute(
             text("""
-            SELECT COUNT(*) FROM information_schema.tables 
+            SELECT COUNT(*) FROM information_schema.tables
             WHERE table_schema = 'public'
         """)
         )
@@ -406,8 +336,8 @@ async def test_engine():
             # Debug: show where tables actually are
             result = await conn.execute(
                 text("""
-                SELECT DISTINCT table_schema 
-                FROM information_schema.tables 
+                SELECT DISTINCT table_schema
+                FROM information_schema.tables
                 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
             """)
             )
@@ -422,11 +352,11 @@ async def test_engine():
         # Drop all tables in test schema
         await conn.execute(
             text(f"""
-            DO $$ 
+            DO $$
             DECLARE
                 r RECORD;
             BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}') 
+                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}')
                 LOOP
                     EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
                 END LOOP;
@@ -486,6 +416,21 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
         reset_order_counter()
         reset_configuration_counter()
     except ImportError:
+        def reset_configuration_counter():
+            return None
+
+        def reset_customer_counter():
+            return None
+
+        def reset_order_counter():
+            return None
+
+        def reset_quote_counter():
+            return None
+
+        def reset_user_counter():
+            return None
+
         pass
 
     async with test_session_maker() as session:
@@ -499,7 +444,7 @@ async def db_session(test_session_maker) -> AsyncGenerator[AsyncSession, None]:
 # noinspection PyUnresolvedReferences
 @pytest_asyncio.fixture(scope="function")
 async def client(
-    db_session: AsyncSession, test_settings: TestSettings
+        db_session: AsyncSession, test_settings: TestSettings
 ) -> AsyncGenerator[AsyncClient, None]:
     """Create test HTTP client with httpx.
 
@@ -523,8 +468,8 @@ async def client(
 
     # Create async client
     async with AsyncClient(
-        transport=ASGITransport(app=app),
-        base_url="http://test",
+            transport=ASGITransport(app=app),
+            base_url="http://test",
     ) as ac:
         yield ac
 
@@ -685,7 +630,7 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
 
 @pytest_asyncio.fixture
 async def auth_headers(
-    client: AsyncClient, test_user, test_user_data: dict[str, Any]
+        client: AsyncClient, test_user, test_user_data: dict[str, Any]
 ) -> dict[str, str]:
     """Get authentication headers for test user.
 
@@ -711,9 +656,9 @@ async def auth_headers(
 
 @pytest_asyncio.fixture
 async def superuser_auth_headers(
-    client: AsyncClient,
-    test_superuser,
-    test_superuser_data: dict[str, Any],
+        client: AsyncClient,
+        test_superuser,
+        test_superuser_data: dict[str, Any],
 ) -> dict[str, str]:
     """Get authentication headers for test superuser.
 

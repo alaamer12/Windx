@@ -343,14 +343,37 @@ class UserService(BaseService):
             DatabaseException: If transaction fails
         """
         from app.core.exceptions import DatabaseException
+        from sqlalchemy.exc import IntegrityError
 
         created_users: list[User] = []
 
         try:
+            # Check for duplicates within the batch first
+            emails_in_batch = [user.email for user in users_in]
+            usernames_in_batch = [user.username for user in users_in]
+            
+            # Check for duplicate emails within batch
+            if len(emails_in_batch) != len(set(emails_in_batch)):
+                duplicate_emails = [email for email in set(emails_in_batch) 
+                                  if emails_in_batch.count(email) > 1]
+                raise ConflictException(
+                    message="Duplicate emails found within batch",
+                    details={"duplicate_emails": duplicate_emails},
+                )
+            
+            # Check for duplicate usernames within batch
+            if len(usernames_in_batch) != len(set(usernames_in_batch)):
+                duplicate_usernames = [username for username in set(usernames_in_batch) 
+                                     if usernames_in_batch.count(username) > 1]
+                raise ConflictException(
+                    message="Duplicate usernames found within batch",
+                    details={"duplicate_usernames": duplicate_usernames},
+                )
+
             # Create each user using the existing create_user logic
             # This ensures all validation and business rules are applied
             for user_in in users_in:
-                # Check if email already exists
+                # Check if email already exists in database
                 existing_user = await self.user_repo.get_by_email(user_in.email)
                 if existing_user:
                     raise ConflictException(
@@ -358,7 +381,7 @@ class UserService(BaseService):
                         details={"email": user_in.email},
                     )
 
-                # Check if username already exists
+                # Check if username already exists in database
                 existing_user = await self.user_repo.get_by_username(user_in.username)
                 if existing_user:
                     raise ConflictException(
@@ -392,10 +415,30 @@ class UserService(BaseService):
             # Re-raise conflict exceptions (validation errors)
             await self.rollback()
             raise
+        except IntegrityError as e:
+            # Handle database constraint violations
+            await self.rollback()
+            # Convert IntegrityError to ConflictException for consistency
+            if "duplicate key value violates unique constraint" in str(e):
+                if "ix_users_email" in str(e):
+                    raise ConflictException(
+                        message="Email already registered",
+                        details={"error": "Database constraint violation on email"},
+                    ) from e
+                elif "ix_users_username" in str(e):
+                    raise ConflictException(
+                        message="Username already taken", 
+                        details={"error": "Database constraint violation on username"},
+                    ) from e
+            # Re-raise as DatabaseException if not a known constraint
+            raise DatabaseException(
+                message="Failed to create users in bulk",
+                details={"error": str(e), "users_count": len(users_in)},
+            ) from e
         except Exception as e:
             # Rollback transaction on any failure
             await self.rollback()
             raise DatabaseException(
                 message="Failed to create users in bulk",
                 details={"error": str(e), "users_count": len(users_in)},
-            )
+            ) from e

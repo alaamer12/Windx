@@ -90,7 +90,8 @@ dev = [
     "httpx",
     "playwright",
     "pytest-playwright",
-    "psutil"
+    "psutil",
+    "hypothesis"
 ]
 
 [project.urls]

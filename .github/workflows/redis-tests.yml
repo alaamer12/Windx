@@ -205,55 +205,55 @@ jobs:
           if [ -f redis-results.xml ]; then
             # Extract failed Redis tests from JUnit XML
             python3 -c "
-            import xml.etree.ElementTree as ET
-            import sys
-            try:
-                tree = ET.parse('redis-results.xml')
-                root = tree.getroot()
-                failures = []
-                errors = []
-                
-                for testcase in root.findall('.//testcase'):
-                    failure = testcase.find('failure')
-                    error = testcase.find('error')
-                    
-                    if failure is not None:
-                        failures.append({
-                            'name': testcase.get('name'),
-                            'classname': testcase.get('classname'),
-                            'message': failure.get('message', '').split('\n')[0][:120]
-                        })
-                    elif error is not None:
-                        errors.append({
-                            'name': testcase.get('name'),
-                            'classname': testcase.get('classname'),
-                            'message': error.get('message', '').split('\n')[0][:120]
-                        })
-                
-                if failures or errors:
-                    print('### ❌ Failed Redis Tests')
-                    for f in failures:
-                        print(f'- **{f[\"name\"]}**')
-                        print(f'  \`{f[\"message\"]}\`')
-                    for e in errors:
-                        print(f'- **{e[\"name\"]}** (ERROR)')
-                        print(f'  \`{e[\"message\"]}\`')
-                    print('')
-                    print('**Common Redis Issues:**')
-                    print('- Redis service not available')
-                    print('- Connection timeout or refused')
-                    print('- Cache/Limiter configuration mismatch')
-                    print('- Redis memory/performance issues')
-                else:
-                    print('### ✅ All Redis tests passed!')
-                    print('**Tests Verified:**')
-                    print('- Cache health checks ✓')
-                    print('- Rate limiter functionality ✓')
-                    print('- Connection handling ✓')
-                    print('- Performance benchmarks ✓')
-                    
-            except Exception as e:
-                print(f'Could not parse Redis results: {e}')
+import xml.etree.ElementTree as ET
+import sys
+try:
+    tree = ET.parse('redis-results.xml')
+    root = tree.getroot()
+    failures = []
+    errors = []
+    
+    for testcase in root.findall('.//testcase'):
+        failure = testcase.find('failure')
+        error = testcase.find('error')
+        
+        if failure is not None:
+            failures.append({
+                'name': testcase.get('name'),
+                'classname': testcase.get('classname'),
+                'message': failure.get('message', '').split('\n')[0][:120]
+            })
+        elif error is not None:
+            errors.append({
+                'name': testcase.get('name'),
+                'classname': testcase.get('classname'),
+                'message': error.get('message', '').split('\n')[0][:120]
+            })
+    
+    if failures or errors:
+        print('### ❌ Failed Redis Tests')
+        for f in failures:
+            print(f'- **{f[\"name\"]}**')
+            print(f'  \`{f[\"message\"]}\`')
+        for e in errors:
+            print(f'- **{e[\"name\"]}** (ERROR)')
+            print(f'  \`{e[\"message\"]}\`')
+        print('')
+        print('**Common Redis Issues:**')
+        print('- Redis service not available')
+        print('- Connection timeout or refused')
+        print('- Cache/Limiter configuration mismatch')
+        print('- Redis memory/performance issues')
+    else:
+        print('### ✅ All Redis tests passed!')
+        print('**Tests Verified:**')
+        print('- Cache health checks ✓')
+        print('- Rate limiter functionality ✓')
+        print('- Connection handling ✓')
+        print('- Performance benchmarks ✓')
+        
+except Exception as e:
+    print(f'Could not parse Redis results: {e}')
             " >> $GITHUB_STEP_SUMMARY
           fi
           

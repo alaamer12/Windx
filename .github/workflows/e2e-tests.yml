@@ -261,47 +261,47 @@ jobs:
           if [ -f e2e-results.xml ]; then
             # Extract failed E2E tests from JUnit XML
             python3 -c "
-            import xml.etree.ElementTree as ET
-            import sys
-            try:
-                tree = ET.parse('e2e-results.xml')
-                root = tree.getroot()
-                failures = []
-                errors = []
-                
-                for testcase in root.findall('.//testcase'):
-                    failure = testcase.find('failure')
-                    error = testcase.find('error')
-                    
-                    if failure is not None:
-                        failures.append({
-                            'name': testcase.get('name'),
-                            'classname': testcase.get('classname'),
-                            'message': failure.get('message', '').split('\n')[0][:150]
-                        })
-                    elif error is not None:
-                        errors.append({
-                            'name': testcase.get('name'),
-                            'classname': testcase.get('classname'),
-                            'message': error.get('message', '').split('\n')[0][:150]
-                        })
-                
-                if failures or errors:
-                    print('### ❌ Failed E2E Tests')
-                    for f in failures:
-                        print(f'- **{f[\"name\"]}**')
-                        print(f'  \`{f[\"message\"]}\`')
-                        print(f'  📸 Check artifacts for screenshots/videos')
-                    for e in errors:
-                        print(f'- **{e[\"name\"]}** (ERROR)')
-                        print(f'  \`{e[\"message\"]}\`')
-                        print(f'  📸 Check artifacts for screenshots/videos')
-                else:
-                    print('### ✅ All E2E tests passed!')
-                    print('**Browser:** Chromium (Playwright)')
-                    
-            except Exception as e:
-                print(f'Could not parse E2E results: {e}')
+import xml.etree.ElementTree as ET
+import sys
+try:
+    tree = ET.parse('e2e-results.xml')
+    root = tree.getroot()
+    failures = []
+    errors = []
+    
+    for testcase in root.findall('.//testcase'):
+        failure = testcase.find('failure')
+        error = testcase.find('error')
+        
+        if failure is not None:
+            failures.append({
+                'name': testcase.get('name'),
+                'classname': testcase.get('classname'),
+                'message': failure.get('message', '').split('\n')[0][:150]
+            })
+        elif error is not None:
+            errors.append({
+                'name': testcase.get('name'),
+                'classname': testcase.get('classname'),
+                'message': error.get('message', '').split('\n')[0][:150]
+            })
+    
+    if failures or errors:
+        print('### ❌ Failed E2E Tests')
+        for f in failures:
+            print(f'- **{f[\"name\"]}**')
+            print(f'  \`{f[\"message\"]}\`')
+            print(f'  📸 Check artifacts for screenshots/videos')
+        for e in errors:
+            print(f'- **{e[\"name\"]}** (ERROR)')
+            print(f'  \`{e[\"message\"]}\`')
+            print(f'  📸 Check artifacts for screenshots/videos')
+    else:
+        print('### ✅ All E2E tests passed!')
+        print('**Browser:** Chromium (Playwright)')
+        
+except Exception as e:
+    print(f'Could not parse E2E results: {e}')
             " >> $GITHUB_STEP_SUMMARY
           fi
           

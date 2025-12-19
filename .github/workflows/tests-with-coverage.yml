@@ -37,7 +37,24 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+        continue-on-error: true
+        id: setup-uv
+
+      - name: Install uv manually (fallback)
+        if: steps.setup-uv.outcome == 'failure'
+        run: |
+          echo "Action failed, installing uv manually..."
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Verify uv installation
+        run: |
+          uv --version
+          echo "✅ uv is ready"
 
       - name: Install dependencies
         run: uv sync
@@ -46,6 +63,7 @@ jobs:
         run: |
           echo "📦 Installing dependencies..."
           uv sync --dev
+          uv add pkg_resources
           
           echo "🔍 Checking available pytest plugins..."
           uv run python -c "

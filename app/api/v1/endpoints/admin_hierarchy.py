@@ -38,7 +38,9 @@ from app.api.types import (
     OptionalStrQuery,
     RequiredIntForm,
     RequiredIntQuery,
-    RequiredStrForm,
+    AllowEmptyStrForm,
+    OptionalStrOrNoneForm,
+    StrOrIntForm,
 )
 from app.schemas import AttributeNodeCreate, AttributeNodeUpdate
 from app.schemas.responses import get_common_responses
@@ -707,20 +709,20 @@ async def save_node(
     attr_repo: AttributeNodeRepo,
     mfg_repo: ManufacturingTypeRepo,
     manufacturing_type_id: RequiredIntForm,
-    name: RequiredStrForm,
-    node_type: RequiredStrForm,
+    name: AllowEmptyStrForm,  # Allow empty strings to reach validation
+    node_type: AllowEmptyStrForm,  # Allow empty strings to reach validation
     node_id: OptionalIntForm = None,
-    parent_node_id: Annotated[str | None, Form()] = None,
+    parent_node_id: OptionalStrOrNoneForm = None,
     data_type: OptionalStrForm = None,
     required: OptionalBoolForm = False,
-    price_impact_type: RequiredStrForm = "fixed",
+    price_impact_type: AllowEmptyStrForm = "fixed",  # Allow empty strings
     price_impact_value: OptionalStrForm = None,
     price_formula: OptionalStrForm = None,
-    weight_impact: RequiredStrForm = "0",
+    weight_impact: AllowEmptyStrForm = "0",  # Allow empty strings
     weight_formula: OptionalStrForm = None,
     technical_property_type: OptionalStrForm = None,
     technical_impact_formula: OptionalStrForm = None,
-    sort_order: Annotated[str | int, Form()] = 0,
+    sort_order: StrOrIntForm = 0,
     ui_component: OptionalStrForm = None,
     description: OptionalStrForm = None,
     help_text: OptionalStrForm = None,

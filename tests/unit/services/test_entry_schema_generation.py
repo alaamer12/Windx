@@ -223,7 +223,7 @@ class TestSchemaGeneration:
             ("dimensions.width", "Dimensions"),
             ("technical_specs.weight", "Technical Specs"),
             ("pricing.cost", "Pricing"),
-            ("", "general"),  # Fixed: service returns lowercase "general"
+            ("", "general"),  # Service returns lowercase "general"
             ("single_level", "Single Level"),
         ]
 

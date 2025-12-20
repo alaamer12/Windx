@@ -41,7 +41,7 @@ class TestPricingServiceErrorHandling:
 
         assert "Division by zero" in exc_info.value.message
         assert exc_info.value.details["error_type"] == "division_by_zero"
-        assert exc_info.value.details["formula"] == formula
+        assert exc_info.value.formula == formula
 
     async def test_evaluate_formula_division_by_zero_variable(
         self, pricing_service: PricingService
@@ -130,7 +130,7 @@ class TestPricingServiceErrorHandling:
         """Test that invalid formula in selection raises InvalidFormulaException with context."""
         # Create test data
         mfg_type = ManufacturingType(
-            name="Test Window",
+            name="Test Window Selection Impact",
             base_price=Decimal("200"),
             base_weight=Decimal("15"),
         )
@@ -181,7 +181,7 @@ class TestPricingServiceErrorHandling:
         """Test that error in selection calculation includes configuration context."""
         # Create test data
         mfg_type = ManufacturingType(
-            name="Test Window",
+            name="Test Window Config Price",
             base_price=Decimal("200"),
             base_weight=Decimal("15"),
         )
@@ -260,7 +260,7 @@ class TestPricingServiceErrorHandling:
         with pytest.raises(InvalidFormulaException) as exc_info:
             await pricing_service.evaluate_price_formula("10 / 0", {})
         assert "Division by zero" in exc_info.value.message
-        assert "formula" in exc_info.value.details
+        assert exc_info.value.formula == "10 / 0"
 
         # Unknown variable
         with pytest.raises(InvalidFormulaException) as exc_info:
@@ -282,7 +282,6 @@ class TestPricingServiceErrorHandling:
             await pricing_service.evaluate_price_formula(formula, context)
 
         # Check that details include useful information
-        assert "formula" in exc_info.value.details
-        assert exc_info.value.details["formula"] == formula
+        assert exc_info.value.formula == formula
         assert "error_type" in exc_info.value.details
         assert "context" in exc_info.value.details

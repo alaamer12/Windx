@@ -62,6 +62,27 @@ ConfigurationViewer = Privilege(
 AdminAccess = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
+def _safe_numeric_compare(a: Any, b: Any, compare_fn) -> bool:
+    """Safely compare two values numerically, handling type conversions.
+    
+    Args:
+        a: First value
+        b: Second value
+        compare_fn: Comparison function (e.g., lambda x, y: x > y)
+        
+    Returns:
+        bool: Result of comparison, False if types are incompatible
+    """
+    try:
+        # Convert to numeric types if possible
+        a_num = float(a) if a is not None and a != "" else 0
+        b_num = float(b) if b is not None and b != "" else 0
+        return compare_fn(a_num, b_num)
+    except (TypeError, ValueError):
+        # If conversion fails, return False
+        return False
+
+
 class ConditionEvaluator:
     """Smart condition evaluator with support for complex expressions.
 
@@ -74,10 +95,10 @@ class ConditionEvaluator:
         # Comparison operators
         "equals": lambda a, b: a == b,
         "not_equals": lambda a, b: a != b,
-        "greater_than": lambda a, b: (a or 0) > (b or 0),
-        "less_than": lambda a, b: (a or 0) < (b or 0),
-        "greater_equal": lambda a, b: (a or 0) >= (b or 0),
-        "less_equal": lambda a, b: (a or 0) <= (b or 0),
+        "greater_than": lambda a, b: _safe_numeric_compare(a, b, lambda x, y: x > y),
+        "less_than": lambda a, b: _safe_numeric_compare(a, b, lambda x, y: x < y),
+        "greater_equal": lambda a, b: _safe_numeric_compare(a, b, lambda x, y: x >= y),
+        "less_equal": lambda a, b: _safe_numeric_compare(a, b, lambda x, y: x <= y),
         # String operators
         "contains": lambda a, b: str(b).lower() in str(a or "").lower(),
         "starts_with": lambda a, b: str(a or "").lower().startswith(str(b).lower()),
@@ -271,13 +292,13 @@ class EntryService(BaseService):
         Returns:
             str: Section name
         """
-        if not ltree_path:
+        if not ltree_path or ltree_path.strip() == "":
             return "general"
 
         # Use the first part of the path as section name
         parts = ltree_path.split(".")
-        if len(parts) >= 1:
-            section_name = parts[0]
+        if len(parts) >= 1 and parts[0].strip():
+            section_name = parts[0].strip()
             # Convert snake_case to Title Case
             return section_name.replace("_", " ").title()
         return "General"
@@ -350,7 +371,7 @@ class EntryService(BaseService):
             schema = await self.get_profile_schema(data.manufacturing_type_id)
         except NotFoundException:
             raise ValidationException(
-                "Invalid manufacturing type", {"manufacturing_type_id": "Not found"}
+                "Invalid manufacturing type", field_errors={"manufacturing_type_id": "Not found"}
             )
 
         # Validate each field against its rules
@@ -378,7 +399,7 @@ class EntryService(BaseService):
         errors.update(cross_field_errors)
 
         if errors:
-            raise ValidationException("Validation failed", errors)
+            raise ValidationException("Validation failed", field_errors=errors)
 
         return {"valid": True}
 

@@ -15,6 +15,7 @@ Features:
 
 __all__ = [
     # Utility Functions
+    "create_auth_headers",
     # Fixtures - Session Scope
     "event_loop",
     "test_settings",
@@ -209,7 +210,6 @@ def setup_test_settings(test_settings: TestSettings):
     # Cleanup
     app.dependency_overrides.clear()
 
-
 @pytest_asyncio.fixture(scope="function")
 async def test_engine():
     """Create test database engine with asyncpg driver.
@@ -217,7 +217,7 @@ async def test_engine():
     This fixture:
     - Creates a separate schema for test isolation (test_windx)
     - Enables LTREE extension (required for hierarchical attributes)
-    - Drops and recreates all tables for isolation
+    - Drops and recreates schema completely for full isolation
     - Uses NullPool to prevent connection pooling issues in tests
     - Properly disposes of connections after test completion
 
@@ -232,6 +232,9 @@ async def test_engine():
         - Supabase compatibility
 
         Schema isolation ensures tests don't affect development data.
+        
+        The schema is completely dropped and recreated for each test to prevent
+        PostgreSQL system catalog corruption from failed tests.
     """
     test_settings = get_test_settings()
     schema = test_settings.database.schema_
@@ -246,8 +249,32 @@ async def test_engine():
 
     # Create schema and tables with LTREE extension
     async with engine.begin() as conn:
-        # Create schema if it doesn't exist
-        await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
+        # CRITICAL FIX: Drop and recreate schema completely to avoid catalog corruption
+        # This ensures a clean slate for every test, preventing issues from failed tests
+        try:
+            await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+        except Exception as e:
+            print(f"[WARNING] Could not drop schema {schema}: {e}")
+            # If drop fails, try to clean up tables individually
+            try:
+                await conn.execute(
+                    text(f"""
+                    DO $$
+                    DECLARE
+                        r RECORD;
+                    BEGIN
+                        FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}')
+                        LOOP
+                            EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
+                        END LOOP;
+                    END $$;
+                """)
+                )
+            except Exception as e2:
+                print(f"[WARNING] Could not drop tables in {schema}: {e2}")
+
+        # Create fresh schema
+        await conn.execute(text(f"CREATE SCHEMA {schema}"))
 
         # Set search path for this connection (include public for extensions)
         await conn.execute(text(f"SET search_path TO {schema}, public"))
@@ -255,21 +282,6 @@ async def test_engine():
         # Enable LTREE extension in public schema (accessible from all schemas)
         # This is required by the Windx schema for efficient tree queries
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS ltree SCHEMA public"))
-
-        # Drop all tables in test schema if they exist
-        await conn.execute(
-            text(f"""
-            DO $$
-            DECLARE
-                r RECORD;
-            BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}')
-                LOOP
-                    EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
-                END LOOP;
-            END $$;
-        """)
-        )
 
         # Create all tables in test schema
         # The simplest approach: set schema on metadata, create tables, then reset
@@ -287,30 +299,6 @@ async def test_engine():
 
         await conn.run_sync(create_tables_in_schema)
 
-        # Ensure all tables are empty (cleanup any leftover data)
-        # This is a safety measure in case the DROP/CREATE didn't work properly
-        table_names = [
-            "template_selections",
-            "configuration_selections",
-            "order_items",
-            "orders",
-            "quotes",
-            "configurations",
-            "configuration_templates",
-            "attribute_nodes",
-            "customers",
-            "sessions",
-            "users",
-            "manufacturing_types",
-        ]
-
-        for table_name in table_names:
-            try:
-                await conn.execute(text(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE"))
-            except Exception as e:
-                # Table might not exist or might be empty, that's fine
-                print(f"[DEBUG] Could not truncate {table_name}: {e}")
-
         # Verify tables were created
         result = await conn.execute(
             text(f"""
@@ -319,18 +307,6 @@ async def test_engine():
         """)
         )
         created_count = result.scalar()
-
-        # Also check public schema
-        result = await conn.execute(
-            text("""
-            SELECT COUNT(*) FROM information_schema.tables
-            WHERE table_schema = 'public'
-        """)
-        )
-        public_count = result.scalar()
-
-        print(f"[DEBUG] Tables in {schema} schema: {created_count}")
-        print(f"[DEBUG] Tables in public schema: {public_count}")
 
         if created_count == 0:
             # Debug: show where tables actually are
@@ -342,32 +318,24 @@ async def test_engine():
             """)
             )
             schemas = [row[0] for row in result]
-            print(f"[DEBUG] Schemas with tables: {schemas}")
+            raise RuntimeError(
+                f"No tables created in {schema} schema. Tables found in schemas: {schemas}"
+            )
 
     yield engine
 
-    # Cleanup: Drop all tables in test schema (not the schema itself for reuse)
-    async with engine.begin() as conn:
-        await conn.execute(text(f"SET search_path TO {schema}, public"))
-        # Drop all tables in test schema
-        await conn.execute(
-            text(f"""
-            DO $$
-            DECLARE
-                r RECORD;
-            BEGIN
-                FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}')
-                LOOP
-                    EXECUTE 'DROP TABLE IF EXISTS {schema}.' || quote_ident(r.tablename) || ' CASCADE';
-                END LOOP;
-            END $$;
-        """)
-        )
+    # Cleanup: Drop entire schema to ensure complete cleanup
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
+    except Exception as e:
+        print(f"[WARNING] Could not drop schema {schema} during cleanup: {e}")
 
     await engine.dispose()
 
     # Wait for connections to close gracefully
-    await asyncio.sleep(0.05)
+    await asyncio.sleep(0.1)
+
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -680,3 +648,45 @@ async def superuser_auth_headers(
     )
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+async def create_auth_headers(user: User, password: str = "TestPassword123!") -> dict[str, str]:
+    """Create authentication headers for a user.
+    
+    This function creates a login request for the given user and returns
+    the authorization headers needed for API requests.
+    
+    Args:
+        user (User): User to create auth headers for
+        password (str): Password to use for login (defaults to "TestPassword123!")
+        
+    Returns:
+        dict[str, str]: Authorization headers
+        
+    Note:
+        The default password "TestPassword123!" is used for users created in the
+        RBAC workflow tests. For other users (like test_superuser), pass the
+        correct password explicitly.
+    """
+    from httpx import AsyncClient, ASGITransport
+    from main import app
+    
+    # Create a temporary client for login
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        # Login to get token
+        response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": user.username,
+                "password": password,
+            },
+        )
+        
+        if response.status_code != 200:
+            raise ValueError(f"Login failed for user {user.username}: {response.text}")
+            
+        token = response.json()["access_token"]
+        return {"Authorization": f"Bearer {token}"}

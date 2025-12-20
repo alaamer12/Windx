@@ -22,7 +22,7 @@ from pydantic import PositiveInt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundException, ValidationException
-from app.core.rbac import Permission, Privilege, RBACQueryFilter, ResourceOwnership, Role, require
+from app.core.rbac import Permission, Privilege, ResourceOwnership, Role, require
 from app.models.configuration import Configuration
 from app.models.quote import Quote
 from app.repositories.configuration import ConfigurationRepository
@@ -329,8 +329,17 @@ class QuoteService(BaseService):
 
         query = select(Quote)
 
-        # Apply RBAC filtering automatically
-        query = await RBACQueryFilter.filter_quotes(query, user)
+        # Apply RBAC filtering using the same database session
+        # Get accessible customers for user using existing session
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        
+        if user.role != Role.SUPERADMIN.value:
+            if not accessible_customers:
+                # User has no accessible customers - return empty result
+                query = query.where(False)
+            else:
+                # Filter by accessible customers
+                query = query.where(Quote.customer_id.in_(accessible_customers))
 
         if configuration_id:
             query = query.where(Quote.configuration_id == configuration_id)
@@ -439,8 +448,8 @@ class QuoteService(BaseService):
     def get_user_quotes_query(self, user, status: str | None = None):
         """Build query for user's quotes with authorization.
 
-        Regular users see only their own quotes.
-        Superusers see all quotes.
+        This method is used by the pagination system and needs to be synchronous.
+        The RBAC filtering is now handled in the endpoint before pagination.
 
         Args:
             user: Current user
@@ -452,10 +461,6 @@ class QuoteService(BaseService):
         from sqlalchemy import select
 
         query = select(Quote)
-
-        # Authorization: regular users see only their own
-        if not user.is_superuser:
-            query = query.where(Quote.customer_id == user.id)
 
         # Apply filters
         if status:
@@ -491,8 +496,9 @@ class QuoteService(BaseService):
                 details={"quote_id": quote_id},
             )
 
-        # Authorization check
-        if not user.is_superuser and quote.customer_id != user.id:
+        # Authorization check using RBAC service
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        if user.role != Role.SUPERADMIN.value and quote.customer_id not in accessible_customers:
             raise AuthorizationException("You do not have permission to access this quote")
 
         return quote
@@ -523,8 +529,9 @@ class QuoteService(BaseService):
                 details={"configuration_id": quote_request.configuration_id},
             )
 
-        # Authorization check
-        if not user.is_superuser and config.customer_id != user.id:
+        # Authorization check using RBAC service
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        if user.role != Role.SUPERADMIN.value and config.customer_id not in accessible_customers:
             raise AuthorizationException(
                 "You do not have permission to create a quote for this configuration"
             )
@@ -547,7 +554,7 @@ class QuoteService(BaseService):
         # Create quote with calculated values
         quote_data = QuoteCreate(
             configuration_id=quote_request.configuration_id,
-            customer_id=quote_request.customer_id or user.id,
+            customer_id=quote_request.customer_id or config.customer_id,
             quote_number=quote_number,
             subtotal=totals["subtotal"],
             tax_rate=quote_request.tax_rate,

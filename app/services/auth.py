@@ -140,7 +140,7 @@ class AuthService(BaseService):
             token=access_token,
             expires_at=expires_at,
         )
-        await self.session_repo.create(session_data)
+        session = await self.session_repo.create(session_data)
 
         return access_token, user
 

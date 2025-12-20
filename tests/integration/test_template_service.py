@@ -49,10 +49,12 @@ class TestTemplateServiceUserParameter:
     ):
         """Test template application raises error for inactive template."""
         # Arrange
+        from app.core.security import get_password_hash
+        
         user = User(
             email="test@example.com",
             username="testuser",
-            hashed_password="$2b$12$test",
+            hashed_password=get_password_hash("test_password"),
         )
         db_session.add(user)
         await db_session.commit()
@@ -96,6 +98,8 @@ async def create_user_with_customer(
     In the Windx system, configurations reference customers, not users directly.
     This helper creates both and ensures they can work together.
     """
+    from app.core.security import get_password_hash
+    
     # Create customer first
     customer = Customer(
         email=email,
@@ -110,7 +114,7 @@ async def create_user_with_customer(
     user = User(
         email=email,
         username=username,
-        hashed_password="$2b$12$test",
+        hashed_password=get_password_hash("test_password"),
     )
     db_session.add(user)
     await db_session.commit()

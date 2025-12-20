@@ -154,10 +154,10 @@ class TestBulkUserCreation:
         # Should fail with conflict
         assert response.status_code == 409
 
-        # Verify NO users were created (transaction rolled back)
+        # Verify NO new users were created (transaction rolled back)
         result_after = await db_session.execute(select(User))
         count_after = len(result_after.scalars().all())
-        assert count_after == count_before
+        assert count_after == count_before  # Should be same as before
 
         # Verify new1 and new2 were NOT created
         result = await db_session.execute(
@@ -201,10 +201,10 @@ class TestBulkUserCreation:
         # Should fail with conflict
         assert response.status_code == 409
 
-        # Verify NO users were created (transaction rolled back)
+        # Verify NO new users were created (transaction rolled back)
         result_after = await db_session.execute(select(User))
         count_after = len(result_after.scalars().all())
-        assert count_after == count_before
+        assert count_after == count_before  # Should be same as before
 
     async def test_create_users_bulk_validation_error_invalid_email(
         self,

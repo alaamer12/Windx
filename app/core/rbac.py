@@ -493,8 +493,8 @@ class RBACQueryFilter:
         return query.join(Quote).where(Quote.customer_id.in_(accessible_customers))
 
 
-# Global RBAC service instance
-rbac_service = RBACService()
+# Note: Global RBAC service instance removed - use session-specific instances instead
+# Each authorization check creates its own RBACService instance with proper database session
 
 
 def require(*requirements) -> Callable:
@@ -683,9 +683,16 @@ async def _check_permission_requirement(user: User, permission: Permission) -> b
     Returns:
         True if user has permission, False otherwise
     """
-    return await rbac_service.check_permission(
-        user, permission.resource, permission.action, permission.context
-    )
+    # Create RBAC service with proper database session for permission check
+    from app.database.connection import get_session_maker
+    from app.services.rbac import RBACService
+
+    session_maker = get_session_maker()
+    async with session_maker() as db:
+        rbac_service_instance = RBACService(db)
+        return await rbac_service_instance.check_permission(
+            user, permission.resource, permission.action, permission.context
+        )
 
 
 async def _check_ownership_requirement(
@@ -705,11 +712,19 @@ async def _check_ownership_requirement(
     """
     # Extract resource ID from function parameters
     resource_id = _extract_resource_id(ownership.id_param, func, args, kwargs)
+    
     if resource_id is None:
         logger.warning(f"Could not extract {ownership.id_param} from {func.__name__} parameters")
         return False
 
-    return await rbac_service.check_resource_ownership(user, ownership.resource_type, resource_id)
+    # Create RBAC service with proper database session for ownership check
+    from app.database.connection import get_session_maker
+    from app.services.rbac import RBACService
+
+    session_maker = get_session_maker()
+    async with session_maker() as db:
+        rbac_service_instance = RBACService(db)
+        return await rbac_service_instance.check_resource_ownership(user, ownership.resource_type, resource_id)
 
 
 async def _check_privilege_requirement(

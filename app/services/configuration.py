@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundException, ValidationException
-from app.core.rbac import Permission, Privilege, RBACQueryFilter, ResourceOwnership, Role, require
+from app.core.rbac import Permission, Privilege, ResourceOwnership, Role, require
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
 from app.repositories.attribute_node import AttributeNodeRepository
@@ -48,19 +48,19 @@ __all__ = ["ConfigurationService"]
 ConfigurationManagement = Privilege(
     roles=[Role.SALESMAN, Role.PARTNER],
     permission=Permission("configuration", "update"),
-    resource=ResourceOwnership("customer"),
+    resource=ResourceOwnership("customer", id_param="customer_id"),
 )
 
 ConfigurationOwnership = Privilege(
     roles=Role.CUSTOMER,
     permission=Permission("configuration", "update"),
-    resource=ResourceOwnership("configuration"),
+    resource=ResourceOwnership("configuration", id_param="config_id"),
 )
 
 ConfigurationReader = Privilege(
     roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
     permission=Permission("configuration", "read"),
-    resource=ResourceOwnership("configuration"),
+    resource=ResourceOwnership("configuration", id_param="config_id"),
 )
 
 AdminPrivileges = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
@@ -117,7 +117,6 @@ class ConfigurationService(BaseService):
         return config
 
     @require(ConfigurationReader)
-    @require(AdminPrivileges)
     async def get_configuration_with_details(
         self, config_id: PositiveInt, user: Any = None
     ) -> Configuration:
@@ -317,8 +316,17 @@ class ConfigurationService(BaseService):
         """
         query = select(Configuration)
 
-        # Apply RBAC filtering automatically
-        query = await RBACQueryFilter.filter_configurations(query, user)
+        # Apply RBAC filtering using the same database session
+        # Get accessible customers for user using existing session
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        
+        if user.role != Role.SUPERADMIN.value:
+            if not accessible_customers:
+                # User has no accessible customers - return empty result
+                query = query.where(False)
+            else:
+                # Filter by accessible customers
+                query = query.where(Configuration.customer_id.in_(accessible_customers))
 
         if manufacturing_type_id:
             query = query.where(Configuration.manufacturing_type_id == manufacturing_type_id)
@@ -391,10 +399,11 @@ class ConfigurationService(BaseService):
         """
         from app.core.exceptions import AuthorizationException
 
-        config = await self.get_configuration_with_details(config_id)
+        config = await self.get_configuration_with_details(config_id, user)
 
-        # Authorization check
-        if not user.is_superuser and config.customer_id != user.id:
+        # Authorization check using RBAC service
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        if user.role != Role.SUPERADMIN.value and config.customer_id not in accessible_customers:
             raise AuthorizationException("You do not have permission to access this configuration")
 
         return config

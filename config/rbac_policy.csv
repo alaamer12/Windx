@@ -5,3 +5,4 @@ p, partner, *, *, allow
 p, customer, configuration, read, allow
 p, customer, configuration, create, allow
 p, customer, quote, read, allow
+p, customer, quote, create, allow

@@ -42,6 +42,27 @@ __all__ = ["RBACService"]
 
 logger = logging.getLogger(__name__)
 
+# Shared Casbin enforcer instance to ensure policy consistency across all RBAC service instances
+_shared_enforcer = None
+
+def get_shared_enforcer():
+    """Get or create the shared Casbin enforcer instance."""
+    global _shared_enforcer
+    if _shared_enforcer is None:
+        try:
+            _shared_enforcer = casbin.Enforcer("config/rbac_model.conf", "config/rbac_policy.csv")
+            # Enable auto-save for policy changes
+            _shared_enforcer.enable_auto_save(True)
+            logger.info("Initialized shared Casbin enforcer")
+        except Exception as e:
+            logger.error(f"Failed to initialize shared Casbin enforcer: {e}")
+            raise PolicyEvaluationException("Failed to initialize RBAC system", {"error": str(e)})
+    else:
+        # Reload policies to pick up any changes
+        _shared_enforcer.load_policy()
+        logger.debug("Reloaded Casbin policies")
+    return _shared_enforcer
+
 
 class RBACService(BaseService):
     """Service for RBAC operations using Casbin.
@@ -64,13 +85,8 @@ class RBACService(BaseService):
             db: Database session for operations
         """
         super().__init__(db)
-        try:
-            self.enforcer = casbin.Enforcer("config/rbac_model.conf", "config/rbac_policy.csv")
-            # Enable auto-save for policy changes
-            self.enforcer.enable_auto_save(True)
-        except Exception as e:
-            logger.error(f"Failed to initialize Casbin enforcer: {e}")
-            raise PolicyEvaluationException("Failed to initialize RBAC system", {"error": str(e)})
+        # Use shared Casbin enforcer to ensure policy consistency across instances
+        self.enforcer = get_shared_enforcer()
 
         # Request-scoped caches for performance
         self._permission_cache: dict[str, bool] = {}
@@ -102,6 +118,12 @@ class RBACService(BaseService):
             return self._permission_cache[cache_key]
 
         try:
+            # Ensure user is assigned to their role in Casbin (dynamic assignment)
+            # This ensures role assignments work even if they weren't persisted
+            if not self.enforcer.has_grouping_policy(user.email, user.role):
+                logger.debug(f"Adding missing role assignment: {user.email} -> {user.role}")
+                self.enforcer.add_grouping_policy(user.email, user.role)
+
             # Check Casbin policy using user email as subject
             result = self.enforcer.enforce(user.email, resource, action)
 
@@ -216,6 +238,7 @@ class RBACService(BaseService):
         """
         # Cache for performance
         if user.id in self._customer_cache:
+            logger.debug(f"Customer cache hit for user {user.email}: {self._customer_cache[user.id]}")
             return self._customer_cache[user.id]
 
         accessible = []
@@ -225,15 +248,23 @@ class RBACService(BaseService):
             stmt = select(Customer.id)
             result = await self.db.execute(stmt)
             accessible = [row[0] for row in result.fetchall()]
+        # Salesmen, partners, and data entry staff have access to all customers
+        elif user.role in [Role.SALESMAN.value, Role.PARTNER.value, Role.DATA_ENTRY.value]:
+            stmt = select(Customer.id)
+            result = await self.db.execute(stmt)
+            accessible = [row[0] for row in result.fetchall()]
+            logger.debug(f"Staff user {user.email} has access to all customers: {accessible}")
         else:
-            # Regular users have access to their associated customer(s)
-            # Find customer by email match (auto-creation pattern)
+            # Regular users (customers) have access to their associated customer(s)
+            # Find ALL customers by email match (auto-creation pattern)
+            # This handles cases where multiple customers might exist with the same email
             stmt = select(Customer.id).where(Customer.email == user.email)
             result = await self.db.execute(stmt)
-            customer_id = result.scalar_one_or_none()
+            customer_ids = [row[0] for row in result.fetchall()]
 
-            if customer_id:
-                accessible = [customer_id]
+            logger.debug(f"Customer lookup for {user.email}: found customer_ids={customer_ids}")
+
+            accessible = customer_ids
 
         # Cache result
         self._customer_cache[user.id] = accessible
@@ -542,11 +573,19 @@ class RBACService(BaseService):
             user: User to initialize policies for
         """
         # Add role assignment
-        self.enforcer.add_grouping_policy(user.email, user.role)
+        logger.info(f"Adding role assignment: {user.email} -> {user.role}")
+        result = self.enforcer.add_grouping_policy(user.email, user.role)
+        logger.info(f"Role assignment result: {result}")
 
         # For customers, assign them to their own customer record
         if user.role == Role.CUSTOMER.value:
             customer = await self.get_or_create_customer_for_user(user)
-            self.enforcer.add_grouping_policy(user.email, "customer", str(customer.id))
+            logger.info(f"Adding customer assignment: {user.email} -> customer -> {customer.id}")
+            customer_result = self.enforcer.add_grouping_policy(user.email, "customer", str(customer.id))
+            logger.info(f"Customer assignment result: {customer_result}")
+
+        # Log current grouping policies for debugging
+        grouping_policies = self.enforcer.get_grouping_policy()
+        logger.info(f"Current grouping policies: {grouping_policies}")
 
         logger.info(f"Initialized policies for user {user.email} with role {user.role}")

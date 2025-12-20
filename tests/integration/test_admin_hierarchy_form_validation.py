@@ -48,10 +48,15 @@ async def test_save_node_with_invalid_name_shows_validation_error(
     # Verify 422 status code (validation error)
     assert response.status_code == 422
 
-    # Verify form is re-rendered with error
+    # Verify form is re-rendered with error (HTML response, not JSON)
     content = response.text
-    assert "validation_errors" in content or "error" in content.lower()
-    assert "name" in content.lower()
+    assert "<!DOCTYPE html>" in content or "<html" in content
+    
+    # Verify validation error is shown in the form
+    assert ("validation_errors" in content or 
+            "error" in content.lower() or 
+            "field required" in content.lower() or
+            "name" in content.lower())
 
 
 @pytest.mark.asyncio

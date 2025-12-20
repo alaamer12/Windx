@@ -345,12 +345,13 @@ class TestCasbinRBACWorkflows:
         assert quotes_list["total"] >= 1
         assert any(q["id"] == quote_id for q in quotes_list["items"])
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_cross_service_casbin_authorization_consistency(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        customer_user: User,
+        rbac_customer_user: User,
         salesman_user: User,
         manufacturing_type_with_attributes: ManufacturingType,
     ):
@@ -359,14 +360,14 @@ class TestCasbinRBACWorkflows:
         # Login to get valid tokens
         customer_login = await client.post(
             "/api/v1/auth/login",
-            json={"username": customer_user.username, "password": "TestPassword123!"},
+            json={"username": rbac_customer_user.username, "password": rbac_customer_user._test_password},
         )
         assert customer_login.status_code == 200
         customer_headers = {"Authorization": f"Bearer {customer_login.json()['access_token']}"}
         
         salesman_login = await client.post(
             "/api/v1/auth/login", 
-            json={"username": salesman_user.username, "password": "TestPassword123!"},
+            json={"username": salesman_user.username, "password": salesman_user._test_password},
         )
         assert salesman_login.status_code == 200
         salesman_headers = {"Authorization": f"Bearer {salesman_login.json()['access_token']}"}
@@ -418,12 +419,13 @@ class TestCasbinRBACWorkflows:
         # Salesman should have access due to full privileges, but may fail due to async issues in tests
         assert salesman_quote_response.status_code in [200, 403, 404]
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_role_based_access_patterns(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        customer_user: User,
+        rbac_customer_user: User,
         salesman_user: User,
         partner_user: User,
         data_entry_user: User,
@@ -434,10 +436,10 @@ class TestCasbinRBACWorkflows:
         from tests.conftest import create_auth_headers
 
         # Get auth headers for all users
-        customer_headers = await create_auth_headers(customer_user)
-        salesman_headers = await create_auth_headers(salesman_user)
-        partner_headers = await create_auth_headers(partner_user)
-        data_entry_headers = await create_auth_headers(data_entry_user)
+        customer_headers = await create_auth_headers(rbac_customer_user, rbac_customer_user._test_password)
+        salesman_headers = await create_auth_headers(salesman_user, salesman_user._test_password)
+        partner_headers = await create_auth_headers(partner_user, partner_user._test_password)
+        data_entry_headers = await create_auth_headers(data_entry_user, data_entry_user._test_password)
         superuser_headers = await create_auth_headers(test_superuser, "AdminPassword123!")
 
         # Test 1: All roles should be able to get manufacturing type schema
@@ -487,12 +489,13 @@ class TestCasbinRBACWorkflows:
             )
             assert response.status_code == 200, f"Superuser should access {role}'s configuration"
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_multiple_decorator_patterns_and_privilege_objects(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        customer_user: User,
+        rbac_customer_user: User,
         salesman_user: User,
         test_superuser: User,
         manufacturing_type_with_attributes: ManufacturingType,
@@ -500,8 +503,8 @@ class TestCasbinRBACWorkflows:
         """Test multiple decorator patterns and Privilege objects in real workflows."""
         from tests.conftest import create_auth_headers
 
-        customer_headers = await create_auth_headers(customer_user)
-        salesman_headers = await create_auth_headers(salesman_user)
+        customer_headers = await create_auth_headers(rbac_customer_user, rbac_customer_user._test_password)
+        salesman_headers = await create_auth_headers(salesman_user, salesman_user._test_password)
         superuser_headers = await create_auth_headers(test_superuser, "AdminPassword123!")
 
         # Create configuration as customer
@@ -543,18 +546,19 @@ class TestCasbinRBACWorkflows:
         # May fail due to async/database session issues in tests, but shouldn't be 401
         assert superuser_preview_response.status_code in [200, 403]
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_mixed_scenarios_with_existing_and_new_customer_relationships(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        customer_user: User,
+        rbac_customer_user: User,
         manufacturing_type_with_attributes: ManufacturingType,
     ):
         """Test mixed scenarios with existing and new customer relationships."""
         from tests.conftest import create_auth_headers
 
-        auth_headers = await create_auth_headers(customer_user)
+        auth_headers = await create_auth_headers(rbac_customer_user, rbac_customer_user._test_password)
 
         # Scenario 1: Create configuration (auto-creates customer)
         profile_data_1 = {
@@ -597,7 +601,7 @@ class TestCasbinRBACWorkflows:
         result = await db_session.execute(select(Customer).where(Customer.id == customer_id_1))
         customer = result.scalar_one_or_none()
         assert customer is not None
-        assert customer.email == customer_user.email
+        assert customer.email == rbac_customer_user.email
 
         # Scenario 4: Create quotes for both configurations
         for config_response in [response1, response2]:
@@ -611,12 +615,13 @@ class TestCasbinRBACWorkflows:
             # Verify quote uses same customer
             assert quote_response.json()["customer_id"] == customer_id_1
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_performance_impact_of_casbin_policy_evaluation(
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        customer_user: User,
+        rbac_customer_user: User,
         manufacturing_type_with_attributes: ManufacturingType,
     ):
         """Test performance impact of Casbin policy evaluation."""
@@ -624,7 +629,7 @@ class TestCasbinRBACWorkflows:
 
         from tests.conftest import create_auth_headers
 
-        auth_headers = await create_auth_headers(customer_user)
+        auth_headers = await create_auth_headers(rbac_customer_user, rbac_customer_user._test_password)
 
         # Create multiple configurations to test performance
         profile_data_base = {

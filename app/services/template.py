@@ -183,7 +183,12 @@ class TemplateService(BaseService):
             ValidationException: If template is invalid
         """
         # Get template with selections
-        template = await self.get_template(template_id)
+        template = await self.template_repo.get(template_id)
+        if not template:
+            raise NotFoundException(
+                resource="ConfigurationTemplate",
+                details={"template_id": template_id},
+            )
 
         # Validate template is active
         if not template.is_active:
@@ -251,7 +256,12 @@ class TemplateService(BaseService):
         Raises:
             NotFoundException: If template not found
         """
-        template = await self.get_template(template_id)
+        template = await self.template_repo.get(template_id)
+        if not template:
+            raise NotFoundException(
+                resource="ConfigurationTemplate",
+                details={"template_id": template_id},
+            )
 
         # Increment usage count
         template.usage_count += 1

@@ -95,6 +95,37 @@ async def test_rbac_protected_method(self, db_session, test_user_with_rbac, test
 
 **Impact**: Establishes reliable pattern for testing RBAC authorization across all service tests.
 
+### 9. Template Service Bug Fix (FIXED ✓) **NEW!**
+**Issue**: Template service was calling RBAC-protected `get_template()` method internally without passing user parameter.
+
+**Files Modified**:
+- `app/services/template.py` (lines 186 and 257)
+
+**Changes**:
+- Fixed `apply_template_to_configuration()` to use `self.template_repo.get()` directly instead of `self.get_template()`
+- Fixed `track_template_usage()` to use `self.template_repo.get()` directly instead of `self.get_template()`
+- Added proper error handling for template not found cases
+
+**Root Cause**: The service was incorrectly calling its own RBAC-protected public method for internal operations, causing authentication failures.
+
+**Solution**: Use repository methods directly for internal operations, reserving RBAC-protected methods for external API calls.
+
+**Code Changes**:
+```python
+# OLD (incorrect):
+template = await self.get_template(template_id)
+
+# NEW (correct):
+template = await self.template_repo.get(template_id)
+if not template:
+    raise NotFoundException(
+        resource="ConfigurationTemplate",
+        details={"template_id": template_id},
+    )
+```
+
+**Impact**: Fixes template service internal operations and allows all template tests to pass.
+
 ### 5. Async/Await Issues in Tests (MOSTLY FIXED ✓)
 **Issue**: Tests were mocking async methods incorrectly, causing "coroutine object has no attribute" errors.
 
@@ -177,12 +208,15 @@ mock_result.fetchall = MagicMock(return_value=data)  # Correct for sync method
 ## Test Execution Status Update
 
 ### Successfully Fixed Test Files ✓
-1. **`tests/unit/services/test_configuration_service_casbin.py`**: 10/10 tests passing ✓ **NEW!**
+1. **`tests/unit/services/test_configuration_service_casbin.py`**: 10/10 tests passing ✓
 2. **`tests/unit/services/test_entry_service_casbin.py`**: 11/11 tests passing ✓
-3. **`tests/unit/test_customer_relationship_properties.py`**: 4/4 tests passing ✓
-4. **`tests/unit/test_entry_null_handling.py`**: All tests passing ✓
-5. **`tests/unit/test_rbac_casbin.py`**: 17/17 tests passing ✓
-6. **`tests/unit/test_foreign_key_constraint_properties.py`**: Async/await issues fixed ✓
+3. **`tests/unit/services/test_order_service_casbin.py`**: 11/11 tests passing ✓
+4. **`tests/unit/services/test_quote_service_casbin.py`**: 10/10 tests passing ✓
+5. **`tests/unit/services/test_template_service_casbin.py`**: 10/10 tests passing ✓ **NEW!**
+6. **`tests/unit/test_customer_relationship_properties.py`**: 4/4 tests passing ✓
+7. **`tests/unit/test_entry_null_handling.py`**: All tests passing ✓
+8. **`tests/unit/test_rbac_casbin.py`**: 17/17 tests passing ✓
+9. **`tests/unit/test_foreign_key_constraint_properties.py`**: Async/await issues fixed ✓
 
 ### Partially Fixed Test Files (Async/Await Fixed, Other Issues Remain)
 7. **`tests/unit/test_entry_authentication_properties.py`**: 4/6 tests passing (2 RBAC authorization issues)
@@ -274,9 +308,36 @@ This pattern should be systematically applied to all failing RBAC tests:
 
 This breakthrough provides a clear path to fix all remaining RBAC authorization failures systematically.
 
-## Summary of Progress
+### 9. Template Service Bug Fix (FIXED ✓) **NEW!**
+**Issue**: Template service was calling RBAC-protected `get_template()` method internally without passing user parameter.
 
-### Tests Fixed: ~60+ tests now passing
+**Files Modified**:
+- `app/services/template.py` (lines 186 and 257)
+
+**Changes**:
+- Fixed `apply_template_to_configuration()` to use `self.template_repo.get()` directly instead of `self.get_template()`
+- Fixed `track_template_usage()` to use `self.template_repo.get()` directly instead of `self.get_template()`
+- Added proper error handling for template not found cases
+
+**Root Cause**: The service was incorrectly calling its own RBAC-protected public method for internal operations, causing authentication failures.
+
+**Solution**: Use repository methods directly for internal operations, reserving RBAC-protected methods for external API calls.
+
+**Code Changes**:
+```python
+# OLD (incorrect):
+template = await self.get_template(template_id)
+
+# NEW (correct):
+template = await self.template_repo.get(template_id)
+if not template:
+    raise NotFoundException(
+        resource="ConfigurationTemplate",
+        details={"template_id": template_id},
+    )
+```
+
+**Impact**: Fixes template service internal operations and allows all template tests to pass.
 - **Exception Attribute Errors**: ~30 tests fixed ✓
 - **RBAC Template Helpers**: ~15 tests fixed ✓  
 - **Async/Await Issues**: ~35 tests fixed ✓

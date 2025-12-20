@@ -142,12 +142,12 @@ addopts = [
     "-W", "default",                # Show warnings
     "--tb=short",                   # Short traceback format
     "--cov-report=term-missing",    # Terminal coverage with missing lines
-    "--tb=short",                   # Short traceback format
-   # "--maxfail=5",                  # Stop after 5 failures
+    # "--maxfail=5",                # Commented out - let CI control this
     "--instafail",                  # Show failures instantly
-    # "--emoji",                      # Use emoji in output
-    # "--sugar",                      # Better test output formatting
-    # "--clarity",                    # Better assertion diffs
+    # Optional plugins - only enabled if available:
+    # "--emoji",                    # Use emoji in output (pytest-emoji)
+    # "--sugar",                    # Better test output formatting (pytest-sugar)
+    # "--clarity",                  # Better assertion diffs (pytest-clarity)
 ]
 markers = [
     "unit: Unit tests (fast, isolated)",

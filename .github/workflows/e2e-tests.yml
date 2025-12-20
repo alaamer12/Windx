@@ -189,10 +189,6 @@ jobs:
           echo "🎭 Running E2E tests with enhanced error reporting..."
           uv run pytest tests/e2e/ \
             --tb=short \
-            --maxfail=3 \
-            --instafail \
-            --emoji \
-            --sugar \
             --clarity \
             --cov=app \
             --cov-report=xml \

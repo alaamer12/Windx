@@ -199,7 +199,7 @@ class TestEntryErrorRecoveryProperties:
         # Mock database to return no results
         def mock_execute_side_effect(stmt):
             mock_result = AsyncMock()
-            mock_result.scalar_one_or_none.return_value = None
+            mock_result.scalar_one_or_none = MagicMock(return_value=None)  # Use MagicMock
             return mock_result
 
         mock_db.execute.side_effect = mock_execute_side_effect

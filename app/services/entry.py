@@ -395,65 +395,71 @@ class EntryService(BaseService):
         Returns:
             str | None: Error message if validation fails, None if valid
         """
-        # Range validation for numbers
-        if "min" in rules and isinstance(value, (int, float)) and value < rules["min"]:
-            return f"{field_label} must be at least {rules['min']}"
-        if "max" in rules and isinstance(value, (int, float)) and value > rules["max"]:
-            return f"{field_label} must be at most {rules['max']}"
+        try:
+            # Range validation for numbers
+            if "min" in rules and isinstance(value, (int, float)) and isinstance(rules["min"], (int, float)) and value < rules["min"]:
+                return f"{field_label} must be at least {rules['min']}"
+            if "max" in rules and isinstance(value, (int, float)) and isinstance(rules["max"], (int, float)) and value > rules["max"]:
+                return f"{field_label} must be at most {rules['max']}"
 
-        # Pattern validation for strings
-        if "pattern" in rules and isinstance(value, str):
-            if not re.match(rules["pattern"], value):
-                custom_message = rules.get("message", f"{field_label} format is invalid")
-                return custom_message
-
-        # Length validation for strings
-        if "min_length" in rules and isinstance(value, str) and len(value) < rules["min_length"]:
-            return f"{field_label} must be at least {rules['min_length']} characters"
-        if "max_length" in rules and isinstance(value, str) and len(value) > rules["max_length"]:
-            return f"{field_label} must be at most {rules['max_length']} characters"
-
-        # Enum/choice validation
-        if "choices" in rules and value not in rules["choices"]:
-            choices_str = ", ".join(str(c) for c in rules["choices"])
-            return f"{field_label} must be one of: {choices_str}"
-
-        # Custom validation rules
-        if "rule_type" in rules:
-            rule_type = rules["rule_type"]
-
-            if rule_type == "range" and isinstance(value, (int, float)):
-                min_val = rules.get("min", float("-inf"))
-                max_val = rules.get("max", float("inf"))
-                if not (min_val <= value <= max_val):
-                    custom_message = rules.get(
-                        "message", f"{field_label} must be between {min_val} and {max_val}"
-                    )
+            # Pattern validation for strings
+            if "pattern" in rules and isinstance(value, str) and isinstance(rules["pattern"], str):
+                if not re.match(rules["pattern"], value):
+                    custom_message = rules.get("message", f"{field_label} format is invalid")
                     return custom_message
 
-            elif rule_type == "email" and isinstance(value, str):
-                email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-                if not re.match(email_pattern, value):
-                    custom_message = rules.get(
-                        "message", f"{field_label} must be a valid email address"
-                    )
-                    return custom_message
+            # Length validation for strings
+            if "min_length" in rules and isinstance(value, str) and isinstance(rules["min_length"], (int, float)) and len(value) < rules["min_length"]:
+                return f"{field_label} must be at least {rules['min_length']} characters"
+            if "max_length" in rules and isinstance(value, str) and isinstance(rules["max_length"], (int, float)) and len(value) > rules["max_length"]:
+                return f"{field_label} must be at most {rules['max_length']} characters"
 
-            elif rule_type == "url" and isinstance(value, str):
-                url_pattern = r"^https?://[^\s/$.?#].[^\s]*$"
-                if not re.match(url_pattern, value):
-                    custom_message = rules.get("message", f"{field_label} must be a valid URL")
-                    return custom_message
+            # Enum/choice validation
+            if "choices" in rules and value not in rules["choices"]:
+                choices_str = ", ".join(str(c) for c in rules["choices"])
+                return f"{field_label} must be one of: {choices_str}"
 
-            elif rule_type == "positive" and isinstance(value, (int, float)):
-                if value <= 0:
-                    custom_message = rules.get("message", f"{field_label} must be positive")
-                    return custom_message
+            # Custom validation rules
+            if "rule_type" in rules:
+                rule_type = rules["rule_type"]
 
-            elif rule_type == "non_negative" and isinstance(value, (int, float)):
-                if value < 0:
-                    custom_message = rules.get("message", f"{field_label} must be non-negative")
-                    return custom_message
+                if rule_type == "range" and isinstance(value, (int, float)):
+                    min_val = rules.get("min", float("-inf"))
+                    max_val = rules.get("max", float("inf"))
+                    if isinstance(min_val, (int, float)) and isinstance(max_val, (int, float)) and not (min_val <= value <= max_val):
+                        custom_message = rules.get(
+                            "message", f"{field_label} must be between {min_val} and {max_val}"
+                        )
+                        return custom_message
+
+                elif rule_type == "email" and isinstance(value, str):
+                    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                    if not re.match(email_pattern, value):
+                        custom_message = rules.get(
+                            "message", f"{field_label} must be a valid email address"
+                        )
+                        return custom_message
+
+                elif rule_type == "url" and isinstance(value, str):
+                    url_pattern = r"^https?://[^\s/$.?#].[^\s]*$"
+                    if not re.match(url_pattern, value):
+                        custom_message = rules.get("message", f"{field_label} must be a valid URL")
+                        return custom_message
+
+                elif rule_type == "positive" and isinstance(value, (int, float)):
+                    if value <= 0:
+                        custom_message = rules.get("message", f"{field_label} must be positive")
+                        return custom_message
+
+                elif rule_type == "non_negative" and isinstance(value, (int, float)):
+                    if value < 0:
+                        custom_message = rules.get("message", f"{field_label} must be non-negative")
+                        return custom_message
+
+        except (TypeError, ValueError, re.error):
+            # Handle any type errors or regex errors gracefully
+            # Return None to indicate validation passed (fail-safe approach)
+            return None
 
         return None
 

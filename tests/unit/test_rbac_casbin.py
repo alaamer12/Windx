@@ -238,7 +238,7 @@ class TestCasbinCustomerContext:
 
         # Mock database to return customer IDs
         mock_result = MagicMock()
-        mock_result.fetchall.return_value = [(1,), (2,), (3,)]
+        mock_result.fetchall = MagicMock(return_value=[(1,), (2,), (3,)])
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         customers = await service.get_accessible_customers(superadmin)
@@ -252,7 +252,7 @@ class TestCasbinCustomerContext:
 
         # Mock database to return user's customer ID
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = 42
+        mock_result.fetchall = MagicMock(return_value=[(42,)])
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         customers = await service.get_accessible_customers(user)
@@ -266,7 +266,7 @@ class TestCasbinCustomerContext:
 
         # Mock database to return None (no customer found)
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
+        mock_result.fetchall = MagicMock(return_value=[])
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         customers = await service.get_accessible_customers(user)
@@ -280,7 +280,7 @@ class TestCasbinCustomerContext:
 
         # Mock database to return customer ID
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = 42
+        mock_result.fetchall = MagicMock(return_value=[(42,)])
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         # First call
@@ -306,7 +306,7 @@ class TestCasbinCustomerContext:
 
             # Mock database to return configuration's customer ID
             mock_result = MagicMock()
-            mock_result.scalar_one_or_none.return_value = 42
+            mock_result.scalar_one_or_none = MagicMock(return_value=42)
             mock_db.execute = AsyncMock(return_value=mock_result)
 
             result = await service.check_resource_ownership(user, "configuration", 123)
@@ -326,7 +326,7 @@ class TestCasbinCustomerContext:
 
             # Mock database to return different customer ID
             mock_result = MagicMock()
-            mock_result.scalar_one_or_none.return_value = 99
+            mock_result.scalar_one_or_none = MagicMock(return_value=99)
             mock_db.execute = AsyncMock(return_value=mock_result)
 
             result = await service.check_resource_ownership(user, "configuration", 123)
@@ -337,6 +337,11 @@ class TestCasbinCustomerContext:
     async def test_check_resource_ownership_unknown_type(self, rbac_service_with_db, user):
         """Test resource ownership for unknown resource types."""
         service, mock_enforcer, mock_db = rbac_service_with_db
+
+        # Mock get_accessible_customers to return empty list
+        mock_result = MagicMock()
+        mock_result.fetchall = MagicMock(return_value=[])
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
         result = await service.check_resource_ownership(user, "unknown_resource", 123)
 

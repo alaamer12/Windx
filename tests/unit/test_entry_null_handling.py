@@ -9,7 +9,7 @@ Property 5: Graceful null value handling
   save/load cycles
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from hypothesis import given, settings
@@ -274,15 +274,19 @@ class TestEntryNullHandling:
         ]
 
         # Set up mocks
-        mock_db.execute.return_value.scalar_one_or_none.return_value = manufacturing_type
-        mock_db.execute.return_value.scalars.return_value.all.return_value = attribute_nodes
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+        mock_scalars = MagicMock()
+        mock_scalars.all = MagicMock(return_value=attribute_nodes)
+        mock_result.scalars = MagicMock(return_value=mock_scalars)
+        mock_db.execute.return_value = mock_result
 
         entry_service.rbac_service = AsyncMock()
         entry_service.rbac_service.get_or_create_customer_for_user.return_value = customer
         entry_service.validate_profile_data = AsyncMock(return_value={"valid": True})
         entry_service.commit = AsyncMock()
         entry_service.refresh = AsyncMock()
-        mock_db.add = AsyncMock()
+        mock_db.add = MagicMock()
 
         # Act - Save (should not raise exceptions with null values)
         try:

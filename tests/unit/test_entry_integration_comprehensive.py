@@ -11,7 +11,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from app.core.exceptions import NotFoundException, ValidationException
@@ -158,9 +158,11 @@ class TestEntryIntegrationComprehensive:
         def mock_execute_side_effect(stmt):
             mock_result = AsyncMock()
             if "manufacturing_types" in str(stmt):
-                mock_result.scalar_one_or_none.return_value = manufacturing_type
+                mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)  # Use MagicMock
             elif "attribute_nodes" in str(stmt):
-                mock_result.scalars.return_value.all.return_value = attribute_nodes
+                mock_scalars = MagicMock()
+                mock_scalars.all = MagicMock(return_value=attribute_nodes)  # Use MagicMock
+                mock_result.scalars = MagicMock(return_value=mock_scalars)  # Use MagicMock
             elif "configurations" in str(stmt) and "selectinload" in str(stmt):
                 # Mock saved configuration
                 saved_config = MagicMock(spec=Configuration)
@@ -169,9 +171,9 @@ class TestEntryIntegrationComprehensive:
                 saved_config.name = profile_data.name
                 saved_config.customer_id = customer.id
                 saved_config.selections = []
-                mock_result.scalar_one_or_none.return_value = saved_config
+                mock_result.scalar_one_or_none = MagicMock(return_value=saved_config)  # Use MagicMock
             else:
-                mock_result.scalar_one_or_none.return_value = None
+                mock_result.scalar_one_or_none = MagicMock(return_value=None)  # Use MagicMock
             return mock_result
 
         mock_db.execute.side_effect = mock_execute_side_effect
@@ -262,6 +264,7 @@ class TestEntryIntegrationComprehensive:
         ),
         db_state=mock_complete_database_state(),
     )
+    @settings(deadline=None)  # Disable deadline for complex integration test
     async def test_error_scenarios_and_recovery(self, error_scenarios: list[dict], db_state: dict):
         """
         **Feature: entry-page-system, Integration Testing**

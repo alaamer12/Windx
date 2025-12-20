@@ -1,0 +1,308 @@
+## Validation/Schema Errors
+
+**tests/unit/services/test_entry_service_casbin.py**
+- `test_save_profile_configuration_casbin_decorator_authorization`: Missing required fields (material, opening_system, system_series) in ProfileEntryData
+- `test_save_profile_configuration_uses_customer_id`: Missing required fields (material, opening_system, system_series) in ProfileEntryData
+- `test_manufacturing_type_not_found_error`: Missing required fields (material, opening_system, system_series) in ProfileEntryData
+
+## Coverage Requirements
+
+**Coverage Summary**: Total coverage 70.25% - Required 80% not reached
+
+## Async/Await Issues
+
+**tests/unit/services/test_entry_service_casbin.py**
+- `test_customer_auto_creation_with_full_name`: 'coroutine' object has no attribute 'id'
+- `test_customer_auto_creation_with_username_fallback`: 'coroutine' object has no attribute 'id'
+- `test_customer_lookup_by_email_existing`: 'coroutine' object has no attribute 'id'
+- `test_customer_creation_integrity_error_race_condition`: 'coroutine' object has no attribute 'id'
+- `test_customer_creation_integrity_error_no_recovery`: 'coroutine' object has no attribute 'id'
+- `test_customer_data_mapping_from_user_fields`: 'coroutine' object has no attribute 'id'
+
+**tests/unit/test_customer_relationship_properties.py**
+- `test_property_1_customer_relationship_integrity`: 'coroutine' object has no attribute 'all'
+- `test_property_2_user_customer_mapping_consistency`: 'coroutine' object has no attribute 'id'
+- `test_property_4_customer_auto_creation_idempotency`: 'coroutine' object has no attribute 'id'
+
+**tests/unit/test_entry_authentication_properties.py**
+- `test_property_authentication_integration_save_configuration`: 'coroutine' object has no attribute 'all'
+- `test_property_authentication_integration_load_configuration`: 'coroutine' object has no attribute 'manufacturing_type_id'
+- `test_property_role_based_access_patterns`: 'coroutine' object has no attribute 'all'
+- `test_property_schema_access_authentication`: 'coroutine' object has no attribute 'all'
+
+**tests/unit/test_entry_data_persistence.py**
+- `test_property_configuration_data_persistence`: 'coroutine' object has no attribute 'all'
+
+**tests/unit/test_entry_error_recovery_properties.py**
+- `test_property_error_recovery_not_found_errors`: 'coroutine' object has no attribute 'all'
+
+**tests/unit/test_entry_integration_comprehensive.py**
+- `test_complete_profile_entry_workflow`: 'coroutine' object has no attribute 'all'
+
+**tests/unit/test_entry_null_handling.py**
+- `test_property_save_load_null_preservation`: 'coroutine' object has no attribute 'all'
+
+**tests/unit/test_foreign_key_constraint_properties.py**
+- `test_property_foreign_key_constraint_satisfaction`: 'coroutine' object has no attribute 'all'
+
+**tests/unit/test_rbac_casbin.py**
+- `test_check_resource_ownership_unknown_type`: 'coroutine' object is not iterable
+
+## Authorization/Permission Failures (403 Access Denied)
+
+**tests/integration/test_casbin_rbac_workflows.py**
+- `test_complete_entry_page_workflow_with_customer_auto_creation`: Expected 200, got 403
+
+**tests/integration/test_entry_api.py**
+- `test_load_profile_data_unauthorized_user`: Expected 403, got 200
+- `test_get_profile_preview_not_found`: Expected 404, got 403
+- `test_evaluate_display_conditions_success`: Expected 200, got 422
+- `test_evaluate_display_conditions_hidden_field`: Expected 200, got 422
+- `test_evaluate_display_conditions_invalid_manufacturing_type`: Expected 404, got 422
+
+**tests/integration/test_quotes.py**
+- `test_create_quote_success`: Expected 201, got 403
+- `test_create_quote_with_discount`: Expected 201, got 403
+- `test_create_quote_default_valid_until`: Expected 201, got 403
+- `test_create_quote_invalid_discount`: Expected 422, got 403
+- `test_get_quote_by_id_success`: Expected 200, got 403
+- `test_quote_creation_uses_customer_relationship`: Expected 201, got 403
+- `test_casbin_decorator_authorization_on_quote_operations`: Expected 200, got 403
+
+**tests/integration/test_template_service.py**
+- `test_apply_template_raises_error_for_inactive_template`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_apply_template_creates_configuration_with_user_id`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_apply_template_uses_default_name_when_not_provided`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_apply_template_tracks_usage`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_apply_template_with_different_users`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_apply_template_without_selections`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+
+**tests/unit/services/test_configuration_service_casbin.py**
+- `test_list_configurations_rbac_query_filter`: 403 Access denied - insufficient privileges for list_configurations
+- `test_update_configuration_multiple_decorators_or_logic`: 403 Access denied - insufficient privileges for update_configuration
+- `test_get_configuration_with_details_casbin_authorization`: 403 Access denied - insufficient privileges for get_configuration_with_details
+- `test_customer_context_extraction_and_ownership_validation`: 403 Access denied - insufficient privileges for update_configuration
+- `test_delete_configuration_casbin_authorization`: 403 Access denied - insufficient privileges for delete_configuration
+- `test_rbac_query_filter_integration`: 403 Access denied - insufficient privileges for list_configurations
+- `test_configuration_not_found_error_handling`: 403 Access denied - insufficient privileges for get_configuration
+- `test_manufacturing_type_not_found_in_create`: 403 Access denied - insufficient privileges for create_configuration
+
+**tests/unit/services/test_entry_service_casbin.py**
+- `test_generate_preview_data_multiple_decorators`: 403 Access denied - insufficient privileges for generate_preview_data
+
+**tests/unit/services/test_order_service_casbin.py**
+- `test_create_order_maintains_customer_relationship_from_quote`: 403 Access denied - insufficient privileges for create_order_from_quote
+- `test_create_order_casbin_decorator_authorization`: 403 Access denied - insufficient privileges for create_order_from_quote
+- `test_get_order_multiple_decorators_or_logic`: 403 Access denied - insufficient privileges for get_order
+- `test_order_customer_relationship_consistency_through_quotes`: 403 Access denied - insufficient privileges for create_order_from_quote
+- `test_quote_not_accepted_validation`: 403 Access denied - insufficient privileges for create_order_from_quote
+- `test_order_already_exists_validation`: 403 Access denied - insufficient privileges for create_order_from_quote
+- `test_order_authorization_through_quote_customer_relationships`: 403 Access denied - insufficient privileges for get_order
+- `test_quote_not_found_error_handling`: 403 Access denied - insufficient privileges for create_order_from_quote
+- `test_order_not_found_error_handling`: 403 Access denied - insufficient privileges for get_order
+
+**tests/unit/services/test_quote_service_casbin.py**
+- `test_list_quotes_rbac_query_filter`: 403 Access denied - insufficient privileges for list_quotes
+- `test_get_quote_multiple_decorators_or_logic`: 403 Access denied - insufficient privileges for get_quote
+- `test_rbac_query_filter_customer_filtering`: 403 Access denied - insufficient privileges for list_quotes
+- `test_configuration_not_found_error_handling`: 403 Access denied - insufficient privileges for generate_quote
+- `test_quote_not_found_error_handling`: 403 Access denied - insufficient privileges for get_quote
+
+**tests/unit/services/test_template_service_casbin.py**
+- `test_apply_template_casbin_decorator_authorization`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_template_usage_tracking_with_proper_customer_associations`: 401 Authentication required
+- `test_get_template_multiple_decorators_or_logic`: 403 Access denied - insufficient privileges for get_template
+- `test_template_application_with_selections_and_customer_tracking`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_template_not_found_error_handling`: 403 Access denied - insufficient privileges for get_template
+- `test_template_not_active_validation`: 403 Access denied - insufficient privileges for apply_template_to_configuration
+- `test_manufacturing_type_not_found_in_create_template`: 403 Access denied - insufficient privileges for create_template
+
+**tests/unit/test_entry_authentication_properties.py**
+- `test_property_authentication_integration_generate_preview`: 403 Access denied - insufficient privileges for generate_preview_data
+
+## Template/Jinja2 Errors
+
+**tests/integration/test_entry_frontend.py**
+- `test_profile_page_renders`: 'current_user' is undefined
+- `test_accessories_page_renders`: 'current_user' is undefined
+- `test_glazing_page_renders`: 'current_user' is undefined
+- `test_navigation_tabs_present`: 'current_user' is undefined
+- `test_profile_page_without_manufacturing_type`: 'current_user' is undefined
+- `test_profile_page_css_and_js_structure`: 'current_user' is undefined
+
+**tests/unit/test_rbac_template_components.py**
+- `test_button_renders_with_permission`: 'can' is undefined
+- `test_button_hidden_without_permission`: 'can' is undefined
+- `test_button_renders_with_role`: 'has' is undefined
+- `test_button_hidden_without_role`: 'has' is undefined
+- `test_nav_item_renders_with_permission`: 'can' is undefined
+- `test_nav_item_hidden_without_permission`: 'can' is undefined
+- `test_content_renders_with_permission`: 'can' is undefined
+- `test_content_hidden_without_permission`: 'can' is undefined
+- `test_content_shows_fallback_message`: 'can' is undefined
+- `test_table_actions_render_with_permission`: 'can' is undefined
+- `test_table_actions_hidden_without_permission`: 'can' is undefined
+- `test_sidebar_renders`: 'can' is undefined
+
+## Exception Attribute Errors
+
+**tests/unit/services/test_pricing_error_handling.py**
+- `test_evaluate_formula_division_by_zero`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_evaluate_formula_division_by_zero_variable`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_evaluate_formula_unknown_variable`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_evaluate_formula_syntax_error`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_evaluate_formula_overflow`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_evaluate_formula_invalid_result`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_calculate_selection_impact_invalid_formula`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_calculate_configuration_price_selection_error`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_calculate_configuration_price_not_found`: 'NotFoundException' object has no attribute 'message'
+- `test_meaningful_error_messages`: InvalidFormulaException.__init__() unexpected keyword 'details'
+- `test_error_details_include_context`: InvalidFormulaException.__init__() unexpected keyword 'details'
+
+**tests/unit/services/test_entry.py**
+- `test_validate_profile_data_validation_errors`: 'ValidationException' object has no attribute 'field_errors'
+
+**tests/unit/test_casbin_error_handling.py**
+- `test_policy_evaluation_exception_logging`: 'PolicyEvaluationException' object has no attribute 'message'
+- `test_customer_creation_exception_logging`: 'CustomerCreationException' object has no attribute 'message'
+
+**tests/unit/test_user_service.py**
+- `test_create_user_duplicate_email`: 'ConflictException' object has no attribute 'message'
+- `test_create_user_duplicate_username`: 'ConflictException' object has no attribute 'message'
+- `test_get_user_not_found`: 'NotFoundException' object has no attribute 'message'
+- `test_update_email_to_existing`: 'ConflictException' object has no attribute 'message'
+- `test_update_username_to_existing`: 'ConflictException' object has no attribute 'message'
+
+**tests/unit/test_entry_error_recovery_properties.py**
+- `test_property_error_recovery_validation_errors`: 'ValidationException' object has no attribute 'field_errors'
+- `test_property_field_validation_error_messages`: 'ValidationException' object has no attribute 'field_errors' (multiple failures)
+
+**tests/unit/test_entry_validation_properties.py**
+- `test_property_required_field_validation`: 'ValidationException' object has no attribute 'field_errors'
+- `test_property_cross_field_validation_enforcement`: 'ValidationException' object has no attribute 'field_errors'
+- `test_property_valid_data_passes_validation`: 'ValidationException' object has no attribute 'field_errors'
+
+## Missing Attributes/Methods
+
+**tests/unit/test_rbac_core.py**
+- `test_check_permission_requirement`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_check_permission_requirement_with_context`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_check_ownership_requirement`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_check_ownership_requirement_kwargs`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_check_privilege_requirement`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_check_privilege_requirement_with_ownership`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+
+**tests/unit/test_rbac_decorators_advanced.py**
+- Multiple tests: Module 'app.core.rbac' has no attribute 'rbac_service'
+
+**tests/unit/test_rbac_properties.py**
+- `test_decorator_authorization_consistency_property`: Module 'app.core.rbac' has no attribute 'rbac_service'
+- `test_privilege_composition_property`: Module 'app.core.rbac' has no attribute 'rbac_service'
+- `test_resource_ownership_consistency_property`: Module 'app.core.rbac' has no attribute 'rbac_service'
+
+**tests/unit/test_rbac_template_helpers.py**
+- `test_can_call_valid_permission`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_can_call_permission_denied`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+- `test_can_error_handling`: Module 'app.core.rbac' does not have attribute 'rbac_service'
+
+**tests/unit/test_foreign_key_constraint_properties.py**
+- `test_property_database_integrity_error_handling`: 'EntryService' object has no attribute 'mfg_type_repo'
+- `test_property_multiple_users_same_customer_constraint_satisfaction`: 'EntryService' object has no attribute 'mfg_type_repo'
+- `test_property_multiple_manufacturing_types_constraint_satisfaction`: 'EntryService' object has no attribute 'config_repo'
+
+## Data Mismatch/Assertion Errors
+
+**tests/integration/test_entry_api.py**
+- `test_load_profile_data_not_found`: KeyError: 'detail'
+- `test_get_profile_preview_success`: Expected 'Frame', got 'N/A'
+
+**tests/integration/test_quotes.py**
+- `test_list_quotes_success`: Expected 3 items, got 0
+- `test_list_quotes_with_status_filter`: Expected 1 item, got 0
+- `test_regular_user_sees_only_own_quotes`: Expected 1 item, got 0
+- `test_rbac_query_filter_automatic_filtering`: Expected 1 item, got 0
+
+**tests/unit/services/test_entry.py**
+- `test_get_section_name`: Expected 'basic', got 'Basic'
+- `test_format_preview_value`: Expected 'Yes', got 'yes'
+
+**tests/unit/test_rbac_casbin.py**
+- `test_get_accessible_customers_regular_user`: Expected [42], got []
+- `test_get_accessible_customers_caching`: Expected [42], got []
+
+**tests/unit/test_rbac_service.py**
+- `test_get_accessible_customers_regular_user`: Expected [1], got []
+- `test_get_accessible_customers_caching`: Expected [1], got []
+
+**tests/unit/test_customer_relationship_properties.py**
+- `test_property_3_authorization_customer_ownership_with_casbin`: Expected True, got False
+
+## Hypothesis Testing Issues
+
+**tests/unit/test_backward_compatibility_properties.py**
+- All tests: Function-scoped fixture used with @given (HealthCheck.function_scoped_fixture)
+
+**tests/unit/test_casbin_policy_consistency_properties.py**
+- All tests: Function-scoped fixture used with @given (HealthCheck.function_scoped_fixture)
+
+**tests/unit/test_customer_data_consistency_properties.py**
+- All tests: Function-scoped fixture used with @given (HealthCheck.function_scoped_fixture)
+
+**tests/unit/test_entry_data_persistence.py**
+- `test_property_configuration_selection_mapping`: Using example() inside test function
+
+**tests/unit/test_entry_validation.py**
+- `test_property_schema_based_validation_enforcement`: Module 'hypothesis.strategies' has no attribute 'seed'
+- `test_property_individual_validation_rules`: Module 'hypothesis.strategies' has no attribute 'seed'
+
+**tests/unit/test_entry_validation_properties.py**
+- `test_property_schema_based_validation_enforcement`: Missing required positional argument 'field'
+- `test_property_custom_validation_rules`: Assertion failed on validation rule matching
+
+## Logic/Decorator Pattern Errors
+
+**tests/unit/services/test_entry_properties.py**
+- `test_logical_not_operator_consistency`: ValueError: 64 is not in list
+- `test_logical_and_operator_properties`: Hypothesis found 4 distinct failures
+- `test_logical_or_operator_properties`: Hypothesis found 4 distinct failures
+
+**tests/unit/test_advanced_decorator_patterns_properties.py**
+- `test_property_multiple_decorator_or_logic_evaluation`: Access denied but at least one requirement should be satisfied
+- `test_property_role_composition_or_logic`: User granted access without required roles
+- `test_property_complex_decorator_combinations_or_logic`: Access denied but requirement set should be satisfied
+- `test_property_privilege_object_or_logic`: User denied access but should satisfy privilege
+
+**tests/unit/test_entry_validation.py**
+- `test_property_cross_field_validation`: Hypothesis found 2 distinct failures
+
+## Mock/Test Setup Issues
+
+**tests/unit/services/test_quote_service_casbin.py**
+- `test_generate_quote_casbin_decorator_authorization`: Expected 'require' to have been called
+
+**tests/unit/services/test_template_service_casbin.py**
+- `test_apply_template_uses_proper_customer_relationship`: Name 'sample_configuration' is not defined
+
+**tests/unit/test_casbin_error_handling.py**
+- `test_policy_file_corruption_handling`: DID NOT RAISE PolicyEvaluationException
+- `test_rbac_service_initialization_failure`: DID NOT RAISE Exception
+- `test_concurrent_customer_creation_success`: CustomerCreationException raised
+- `test_error_context_preservation`: Expected 'test@example.com' in error message, got 'Failed to create customer'
+
+**tests/unit/test_rbac_service.py**
+- `test_check_permission_exception_handling`: PolicyEvaluationException raised
+- `test_get_or_create_customer_race_condition`: Expected 'mock' called once, called 0 times
+
+## Integration Test Errors (ERRORs, not FAILUREs)
+
+**tests/integration/test_casbin_rbac_workflows.py**
+- 5 tests: ERROR status (details not provided in summary)
+
+**tests/integration/test_entry_api.py**
+- 6 tests: ERROR status (details not provided in summary)
+
+**tests/unit/test_casbin_error_handling.py**
+- `test_graceful_degradation_on_casbin_failure`: ERROR
+
+**tests/unit/test_rbac_performance.py**
+- 13 tests: ERROR status (performance tests)

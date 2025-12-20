@@ -53,6 +53,7 @@ class NotFoundException(HTTPException):
     def __init__(self, resource: str = "Resource", details: Optional[dict[str, Any]] = None):
         self.resource = resource
         self.details = details or {}
+        self.message = f"{resource} not found"  # Add message attribute
         detail = f"{resource} not found"
         super().__init__(status_code=404, detail=detail)
 
@@ -60,8 +61,10 @@ class NotFoundException(HTTPException):
 class ValidationException(HTTPException):
     """Raised when input validation fails."""
 
-    def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[dict[str, Any]] = None, field_errors: Optional[dict[str, str]] = None):
         self.details = details or {}
+        self.field_errors = field_errors or {}  # Add field_errors attribute
+        self.message = message  # Add message attribute
         super().__init__(status_code=422, detail=message)
 
 
@@ -70,6 +73,7 @@ class ConflictException(HTTPException):
 
     def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
         self.details = details or {}
+        self.message = message  # Add message attribute
         super().__init__(status_code=409, detail=message)
 
 
@@ -102,8 +106,10 @@ class DatabaseException(Exception):
 class InvalidFormulaException(Exception):
     """Raised when formula evaluation fails."""
 
-    def __init__(self, message: str, formula: Optional[str] = None):
+    def __init__(self, message: str, formula: Optional[str] = None, details: Optional[dict[str, Any]] = None):
         self.formula = formula
+        self.details = details or {}  # Add details attribute
+        self.message = message  # Add message attribute
         super().__init__(message)
 
 
@@ -169,6 +175,7 @@ class PolicyEvaluationException(Exception):
             policy_context: Optional context about policy state
         """
         self.policy_context = policy_context or {}
+        self.message = f"Policy evaluation failed: {error}"  # Add message attribute
         super().__init__(f"Policy evaluation failed: {error}")
 
         # Log system error for diagnostics
@@ -200,6 +207,7 @@ class CustomerCreationException(Exception):
         self.user_email = user_email
         self.user_data = user_data or {}
         self.original_error = original_error
+        self.message = message  # Add message attribute
 
         super().__init__(message)
 

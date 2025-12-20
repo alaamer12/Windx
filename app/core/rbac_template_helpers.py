@@ -57,12 +57,9 @@ class Can:
 
     @property
     def rbac_service(self):
-        """Lazy-load RBAC service to avoid circular imports."""
-        if self._rbac_service is None:
-            from app.core.rbac import rbac_service
-
-            self._rbac_service = rbac_service
-        return self._rbac_service
+        """Get shared Casbin enforcer for permission checks."""
+        from app.services.rbac import get_shared_enforcer
+        return get_shared_enforcer()
 
     def __call__(self, permission: str) -> bool:
         """Check if user has specific permission.
@@ -91,10 +88,10 @@ class Can:
             if hasattr(self.user, "role") and self.user.role == "superadmin":
                 return True
 
-            # For other users, use Casbin enforcer directly (synchronous)
+            # For other users, use shared Casbin enforcer directly (synchronous)
             # This avoids async event loop issues in template rendering
             try:
-                result = self.rbac_service.enforcer.enforce(self.user.email, resource, action)
+                result = self.rbac_service.enforce(self.user.email, resource, action)
                 logger.debug(
                     f"Permission check: user={self.user.email}, "
                     f"resource={resource}, action={action}, result={result}"

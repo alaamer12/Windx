@@ -17,7 +17,7 @@ of the Customer Relationship system using Hypothesis for comprehensive test cove
 """
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from hypothesis import given, settings
@@ -127,10 +127,18 @@ class TestCustomerRelationshipProperties:
             mock_db.commit = AsyncMock()
             mock_db.refresh = AsyncMock()
 
-            # Mock manufacturing type query
-            mock_result = AsyncMock()
-            mock_result.scalar_one_or_none.return_value = manufacturing_type
-            mock_db.execute.return_value = mock_result
+            # Mock manufacturing type query (first call)
+            mock_result_1 = AsyncMock()
+            mock_result_1.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+            
+            # Mock attribute nodes query (second call)
+            mock_result_2 = AsyncMock()
+            mock_scalars = MagicMock()
+            mock_scalars.all = MagicMock(return_value=[])  # Empty list of attribute nodes
+            mock_result_2.scalars = MagicMock(return_value=mock_scalars)
+            
+            # Set up side_effect for multiple database calls
+            mock_db.execute.side_effect = [mock_result_1, mock_result_2]
 
             # Mock RBAC service
             mock_rbac_service = AsyncMock()
@@ -186,7 +194,7 @@ class TestCustomerRelationshipProperties:
         mock_db.refresh = AsyncMock()
 
         # Test case 1: No existing customer - should create one
-        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)  # Use MagicMock
 
         customer = await rbac_service.get_or_create_customer_for_user(user)
 
@@ -207,7 +215,7 @@ class TestCustomerRelationshipProperties:
             customer_type="residential",
             is_active=True,
         )
-        mock_result.scalar_one_or_none.return_value = existing_customer
+        mock_result.scalar_one_or_none = MagicMock(return_value=existing_customer)  # Use MagicMock
 
         customer = await rbac_service.get_or_create_customer_for_user(user)
 
@@ -253,7 +261,7 @@ class TestCustomerRelationshipProperties:
         customer = Customer(**customer_data)
 
         # First call: No existing customer, should create one
-        mock_result.scalar_one_or_none.return_value = None
+        mock_result.scalar_one_or_none = MagicMock(return_value=None)  # Use MagicMock
 
         # Mock the refresh to set the customer ID
         async def mock_refresh_side_effect(obj):
@@ -269,7 +277,7 @@ class TestCustomerRelationshipProperties:
 
         # Reset mocks and setup for second call
         mock_db.reset_mock()
-        mock_result.scalar_one_or_none.return_value = customer
+        mock_result.scalar_one_or_none = MagicMock(return_value=customer)  # Use MagicMock
 
         # Second call: Should find existing customer
         customer2 = await rbac_service.get_or_create_customer_for_user(user)
@@ -312,7 +320,7 @@ class TestCustomerRelationshipProperties:
 
         # Mock configuration lookup
         mock_result = AsyncMock()
-        mock_result.scalar_one_or_none.return_value = config_customer_id
+        mock_result.scalar_one_or_none = MagicMock(return_value=config_customer_id)  # Use MagicMock
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         # Check ownership
@@ -323,7 +331,7 @@ class TestCustomerRelationshipProperties:
 
         # Test case 2: User does not own the configuration
         config_customer_id = 999  # Not in accessible customers
-        mock_result.scalar_one_or_none.return_value = config_customer_id
+        mock_result.scalar_one_or_none = MagicMock(return_value=config_customer_id)  # Use MagicMock
 
         has_access = await rbac_service.check_resource_ownership(user, "configuration", 456)
 

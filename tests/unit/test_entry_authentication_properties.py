@@ -96,9 +96,11 @@ class TestEntryAuthenticationIntegration:
         def mock_execute_side_effect(stmt):
             mock_result = AsyncMock()
             if "manufacturing_types" in str(stmt):
-                mock_result.scalar_one_or_none.return_value = mock_manufacturing_type
+                mock_result.scalar_one_or_none = MagicMock(return_value=mock_manufacturing_type)  # Use MagicMock
             elif "attribute_nodes" in str(stmt):
-                mock_result.scalars.return_value.all.return_value = mock_attribute_nodes
+                mock_scalars = MagicMock()
+                mock_scalars.all = MagicMock(return_value=mock_attribute_nodes)  # Use MagicMock
+                mock_result.scalars = MagicMock(return_value=mock_scalars)  # Use MagicMock
             return mock_result
 
         mock_db.execute.side_effect = mock_execute_side_effect
@@ -151,16 +153,35 @@ class TestEntryAuthenticationIntegration:
         mock_config.name = "Test Configuration"
         mock_config.selections = []
 
-        # Mock database queries
-        def mock_execute_side_effect(stmt):
-            mock_result = AsyncMock()
-            if "configurations" in str(stmt) and "selectinload" in str(stmt):
-                mock_result.scalar_one_or_none.return_value = mock_config
-            elif "attribute_nodes" in str(stmt):
-                mock_result.scalars.return_value.all.return_value = []
-            return mock_result
+        # Mock attribute nodes to provide required fields
+        mock_attribute_nodes = []
+        for i, field_name in enumerate(["type", "material", "opening_system", "system_series"]):
+            node = MagicMock()
+            node.id = i + 1
+            node.name = field_name
+            node.ltree_path = f"section.{field_name}"
+            mock_attribute_nodes.append(node)
 
-        mock_db.execute.side_effect = mock_execute_side_effect
+        # Mock configuration selections for required fields
+        mock_selections = []
+        for i, field_name in enumerate(["type", "material", "opening_system", "system_series"]):
+            selection = MagicMock()
+            selection.attribute_node_id = i + 1  # Match the node ID
+            selection.string_value = f"Test {field_name.title()}"
+            selection.numeric_value = None
+            selection.boolean_value = None
+            selection.json_value = None
+            mock_selections.append(selection)
+        
+        mock_config.selections = mock_selections
+
+        # Mock database queries
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=mock_config)
+        mock_scalars = MagicMock()
+        mock_scalars.all = MagicMock(return_value=mock_attribute_nodes)
+        mock_result.scalars = MagicMock(return_value=mock_scalars)
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
         # Act - Attempt to load configuration
         try:
@@ -168,12 +189,16 @@ class TestEntryAuthenticationIntegration:
                 # Mock the decorator to pass through
                 mock_require.return_value = lambda func: func
 
-                result = await entry_service.load_profile_configuration(configuration_id, user)
+                # Mock RBAC authorization
+                with patch("app.services.rbac.RBACService.check_resource_ownership", new_callable=AsyncMock) as mock_ownership:
+                    mock_ownership.return_value = True
 
-                # Assert - Should return ProfileEntryData
-                assert isinstance(result, ProfileEntryData)
-                assert result.manufacturing_type_id == mock_config.manufacturing_type_id
-                assert result.name == mock_config.name
+                    result = await entry_service.load_profile_configuration(configuration_id, user)
+
+                    # Assert - Should return ProfileEntryData
+                    assert isinstance(result, ProfileEntryData)
+                    assert result.manufacturing_type_id == mock_config.manufacturing_type_id
+                    assert result.name == mock_config.name
 
         except (AuthorizationException, NotFoundException):
             # These are valid outcomes depending on user permissions and data existence
@@ -202,13 +227,13 @@ class TestEntryAuthenticationIntegration:
         mock_config.selections = []
 
         # Mock database query
-        def mock_execute_side_effect(stmt):
-            mock_result = AsyncMock()
-            if "configurations" in str(stmt):
-                mock_result.scalar_one_or_none.return_value = mock_config
-            return mock_result
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=mock_config)
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
-        mock_db.execute.side_effect = mock_execute_side_effect
+        # Mock RBAC authorization
+        with patch("app.services.rbac.RBACService.check_resource_ownership", new_callable=AsyncMock) as mock_ownership:
+            mock_ownership.return_value = True
 
         # Act - Attempt to generate preview
         try:
@@ -216,9 +241,13 @@ class TestEntryAuthenticationIntegration:
                 # Mock the decorator to pass through
                 mock_require.return_value = lambda func: func
 
-                result = await entry_service.generate_preview_data(configuration_id, user)
+                # Mock RBAC authorization
+                with patch("app.services.rbac.RBACService.check_resource_ownership", new_callable=AsyncMock) as mock_ownership:
+                    mock_ownership.return_value = True
 
-                # Assert - Should return ProfilePreviewData
+                    result = await entry_service.generate_preview_data(configuration_id, user)
+
+                    # Assert - Should return ProfilePreviewData
                 assert result.configuration_id == configuration_id
                 assert result.table is not None
                 assert len(result.table.headers) == 29  # All CSV columns
@@ -309,9 +338,11 @@ class TestEntryAuthenticationIntegration:
         def mock_execute_side_effect(stmt):
             mock_result = AsyncMock()
             if "manufacturing_types" in str(stmt):
-                mock_result.scalar_one_or_none.return_value = mock_manufacturing_type
+                mock_result.scalar_one_or_none = MagicMock(return_value=mock_manufacturing_type)  # Use MagicMock
             elif "attribute_nodes" in str(stmt):
-                mock_result.scalars.return_value.all.return_value = []
+                mock_scalars = MagicMock()
+                mock_scalars.all = MagicMock(return_value=[])  # Use MagicMock
+                mock_result.scalars = MagicMock(return_value=mock_scalars)  # Use MagicMock
             return mock_result
 
         mock_db.execute.side_effect = mock_execute_side_effect
@@ -363,9 +394,11 @@ class TestEntryAuthenticationIntegration:
         def mock_execute_side_effect(stmt):
             mock_result = AsyncMock()
             if "manufacturing_types" in str(stmt):
-                mock_result.scalar_one_or_none.return_value = mock_manufacturing_type
+                mock_result.scalar_one_or_none = MagicMock(return_value=mock_manufacturing_type)  # Use MagicMock
             elif "attribute_nodes" in str(stmt):
-                mock_result.scalars.return_value.all.return_value = mock_attribute_nodes
+                mock_scalars = MagicMock()
+                mock_scalars.all = MagicMock(return_value=mock_attribute_nodes)  # Use MagicMock
+                mock_result.scalars = MagicMock(return_value=mock_scalars)  # Use MagicMock
             return mock_result
 
         mock_db.execute.side_effect = mock_execute_side_effect

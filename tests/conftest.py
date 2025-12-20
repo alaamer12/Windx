@@ -34,6 +34,8 @@ __all__ = [
     # User Fixtures
     "test_user",
     "test_superuser",
+    "test_user_with_rbac",
+    "test_superuser_with_rbac",
     # Auth Fixtures
     "auth_headers",
     "superuser_auth_headers",
@@ -528,6 +530,7 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
         hashed_password=hashed_password,
         is_superuser=False,
         is_active=True,
+        role="customer",  # Set default role
     )
 
     db_session.add(user)
@@ -535,6 +538,26 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
     await db_session.refresh(user)
 
     return user
+
+
+@pytest_asyncio.fixture
+async def test_user_with_rbac(db_session: AsyncSession, test_user):
+    """Create test user with properly initialized RBAC policies.
+
+    Args:
+        db_session (AsyncSession): Database session
+        test_user: Test user fixture
+
+    Returns:
+        User: Test user with RBAC policies initialized
+    """
+    from app.services.rbac import RBACService
+
+    # Initialize RBAC policies for the user
+    rbac_service = RBACService(db_session)
+    await rbac_service.initialize_user_policies(test_user)
+
+    return test_user
 
 
 @pytest.fixture
@@ -587,6 +610,7 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
         hashed_password=hashed_password,
         is_superuser=True,
         is_active=True,
+        role="superadmin",  # Set superadmin role
     )
 
     db_session.add(user)
@@ -594,6 +618,26 @@ async def test_superuser(db_session: AsyncSession, test_superuser_data: dict[str
     await db_session.refresh(user)
 
     return user
+
+
+@pytest_asyncio.fixture
+async def test_superuser_with_rbac(db_session: AsyncSession, test_superuser):
+    """Create test superuser with properly initialized RBAC policies.
+
+    Args:
+        db_session (AsyncSession): Database session
+        test_superuser: Test superuser fixture
+
+    Returns:
+        User: Test superuser with RBAC policies initialized
+    """
+    from app.services.rbac import RBACService
+
+    # Initialize RBAC policies for the user
+    rbac_service = RBACService(db_session)
+    await rbac_service.initialize_user_policies(test_superuser)
+
+    return test_superuser
 
 
 @pytest_asyncio.fixture

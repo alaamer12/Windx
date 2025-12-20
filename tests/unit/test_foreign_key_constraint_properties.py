@@ -11,7 +11,7 @@ Requirements: 1.5, 2.1
 """
 
 from decimal import Decimal
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -127,25 +127,14 @@ class TestForeignKeyConstraintProperties:
         )
 
         # Mock database queries for manufacturing type
-        mock_mfg_result = AsyncMock()
-        mock_mfg_result.scalar_one_or_none.return_value = manufacturing_type
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
-        # Mock database queries for configuration creation
-        mock_config_result = AsyncMock()
-        mock_config_result.scalar_one_or_none.return_value = None  # No existing config
-
-        # Setup database execute mock to return appropriate results
-        def mock_execute(stmt):
-            # Simple check based on statement type - this is a simplified mock
-            if hasattr(stmt, "column_descriptions") or "ManufacturingType" in str(stmt):
-                return mock_mfg_result
-            else:
-                return mock_config_result
-
-        mock_db.execute = AsyncMock(side_effect=mock_execute)
-        mock_db.add = AsyncMock()
-        mock_db.commit = AsyncMock()
-        mock_db.refresh = AsyncMock()
+        # Mock service methods
+        entry_service.commit = AsyncMock()
+        entry_service.refresh = AsyncMock()
+        mock_db.add = MagicMock()
 
         # Generate profile data
         profile_data = ProfileEntryData(
@@ -196,9 +185,9 @@ class TestForeignKeyConstraintProperties:
         entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(return_value=None)
 
         # Mock manufacturing type database query
-        mock_mfg_result = AsyncMock()
-        mock_mfg_result.scalar_one_or_none.return_value = manufacturing_type
-        mock_db.execute = AsyncMock(return_value=mock_mfg_result)
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
         # Generate profile data
         profile_data = ProfileEntryData(
@@ -231,13 +220,21 @@ class TestForeignKeyConstraintProperties:
         entry_service = EntryService(mock_db)
 
         # Mock customer auto-creation
-        entry_service._get_or_create_customer_for_user = AsyncMock(return_value=customer)
+        entry_service.rbac_service = AsyncMock()
+        entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(return_value=customer)
 
-        # Mock manufacturing type repository
-        entry_service.mfg_type_repo.get = AsyncMock(return_value=manufacturing_type)
+        # Mock manufacturing type lookup
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+        mock_db.execute = MagicMock(return_value=mock_result)
 
-        # Mock configuration repository to raise IntegrityError
-        entry_service.config_repo.create = AsyncMock(
+        # Mock service methods
+        entry_service.commit = AsyncMock()
+        entry_service.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        # Mock database commit to raise IntegrityError
+        mock_db.commit = AsyncMock(
             side_effect=IntegrityError("Foreign key constraint violation", None, None)
         )
 
@@ -256,7 +253,7 @@ class TestForeignKeyConstraintProperties:
             await entry_service.save_profile_configuration(profile_data, user)
 
         # Verify customer lookup was still performed
-        entry_service._get_or_create_customer_for_user.assert_called_once_with(user)
+        entry_service.rbac_service.get_or_create_customer_for_user.assert_called_once_with(user)
 
     @given(
         users=st.lists(user_data(), min_size=1, max_size=10),
@@ -279,13 +276,22 @@ class TestForeignKeyConstraintProperties:
         entry_service = EntryService(mock_db)
 
         # Mock customer auto-creation to return same customer for all users
-        entry_service._get_or_create_customer_for_user = AsyncMock(return_value=customer)
+        entry_service.rbac_service = AsyncMock()
+        entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(return_value=customer)
 
-        # Mock manufacturing type repository
-        entry_service.mfg_type_repo.get = AsyncMock(return_value=manufacturing_type)
+        # Mock manufacturing type lookup
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+        mock_db.execute = AsyncMock(return_value=mock_result)
 
-        # Mock configuration repository
-        entry_service.config_repo.create = AsyncMock()
+        # Mock service methods
+        entry_service.commit = AsyncMock()
+        entry_service.refresh = AsyncMock()
+        mock_db.add = MagicMock()
+
+        # Track configurations added
+        added_configs = []
+        mock_db.add = MagicMock(side_effect=lambda obj: added_configs.append(obj))
 
         # Act - Create configurations for all users
         for i, user in enumerate(users):
@@ -301,13 +307,13 @@ class TestForeignKeyConstraintProperties:
             await entry_service.save_profile_configuration(profile_data, user)
 
         # Assert - All configurations should use the same valid customer_id
-        assert entry_service.config_repo.create.call_count == len(users)
+        assert len(added_configs) == len(users)
 
-        for call in entry_service.config_repo.create.call_args_list:
-            config_data = call[0][0]
-            assert config_data.customer_id == customer.id
-            assert config_data.customer_id is not None
-            assert isinstance(config_data.customer_id, int)
+        for config in added_configs:
+            assert isinstance(config, Configuration)
+            assert config.customer_id == customer.id
+            assert config.customer_id is not None
+            assert isinstance(config.customer_id, int)
 
     @given(
         user=user_data(),
@@ -330,15 +336,23 @@ class TestForeignKeyConstraintProperties:
         entry_service = EntryService(mock_db)
 
         # Mock customer auto-creation
-        entry_service._get_or_create_customer_for_user = AsyncMock(return_value=customer)
+        entry_service.rbac_service = AsyncMock()
+        entry_service.rbac_service.get_or_create_customer_for_user = AsyncMock(return_value=customer)
 
-        # Mock configuration repository
-        entry_service.config_repo.create = AsyncMock()
+        # Mock service methods
+        entry_service.commit = AsyncMock()
+        entry_service.refresh = AsyncMock()
+
+        # Track configurations added
+        added_configs = []
+        mock_db.add = MagicMock(side_effect=lambda obj: added_configs.append(obj))
 
         # Act - Create configurations for different manufacturing types
         for i, mfg_type in enumerate(manufacturing_types):
-            # Mock manufacturing type repository for this specific type
-            entry_service.mfg_type_repo.get = AsyncMock(return_value=mfg_type)
+            # Mock manufacturing type lookup for this specific type
+            mock_result = MagicMock()
+            mock_result.scalar_one_or_none = MagicMock(return_value=mfg_type)
+            mock_db.execute = AsyncMock(return_value=mock_result)
 
             profile_data = ProfileEntryData(
                 manufacturing_type_id=mfg_type.id,
@@ -352,15 +366,15 @@ class TestForeignKeyConstraintProperties:
             await entry_service.save_profile_configuration(profile_data, user)
 
         # Assert - All configurations should have valid foreign key references
-        assert entry_service.config_repo.create.call_count == len(manufacturing_types)
+        assert len(added_configs) == len(manufacturing_types)
 
-        for i, call in enumerate(entry_service.config_repo.create.call_args_list):
-            config_data = call[0][0]
+        for i, config in enumerate(added_configs):
+            assert isinstance(config, Configuration)
 
             # Verify customer foreign key
-            assert config_data.customer_id == customer.id
-            assert config_data.customer_id is not None
+            assert config.customer_id == customer.id
+            assert config.customer_id is not None
 
             # Verify manufacturing type foreign key
-            assert config_data.manufacturing_type_id == manufacturing_types[i].id
-            assert config_data.manufacturing_type_id is not None
+            assert config.manufacturing_type_id == manufacturing_types[i].id
+            assert config.manufacturing_type_id is not None

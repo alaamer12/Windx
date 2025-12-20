@@ -9,7 +9,7 @@ Property 7: Configuration data persistence
   retrieved and restored to the form
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from hypothesis import given, settings
@@ -200,9 +200,8 @@ class TestEntryDataPersistence:
         mock_db = AsyncMock()
         entry_service = EntryService(mock_db)
 
-        # Mock manufacturing type lookup
+        # Set manufacturing type ID to match profile data
         manufacturing_type.id = profile_data.manufacturing_type_id
-        mock_db.execute.return_value.scalar_one_or_none.return_value = manufacturing_type
 
         # Create fixed attribute nodes for testing
         attribute_nodes = [
@@ -249,7 +248,19 @@ class TestEntryDataPersistence:
                 ]
             )
         ]
-        mock_db.execute.return_value.scalars.return_value.all.return_value = attribute_nodes
+
+        # Mock manufacturing type lookup and attribute nodes query
+        def mock_execute_side_effect(stmt):
+            mock_result = MagicMock()
+            if "manufacturing_types" in str(stmt):
+                mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+            elif "attribute_nodes" in str(stmt):
+                mock_scalars = MagicMock()
+                mock_scalars.all = MagicMock(return_value=attribute_nodes)
+                mock_result.scalars = MagicMock(return_value=mock_scalars)
+            return mock_result
+
+        mock_db.execute.side_effect = mock_execute_side_effect
 
         # Mock customer creation
         customer = Customer(
@@ -282,7 +293,7 @@ class TestEntryDataPersistence:
         # Mock database operations
         entry_service.commit = AsyncMock()
         entry_service.refresh = AsyncMock()
-        mock_db.add = AsyncMock()
+        mock_db.add = MagicMock()
 
         # Mock validation (assume it passes)
         entry_service.validate_profile_data = AsyncMock(return_value={"valid": True})
@@ -334,7 +345,15 @@ class TestEntryDataPersistence:
                     created_config.selections.append(selection)
 
         # Mock load configuration
-        mock_db.execute.return_value.scalar_one_or_none.return_value = created_config
+        mock_load_result = MagicMock()
+        mock_load_result.scalar_one_or_none = MagicMock(return_value=created_config)
+        
+        # Create a separate mock for the load operation
+        def mock_load_execute(stmt):
+            return mock_load_result
+        
+        # Update mock_db.execute to handle load operation
+        mock_db.execute = MagicMock(side_effect=mock_load_execute)
 
         # Act - Load configuration
         loaded_data = await entry_service.load_profile_configuration(created_config.id, user)
@@ -386,11 +405,60 @@ class TestEntryDataPersistence:
 
         # Mock manufacturing type and attribute nodes
         manufacturing_type.id = profile_data.manufacturing_type_id
-        attribute_nodes = attribute_node_data(profile_data.manufacturing_type_id).example()
+        
+        # Create fixed attribute nodes for testing
+        attribute_nodes = [
+            AttributeNode(
+                id=i + 1,
+                manufacturing_type_id=profile_data.manufacturing_type_id,
+                name=field_name,
+                node_type="attribute",
+                data_type="string",
+                ltree_path=f"section.{field_name}",
+                depth=2,
+                sort_order=i,
+            )
+            for i, field_name in enumerate(
+                [
+                    "type",
+                    "company", 
+                    "material",
+                    "opening_system",
+                    "system_series",
+                    "code",
+                    "length_of_beam",
+                    "renovation",
+                    "width",
+                    "builtin_flyscreen_track",
+                    "total_width",
+                    "flyscreen_track_height",
+                    "front_height",
+                    "rear_height",
+                    "glazing_height",
+                    "renovation_height",
+                    "glazing_undercut_height",
+                    "pic",
+                    "sash_overlap",
+                    "flying_mullion_horizontal_clearance",
+                    "flying_mullion_vertical_clearance",
+                    "steel_material_thickness",
+                    "weight_per_meter",
+                    "reinforcement_steel",
+                    "colours",
+                    "price_per_meter",
+                    "price_per_beam",
+                    "upvc_profile_discount",
+                ]
+            )
+        ]
 
         # Set up mocks
-        mock_db.execute.return_value.scalar_one_or_none.return_value = manufacturing_type
-        mock_db.execute.return_value.scalars.return_value.all.return_value = attribute_nodes
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none = MagicMock(return_value=manufacturing_type)
+        mock_scalars = MagicMock()
+        mock_scalars.all = MagicMock(return_value=attribute_nodes)
+        mock_result.scalars = MagicMock(return_value=mock_scalars)
+        mock_db.execute = MagicMock(return_value=mock_result)
 
         customer = Customer(
             id=1,
@@ -410,7 +478,7 @@ class TestEntryDataPersistence:
 
         # Track what gets added to the database
         added_objects = []
-        mock_db.add = AsyncMock(side_effect=lambda obj: added_objects.append(obj))
+        mock_db.add = MagicMock(side_effect=lambda obj: added_objects.append(obj))
 
         # Act
         await entry_service.save_profile_configuration(profile_data, user)

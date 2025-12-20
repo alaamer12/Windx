@@ -551,6 +551,15 @@ def require(*requirements) -> Callable:
                         # Call the original unwrapped function to avoid recursion
                         return await original_func(*args, **kwargs)
                 except Exception as e:
+                    # Allow certain exceptions to pass through instead of converting to 403
+                    from app.core.exceptions import NotFoundException
+                    
+                    if isinstance(e, (NotFoundException, HTTPException)):
+                        # These exceptions should propagate up (404, etc.)
+                        # Don't convert them to 403 - let the service handle them
+                        logger.debug(f"Allowing exception to pass through: {e}")
+                        raise e
+                    
                     logger.error(f"Requirement evaluation error: {e}")
                     continue
 

@@ -166,9 +166,18 @@ class RBACService(BaseService):
 
         Returns:
             True if user owns or has access to resource, False otherwise
+            
+        Raises:
+            NotFoundException: If the resource doesn't exist (to allow proper 404 handling)
         """
-        # Superadmin has access to everything
+        # Superadmin has access to everything (but still need to check if resource exists)
         if user.role == Role.SUPERADMIN.value:
+            # For superadmin, we still need to verify the resource exists
+            # but we don't need to check ownership
+            resource_exists = await self._check_resource_exists(resource_type, resource_id)
+            if not resource_exists:
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException(f"{resource_type.title()} not found")
             return True
 
         # Get accessible customers for user
@@ -176,6 +185,14 @@ class RBACService(BaseService):
 
         # For customer resources, check direct access
         if resource_type == "customer":
+            # Check if customer exists first
+            from app.models.customer import Customer
+            stmt = select(Customer.id).where(Customer.id == resource_id)
+            result = await self.db.execute(stmt)
+            if result.scalar_one_or_none() is None:
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException("Customer not found")
+            
             return resource_id in accessible_customers
 
         # For configuration resources, check through customer relationship
@@ -187,7 +204,8 @@ class RBACService(BaseService):
             customer_id = result.scalar_one_or_none()
 
             if customer_id is None:
-                return False
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException("Configuration not found")
 
             return customer_id in accessible_customers
 
@@ -200,7 +218,8 @@ class RBACService(BaseService):
             customer_id = result.scalar_one_or_none()
 
             if customer_id is None:
-                return False
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException("Quote not found")
 
             return customer_id in accessible_customers
 
@@ -219,12 +238,50 @@ class RBACService(BaseService):
             customer_id = result.scalar_one_or_none()
 
             if customer_id is None:
-                return False
+                from app.core.exceptions import NotFoundException
+                raise NotFoundException("Order not found")
 
             return customer_id in accessible_customers
 
         # Default: deny access for unknown resource types
         logger.warning(f"Unknown resource type for ownership check: {resource_type}")
+        return False
+
+    async def _check_resource_exists(self, resource_type: str, resource_id: int) -> bool:
+        """Check if a resource exists without checking ownership.
+        
+        Args:
+            resource_type: Type of resource to check
+            resource_id: ID of the resource
+            
+        Returns:
+            True if resource exists, False otherwise
+        """
+        if resource_type == "configuration":
+            from app.models.configuration import Configuration
+            stmt = select(Configuration.id).where(Configuration.id == resource_id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none() is not None
+            
+        elif resource_type == "quote":
+            from app.models.quote import Quote
+            stmt = select(Quote.id).where(Quote.id == resource_id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none() is not None
+            
+        elif resource_type == "order":
+            from app.models.order import Order
+            stmt = select(Order.id).where(Order.id == resource_id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none() is not None
+            
+        elif resource_type == "customer":
+            from app.models.customer import Customer
+            stmt = select(Customer.id).where(Customer.id == resource_id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none() is not None
+            
+        # Unknown resource type
         return False
 
     async def get_accessible_customers(self, user: User) -> list[int]:

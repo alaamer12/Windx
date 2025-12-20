@@ -326,8 +326,10 @@ class TestEntryAPIEndpoints:
 
         assert response.status_code == 422
         data = response.json()
-        assert "Validation failed" in data["message"]
-        assert "details" in data
+        # FastAPI's automatic validation returns 'detail' field, not 'message'
+        assert "detail" in data
+        # Check that the validation error mentions the missing field
+        assert any("type" in str(error.get("loc", [])) for error in data["detail"])
 
     @pytest.mark.asyncio
     async def test_save_profile_data_invalid_manufacturing_type(

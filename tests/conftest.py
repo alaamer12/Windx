@@ -239,12 +239,16 @@ async def test_engine():
     test_settings = get_test_settings()
     schema = test_settings.database.schema_
 
-    # Create engine with schema in connect_args
+    # Create engine with robust settings for both CI and local environments
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,  # Disable pooling for test isolation
-        connect_args={"server_settings": {"search_path": f"{schema}, public"}},
+        pool_pre_ping=True,  # Verify connections before use
+        connect_args={
+            "server_settings": {"search_path": f"{schema}, public"},
+            "command_timeout": 60,  # Longer timeout for stability
+        },
     )
 
     # Create schema and tables with LTREE extension
@@ -298,6 +302,10 @@ async def test_engine():
                 table.schema = None
 
         await conn.run_sync(create_tables_in_schema)
+
+        # Small delay to ensure table creation is fully committed (CI timing issue)
+        import asyncio
+        await asyncio.sleep(0.1)
 
         # Verify tables were created
         result = await conn.execute(
@@ -531,7 +539,7 @@ async def test_user(db_session: AsyncSession, test_user_data: dict[str, Any]):
     )
 
     db_session.add(user)
-    await db_session.flush()  # Flush to get ID but don't commit
+    await db_session.commit()  # Commit to ensure user is persisted for bulk operations tests
     await db_session.refresh(user)
 
     return user

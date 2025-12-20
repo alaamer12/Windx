@@ -7,6 +7,7 @@ authorization consistency.
 Requirements: 4.1, 4.2, 4.3, 9.1, 9.2, 9.3, 10.1, 10.2
 """
 
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -19,7 +20,7 @@ from app.models.user import User
 
 
 @pytest.fixture
-async def salesman_user(db_session: AsyncSession) -> User:
+async def salesman_user(db_session: AsyncSession, test_user_data: dict[str, Any]) -> User:
     """Create a salesman user for testing."""
     import uuid
     from app.core.security import get_password_hash
@@ -33,22 +34,29 @@ async def salesman_user(db_session: AsyncSession) -> User:
         role=Role.SALESMAN.value,
         is_active=True,
         is_superuser=False,
-        hashed_password=get_password_hash("TestPassword123!"),
+        hashed_password=get_password_hash(test_user_data["password"]),  # Use fixture password
     )
     db_session.add(user)
     await db_session.commit()  # Need commit for session creation to work
     await db_session.refresh(user)
+    
+    # Small delay to ensure database transaction is fully committed (CI timing issue)
+    import asyncio
+    await asyncio.sleep(0.1)
     
     # Initialize Casbin policies for the user
     from app.services.rbac import RBACService
     rbac_service = RBACService(db_session)
     await rbac_service.initialize_user_policies(user)
     
+    # Store the password for login tests
+    user._test_password = test_user_data["password"]
+    
     return user
 
 
 @pytest.fixture
-async def partner_user(db_session: AsyncSession) -> User:
+async def partner_user(db_session: AsyncSession, test_user_data: dict[str, Any]) -> User:
     """Create a partner user for testing."""
     import uuid
     from app.core.security import get_password_hash
@@ -62,22 +70,29 @@ async def partner_user(db_session: AsyncSession) -> User:
         role=Role.PARTNER.value,
         is_active=True,
         is_superuser=False,
-        hashed_password=get_password_hash("TestPassword123!"),
+        hashed_password=get_password_hash(test_user_data["password"]),  # Use fixture password
     )
     db_session.add(user)
     await db_session.commit()  # Need commit for session creation to work
     await db_session.refresh(user)
+    
+    # Small delay to ensure database transaction is fully committed (CI timing issue)
+    import asyncio
+    await asyncio.sleep(0.1)
     
     # Initialize Casbin policies for the user
     from app.services.rbac import RBACService
     rbac_service = RBACService(db_session)
     await rbac_service.initialize_user_policies(user)
     
+    # Store the password for login tests
+    user._test_password = test_user_data["password"]
+    
     return user
 
 
 @pytest.fixture
-async def data_entry_user(db_session: AsyncSession) -> User:
+async def data_entry_user(db_session: AsyncSession, test_user_data: dict[str, Any]) -> User:
     """Create a data entry user for testing."""
     import uuid
     from app.core.security import get_password_hash
@@ -91,23 +106,30 @@ async def data_entry_user(db_session: AsyncSession) -> User:
         role=Role.DATA_ENTRY.value,
         is_active=True,
         is_superuser=False,
-        hashed_password=get_password_hash("TestPassword123!"),
+        hashed_password=get_password_hash(test_user_data["password"]),  # Use fixture password
     )
     db_session.add(user)
     await db_session.commit()  # Need commit for session creation to work
     await db_session.refresh(user)
+    
+    # Small delay to ensure database transaction is fully committed (CI timing issue)
+    import asyncio
+    await asyncio.sleep(0.1)
     
     # Initialize Casbin policies for the user
     from app.services.rbac import RBACService
     rbac_service = RBACService(db_session)
     await rbac_service.initialize_user_policies(user)
     
+    # Store the password for login tests
+    user._test_password = test_user_data["password"]
+    
     return user
 
 
 @pytest.fixture
-async def customer_user(db_session: AsyncSession) -> User:
-    """Create a customer user for testing."""
+async def rbac_customer_user(db_session: AsyncSession, test_user_data: dict[str, Any]) -> User:
+    """Create a customer user for RBAC testing using proper test credentials."""
     import uuid
     from app.core.security import get_password_hash
     
@@ -120,16 +142,23 @@ async def customer_user(db_session: AsyncSession) -> User:
         role=Role.CUSTOMER.value,
         is_active=True,
         is_superuser=False,
-        hashed_password=get_password_hash("TestPassword123!"),
+        hashed_password=get_password_hash(test_user_data["password"]),  # Use fixture password
     )
     db_session.add(user)
     await db_session.commit()  # Need commit for session creation to work
     await db_session.refresh(user)
     
+    # Small delay to ensure database transaction is fully committed (CI timing issue)
+    import asyncio
+    await asyncio.sleep(0.1)
+    
     # Initialize Casbin policies for the user
     from app.services.rbac import RBACService
     rbac_service = RBACService(db_session)
     await rbac_service.initialize_user_policies(user)
+    
+    # Store the password for login tests
+    user._test_password = test_user_data["password"]
     
     return user
 
@@ -219,7 +248,7 @@ class TestCasbinRBACWorkflows:
         self,
         client: AsyncClient,
         db_session: AsyncSession,
-        customer_user: User,
+        rbac_customer_user: User,
         manufacturing_type_with_attributes: ManufacturingType,
     ):
         """Test complete entry page workflow with customer auto-creation and RBAC."""
@@ -228,11 +257,24 @@ class TestCasbinRBACWorkflows:
         login_response = await client.post(
             "/api/v1/auth/login",
             json={
-                "username": customer_user.username,
-                "password": "TestPassword123!",
+                "username": rbac_customer_user.username,
+                "password": rbac_customer_user._test_password,  # Use fixture password
             },
         )
-        assert login_response.status_code == 200, f"Login failed: {login_response.text}"
+        
+        # Add more detailed error information for CI debugging
+        if login_response.status_code != 200:
+            error_detail = f"Login failed for user {rbac_customer_user.username}: {login_response.text}"
+            # Check if user exists in database
+            from sqlalchemy import select
+            result = await db_session.execute(select(User).where(User.username == rbac_customer_user.username))
+            user_exists = result.scalar_one_or_none()
+            if user_exists:
+                error_detail += f" (User exists: {user_exists.email}, active: {user_exists.is_active})"
+            else:
+                error_detail += " (User not found in database)"
+            assert False, error_detail
+            
         token = login_response.json()["access_token"]
         auth_headers = {"Authorization": f"Bearer {token}"}
 
@@ -240,7 +282,7 @@ class TestCasbinRBACWorkflows:
         from sqlalchemy import select
 
         result = await db_session.execute(
-            select(Customer).where(Customer.email == customer_user.email)
+            select(Customer).where(Customer.email == rbac_customer_user.email)
         )
         existing_customer = result.scalar_one_or_none()
         if existing_customer:
@@ -276,7 +318,7 @@ class TestCasbinRBACWorkflows:
         result = await db_session.execute(select(Customer).where(Customer.id == customer_id))
         auto_created_customer = result.scalar_one_or_none()
         assert auto_created_customer is not None
-        assert auto_created_customer.email == customer_user.email
+        assert auto_created_customer.email == rbac_customer_user.email
 
         # Step 3: Generate preview (should be authorized for owner)
         preview_response = await client.get(

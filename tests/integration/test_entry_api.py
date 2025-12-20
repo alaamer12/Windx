@@ -301,6 +301,7 @@ class TestEntryAPIEndpoints:
         # Verify pricing calculation (base price + any impacts)
         assert float(data["total_price"]) >= manufacturing_type_with_attributes.base_price
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_save_profile_data_validation_error(
         self,

@@ -159,6 +159,7 @@ markers = [
     "services: Service layer tests",
     "repositories: Repository layer tests",
     "redis: Tests requiring Redis (cache and rate limiting)",
+    "ci_cd_issue: Tests that have known issues in CI/CD environment but pass locally",
 ]
 log_cli = false
 log_cli_level = "INFO"

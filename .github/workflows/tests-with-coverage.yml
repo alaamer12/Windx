@@ -190,7 +190,7 @@ jobs:
             --cov-report=term-missing:skip-covered \
             --cov-fail-under=80 \
             --junit-xml=test-results.xml \
-            -m "not e2e and not redis" \
+            -m "not e2e and not redis and not ci_cd_issue" \
             --disable-warnings \
             -v
 

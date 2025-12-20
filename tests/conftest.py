@@ -239,16 +239,12 @@ async def test_engine():
     test_settings = get_test_settings()
     schema = test_settings.database.schema_
 
-    # Create engine with robust settings for both CI and local environments
+    # Create engine with schema in connect_args
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,  # Disable pooling for test isolation
-        pool_pre_ping=True,  # Verify connections before use
-        connect_args={
-            "server_settings": {"search_path": f"{schema}, public"},
-            "command_timeout": 60,  # Longer timeout for stability
-        },
+        connect_args={"server_settings": {"search_path": f"{schema}, public"}},
     )
 
     # Create schema and tables with LTREE extension
@@ -302,10 +298,6 @@ async def test_engine():
                 table.schema = None
 
         await conn.run_sync(create_tables_in_schema)
-
-        # Small delay to ensure table creation is fully committed (CI timing issue)
-        import asyncio
-        await asyncio.sleep(0.1)
 
         # Verify tables were created
         result = await conn.execute(

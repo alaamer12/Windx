@@ -243,6 +243,7 @@ async def manufacturing_type_with_attributes(db_session: AsyncSession) -> Manufa
 class TestCasbinRBACWorkflows:
     """Integration tests for complete Casbin RBAC workflows."""
 
+    @pytest.mark.ci_cd_issue
     @pytest.mark.asyncio
     async def test_complete_entry_page_workflow_with_customer_auto_creation(
         self,

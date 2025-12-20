@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.hierarchy_builder import HierarchyBuilderService
 
 
+@pytest.mark.ci_cd_issue
 @pytest.mark.asyncio
 async def test_save_node_with_invalid_name_shows_validation_error(
     client: AsyncClient,

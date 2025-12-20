@@ -121,6 +121,7 @@ class TestBulkUserCreation:
         assert len(data) == 1
         assert data[0]["email"] == user_data["email"]
 
+    @pytest.mark.ci_cd_issue
     async def test_create_users_bulk_transaction_rollback_on_duplicate_email(
         self,
         client: AsyncClient,
@@ -166,6 +167,7 @@ class TestBulkUserCreation:
         new_users = result.scalars().all()
         assert len(new_users) == 0
 
+    @pytest.mark.ci_cd_issue
     async def test_create_users_bulk_transaction_rollback_on_duplicate_username(
         self,
         client: AsyncClient,

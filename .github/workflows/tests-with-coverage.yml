@@ -182,15 +182,15 @@ jobs:
       - name: Run tests with coverage (excluding E2E and Redis tests)
         run: |
           echo "🧪 Running tests with coverage..."
-          echo "📊 Total tests to run: Unit tests (~236) + Integration tests (~468) = ~704 tests"
           uv run pytest tests/ \
             --tb=short \
+            --maxfail=5 \
             --cov=app \
             --cov-report=xml \
             --cov-report=term-missing:skip-covered \
             --cov-fail-under=80 \
             --junit-xml=test-results.xml \
-            -m "not e2e and not redis and not ci_cd_issue" \
+            -m "not e2e and not redis" \
             --disable-warnings \
             -v
 
@@ -250,64 +250,39 @@ jobs:
               print(f'**Tests:** {tests} | **Passed:** {passed} | **Failed:** {failures} | **Errors:** {errors} | **Skipped:** {skipped}')
               print('')
               
-              # Show failed tests grouped by type
+              # Show failed tests
               failed_tests = []
               error_tests = []
               
               for testcase in root.findall('.//testcase'):
                   failure = testcase.find('failure')
                   error = testcase.find('error')
-                  classname = testcase.get('classname', '')
-                  test_type = 'Unit' if 'tests.unit' in classname else 'Integration' if 'tests.integration' in classname else 'E2E'
                   
                   if failure is not None:
                       failed_tests.append({
                           'name': testcase.get('name'),
-                          'classname': classname,
-                          'type': test_type,
+                          'classname': testcase.get('classname'),
                           'message': failure.get('message', '').split('\n')[0][:150]
                       })
                   elif error is not None:
                       error_tests.append({
                           'name': testcase.get('name'),
-                          'classname': classname,
-                          'type': test_type,
+                          'classname': testcase.get('classname'),
                           'message': error.get('message', '').split('\n')[0][:150]
                       })
               
               if failed_tests or error_tests:
-                  # Group by test type
-                  unit_failures = [t for t in failed_tests if t['type'] == 'Unit']
-                  integration_failures = [t for t in failed_tests if t['type'] == 'Integration']
-                  unit_errors = [t for t in error_tests if t['type'] == 'Unit']
-                  integration_errors = [t for t in error_tests if t['type'] == 'Integration']
-                  
-                  if unit_failures or unit_errors:
-                      print('### ❌ Unit Test Failures')
-                      for f in unit_failures:
-                          print(f'- **{f[\"classname\"]}::{f[\"name\"]}**')
-                          print(f'  ```')
-                          print(f'  {f[\"message\"]}')
-                          print(f'  ```')
-                      for e in unit_errors:
-                          print(f'- **{e[\"classname\"]}::{e[\"name\"]}** (ERROR)')
-                          print(f'  ```')
-                          print(f'  {e[\"message\"]}')
-                          print(f'  ```')
-                      print('')
-                  
-                  if integration_failures or integration_errors:
-                      print('### ❌ Integration Test Failures')
-                      for f in integration_failures:
-                          print(f'- **{f[\"classname\"]}::{f[\"name\"]}**')
-                          print(f'  ```')
-                          print(f'  {f[\"message\"]}')
-                          print(f'  ```')
-                      for e in integration_errors:
-                          print(f'- **{e[\"classname\"]}::{e[\"name\"]}** (ERROR)')
-                          print(f'  ```')
-                          print(f'  {e[\"message\"]}')
-                          print(f'  ```')
+                  print('### ❌ Failed Tests')
+                  for f in failed_tests:
+                      print(f'- **{f[\"classname\"]}::{f[\"name\"]}**')
+                      print(f'  ```')
+                      print(f'  {f[\"message\"]}')
+                      print(f'  ```')
+                  for e in error_tests:
+                      print(f'- **{e[\"classname\"]}::{e[\"name\"]}** (ERROR)')
+                      print(f'  ```')
+                      print(f'  {e[\"message\"]}')
+                      print(f'  ```')
               else:
                   print('### ✅ All tests passed!')
                   

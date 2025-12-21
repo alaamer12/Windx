@@ -387,21 +387,24 @@ function profileEntryApp() {
                     const max = field.validation_rules?.max || '';
                     const step = field.data_type === 'float' ? '0.1' : '1';
                     const unit = this.getFieldUnit(field.name);
-                    return `<div class="relative">
-                        <input type="number" id="${fieldId}" class="input-field pr-12" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>
-                        ${unit ? `<span class="absolute right-3 top-2 text-gray-500 text-sm">${unit}</span>` : ''}
-                    </div>`;
+                    if (unit) {
+                        return `<div class="input-group">
+                            <input type="number" id="${fieldId}" class="input-field" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>
+                            <span class="input-group-addon">${unit}</span>
+                        </div>`;
+                    }
+                    return `<input type="number" id="${fieldId}" class="input-field" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>`;
 
                 case 'percentage':
-                    return `<div class="relative">
-                        <input type="number" id="${fieldId}" class="input-field pr-8" value="${value}" min="0" max="100" step="0.1" placeholder="Enter percentage..." ${onChange}>
-                        <span class="absolute right-3 top-2 text-gray-500 text-sm">%</span>
+                    return `<div class="input-group">
+                        <input type="number" id="${fieldId}" class="input-field" value="${value}" min="0" max="100" step="0.1" placeholder="0" ${onChange}>
+                        <span class="input-group-addon">%</span>
                     </div>`;
 
                 case 'currency':
-                    return `<div class="relative">
-                        <span class="absolute left-3 top-2 text-gray-500 text-sm">$</span>
-                        <input type="number" id="${fieldId}" class="input-field pl-8" value="${value}" min="0" step="0.01" placeholder="0.00" ${onChange}>
+                    return `<div class="input-group">
+                        <span class="input-group-addon prefix">$</span>
+                        <input type="number" id="${fieldId}" class="input-field" value="${value}" min="0" step="0.01" placeholder="0.00" ${onChange}>
                     </div>`;
 
                 case 'slider':
@@ -532,7 +535,10 @@ function profileEntryApp() {
                 'flying_mullion_horizontal_clearance': 'mm',
                 'flying_mullion_vertical_clearance': 'mm',
                 'steel_material_thickness': 'mm',
-                'weight_per_meter': 'kg'
+                'weight_per_meter': 'kg',
+                'price_per_meter': '$',
+                'price_per_beam': '$',
+                'upvc_profile_discount': '%'
             };
 
             return unitMap[fieldName] || '';

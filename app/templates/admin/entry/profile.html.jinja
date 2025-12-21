@@ -84,7 +84,9 @@
                                     <label class="field-label" :for="field.name">
                                         <span x-text="field.label"></span>
                                         <span x-show="field.required" class="text-red-500 ml-1">*</span>
-                                        <span x-show="field.description" class="text-gray-400 text-xs ml-2" x-text="'(' + field.description + ')'"></span>
+                                        <span x-show="field.description && field.description !== field.label" 
+                                              class="text-gray-400 text-xs ml-2 font-normal italic" 
+                                              x-text="'(' + field.description + ')'"></span>
                                     </label>
                                     
                                     <!-- Help Text -->

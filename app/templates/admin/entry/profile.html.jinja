@@ -3,214 +3,7 @@
 {% block title %}Profile Entry - {{ super() }}{% endblock %}
 
 {% block extra_css %}
-<style>
-    /* Entry page specific styles */
-    .dual-view-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 2rem;
-        min-height: calc(100vh - 200px);
-    }
-    
-    .input-view {
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
-        overflow-y: auto;
-        max-height: calc(100vh - 200px);
-    }
-    
-    .preview-view {
-        background: white;
-        border-radius: 0.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        padding: 1.5rem;
-        overflow: auto;
-        max-height: calc(100vh - 200px);
-    }
-    
-    .form-section {
-        margin-bottom: 2rem;
-        padding-bottom: 1.5rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .form-section:last-child {
-        border-bottom: none;
-        margin-bottom: 0;
-    }
-    
-    .form-field {
-        margin-bottom: 1rem;
-    }
-    
-    .form-field.hidden {
-        display: none;
-    }
-    
-    .form-field {
-        transition: all 0.3s ease-in-out;
-    }
-    
-    .form-field.error .input-field {
-        border-color: #dc2626;
-        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-    }
-    
-    .field-error {
-        color: #dc2626;
-        font-size: 0.875rem;
-        margin-top: 0.25rem;
-        display: flex;
-        align-items: center;
-    }
-    
-    .field-error::before {
-        content: "⚠";
-        margin-right: 0.25rem;
-    }
-    
-    .field-success {
-        color: #059669;
-        font-size: 0.875rem;
-        margin-top: 0.25rem;
-    }
-    
-    .input-field:focus {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-    
-    .input-field.valid {
-        border-color: #059669;
-    }
-    
-    .input-field.invalid {
-        border-color: #dc2626;
-    }
-    
-    .preview-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.75rem;
-        min-width: 1200px; /* Ensure horizontal scroll for many columns */
-    }
-    
-    .preview-table th,
-    .preview-table td {
-        border: 1px solid #d1d5db;
-        padding: 0.375rem 0.5rem;
-        text-align: left;
-        vertical-align: top;
-        white-space: nowrap;
-        max-width: 120px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    
-    .preview-table th {
-        background-color: #f9fafb;
-        font-weight: 600;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        font-size: 0.7rem;
-        line-height: 1.2;
-        white-space: pre-line; /* Allow line breaks in headers */
-    }
-    
-    .preview-table td {
-        background-color: white;
-        transition: background-color 0.2s;
-    }
-    
-    .preview-table td:hover {
-        background-color: #f3f4f6;
-    }
-    
-    .preview-table .na-value {
-        color: #9ca3af;
-        font-style: italic;
-    }
-    
-    .preview-table .value-changed {
-        background-color: #fef3c7;
-        animation: highlight 1s ease-out;
-    }
-    
-    @keyframes highlight {
-        0% { background-color: #fbbf24; }
-        100% { background-color: #fef3c7; }
-    }
-    
-    .preview-container {
-        position: relative;
-    }
-    
-    .preview-container::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 20px;
-        background: linear-gradient(to left, rgba(255,255,255,1), rgba(255,255,255,0));
-        pointer-events: none;
-        z-index: 5;
-    }
-    
-    .loading-spinner {
-        display: inline-block;
-        width: 1rem;
-        height: 1rem;
-        border: 2px solid #f3f4f6;
-        border-radius: 50%;
-        border-top-color: #3b82f6;
-        animation: spin 1s ease-in-out infinite;
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    .navigation-tabs {
-        display: flex;
-        border-bottom: 2px solid #e5e7eb;
-        margin-bottom: 2rem;
-    }
-    
-    .nav-tab {
-        padding: 0.75rem 1.5rem;
-        border-bottom: 2px solid transparent;
-        color: #6b7280;
-        text-decoration: none;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    
-    .nav-tab:hover {
-        color: #3b82f6;
-        border-bottom-color: #93c5fd;
-    }
-    
-    .nav-tab.active {
-        color: #3b82f6;
-        border-bottom-color: #3b82f6;
-    }
-    
-    @media (max-width: 1024px) {
-        .dual-view-container {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-        
-        .input-view,
-        .preview-view {
-            max-height: none;
-        }
-    }
-</style>
+<link rel="stylesheet" href="/static/css/profile-entry.css">
 {% endblock %}
 
 {% block content %}
@@ -235,24 +28,6 @@
                 <h1 class="text-2xl font-bold text-gray-900">Profile Data Entry</h1>
                 <p class="text-gray-600 mt-1">Enter product profile information with real-time preview</p>
             </div>
-            <div class="flex items-center space-x-4">
-                <div class="form-field">
-                    <label class="label">Manufacturing Type</label>
-                    <select x-model="manufacturingTypeId" @change="loadSchema()" class="input-field">
-                        <option value="">Select Manufacturing Type</option>
-                        <template x-for="type in manufacturingTypes" :key="type.id">
-                            <option :value="type.id" x-text="type.name"></option>
-                        </template>
-                    </select>
-                </div>
-                <button @click="saveConfiguration()" 
-                        :disabled="!isFormValid || saving" 
-                        class="btn-primary flex items-center space-x-2">
-                    <span x-show="saving" class="loading-spinner"></span>
-                    <i x-show="!saving" class="fas fa-save"></i>
-                    <span x-text="saving ? 'Saving...' : 'Save Configuration'"></span>
-                </button>
-            </div>
         </div>
     </div>
 
@@ -270,108 +45,107 @@
         </div>
     </div>
 
-    <!-- Dual View Layout -->
-    <div x-show="schema && !loading" class="dual-view-container">
-        <!-- Input View -->
-        <div class="input-view">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                <i class="fas fa-edit text-blue-600 mr-2"></i>
-                Input Form
-            </h2>
-            
-            <form @submit.prevent="saveConfiguration()">
-                <!-- Dynamic Form Sections -->
-                <template x-for="section in schema.sections" :key="section.title">
-                    <div class="form-section">
-                        <h3 class="text-lg font-medium text-gray-800 mb-4" x-text="section.title"></h3>
-                        <p x-show="section.description" class="text-gray-600 text-sm mb-4" x-text="section.description"></p>
-                        
-                        <!-- Dynamic Form Fields -->
-                        <template x-for="field in section.fields" :key="field.name">
-                            <div class="form-field" 
-                                 :class="{ 
-                                     'hidden': !isFieldVisible(field.name),
-                                     'error': fieldErrors[field.name]
-                                 }"
-                                 x-show="isFieldVisible(field.name)"
-                                 x-transition:enter="transition ease-out duration-300"
-                                 x-transition:enter-start="opacity-0 transform scale-95"
-                                 x-transition:enter-end="opacity-100 transform scale-100">
-                                
-                                <!-- Field Label -->
-                                <label class="label" :for="field.name">
-                                    <span x-text="field.label"></span>
-                                    <span x-show="field.required" class="text-red-500 ml-1">*</span>
-                                    <span x-show="field.description" class="text-gray-400 text-xs ml-2" x-text="'(' + field.description + ')'"></span>
-                                </label>
-                                
-                                <!-- Help Text -->
-                                <p x-show="field.help_text" class="text-gray-500 text-sm mb-2" x-text="field.help_text"></p>
-                                
-                                <!-- Dynamic Field Component -->
-                                <div x-html="renderField(field)"></div>
-                                
-                                <!-- Field Error -->
-                                <div x-show="fieldErrors[field.name]" 
-                                     class="field-error"
-                                     x-transition:enter="transition ease-out duration-200"
-                                     x-transition:enter-start="opacity-0 transform -translate-y-1"
-                                     x-transition:enter-end="opacity-100 transform translate-y-0"
-                                     x-text="fieldErrors[field.name]"></div>
-                                
-                                <!-- Field Success (optional) -->
-                                <div x-show="!fieldErrors[field.name] && field.required && formData[field.name] && formData[field.name] !== ''" 
-                                     class="field-success">
-                                    <i class="fas fa-check-circle mr-1"></i>Valid
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </template>
-            </form>
+    <!-- Tabbed Interface Layout -->
+    <div x-show="schema && !loading" class="tabbed-interface">
+        <!-- Tab Buttons -->
+        <div class="tab-buttons">
+            <button class="tab-btn active" @click="switchTab('input')" :class="{ 'active': activeTab === 'input' }">
+                <i class="fas fa-edit mr-2"></i>Input
+            </button>
+            <button class="tab-btn" @click="switchTab('preview')" :class="{ 'active': activeTab === 'preview' }">
+                <i class="fas fa-eye mr-2"></i>Preview
+            </button>
         </div>
+        
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Input Tab -->
+            <div x-show="activeTab === 'input'" class="tab-pane" id="input-tab">
+                <div class="simple-field-list">
+                    <form @submit.prevent="saveConfiguration()">
+                        <!-- Dynamic Form Fields -->
+                        <template x-for="section in schema.sections" :key="section.title">
+                            <template x-for="field in section.fields" :key="field.name">
+                                <div class="field-item" 
+                                     :class="{ 
+                                         'hidden': !isFieldVisible(field.name),
+                                         'error': fieldErrors[field.name]
+                                     }"
+                                     x-show="isFieldVisible(field.name)"
+                                     x-transition:enter="transition ease-out duration-300"
+                                     x-transition:enter-start="opacity-0 transform scale-95"
+                                     x-transition:enter-end="opacity-100 transform scale-100">
+                                    
+                                    <!-- Field Label -->
+                                    <label class="field-label" :for="field.name">
+                                        <span x-text="field.label"></span>
+                                        <span x-show="field.required" class="text-red-500 ml-1">*</span>
+                                        <span x-show="field.description" class="text-gray-400 text-xs ml-2" x-text="'(' + field.description + ')'"></span>
+                                    </label>
+                                    
+                                    <!-- Help Text -->
+                                    <p x-show="field.help_text" class="field-help" x-text="field.help_text"></p>
+                                    
+                                    <!-- Dynamic Field Component -->
+                                    <div x-html="renderField(field)"></div>
+                                    
+                                    <!-- Field Error -->
+                                    <div x-show="fieldErrors[field.name]" 
+                                         class="field-error"
+                                         x-transition:enter="transition ease-out duration-200"
+                                         x-transition:enter-start="opacity-0 transform -translate-y-1"
+                                         x-transition:enter-end="opacity-100 transform translate-y-0"
+                                         x-text="fieldErrors[field.name]"></div>
+                                    
+                                    <!-- Field Success (optional) -->
+                                    <div x-show="!fieldErrors[field.name] && field.required && formData[field.name] && formData[field.name] !== ''" 
+                                         class="field-success">
+                                        <i class="fas fa-check-circle mr-1"></i>Valid
+                                    </div>
+                                </div>
+                            </template>
+                        </template>
+                    </form>
+                </div>
+            </div>
 
-        <!-- Preview View -->
-        <div class="preview-view">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                <i class="fas fa-eye text-green-600 mr-2"></i>
-                Live Preview
-            </h2>
-            
-            <div class="preview-container overflow-auto">
-                <table class="preview-table">
-                    <thead>
-                        <tr>
-                            <template x-for="header in previewHeaders" :key="header">
-                                <th x-text="header" :title="header.replace(/\\n/g, ' ')"></th>
-                            </template>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <template x-for="header in previewHeaders" :key="header">
-                                <td :title="getPreviewValue(header)">
-                                    <span :class="{ 
-                                        'na-value': !getPreviewValue(header) || getPreviewValue(header) === 'N/A',
-                                        'value-changed': isValueChanged(header)
-                                    }" x-text="getPreviewValue(header) || 'N/A'"></span>
-                                </td>
-                            </template>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <!-- Preview Summary -->
-                <div class="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div class="flex items-center justify-between text-sm">
-                        <span class="text-gray-600">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Fields completed: <span class="font-medium" x-text="getCompletedFieldsCount()"></span> / <span x-text="getTotalFieldsCount()"></span>
-                        </span>
-                        <span class="text-gray-600" x-show="hasUnsavedChanges()">
-                            <i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>
-                            Unsaved changes
-                        </span>
+            <!-- Preview Tab -->
+            <div x-show="activeTab === 'preview'" class="tab-pane" id="preview-tab">
+                <div class="preview-container overflow-auto">
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <template x-for="header in previewHeaders" :key="header">
+                                    <th x-text="header" :title="header.replace(/\\n/g, ' ')"></th>
+                                </template>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <template x-for="header in previewHeaders" :key="header">
+                                    <td :title="getPreviewValue(header)">
+                                        <span :class="{ 
+                                            'na-value': !getPreviewValue(header) || getPreviewValue(header) === 'N/A',
+                                            'value-changed': isValueChanged(header)
+                                        }" x-text="getPreviewValue(header) || 'N/A'"></span>
+                                    </td>
+                                </template>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <!-- Preview Summary -->
+                    <div class="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                Fields completed: <span class="font-medium" x-text="getCompletedFieldsCount()"></span> / <span x-text="getTotalFieldsCount()"></span>
+                            </span>
+                            <span class="text-gray-600" x-show="hasUnsavedChanges()">
+                                <i class="fas fa-exclamation-triangle text-yellow-500 mr-1"></i>
+                                Unsaved changes
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -380,831 +154,11 @@
 </div>
 
 <script>
-// JavaScript ConditionEvaluator (from service)
-class ConditionEvaluator {
-    static OPERATORS = {
-        // Comparison operators
-        equals: (a, b) => a == b,
-        not_equals: (a, b) => a != b,
-        greater_than: (a, b) => (a || 0) > (b || 0),
-        less_than: (a, b) => (a || 0) < (b || 0),
-        greater_equal: (a, b) => (a || 0) >= (b || 0),
-        less_equal: (a, b) => (a || 0) <= (b || 0),
-        
-        // String operators
-        contains: (a, b) => String(a || '').toLowerCase().includes(String(b).toLowerCase()),
-        starts_with: (a, b) => String(a || '').toLowerCase().startsWith(String(b).toLowerCase()),
-        ends_with: (a, b) => String(a || '').toLowerCase().endsWith(String(b).toLowerCase()),
-        matches_pattern: (a, b) => new RegExp(b).test(String(a || '')),
-        
-        // Collection operators
-        in: (a, b) => (Array.isArray(b) ? b : [b]).includes(a),
-        not_in: (a, b) => !(Array.isArray(b) ? b : [b]).includes(a),
-        any_of: (a, b) => b.some(item => (Array.isArray(a) ? a : [a]).includes(item)),
-        all_of: (a, b) => b.every(item => (Array.isArray(a) ? a : [a]).includes(item)),
-        
-        // Existence operators
-        exists: (a, b) => a !== null && a !== undefined && a !== '',
-        not_exists: (a, b) => a === null || a === undefined || a === '',
-        is_empty: (a, b) => !Boolean(a),
-        is_not_empty: (a, b) => Boolean(a),
-    };
-    
-    static evaluateCondition(condition, formData) {
-        if (!condition) return true;
-        
-        const operator = condition.operator;
-        if (!operator) return true;
-        
-        // Handle logical operators
-        if (operator === 'and') {
-            return (condition.conditions || []).every(c => 
-                ConditionEvaluator.evaluateCondition(c, formData)
-            );
-        } else if (operator === 'or') {
-            return (condition.conditions || []).some(c => 
-                ConditionEvaluator.evaluateCondition(c, formData)
-            );
-        } else if (operator === 'not') {
-            return !ConditionEvaluator.evaluateCondition(condition.condition, formData);
-        }
-        
-        // Handle field-based operators
-        const field = condition.field;
-        if (!field) return true;
-        
-        const fieldValue = ConditionEvaluator.getFieldValue(field, formData);
-        const expectedValue = condition.value;
-        
-        const operatorFn = ConditionEvaluator.OPERATORS[operator];
-        if (!operatorFn) {
-            throw new Error(`Unknown operator: ${operator}`);
-        }
-        
-        return operatorFn(fieldValue, expectedValue);
-    }
-    
-    static getFieldValue(fieldPath, formData) {
-        if (!fieldPath.includes('.')) {
-            return formData[fieldPath];
-        }
-        
-        // Support nested field access
-        let value = formData;
-        for (const part of fieldPath.split('.')) {
-            if (value && typeof value === 'object') {
-                value = value[part];
-            } else {
-                return undefined;
-            }
-        }
-        return value;
-    }
-}
-
-function profileEntryApp() {
-    return {
-        // State
-        manufacturingTypeId: {{ manufacturing_type_id or 'null' }},
-        manufacturingTypes: [],
-        schema: null,
-        formData: {},
-        fieldVisibility: {},
-        fieldErrors: {},
-
-        loading: false,
-        saving: false,
-        error: null,
-        lastSavedData: null,
-        autoSaveInterval: null,
-        
-        // Computed
-        get isFormValid() {
-            if (!this.schema) return false;
-            
-            // Check required fields
-            for (const section of this.schema.sections) {
-                for (const field of section.fields) {
-                    if (field.required && this.isFieldVisible(field.name)) {
-                        const value = this.formData[field.name];
-                        if (!value || value === '') {
-                            return false;
-                        }
-                    }
-                }
-            }
-            
-            // Check for validation errors
-            return Object.keys(this.fieldErrors).length === 0;
-        },
-        
-        // Methods
-        async init() {
-            console.log('🚀 Initializing profileEntryApp...');
-            console.log('📋 manufacturingTypeId:', this.manufacturingTypeId);
-            
-            await this.loadManufacturingTypes();
-            if (this.manufacturingTypeId) {
-                console.log('📊 Loading schema for manufacturing type:', this.manufacturingTypeId);
-                await this.loadSchema();
-            } else {
-                console.log('⚠️ No manufacturingTypeId provided');
-            }
-        },
-        
-        async loadManufacturingTypes() {
-            try {
-                const response = await fetch('/api/v1/manufacturing-types/', {
-                    credentials: 'include'  // Include cookies for admin authentication
-                });
-                
-                if (!response.ok) throw new Error('Failed to load manufacturing types');
-                
-                const data = await response.json();
-                this.manufacturingTypes = data.items || [];
-            } catch (err) {
-                console.error('Error loading manufacturing types:', err);
-                this.error = 'Failed to load manufacturing types';
-            }
-        },
-        
-        async loadSchema() {
-            if (!this.manufacturingTypeId) {
-                this.schema = null;
-                return;
-            }
-            
-            console.log('🔄 Loading schema for manufacturing type:', this.manufacturingTypeId);
-            this.loading = true;
-            this.error = null;
-            
-            try {
-                const url = `/api/v1/admin/entry/profile/schema/${this.manufacturingTypeId}`;
-                console.log('📡 Fetching schema from:', url);
-                
-                const response = await fetch(url, {
-                    credentials: 'include'  // Include cookies for admin authentication
-                });
-                
-                console.log('📡 Response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Schema fetch failed:', response.status, errorText);
-                    throw new Error(`Failed to load schema: ${response.status}`);
-                }
-                
-                this.schema = await response.json();
-                console.log('✅ Schema loaded successfully:', this.schema);
-                
-                this.initializeFormData();
-                this.updateFieldVisibility();
-            } catch (err) {
-                console.error('❌ Error loading schema:', err);
-                this.error = 'Failed to load form schema: ' + err.message;
-            } finally {
-                this.loading = false;
-            }
-        },
-        
-        initializeFormData() {
-            this.formData = {
-                manufacturing_type_id: this.manufacturingTypeId,
-                name: '',
-                type: '',
-                upvc_profile_discount: 20.0
-            };
-            
-            // Initialize all fields with default values
-            if (this.schema) {
-                for (const section of this.schema.sections) {
-                    for (const field of section.fields) {
-                        if (!(field.name in this.formData)) {
-                            this.formData[field.name] = this.getDefaultValue(field);
-                        }
-                    }
-                }
-            }
-        },
-        
-        getDefaultValue(field) {
-            switch (field.data_type) {
-                case 'boolean':
-                    return false;
-                case 'number':
-                case 'float':
-                    return null;
-                case 'array':
-                    return [];
-                default:
-                    return '';
-            }
-        },
-        
-        updateFieldVisibility() {
-            if (!this.schema) return;
-            
-            // Evaluate all conditional logic
-            for (const [fieldName, condition] of Object.entries(this.schema.conditional_logic)) {
-                try {
-                    this.fieldVisibility[fieldName] = ConditionEvaluator.evaluateCondition(condition, this.formData);
-                } catch (err) {
-                    console.error(`Error evaluating condition for ${fieldName}:`, err);
-                    this.fieldVisibility[fieldName] = true; // Default to visible
-                }
-            }
-        },
-        
-        isFieldVisible(fieldName) {
-            // If no conditional logic, field is visible
-            if (!this.schema || !this.schema.conditional_logic[fieldName]) {
-                return true;
-            }
-            
-            return this.fieldVisibility[fieldName] !== false;
-        },
-        
-        renderField(field) {
-            const value = this.formData[field.name] || '';
-            const fieldId = field.name;
-            const onChange = `@input="updateField('${field.name}', $event.target.value)"`;
-            const onChangeCheckbox = `@change="updateField('${field.name}', $event.target.checked)"`;
-            const onChangeMultiSelect = `@change="updateMultiSelectField('${field.name}', $event.target)"`;
-            
-            // Determine UI component based on data type and field configuration
-            let uiComponent = field.ui_component || this.getDefaultUIComponent(field);
-            
-            switch (uiComponent) {
-                case 'dropdown':
-                case 'select':
-                    let options = '';
-                    if (field.options) {
-                        options = field.options.map(opt => 
-                            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
-                        ).join('');
-                    } else {
-                        // Generate options based on field name and CSV data
-                        const fieldOptions = this.getFieldOptions(field.name);
-                        options = fieldOptions.map(opt => 
-                            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
-                        ).join('');
-                    }
-                    return `<select id="${fieldId}" class="input-field" ${onChange}>
-                        <option value="">Select...</option>
-                        ${options}
-                    </select>`;
-                
-                case 'multi-select':
-                    let multiOptions = '';
-                    const selectedValues = Array.isArray(value) ? value : [];
-                    if (field.options) {
-                        multiOptions = field.options.map(opt => 
-                            `<option value="${opt}" ${selectedValues.includes(opt) ? 'selected' : ''}>${opt}</option>`
-                        ).join('');
-                    }
-                    return `<select id="${fieldId}" class="input-field" multiple ${onChangeMultiSelect}>
-                        ${multiOptions}
-                    </select>`;
-                
-                case 'radio':
-                    if (field.options) {
-                        return field.options.map(opt => `
-                            <label class="flex items-center space-x-2 mb-2 cursor-pointer">
-                                <input type="radio" name="${fieldId}" value="${opt}" ${value === opt ? 'checked' : ''} ${onChange} class="text-blue-600">
-                                <span class="text-gray-700">${opt}</span>
-                            </label>
-                        `).join('');
-                    }
-                    break;
-                
-                case 'checkbox':
-                    return `<label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" id="${fieldId}" ${value ? 'checked' : ''} ${onChangeCheckbox} class="text-blue-600">
-                        <span class="text-gray-700">${field.label}</span>
-                    </label>`;
-                
-                case 'textarea':
-                    return `<textarea id="${fieldId}" class="input-field" rows="3" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>${value}</textarea>`;
-                
-                case 'number':
-                    const min = field.validation_rules?.min || '';
-                    const max = field.validation_rules?.max || '';
-                    const step = field.data_type === 'float' ? '0.1' : '1';
-                    const unit = this.getFieldUnit(field.name);
-                    return `<div class="relative">
-                        <input type="number" id="${fieldId}" class="input-field pr-12" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>
-                        ${unit ? `<span class="absolute right-3 top-2 text-gray-500 text-sm">${unit}</span>` : ''}
-                    </div>`;
-                
-                case 'percentage':
-                    return `<div class="relative">
-                        <input type="number" id="${fieldId}" class="input-field pr-8" value="${value}" min="0" max="100" step="0.1" placeholder="Enter percentage..." ${onChange}>
-                        <span class="absolute right-3 top-2 text-gray-500 text-sm">%</span>
-                    </div>`;
-                
-                case 'currency':
-                    return `<div class="relative">
-                        <span class="absolute left-3 top-2 text-gray-500 text-sm">$</span>
-                        <input type="number" id="${fieldId}" class="input-field pl-8" value="${value}" min="0" step="0.01" placeholder="0.00" ${onChange}>
-                    </div>`;
-                
-                case 'slider':
-                    const sliderMin = field.validation_rules?.min || 0;
-                    const sliderMax = field.validation_rules?.max || 100;
-                    return `<div class="space-y-2">
-                        <input type="range" id="${fieldId}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
-                               value="${value}" min="${sliderMin}" max="${sliderMax}" ${onChange}>
-                        <div class="flex justify-between text-sm text-gray-500">
-                            <span>${sliderMin}</span>
-                            <span class="font-medium text-blue-600">${value || sliderMin}</span>
-                            <span>${sliderMax}</span>
-                        </div>
-                    </div>`;
-                
-                default:
-                    // Default to text input
-                    const pattern = field.validation_rules?.pattern || '';
-                    const placeholder = `Enter ${field.label.toLowerCase()}...`;
-                    return `<input type="text" id="${fieldId}" class="input-field" value="${value}" pattern="${pattern}" placeholder="${placeholder}" ${onChange}>`;
-            }
-            
-            return `<input type="text" id="${fieldId}" class="input-field" value="${value}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>`;
-        },
-        
-        getDefaultUIComponent(field) {
-            // Determine UI component based on field name and data type
-            if (field.data_type === 'boolean') return 'checkbox';
-            if (field.data_type === 'number' || field.data_type === 'float') return 'number';
-            if (field.name.includes('percentage') || field.name.includes('discount')) return 'percentage';
-            if (field.name.includes('price') || field.name.includes('cost')) return 'currency';
-            if (field.name.includes('description') || field.name.includes('notes')) return 'textarea';
-            
-            // Field-specific UI components based on CSV analysis
-            const dropdownFields = ['type', 'company', 'material', 'opening_system', 'system_series'];
-            const multiSelectFields = ['reinforcement_steel', 'colours'];
-            const checkboxFields = ['renovation', 'builtin_flyscreen_track'];
-            
-            if (dropdownFields.includes(field.name)) return 'dropdown';
-            if (multiSelectFields.includes(field.name)) return 'multi-select';
-            if (checkboxFields.includes(field.name)) return 'checkbox';
-            
-            return 'text';
-        },
-        
-        getFieldOptions(fieldName) {
-            // Return options based on CSV data analysis
-            const optionsMap = {
-                'type': ['Frame', 'sash', 'Mullion', 'Flying mullion', 'glazing bead', 'Interlock', 'Track', 'auxilary', 'coupling', 'tube'],
-                'company': ['kompen', 'choose from database'],
-                'material': ['UPVC', 'Choose'],
-                'opening_system': ['Casement', 'All'],
-                'system_series': ['Kom700', 'Kom701', 'Kom800', 'All'],
-                'renovation': ['yes', 'no', 'n.a'],
-                'reinforcement_steel': ['multi choice from steel database'],
-                'colours': ['White', 'whit, nussbaum', 'RAL9016', 'RAL7016']
-            };
-            
-            return optionsMap[fieldName] || [];
-        },
-        
-        getFieldUnit(fieldName) {
-            // Return appropriate unit based on field name
-            const unitMap = {
-                'length_of_beam': 'm',
-                'width': 'mm',
-                'total_width': 'mm',
-                'flyscreen_track_height': 'mm',
-                'front_height': 'mm',
-                'rear_height': 'mm',
-                'glazing_height': 'mm',
-                'renovation_height': 'mm',
-                'glazing_undercut_height': 'mm',
-                'sash_overlap': 'mm',
-                'flying_mullion_horizontal_clearance': 'mm',
-                'flying_mullion_vertical_clearance': 'mm',
-                'steel_material_thickness': 'mm',
-                'weight_per_meter': 'kg'
-            };
-            
-            return unitMap[fieldName] || '';
-        },
-        
-        updateMultiSelectField(fieldName, selectElement) {
-            const selectedOptions = Array.from(selectElement.selectedOptions).map(option => option.value);
-            this.updateField(fieldName, selectedOptions);
-        },
-        
-        updateField(fieldName, value) {
-            // Update form data
-            this.formData[fieldName] = value;
-            
-            // Clear field error
-            delete this.fieldErrors[fieldName];
-            
-            // Update field visibility based on new data
-            this.updateFieldVisibility();
-            
-            // Validate field
-            this.validateField(fieldName, value);
-        },
-        
-        validateField(fieldName, value) {
-            if (!this.schema) return;
-            
-            // Find field definition
-            let field = null;
-            for (const section of this.schema.sections) {
-                field = section.fields.find(f => f.name === fieldName);
-                if (field) break;
-            }
-            
-            if (!field) return;
-            
-            // Skip validation for hidden fields
-            if (!this.isFieldVisible(fieldName)) {
-                delete this.fieldErrors[fieldName];
-                return;
-            }
-            
-            // Required validation
-            if (field.required && (!value || value === '' || (Array.isArray(value) && value.length === 0))) {
-                this.fieldErrors[fieldName] = `${field.label} is required`;
-                return;
-            }
-            
-            // Skip further validation if field is empty and not required
-            if (!value || value === '') {
-                delete this.fieldErrors[fieldName];
-                return;
-            }
-            
-            // Validation rules
-            if (field.validation_rules) {
-                const rules = field.validation_rules;
-                
-                // Range validation for numbers
-                if ((rules.min !== undefined || rules.max !== undefined) && !isNaN(value)) {
-                    const numValue = parseFloat(value);
-                    if (rules.min !== undefined && numValue < rules.min) {
-                        this.fieldErrors[fieldName] = `${field.label} must be at least ${rules.min}`;
-                        return;
-                    }
-                    if (rules.max !== undefined && numValue > rules.max) {
-                        this.fieldErrors[fieldName] = `${field.label} must be at most ${rules.max}`;
-                        return;
-                    }
-                }
-                
-                // Pattern validation for strings
-                if (rules.pattern && typeof value === 'string') {
-                    try {
-                        if (!new RegExp(rules.pattern).test(value)) {
-                            this.fieldErrors[fieldName] = rules.message || `${field.label} format is invalid`;
-                            return;
-                        }
-                    } catch (e) {
-                        console.warn(`Invalid regex pattern for ${fieldName}:`, rules.pattern);
-                    }
-                }
-                
-                // Length validation for strings
-                if (typeof value === 'string') {
-                    if (rules.min_length && value.length < rules.min_length) {
-                        this.fieldErrors[fieldName] = `${field.label} must be at least ${rules.min_length} characters`;
-                        return;
-                    }
-                    if (rules.max_length && value.length > rules.max_length) {
-                        this.fieldErrors[fieldName] = `${field.label} must be at most ${rules.max_length} characters`;
-                        return;
-                    }
-                }
-                
-                // Custom validation rules
-                if (rules.rule_type) {
-                    switch (rules.rule_type) {
-                        case 'email':
-                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                            if (!emailRegex.test(value)) {
-                                this.fieldErrors[fieldName] = `${field.label} must be a valid email address`;
-                                return;
-                            }
-                            break;
-                        case 'positive_number':
-                            if (isNaN(value) || parseFloat(value) <= 0) {
-                                this.fieldErrors[fieldName] = `${field.label} must be a positive number`;
-                                return;
-                            }
-                            break;
-                    }
-                }
-            }
-            
-            // Clear error if validation passes
-            delete this.fieldErrors[fieldName];
-        },
-        
-        validateAllFields() {
-            if (!this.schema) return;
-            
-            // Clear all errors first
-            this.fieldErrors = {};
-            
-            // Validate all visible fields
-            for (const section of this.schema.sections) {
-                for (const field of section.fields) {
-                    if (this.isFieldVisible(field.name)) {
-                        this.validateField(field.name, this.formData[field.name]);
-                    }
-                }
-            }
-        },
-        
-        getPreviewValue(header) {
-            // Map CSV headers to form field names (exact match with CSV structure)
-            const headerMapping = {
-                "Name": "name",
-                "Type": "type",
-                "Company": "company",
-                "Material": "material",
-                "Opening System": "opening_system",
-                "System Series": "system_series",
-                "Code": "code",
-                "Length of beam": "length_of_beam",
-                "Renovation": "renovation",
-                "Width": "width",
-                "Builtin Flyscreen Track": "builtin_flyscreen_track",
-                "Total Width": "total_width",
-                "Flyscreen Track Height": "flyscreen_track_height",
-                "Front Height": "front_height",
-                "Rear Height": "rear_height",
-                "Glazing Height": "glazing_height",
-                "Renovation Height": "renovation_height",
-                "Glazing Undercut Height": "glazing_undercut_height",
-                "Pic": "pic",
-                "Sash Overlap": "sash_overlap",
-                "Flying Mullion Horizontal Clearance": "flying_mullion_horizontal_clearance",
-                "Flying Mullion Vertical Clearance": "flying_mullion_vertical_clearance",
-                "Steel Material Thickness": "steel_material_thickness",
-                "Weight per meter": "weight_per_meter",
-                "Reinforcement Steel": "reinforcement_steel",
-                "Colours": "colours",
-                "Price per meter": "price_per_meter",
-                "Price per beam": "price_per_beam",
-                "UPVC Profile Discount": "upvc_profile_discount"
-            };
-            
-            const fieldName = headerMapping[header];
-            if (!fieldName) return 'N/A';
-            
-            const value = this.formData[fieldName];
-            
-            // Handle conditional field visibility - if field is hidden, show N/A
-            if (!this.isFieldVisible(fieldName)) {
-                return 'N/A';
-            }
-            
-            if (value === null || value === undefined || value === '') {
-                return 'N/A';
-            }
-            
-            // Format different data types to match CSV format
-            if (typeof value === 'boolean') {
-                return value ? 'yes' : 'no';
-            } else if (Array.isArray(value)) {
-                return value.length > 0 ? value.join(', ') : 'N/A';
-            } else if (typeof value === 'number') {
-                // Format numbers appropriately
-                if (fieldName.includes('price')) {
-                    return value.toFixed(2);
-                } else if (fieldName.includes('percentage') || fieldName.includes('discount')) {
-                    return value + '%';
-                } else {
-                    return String(value);
-                }
-            } else {
-                return String(value);
-            }
-        },
-        
-        // Enhanced preview headers matching exact CSV structure
-        get previewHeaders() {
-            return [
-                "Name", "Type", "Company", "Material", "opening system", "system series",
-                "Code", "Length of Beam\nm", "Renovation\nonly for frame", "width", 
-                "builtin Flyscreen track only for sliding frame", "Total width\nonly for frame with builtin flyscreen",
-                "flyscreen track height\nonly for frame with builtin flyscreen", "front Height mm", "Rear heightt",
-                "Glazing height", "Renovation height mm\nonly for frame", "Glazing undercut heigth\nonly for glazing bead",
-                "Pic", "Sash overlap only for sashs", "flying mullion horizontal clearance", 
-                "flying mullion vertical clearance", "Steel material thickness\nonly for reinforcement",
-                "Weight/m kg", "Reinforcement steel", "Colours", "Price/m", "Price per/beam", "UPVC Profile Discount%"
-            ];
-        },
-        
-        async saveConfiguration() {
-            // Validate all fields before saving
-            this.validateAllFields();
-            
-            if (!this.isFormValid) {
-                showToast('Please fix validation errors before saving', 'error');
-                // Scroll to first error
-                this.scrollToFirstError();
-                return;
-            }
-            
-            this.saving = true;
-            this.error = null;
-            
-            try {
-                // Prepare data for saving (exclude empty/null values for optional fields)
-                const saveData = this.prepareSaveData();
-                
-                const response = await fetch('/api/v1/admin/entry/profile/save', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',  // Include cookies for admin authentication
-                    body: JSON.stringify(saveData)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    if (response.status === 422 && errorData.detail && errorData.detail.field_errors) {
-                        // Handle validation errors from server
-                        this.fieldErrors = { ...this.fieldErrors, ...errorData.detail.field_errors };
-                        showToast('Please fix validation errors', 'error');
-                        this.scrollToFirstError();
-                    } else if (response.status === 401) {
-                        showToast('Authentication required. Please log in again.', 'error');
-                        // Redirect to login
-                        window.location.href = '/api/v1/admin/login';
-                    } else {
-                        const message = errorData.detail?.message || errorData.message || 'Failed to save configuration';
-                        throw new Error(message);
-                    }
-                    return;
-                }
-                
-                const configuration = await response.json();
-                showToast('Configuration saved successfully!', 'success');
-                
-                // Update UI state
-                this.lastSavedData = { ...this.formData };
-                
-                // Optionally redirect or update URL
-                if (configuration.id) {
-                    const url = new URL(window.location);
-                    url.searchParams.set('configuration_id', configuration.id);
-                    window.history.replaceState({}, '', url);
-                }
-                
-                console.log('Saved configuration:', configuration);
-                
-            } catch (err) {
-                console.error('Error saving configuration:', err);
-                this.error = err.message || 'Failed to save configuration';
-                showToast(err.message || 'Failed to save configuration', 'error');
-            } finally {
-                this.saving = false;
-            }
-        },
-        
-        prepareSaveData() {
-            const saveData = { ...this.formData };
-            
-            // Remove fields that are not visible (conditional logic)
-            if (this.schema) {
-                for (const section of this.schema.sections) {
-                    for (const field of section.fields) {
-                        if (!this.isFieldVisible(field.name)) {
-                            delete saveData[field.name];
-                        }
-                    }
-                }
-            }
-            
-            // Convert empty strings to null for optional fields
-            Object.keys(saveData).forEach(key => {
-                if (saveData[key] === '') {
-                    saveData[key] = null;
-                }
-            });
-            
-            return saveData;
-        },
-        
-        scrollToFirstError() {
-            const firstErrorField = Object.keys(this.fieldErrors)[0];
-            if (firstErrorField) {
-                const element = document.getElementById(firstErrorField);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.focus();
-                }
-            }
-        },
-        
-        // Auto-save functionality (optional)
-        startAutoSave() {
-            if (this.autoSaveInterval) {
-                clearInterval(this.autoSaveInterval);
-            }
-            
-            this.autoSaveInterval = setInterval(() => {
-                if (this.hasUnsavedChanges() && this.isFormValid) {
-                    this.autoSave();
-                }
-            }, 30000); // Auto-save every 30 seconds
-        },
-        
-        hasUnsavedChanges() {
-            return JSON.stringify(this.formData) !== JSON.stringify(this.lastSavedData || {});
-        },
-        
-        async autoSave() {
-            if (this.saving) return;
-            
-            try {
-                await this.saveConfiguration();
-                console.log('Auto-saved configuration');
-            } catch (err) {
-                console.warn('Auto-save failed:', err);
-            }
-        },
-        
-        isValueChanged(header) {
-            if (!this.lastSavedData) return false;
-            
-            const headerMapping = {
-                "Name": "name",
-                "Type": "type",
-                "Company": "company",
-                "Material": "material",
-                "opening system": "opening_system",
-                "system series": "system_series",
-                "Code": "code",
-                "Length of Beam\nm": "length_of_beam",
-                "Renovation\nonly for frame": "renovation",
-                "width": "width",
-                "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
-                "Total width\nonly for frame with builtin flyscreen": "total_width",
-                "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
-                "front Height mm": "front_height",
-                "Rear heightt": "rear_height",
-                "Glazing height": "glazing_height",
-                "Renovation height mm\nonly for frame": "renovation_height",
-                "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
-                "Pic": "pic",
-                "Sash overlap only for sashs": "sash_overlap",
-                "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
-                "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
-                "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
-                "Weight/m kg": "weight_per_meter",
-                "Reinforcement steel": "reinforcement_steel",
-                "Colours": "colours",
-                "Price/m": "price_per_meter",
-                "Price per/beam": "price_per_beam",
-                "UPVC Profile Discount%": "upvc_profile_discount"
-            };
-            
-            const fieldName = headerMapping[header];
-            if (!fieldName) return false;
-            
-            return this.formData[fieldName] !== this.lastSavedData[fieldName];
-        },
-        
-        getCompletedFieldsCount() {
-            if (!this.schema) return 0;
-            
-            let completed = 0;
-            for (const section of this.schema.sections) {
-                for (const field of section.fields) {
-                    if (this.isFieldVisible(field.name)) {
-                        const value = this.formData[field.name];
-                        if (value !== null && value !== undefined && value !== '' && 
-                            !(Array.isArray(value) && value.length === 0)) {
-                            completed++;
-                        }
-                    }
-                }
-            }
-            return completed;
-        },
-        
-        getTotalFieldsCount() {
-            if (!this.schema) return 0;
-            
-            let total = 0;
-            for (const section of this.schema.sections) {
-                for (const field of section.fields) {
-                    if (this.isFieldVisible(field.name)) {
-                        total++;
-                    }
-                }
-            }
-            return total;
-        }
-    };
-}
+// Pass server-side data to JavaScript
+window.INITIAL_MANUFACTURING_TYPE_ID = {{ manufacturing_type_id or 'null' }};
 </script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/profile-entry.js"></script>
 {% endblock %}

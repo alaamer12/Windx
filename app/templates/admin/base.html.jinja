@@ -36,6 +36,10 @@
     </main>
 
     {% block scripts %}{% endblock %}
+    
+    <!-- Alpine.js for reactive UI components -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <script>
         // Check for error/success in URL parameters and show toast
         document.addEventListener('DOMContentLoaded', function() {
@@ -126,5 +130,7 @@
             }, 5000);
         }
     </script>
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

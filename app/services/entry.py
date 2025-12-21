@@ -325,6 +325,20 @@ class EntryService(BaseService):
         # e.g., "product_type" -> "Product Type", "opening_system" -> "Opening System"
         label = self._generate_label_from_name(node.name)
         
+        # Map ui_component values to match template expectations
+        # Handle variations like 'input', 'string', etc. to ensure they map to 'text'
+        ui_component = (node.ui_component or "").lower()
+        if ui_component in ['input', 'text', 'string', 'textinput']:
+            ui_component = 'text'
+        elif not ui_component:
+            # Fallback based on data_type
+            if node.data_type == "boolean":
+                ui_component = "checkbox"
+            elif node.data_type in ["number", "float"]:
+                ui_component = "number"
+            else:
+                ui_component = "text"
+        
         return FieldDefinition(
             name=node.name,
             label=label,
@@ -332,7 +346,7 @@ class EntryService(BaseService):
             required=node.required or False,
             validation_rules=node.validation_rules,
             display_condition=node.display_condition,
-            ui_component=node.ui_component,
+            ui_component=ui_component,
             description=node.description,  # Contains HTML for tooltips
             help_text=node.help_text,  # Short subtitle below field
             options=None,  # TODO: Extract options from child nodes if needed

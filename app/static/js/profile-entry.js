@@ -82,6 +82,10 @@ class ConditionEvaluator {
     }
 }
 
+// Session storage keys
+const SESSION_KEY = 'profile_entry_form_data';
+const COMMIT_STATUS_KEY = 'profile_entry_committed';
+
 function profileEntryApp() {
     return {
         // State
@@ -97,6 +101,7 @@ function profileEntryApp() {
         loading: false,
         saving: false,
         error: null,
+        hasUnsavedData: false, // Track if session has uncommitted data
         lastSavedData: null,
         autoSaveInterval: null,
 
@@ -140,6 +145,9 @@ function profileEntryApp() {
                 error: this.error
             });
 
+            // Load from session storage first
+            this.loadFromSession();
+
             console.log('🦆 [STEP 1] Loading manufacturing types...');
             await this.loadManufacturingTypes();
             console.log('🦆 [STEP 1] Manufacturing types loaded:', this.manufacturingTypes.length, 'types');
@@ -151,6 +159,9 @@ function profileEntryApp() {
             } else {
                 console.warn('🦆 [WARNING] No manufacturingTypeId provided - cannot load schema');
             }
+
+            // Setup navigation guards
+            this.setupNavigationGuards();
 
             console.log('🦆 [DUCK DEBUG] ========================================');
             console.log('🦆 [DUCK DEBUG] Initialization Complete');
@@ -242,13 +253,8 @@ function profileEntryApp() {
                                 // Calculate and store component type once
                                 field.componentType = field.ui_component || this.getUIComponent(field);
 
-                                // Debug tooltip data
-                                if (field.name === 'name' || field.name === 'type') {
-                                    console.log(`🦆 [TOOLTIP DEBUG] Field: ${field.name}`);
-                                    console.log(`   - Label: ${field.label}`);
-                                    console.log(`   - Description: ${field.description ? field.description.substring(0, 50) + '...' : 'NULL/EMPTY'}`);
-                                    console.log(`   - Component Type: ${field.componentType}`);
-                                }
+                                // Debug logging
+                                console.log(`🦆 Field: ${field.name} -> componentType: ${field.componentType}`);
                             });
                         }
                     });
@@ -358,7 +364,7 @@ function profileEntryApp() {
             if (multiSelectFields.includes(field.name)) return 'multi-select';
             if (checkboxFields.includes(field.name)) return 'checkbox';
 
-            return 'text';
+            return 'text';  // DEFAULT: text input
         },
 
 
@@ -446,6 +452,11 @@ function profileEntryApp() {
         updateField(fieldName, value) {
             // Update form data
             this.formData[fieldName] = value;
+
+            // Save to session storage
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify(this.formData));
+            sessionStorage.setItem(COMMIT_STATUS_KEY, 'false');
+            this.hasUnsavedData = true;
 
             // Clear field error
             delete this.fieldErrors[fieldName];
@@ -852,6 +863,97 @@ function profileEntryApp() {
                 }
             }
             return total;
+        },
+
+        // Session Storage Management
+        loadFromSession() {
+            const savedData = sessionStorage.getItem(SESSION_KEY);
+            const isCommitted = sessionStorage.getItem(COMMIT_STATUS_KEY) === 'true';
+
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    // Only load if there's meaningful data (not just defaults)
+                    const hasActualData = Object.keys(parsedData).some(key => {
+                        const value = parsedData[key];
+                        return value !== null && value !== undefined && value !== '' &&
+                            !(Array.isArray(value) && value.length === 0);
+                    });
+
+                    if (hasActualData) {
+                        this.formData = { ...this.formData, ...parsedData };
+                        // Only show unsaved indicator if data exists AND not committed
+                        this.hasUnsavedData = !isCommitted;
+                        console.log('Loaded form data from session:', this.formData);
+                    }
+                } catch (err) {
+                    console.error('Failed to load session data:', err);
+                }
+            }
+        },
+
+        async recordConfiguration() {
+            this.validateAllFields();
+            if (!this.isFormValid) {
+                showToast('Please fix validation errors before recording', 'error');
+                this.scrollToFirstError();
+                return;
+            }
+            this.saving = true;
+            this.error = null;
+            try {
+                const saveData = this.prepareSaveData();
+                const response = await fetch('/api/v1/admin/entry/profile/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(saveData)
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (response.status === 422 && errorData.detail && errorData.detail.field_errors) {
+                        this.fieldErrors = { ...this.fieldErrors, ...errorData.detail.field_errors };
+                        showToast('Please fix validation errors', 'error');
+                        this.scrollToFirstError();
+                    } else if (response.status === 401) {
+                        showToast('Authentication required', 'error');
+                        window.location.href = '/api/v1/admin/login';
+                    } else {
+                        throw new Error(errorData.detail?.message || 'Failed to record');
+                    }
+                    return;
+                }
+                const configuration = await response.json();
+                sessionStorage.setItem(COMMIT_STATUS_KEY, 'true');
+                this.hasUnsavedData = false;
+                showToast('Configuration recorded successfully!', 'success');
+                console.log('Recorded:', configuration);
+            } catch (err) {
+                console.error('Error recording:', err);
+                this.error = err.message;
+                showToast(err.message || 'Failed to record', 'error');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        setupNavigationGuards() {
+            window.addEventListener('beforeunload', (e) => {
+                if (this.hasUnsavedData) {
+                    e.preventDefault();
+                    e.returnValue = 'You have unsaved data. Are you sure you want to leave?';
+                    return e.returnValue;
+                }
+            });
+            document.addEventListener('click', (e) => {
+                const link = e.target.closest('a');
+                if (link && this.hasUnsavedData && !link.getAttribute('href').startsWith('#')) {
+                    if (!confirm('You have unsaved data that has not been recorded to the database. Are you sure you want to leave this page?')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                }
+            }, true);
         }
     };
 }

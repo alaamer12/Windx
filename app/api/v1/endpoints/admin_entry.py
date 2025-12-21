@@ -310,6 +310,7 @@ async def evaluate_display_conditions(
 async def profile_page(
     request: Request,
     current_superuser: CurrentSuperuser,
+    db: DBSession,
     manufacturing_type_id: Annotated[
         PositiveInt | None,
         Query(description="Manufacturing type ID for form generation"),
@@ -323,6 +324,7 @@ async def profile_page(
     Args:
         request (Request): FastAPI request object
         current_superuser (User): Current authenticated superuser
+        db (AsyncSession): Database session
         manufacturing_type_id (PositiveInt | None): Optional manufacturing type ID
 
     Returns:
@@ -336,26 +338,22 @@ async def profile_page(
 
     # If no manufacturing_type_id provided, resolve the default profile entry type
     if manufacturing_type_id is None:
-        from app.api.deps import get_db_session
-        
-        async for db in get_db_session():
-            default_type = await ManufacturingTypeResolver.get_default_profile_entry_type(db)
-            if default_type:
-                manufacturing_type_id = default_type.id
-            else:
-                # No manufacturing types exist - show error page or redirect to setup
-                return templates.TemplateResponse(
+        default_type = await ManufacturingTypeResolver.get_default_profile_entry_type(db)
+        if default_type:
+            manufacturing_type_id = default_type.id
+        else:
+            # No manufacturing types exist - show error page or redirect to setup
+            return templates.TemplateResponse(
+                request,
+                "admin/error.html.jinja",
+                get_admin_context(
                     request,
-                    "admin/error.html.jinja",
-                    get_admin_context(
-                        request,
-                        current_superuser,
-                        error_message="No manufacturing types found. Please run the setup script.",
-                        page_title="Setup Required",
-                    ),
-                    status_code=503,
-                )
-            break
+                    current_superuser,
+                    error_message="No manufacturing types found. Please run the setup script.",
+                    page_title="Setup Required",
+                ),
+                status_code=503,
+            )
 
     return templates.TemplateResponse(
         request,

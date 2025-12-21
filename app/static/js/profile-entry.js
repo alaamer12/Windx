@@ -232,6 +232,27 @@ function profileEntryApp() {
 
                 console.log('🦆 [SCHEMA] Parsing JSON response...');
                 this.schema = await response.json();
+
+                // Pre-calculate component types for stable rendering
+                if (this.schema && this.schema.sections) {
+                    console.log('🦆 [SCHEMA] Pre-calculating component types...');
+                    this.schema.sections.forEach(section => {
+                        if (section.fields) {
+                            section.fields.forEach(field => {
+                                // Calculate and store component type once
+                                field.componentType = field.ui_component || this.getUIComponent(field);
+
+                                // Debug tooltip data
+                                if (field.name === 'name' || field.name === 'type') {
+                                    console.log(`🦆 [TOOLTIP DEBUG] Field: ${field.name}`);
+                                    console.log(`   - Label: ${field.label}`);
+                                    console.log(`   - Description: ${field.description ? field.description.substring(0, 50) + '...' : 'NULL/EMPTY'}`);
+                                    console.log(`   - Component Type: ${field.componentType}`);
+                                }
+                            });
+                        }
+                    });
+                }
                 console.log('🦆 [SCHEMA] ✅ Schema parsed successfully!');
                 console.log('🦆 [SCHEMA] Schema structure:', {
                     manufacturing_type_id: this.schema.manufacturing_type_id,
@@ -320,170 +341,7 @@ function profileEntryApp() {
             return this.fieldVisibility[fieldName] !== false;
         },
 
-        renderField(field) {
-            const value = this.formData[field.name] || '';
-            const fieldId = field.name;
-            const onChange = `@input="updateField('${field.name}', $event.target.value)"`;
-            const onChangeCheckbox = `@change="updateField('${field.name}', $event.target.checked)"`;
-            const onChangeMultiSelect = `@change="updateMultiSelectField('${field.name}', $event.target)"`;
-
-            // Determine UI component based on data type and field configuration
-            let uiComponent = field.ui_component || this.getDefaultUIComponent(field);
-
-            switch (uiComponent) {
-                case 'dropdown':
-                case 'select':
-                    let options = '';
-                    if (field.options) {
-                        options = field.options.map(opt =>
-                            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
-                        ).join('');
-                    } else {
-                        // Generate options based on field name and CSV data
-                        const fieldOptions = this.getFieldOptions(field.name);
-                        options = fieldOptions.map(opt =>
-                            `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
-                        ).join('');
-                    }
-                    return `<select id="${fieldId}" class="input-field" ${onChange}>
-                        <option value="">Select...</option>
-                        ${options}
-                    </select>`;
-
-                case 'multi-select':
-                    let multiOptions = '';
-                    const selectedValues = Array.isArray(value) ? value : [];
-                    if (field.options) {
-                        multiOptions = field.options.map(opt =>
-                            `<option value="${opt}" ${selectedValues.includes(opt) ? 'selected' : ''}>${opt}</option>`
-                        ).join('');
-                    }
-                    return `<select id="${fieldId}" class="input-field" multiple ${onChangeMultiSelect}>
-                        ${multiOptions}
-                    </select>`;
-
-                case 'radio':
-                    if (field.options) {
-                        return field.options.map(opt => `
-                            <label class="flex items-center space-x-2 mb-2 cursor-pointer">
-                                <input type="radio" name="${fieldId}" value="${opt}" ${value === opt ? 'checked' : ''} ${onChange} class="text-blue-600">
-                                <span class="text-gray-700">${opt}</span>
-                            </label>
-                        `).join('');
-                    }
-                    break;
-
-                case 'checkbox':
-                    return `<label class="flex items-center space-x-2 cursor-pointer">
-                        <input type="checkbox" id="${fieldId}" ${value ? 'checked' : ''} ${onChangeCheckbox} class="text-blue-600">
-                        <span class="text-gray-700">${field.label}</span>
-                    </label>`;
-
-                case 'textarea':
-                    return `<textarea id="${fieldId}" class="input-field" rows="3" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>${value}</textarea>`;
-
-                case 'number':
-                    const min = field.validation_rules?.min || '';
-                    const max = field.validation_rules?.max || '';
-                    const step = field.data_type === 'float' ? '0.1' : '1';
-                    const unit = this.getFieldUnit(field.name);
-                    if (unit) {
-                        return `<div class="input-group">
-                            <input type="number" id="${fieldId}" class="input-field" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>
-                            <span class="input-group-addon">${unit}</span>
-                        </div>`;
-                    }
-                    return `<input type="number" id="${fieldId}" class="input-field" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>`;
-
-                case 'percentage':
-                    return `<div class="input-group">
-                        <input type="number" id="${fieldId}" class="input-field" value="${value}" min="0" max="100" step="0.1" placeholder="0" ${onChange}>
-                        <span class="input-group-addon">%</span>
-                    </div>`;
-
-                case 'currency':
-                    return `<div class="input-group">
-                        <span class="input-group-addon prefix">$</span>
-                        <input type="number" id="${fieldId}" class="input-field" value="${value}" min="0" step="0.01" placeholder="0.00" ${onChange}>
-                    </div>`;
-
-                case 'slider':
-                    const sliderMin = field.validation_rules?.min || 0;
-                    const sliderMax = field.validation_rules?.max || 100;
-                    return `<div class="space-y-2">
-                        <input type="range" id="${fieldId}" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
-                               value="${value}" min="${sliderMin}" max="${sliderMax}" ${onChange}>
-                        <div class="flex justify-between text-sm text-gray-500">
-                            <span>${sliderMin}</span>
-                            <span class="font-medium text-blue-600">${value || sliderMin}</span>
-                            <span>${sliderMax}</span>
-                        </div>
-                    </div>`;
-
-                case 'file':
-                    return `
-                    <div class="w-full">
-                        <div class="flex flex-col space-y-2">
-                            <label :for="'${fieldId}'" 
-                                   class="file-upload-label flex flex-row items-center justify-start w-full h-24 px-6 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-blue-400 transition-all group cursor-pointer">
-                                
-                                <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mr-4 group-hover:bg-blue-100 transition-colors">
-                                    <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                    </svg>
-                                </div>
-                                
-                                <div class="flex flex-col items-start text-left flex-grow">
-                                    <p class="mb-1 text-sm text-gray-700">
-                                        <span class="font-semibold text-blue-600">Click to upload</span> or drag and drop
-                                    </p>
-                                    <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
-                                </div>
-                                
-                                <!-- Reactive Image Preview -->
-                                <div x-show="imagePreviews['${field.name}']" class="ml-4 flex-shrink-0 animate-fade-in">
-                                    <img :src="imagePreviews['${field.name}']" 
-                                         class="h-16 w-16 object-cover rounded shadow-sm border-2 border-white ring-2 ring-gray-100"
-                                         @click.stop>
-                                </div>
-
-                                <input id="${fieldId}" 
-                                       type="file" 
-                                       class="hidden" 
-                                       accept="image/*" 
-                                       @change="handleFileChange('${field.name}', $event)" />
-                            </label>
-
-                            <!-- Selected File Banner -->
-                            <div x-show="formData['${field.name}']" 
-                                 x-transition 
-                                 class="flex items-center justify-between bg-blue-50/50 border border-blue-100 px-3 py-2 rounded-md text-sm">
-                                <div class="flex items-center overflow-hidden">
-                                    <i class="fas fa-file-image text-blue-500 mr-2 flex-shrink-0"></i>
-                                    <span class="text-gray-500 mr-1 flex-shrink-0">Selected:</span>
-                                    <span x-text="formData['${field.name}']" class="font-medium text-gray-900 truncate"></span>
-                                </div>
-                                <button type="button" 
-                                        @click="clearFile('${field.name}')" 
-                                        class="text-red-500 hover:text-red-700 font-semibold ml-4 flex-shrink-0 transition-colors">
-                                    Remove
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    `;
-
-                default:
-                    // Default to text input
-                    const pattern = field.validation_rules?.pattern || '';
-                    const placeholder = `Enter ${field.label.toLowerCase()}...`;
-                    return `<input type="text" id="${fieldId}" class="input-field" value="${value}" pattern="${pattern}" placeholder="${placeholder}" ${onChange}>`;
-            }
-
-            return `<input type="text" id="${fieldId}" class="input-field" value="${value}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>`;
-        },
-
-        getDefaultUIComponent(field) {
+        getUIComponent(field) {
             // Determine UI component based on field name and data type
             if (field.data_type === 'boolean') return 'checkbox';
             if (field.data_type === 'number' || field.data_type === 'float') return 'number';
@@ -502,6 +360,7 @@ function profileEntryApp() {
 
             return 'text';
         },
+
 
         getFieldOptions(fieldName) {
             // Return options based on CSV data analysis

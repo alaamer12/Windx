@@ -97,8 +97,202 @@
                                     <!-- Help Text -->
                                     <p x-show="field.help_text" class="field-help" x-text="field.help_text"></p>
                                     
-                                    <!-- Dynamic Field Component -->
-                                    <div x-html="renderField(field)"></div>
+                                    <!-- Native Alpine.js Field Rendering -->
+                                    <div class="field-input-container">
+                                        <!-- SELECT / DROPDOWN -->
+                                        <!-- SELECT / DROPDOWN -->
+                                        <template x-if="field.componentType === 'dropdown'">
+                                            <select :id="field.name" 
+                                                    class="input-field" 
+                                                    :value="formData[field.name] || ''"
+                                                    @change="updateField(field.name, $event.target.value)">
+                                                <option value="">Select...</option>
+                                                <template x-for="opt in (field.options || getFieldOptions(field.name))" :key="opt">
+                                                    <option :value="opt" x-text="opt" :selected="formData[field.name] === opt"></option>
+                                                </template>
+                                            </select>
+                                        </template>
+
+                                        <!-- MULTI-SELECT -->
+                                        <template x-if="field.componentType === 'multi-select'">
+                                            <select :id="field.name" 
+                                                    class="input-field" 
+                                                    multiple 
+                                                    @change="updateMultiSelectField(field.name, $event.target)">
+                                                <template x-for="opt in (field.options || getFieldOptions(field.name))" :key="opt">
+                                                    <option :value="opt" x-text="opt" :selected="(formData[field.name] || []).includes(opt)"></option>
+                                                </template>
+                                            </select>
+                                        </template>
+
+                                        <!-- RADIO -->
+                                        <template x-if="field.componentType === 'radio'">
+                                            <div class="space-y-2">
+                                                <template x-for="opt in (field.options || getFieldOptions(field.name))" :key="opt">
+                                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                                        <input type="radio" 
+                                                               :name="field.name" 
+                                                               :value="opt" 
+                                                               :checked="formData[field.name] === opt"
+                                                               @change="updateField(field.name, opt)" 
+                                                               class="text-blue-600 focus:ring-blue-500 border-gray-300">
+                                                        <span class="text-gray-700" x-text="opt"></span>
+                                                    </label>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <!-- CHECKBOX -->
+                                        <template x-if="field.componentType === 'checkbox'">
+                                            <label class="flex items-center space-x-2 cursor-pointer">
+                                                <input type="checkbox" 
+                                                       :id="field.name" 
+                                                       :checked="formData[field.name] === true"
+                                                       @change="updateField(field.name, $event.target.checked)" 
+                                                       class="text-blue-600 rounded focus:ring-blue-500 border-gray-300">
+                                                <span class="text-gray-700" x-text="field.label"></span>
+                                            </label>
+                                        </template>
+
+                                        <!-- TEXTAREA -->
+                                        <template x-if="field.componentType === 'textarea'">
+                                            <textarea :id="field.name" 
+                                                      class="input-field" 
+                                                      rows="3" 
+                                                      :placeholder="'Enter ' + field.label.toLowerCase() + '...'" 
+                                                      :value="formData[field.name] || ''"
+                                                      @input="updateField(field.name, $event.target.value)"></textarea>
+                                        </template>
+
+                                        <!-- NUMBER -->
+                                        <template x-if="field.componentType === 'number'">
+                                            <div :class="getFieldUnit(field.name) ? 'input-group' : ''">
+                                                <input type="number" 
+                                                       :id="field.name" 
+                                                       class="input-field" 
+                                                       :value="formData[field.name]"
+                                                       :min="field.validation_rules?.min" 
+                                                       :max="field.validation_rules?.max"
+                                                       :step="field.data_type === 'float' ? '0.1' : '1'"
+                                                       :placeholder="'Enter ' + field.label.toLowerCase() + '...'" 
+                                                       @input="updateField(field.name, $event.target.value)">
+                                                <template x-if="getFieldUnit(field.name)">
+                                                    <span class="input-group-addon" x-text="getFieldUnit(field.name)"></span>
+                                                </template>
+                                            </div>
+                                        </template>
+
+                                        <!-- PERCENTAGE -->
+                                        <template x-if="field.componentType === 'percentage'">
+                                            <div class="input-group">
+                                                <input type="number" 
+                                                       :id="field.name" 
+                                                       class="input-field" 
+                                                       :value="formData[field.name]"
+                                                       min="0" max="100" step="0.1" 
+                                                       placeholder="0" 
+                                                       @input="updateField(field.name, $event.target.value)">
+                                                <span class="input-group-addon">%</span>
+                                            </div>
+                                        </template>
+
+                                        <!-- CURRENCY -->
+                                        <template x-if="field.componentType === 'currency'">
+                                            <div class="input-group">
+                                                <span class="input-group-addon prefix">$</span>
+                                                <input type="number" 
+                                                       :id="field.name" 
+                                                       class="input-field" 
+                                                       :value="formData[field.name]"
+                                                       min="0" step="0.01" 
+                                                       placeholder="0.00" 
+                                                       @input="updateField(field.name, $event.target.value)">
+                                            </div>
+                                        </template>
+
+                                        <!-- SLIDER -->
+                                        <template x-if="field.componentType === 'slider'">
+                                            <div class="space-y-2">
+                                                <input type="range" 
+                                                       :id="field.name" 
+                                                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" 
+                                                       :value="formData[field.name] || (field.validation_rules?.min || 0)"
+                                                       :min="field.validation_rules?.min || 0" 
+                                                       :max="field.validation_rules?.max || 100" 
+                                                       @input="updateField(field.name, $event.target.value)">
+                                                <div class="flex justify-between text-sm text-gray-500">
+                                                    <span x-text="field.validation_rules?.min || 0"></span>
+                                                    <span class="font-medium text-blue-600" x-text="formData[field.name] || (field.validation_rules?.min || 0)"></span>
+                                                    <span x-text="field.validation_rules?.max || 100"></span>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- FILE UPLOAD -->
+                                        <template x-if="field.componentType === 'file'">
+                                            <div class="w-full">
+                                                <div class="flex flex-col space-y-2">
+                                                    <label :for="field.name" 
+                                                           class="file-upload-label flex flex-row items-center justify-start w-full h-24 px-6 border-2 border-dashed rounded-lg transition-all group cursor-pointer bg-gray-50 border-gray-300 hover:bg-gray-100 hover:border-blue-400">
+                                                        
+                                                        <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mr-4 group-hover:bg-blue-100 transition-colors">
+                                                            <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                                            </svg>
+                                                        </div>
+                                                        
+                                                        <div class="flex flex-col items-start text-left flex-grow">
+                                                            <p class="mb-1 text-sm text-gray-700">
+                                                                <span class="font-semibold text-blue-600">Click to upload</span> or drag and drop
+                                                            </p>
+                                                            <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                                                        </div>
+                                                        
+                                                        <!-- Reactive Image Preview -->
+                                                        <div x-show="imagePreviews[field.name]" class="ml-4 flex-shrink-0 animate-fade-in" style="display: none;">
+                                                            <img :src="imagePreviews[field.name]" 
+                                                                 class="h-16 w-16 object-cover rounded shadow-sm border-2 border-white ring-2 ring-gray-100"
+                                                                 @click.stop>
+                                                        </div>
+                        
+                                                        <input :id="field.name" 
+                                                               type="file" 
+                                                               class="hidden" 
+                                                               accept="image/*" 
+                                                               @change="handleFileChange(field.name, $event)" />
+                                                    </label>
+                        
+                                                    <!-- Selected File Banner -->
+                                                    <div x-show="formData[field.name]" 
+                                                         x-transition 
+                                                         class="flex items-center justify-between bg-blue-50/50 border border-blue-100 px-3 py-2 rounded-md text-sm"
+                                                         style="display: none;">
+                                                        <div class="flex items-center overflow-hidden">
+                                                            <i class="fas fa-file-image text-blue-500 mr-2 flex-shrink-0"></i>
+                                                            <span class="text-gray-500 mr-1 flex-shrink-0">Selected:</span>
+                                                            <span x-text="formData[field.name]" class="font-medium text-gray-900 truncate"></span>
+                                                        </div>
+                                                        <button type="button" 
+                                                                @click="clearFile(field.name)" 
+                                                                class="text-red-500 hover:text-red-700 font-semibold ml-4 flex-shrink-0 transition-colors">
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </template>
+
+                                        <!-- DEFAULT TEXT INPUT -->
+                                        <template x-if="field.componentType === 'text'">
+                                            <input type="text" 
+                                                   :id="field.name" 
+                                                   class="input-field" 
+                                                   :value="formData[field.name] || ''" 
+                                                   :pattern="field.validation_rules?.pattern"
+                                                   :placeholder="'Enter ' + field.label.toLowerCase() + '...'" 
+                                                   @input="updateField(field.name, $event.target.value)">
+                                        </template>
+                                    </div>
                                     
                                     <!-- Field Error -->
                                     <div x-show="fieldErrors[field.name]" 

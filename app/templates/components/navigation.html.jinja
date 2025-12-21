@@ -42,6 +42,32 @@
         icon='🌳'
       ) }}
       
+      {# Entry Pages - submenu #}
+      <div class="nav-section">
+        <div class="nav-section-title">Entry</div>
+        {{ rbac.rbac_nav_item(
+          'Profile',
+          '/api/v1/admin/entry/profile',
+          permission='configuration:create',
+          active=(active_page == 'entry_profile'),
+          icon='📝'
+        ) }}
+        {{ rbac.rbac_nav_item(
+          'Accessories',
+          '/api/v1/admin/entry/accessories',
+          permission='configuration:create',
+          active=(active_page == 'entry_accessories'),
+          icon='🔧'
+        ) }}
+        {{ rbac.rbac_nav_item(
+          'Glazing',
+          '/api/v1/admin/entry/glazing',
+          permission='configuration:create',
+          active=(active_page == 'entry_glazing'),
+          icon='🪟'
+        ) }}
+      </div>
+      
       {# Customers - conditionally enabled #}
       {% if enable_customers %}
         {{ rbac.rbac_nav_item(

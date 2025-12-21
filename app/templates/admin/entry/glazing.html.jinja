@@ -1,8 +1,8 @@
-{% extends "dashboard/base.html.jinja" %}
+{% extends "admin/base.html.jinja" %}
 
 {% block title %}Glazing Entry - {{ super() }}{% endblock %}
 
-{% block extra_head %}
+{% block extra_css %}
 <style>
     .navigation-tabs {
         display: flex;
@@ -84,13 +84,13 @@
 <div class="space-y-6">
     <!-- Navigation Tabs -->
     <div class="navigation-tabs">
-        <a href="/api/v1/entry/profile" class="nav-tab">
+        <a href="/api/v1/admin/entry/profile" class="nav-tab">
             <i class="fas fa-user-cog mr-2"></i>Profile
         </a>
-        <a href="/api/v1/entry/accessories" class="nav-tab">
+        <a href="/api/v1/admin/entry/accessories" class="nav-tab">
             <i class="fas fa-puzzle-piece mr-2"></i>Accessories
         </a>
-        <a href="/api/v1/entry/glazing" class="nav-tab active">
+        <a href="/api/v1/admin/entry/glazing" class="nav-tab active">
             <i class="fas fa-window-maximize mr-2"></i>Glazing
         </a>
     </div>

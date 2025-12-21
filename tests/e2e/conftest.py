@@ -185,7 +185,7 @@ async def authenticated_page(
     await page.wait_for_load_state("networkidle")
 
     # Fill login form (admin login uses form data, not JSON)
-    await page.fill('input[name="username"]', "e2e_admin")
+    await page.fill('input[name="username"]', admin_user.username)
     await page.fill('input[name="password"]', settings.test_admin_password)
 
     # Submit form and wait for navigation

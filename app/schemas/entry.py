@@ -459,19 +459,19 @@ class ProfileEntryData(BaseModel):
         ),
     ] = None
     reinforcement_steel: Annotated[
-        list[str] | None,
+        str | None,
         Field(
             default=None,
             description="Reinforcement steel options",
-            examples=[["Standard", "Heavy duty"], ["Type A", "Type B"]],
+            examples=["Standard", "Heavy duty"],
         ),
     ] = None
     colours: Annotated[
-        list[str] | None,
+        str | None,
         Field(
             default=None,
             description="Available colors",
-            examples=[["White", "Black", "Brown"], ["RAL9016", "RAL7016"]],
+            examples=["White", "Black", "Brown"],
         ),
     ] = None
     price_per_meter: Annotated[

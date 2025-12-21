@@ -328,8 +328,10 @@ class EntryService(BaseService):
         # Map ui_component values to match template expectations
         # Handle variations like 'input', 'string', etc. to ensure they map to 'text'
         ui_component = (node.ui_component or "").lower()
-        if ui_component in ['input', 'text', 'string', 'textinput']:
-            ui_component = 'text'
+        if ui_component in ["input", "text", "string", "textinput"]:
+            ui_component = "text"
+        elif ui_component == "multiselect":
+            ui_component = "text"
         elif not ui_component:
             # Fallback based on data_type
             if node.data_type == "boolean":

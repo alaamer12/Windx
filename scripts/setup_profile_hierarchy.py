@@ -430,11 +430,8 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.reinforcement_steel",
             "depth": 1,
             "sort_order": 25,
-            "ui_component": "multiselect",
+            "ui_component": "text",
             "help_text": "Select reinforcement steel options",
-            "validation_rules": {
-                "options": ["Standard", "Heavy duty", "Type A", "Type B", "Custom"]
-            },
         },
         {
             "name": "colours",
@@ -445,20 +442,8 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.colours",
             "depth": 1,
             "sort_order": 26,
-            "ui_component": "multiselect",
+            "ui_component": "text",
             "help_text": "Select available colors",
-            "validation_rules": {
-                "options": [
-                    "White",
-                    "Black",
-                    "Brown",
-                    "Grey",
-                    "Nussbaum",
-                    "RAL9016",
-                    "RAL7016",
-                    "Custom",
-                ]
-            },
         },
         # Pricing Section
         {

@@ -357,7 +357,7 @@ function profileEntryApp() {
 
             // Field-specific UI components based on CSV analysis
             const dropdownFields = ['type', 'company', 'material', 'opening_system', 'system_series'];
-            const multiSelectFields = ['reinforcement_steel', 'colours'];
+            const multiSelectFields = [];
             const checkboxFields = ['renovation', 'builtin_flyscreen_track'];
 
             if (dropdownFields.includes(field.name)) return 'dropdown';
@@ -377,8 +377,6 @@ function profileEntryApp() {
                 'opening_system': ['Casement', 'All'],
                 'system_series': ['Kom700', 'Kom701', 'Kom800', 'All'],
                 'renovation': ['yes', 'no', 'n.a'],
-                'reinforcement_steel': ['multi choice from steel database'],
-                'colours': ['White', 'whit, nussbaum', 'RAL9016', 'RAL7016']
             };
 
             return optionsMap[fieldName] || [];

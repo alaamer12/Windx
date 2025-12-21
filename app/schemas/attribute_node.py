@@ -14,7 +14,7 @@ class DisplayCondition(BaseModel):
     """Conditional display logic for attribute nodes."""
 
     operator: Annotated[
-        str, Field(description="Operator: equals, contains, gt, lt, gte, lte, exists, and, or")
+        str, Field(description="Operator: equals, not_equals, greater_than, less_than, greater_equal, less_equal, contains, starts_with, ends_with, matches_pattern, in, not_in, any_of, all_of, exists, not_exists, is_empty, is_not_empty, and, or, not")
     ]
     field: Annotated[str | None, Field(default=None, description="Field to check")]
     value: Annotated[Any | None, Field(default=None, description="Value to compare")]
@@ -76,7 +76,7 @@ class AttributeNodeBase(BaseModel):
     weight_impact: Annotated[
         Decimal,
         Field(
-            default=Decimal("0"), ge=0, decimal_places=2, description="Fixed weight addition in kg"
+            default=Decimal("0"), ge=0, decimal_places=2, description="Fixed weight addition in grams"
         ),
     ]
     weight_formula: Annotated[

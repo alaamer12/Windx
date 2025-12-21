@@ -62,15 +62,6 @@ async def create_attribute_nodes(
     """Create all 29 CSV column attribute nodes."""
     print("Creating attribute nodes for all 29 CSV columns...")
 
-    # Check if nodes already exist
-    stmt = select(AttributeNode).where(AttributeNode.manufacturing_type_id == manufacturing_type.id)
-    result = await session.execute(stmt)
-    existing_nodes = result.scalars().all()
-
-    if existing_nodes:
-        print(f"  ⚠️  Found {len(existing_nodes)} existing nodes, skipping creation")
-        return
-
     # Define all attribute nodes based on CSV structure
     attribute_definitions = [
         # Basic Information Section
@@ -189,7 +180,7 @@ async def create_attribute_nodes(
             "ltree_path": "basic_information.length_of_beam",
             "depth": 1,
             "sort_order": 8,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Length of beam in meters",
             "validation_rules": {"min": 0, "max": 20},
         },
@@ -236,7 +227,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.width",
             "depth": 1,
             "sort_order": 11,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Width dimension in mm",
             "validation_rules": {"min": 0, "max": 5000},
         },
@@ -249,7 +240,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.total_width",
             "depth": 1,
             "sort_order": 12,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Total width including flyscreen track",
             "validation_rules": {"min": 0, "max": 5000},
             "display_condition": {
@@ -267,7 +258,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.flyscreen_track_height",
             "depth": 1,
             "sort_order": 13,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Height of flyscreen track in mm",
             "validation_rules": {"min": 0, "max": 200},
             "display_condition": {
@@ -285,7 +276,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.front_height",
             "depth": 1,
             "sort_order": 14,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Front height in mm",
             "validation_rules": {"min": 0, "max": 5000},
         },
@@ -298,7 +289,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.rear_height",
             "depth": 1,
             "sort_order": 15,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Rear height in mm",
             "validation_rules": {"min": 0, "max": 5000},
         },
@@ -311,7 +302,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.glazing_height",
             "depth": 1,
             "sort_order": 16,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Glazing height in mm",
             "validation_rules": {"min": 0, "max": 5000},
         },
@@ -324,7 +315,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.renovation_height",
             "depth": 1,
             "sort_order": 17,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Renovation height in mm",
             "validation_rules": {"min": 0, "max": 5000},
             "display_condition": {"operator": "equals", "field": "type", "value": "Frame"},
@@ -338,7 +329,7 @@ async def create_attribute_nodes(
             "ltree_path": "dimensions.glazing_undercut_height",
             "depth": 1,
             "sort_order": 18,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Glazing undercut height in mm",
             "validation_rules": {"min": 0, "max": 100},
             "display_condition": {"operator": "equals", "field": "type", "value": "Glazing bead"},
@@ -353,7 +344,7 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.pic",
             "depth": 1,
             "sort_order": 19,
-            "ui_component": "input",
+            "ui_component": "file",
             "help_text": "Image filename or reference",
             "validation_rules": {"max_length": 200},
         },
@@ -366,7 +357,7 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.sash_overlap",
             "depth": 1,
             "sort_order": 20,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Sash overlap in mm",
             "validation_rules": {"min": 0, "max": 50},
             "display_condition": {"operator": "equals", "field": "type", "value": "Sash"},
@@ -380,7 +371,7 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.flying_mullion_horizontal_clearance",
             "depth": 1,
             "sort_order": 21,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Horizontal clearance for flying mullion in mm",
             "validation_rules": {"min": 0, "max": 100},
             "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"},
@@ -394,7 +385,7 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.flying_mullion_vertical_clearance",
             "depth": 1,
             "sort_order": 22,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Vertical clearance for flying mullion in mm",
             "validation_rules": {"min": 0, "max": 100},
             "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"},
@@ -408,7 +399,7 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.steel_material_thickness",
             "depth": 1,
             "sort_order": 23,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Steel thickness in mm",
             "validation_rules": {"min": 0, "max": 10},
             "display_condition": {
@@ -426,7 +417,7 @@ async def create_attribute_nodes(
             "ltree_path": "technical_specs.weight_per_meter",
             "depth": 1,
             "sort_order": 24,
-            "ui_component": "input",
+            "ui_component": "number",
             "help_text": "Weight per meter in kg",
             "validation_rules": {"min": 0, "max": 50},
         },
@@ -479,7 +470,7 @@ async def create_attribute_nodes(
             "ltree_path": "pricing.price_per_meter",
             "depth": 1,
             "sort_order": 27,
-            "ui_component": "input",
+            "ui_component": "currency",
             "help_text": "Price per meter in currency units",
             "validation_rules": {"min": 0, "max": 10000},
         },
@@ -492,7 +483,7 @@ async def create_attribute_nodes(
             "ltree_path": "pricing.price_per_beam",
             "depth": 1,
             "sort_order": 28,
-            "ui_component": "input",
+            "ui_component": "currency",
             "help_text": "Price per beam in currency units",
             "validation_rules": {"min": 0, "max": 50000},
         },
@@ -505,13 +496,38 @@ async def create_attribute_nodes(
             "ltree_path": "pricing.upvc_profile_discount",
             "depth": 1,
             "sort_order": 29,
-            "ui_component": "input",
+            "ui_component": "percentage",
             "help_text": "Discount percentage for UPVC profiles",
             "validation_rules": {"min": 0, "max": 100},
         },
     ]
 
-    # Create attribute nodes
+    # Check if nodes already exist
+    stmt = select(AttributeNode).where(AttributeNode.manufacturing_type_id == manufacturing_type.id)
+    result = await session.execute(stmt)
+    existing_nodes = result.scalars().all()
+
+    if existing_nodes:
+        print(f"  ⚠️  Found {len(existing_nodes)} existing nodes, updating metadata...")
+        existing_map = {n.name: n for n in existing_nodes}
+        
+        updated_count = 0
+        for attr_def in attribute_definitions:
+            if attr_def["name"] in existing_map:
+                node = existing_map[attr_def["name"]]
+                node.sort_order = attr_def["sort_order"]
+                node.ui_component = attr_def["ui_component"]
+                node.validation_rules = attr_def.get("validation_rules")
+                node.display_condition = attr_def.get("display_condition")
+                node.description = attr_def["description"]
+                node.help_text = attr_def["help_text"]
+                updated_count += 1
+        
+        await session.commit()
+        print(f"  ✅ Updated {updated_count} attribute nodes")
+        return
+
+    # Create attribute nodes if not existing
     created_count = 0
     for attr_def in attribute_definitions:
         node = AttributeNode(

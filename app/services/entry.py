@@ -275,6 +275,15 @@ class EntryService(BaseService):
 
         # Convert to list and sort by sort_order
         sections = list(sections_dict.values())
+        
+        # Sort fields within each section first
+        for section in sections:
+            section.fields.sort(key=lambda f: f.sort_order)
+            
+            if section.fields:
+                section.sort_order = section.fields[0].sort_order
+
+        # Then sort sections
         sections.sort(key=lambda s: s.sort_order)
 
         return ProfileSchema(
@@ -323,6 +332,7 @@ class EntryService(BaseService):
             description=node.description,
             help_text=node.help_text,
             options=None,  # TODO: Extract options from child nodes if needed
+            sort_order=node.sort_order or 0,
         )
 
     async def evaluate_display_conditions(

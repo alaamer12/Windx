@@ -65,7 +65,11 @@
                     <form @submit.prevent="saveConfiguration()">
                         <!-- Dynamic Form Fields -->
                         <template x-for="section in schema.sections" :key="section.title">
-                            <template x-for="field in section.fields" :key="field.name">
+                            <div class="form-section mb-8">
+                                <h3 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4" 
+                                    x-text="section.title"
+                                    x-show="section.fields.some(f => isFieldVisible(f.name))"></h3>
+                                <template x-for="field in section.fields" :key="field.name">
                                 <div class="field-item" 
                                      :class="{ 
                                          'hidden': !isFieldVisible(field.name),

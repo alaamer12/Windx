@@ -10,65 +10,65 @@ class ConditionEvaluator {
         less_than: (a, b) => (a || 0) < (b || 0),
         greater_equal: (a, b) => (a || 0) >= (b || 0),
         less_equal: (a, b) => (a || 0) <= (b || 0),
-        
+
         // String operators
         contains: (a, b) => String(a || '').toLowerCase().includes(String(b).toLowerCase()),
         starts_with: (a, b) => String(a || '').toLowerCase().startsWith(String(b).toLowerCase()),
         ends_with: (a, b) => String(a || '').toLowerCase().endsWith(String(b).toLowerCase()),
         matches_pattern: (a, b) => new RegExp(b).test(String(a || '')),
-        
+
         // Collection operators
         in: (a, b) => (Array.isArray(b) ? b : [b]).includes(a),
         not_in: (a, b) => !(Array.isArray(b) ? b : [b]).includes(a),
         any_of: (a, b) => b.some(item => (Array.isArray(a) ? a : [a]).includes(item)),
         all_of: (a, b) => b.every(item => (Array.isArray(a) ? a : [a]).includes(item)),
-        
+
         // Existence operators
         exists: (a, b) => a !== null && a !== undefined && a !== '',
         not_exists: (a, b) => a === null || a === undefined || a === '',
         is_empty: (a, b) => !Boolean(a),
         is_not_empty: (a, b) => Boolean(a),
     };
-    
+
     static evaluateCondition(condition, formData) {
         if (!condition) return true;
-        
+
         const operator = condition.operator;
         if (!operator) return true;
-        
+
         // Handle logical operators
         if (operator === 'and') {
-            return (condition.conditions || []).every(c => 
+            return (condition.conditions || []).every(c =>
                 ConditionEvaluator.evaluateCondition(c, formData)
             );
         } else if (operator === 'or') {
-            return (condition.conditions || []).some(c => 
+            return (condition.conditions || []).some(c =>
                 ConditionEvaluator.evaluateCondition(c, formData)
             );
         } else if (operator === 'not') {
             return !ConditionEvaluator.evaluateCondition(condition.condition, formData);
         }
-        
+
         // Handle field-based operators
         const field = condition.field;
         if (!field) return true;
-        
+
         const fieldValue = ConditionEvaluator.getFieldValue(field, formData);
         const expectedValue = condition.value;
-        
+
         const operatorFn = ConditionEvaluator.OPERATORS[operator];
         if (!operatorFn) {
             throw new Error(`Unknown operator: ${operator}`);
         }
-        
+
         return operatorFn(fieldValue, expectedValue);
     }
-    
+
     static getFieldValue(fieldPath, formData) {
         if (!fieldPath.includes('.')) {
             return formData[fieldPath];
         }
-        
+
         // Support nested field access
         let value = formData;
         for (const part of fieldPath.split('.')) {
@@ -98,11 +98,11 @@ function profileEntryApp() {
         error: null,
         lastSavedData: null,
         autoSaveInterval: null,
-        
+
         // Computed
         get isFormValid() {
             if (!this.schema) return false;
-            
+
             // Check required fields
             for (const section of this.schema.sections) {
                 for (const field of section.fields) {
@@ -114,17 +114,17 @@ function profileEntryApp() {
                     }
                 }
             }
-            
+
             // Check for validation errors
             return Object.keys(this.fieldErrors).length === 0;
         },
-        
+
         // Methods
         switchTab(tabName) {
             this.activeTab = tabName;
             console.log('Switched to tab:', tabName);
         },
-        
+
         async init() {
             console.log('🦆 [DUCK DEBUG] ========================================');
             console.log('🦆 [DUCK DEBUG] ProfileEntryApp Initialization Started');
@@ -138,11 +138,11 @@ function profileEntryApp() {
                 formData: this.formData,
                 error: this.error
             });
-            
+
             console.log('🦆 [STEP 1] Loading manufacturing types...');
             await this.loadManufacturingTypes();
             console.log('🦆 [STEP 1] Manufacturing types loaded:', this.manufacturingTypes.length, 'types');
-            
+
             if (this.manufacturingTypeId) {
                 console.log('🦆 [STEP 2] Manufacturing type ID found, loading schema...');
                 await this.loadSchema();
@@ -150,7 +150,7 @@ function profileEntryApp() {
             } else {
                 console.warn('🦆 [WARNING] No manufacturingTypeId provided - cannot load schema');
             }
-            
+
             console.log('🦆 [DUCK DEBUG] ========================================');
             console.log('🦆 [DUCK DEBUG] Initialization Complete');
             console.log('🦆 [DUCK DEBUG] Final state:', {
@@ -161,26 +161,26 @@ function profileEntryApp() {
             });
             console.log('🦆 [DUCK DEBUG] ========================================');
         },
-        
+
         async loadManufacturingTypes() {
             console.log('🦆 [MFGTYPE] Starting to load manufacturing types...');
             try {
                 const url = '/api/v1/manufacturing-types/';
                 console.log('🦆 [MFGTYPE] Fetching from:', url);
-                
+
                 const response = await fetch(url, {
                     credentials: 'include'  // Include cookies for admin authentication
                 });
-                
+
                 console.log('🦆 [MFGTYPE] Response status:', response.status);
                 console.log('🦆 [MFGTYPE] Response ok:', response.ok);
-                
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('🦆 [MFGTYPE ERROR] Failed response:', errorText);
                     throw new Error('Failed to load manufacturing types');
                 }
-                
+
                 const data = await response.json();
                 console.log('🦆 [MFGTYPE] Response data:', data);
                 this.manufacturingTypes = data.items || [];
@@ -191,36 +191,36 @@ function profileEntryApp() {
                 this.error = 'Failed to load manufacturing types';
             }
         },
-        
+
         async loadSchema() {
             console.log('🦆 [SCHEMA] ========================================');
             console.log('🦆 [SCHEMA] Starting schema load process...');
-            
+
             if (!this.manufacturingTypeId) {
                 console.warn('🦆 [SCHEMA] ⚠️ No manufacturing type ID - aborting');
                 this.schema = null;
                 return;
             }
-            
+
             console.log('🦆 [SCHEMA] Manufacturing type ID:', this.manufacturingTypeId);
             console.log('🦆 [SCHEMA] Setting loading state to true...');
             this.loading = true;
             this.error = null;
-            
+
             try {
                 const url = `/api/v1/admin/entry/profile/schema/${this.manufacturingTypeId}`;
                 console.log('🦆 [SCHEMA] Constructed URL:', url);
                 console.log('🦆 [SCHEMA] Initiating fetch request...');
-                
+
                 const response = await fetch(url, {
                     credentials: 'include'  // Include cookies for admin authentication
                 });
-                
+
                 console.log('🦆 [SCHEMA] Response received!');
                 console.log('🦆 [SCHEMA] Status:', response.status);
                 console.log('🦆 [SCHEMA] Status text:', response.statusText);
                 console.log('🦆 [SCHEMA] Headers:', Object.fromEntries(response.headers.entries()));
-                
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('🦆 [SCHEMA ERROR] ❌ Response not OK');
@@ -228,7 +228,7 @@ function profileEntryApp() {
                     console.error('🦆 [SCHEMA ERROR] Error body:', errorText);
                     throw new Error(`Failed to load schema: ${response.status}`);
                 }
-                
+
                 console.log('🦆 [SCHEMA] Parsing JSON response...');
                 this.schema = await response.json();
                 console.log('🦆 [SCHEMA] ✅ Schema parsed successfully!');
@@ -239,15 +239,15 @@ function profileEntryApp() {
                     conditional_fields: Object.keys(this.schema.conditional_logic || {}).length
                 });
                 console.log('🦆 [SCHEMA] Full schema object:', this.schema);
-                
+
                 console.log('🦆 [SCHEMA] Initializing form data...');
                 this.initializeFormData();
                 console.log('🦆 [SCHEMA] Form data initialized:', this.formData);
-                
+
                 console.log('🦆 [SCHEMA] Updating field visibility...');
                 this.updateFieldVisibility();
                 console.log('🦆 [SCHEMA] Field visibility updated:', this.fieldVisibility);
-                
+
                 console.log('🦆 [SCHEMA] ✅ Schema loading completed successfully!');
             } catch (err) {
                 console.error('🦆 [SCHEMA ERROR] ❌❌❌ EXCEPTION CAUGHT ❌❌❌');
@@ -261,7 +261,7 @@ function profileEntryApp() {
                 console.log('🦆 [SCHEMA] ========================================');
             }
         },
-        
+
         initializeFormData() {
             this.formData = {
                 manufacturing_type_id: this.manufacturingTypeId,
@@ -269,7 +269,7 @@ function profileEntryApp() {
                 type: '',
                 upvc_profile_discount: 20.0
             };
-            
+
             // Initialize all fields with default values
             if (this.schema) {
                 for (const section of this.schema.sections) {
@@ -281,7 +281,7 @@ function profileEntryApp() {
                 }
             }
         },
-        
+
         getDefaultValue(field) {
             switch (field.data_type) {
                 case 'boolean':
@@ -295,10 +295,10 @@ function profileEntryApp() {
                     return '';
             }
         },
-        
+
         updateFieldVisibility() {
             if (!this.schema) return;
-            
+
             // Evaluate all conditional logic
             for (const [fieldName, condition] of Object.entries(this.schema.conditional_logic)) {
                 try {
@@ -309,38 +309,38 @@ function profileEntryApp() {
                 }
             }
         },
-        
+
         isFieldVisible(fieldName) {
             // If no conditional logic, field is visible
             if (!this.schema || !this.schema.conditional_logic[fieldName]) {
                 return true;
             }
-            
+
             return this.fieldVisibility[fieldName] !== false;
         },
-        
+
         renderField(field) {
             const value = this.formData[field.name] || '';
             const fieldId = field.name;
             const onChange = `@input="updateField('${field.name}', $event.target.value)"`;
             const onChangeCheckbox = `@change="updateField('${field.name}', $event.target.checked)"`;
             const onChangeMultiSelect = `@change="updateMultiSelectField('${field.name}', $event.target)"`;
-            
+
             // Determine UI component based on data type and field configuration
             let uiComponent = field.ui_component || this.getDefaultUIComponent(field);
-            
+
             switch (uiComponent) {
                 case 'dropdown':
                 case 'select':
                     let options = '';
                     if (field.options) {
-                        options = field.options.map(opt => 
+                        options = field.options.map(opt =>
                             `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
                         ).join('');
                     } else {
                         // Generate options based on field name and CSV data
                         const fieldOptions = this.getFieldOptions(field.name);
-                        options = fieldOptions.map(opt => 
+                        options = fieldOptions.map(opt =>
                             `<option value="${opt}" ${value === opt ? 'selected' : ''}>${opt}</option>`
                         ).join('');
                     }
@@ -348,19 +348,19 @@ function profileEntryApp() {
                         <option value="">Select...</option>
                         ${options}
                     </select>`;
-                
+
                 case 'multi-select':
                     let multiOptions = '';
                     const selectedValues = Array.isArray(value) ? value : [];
                     if (field.options) {
-                        multiOptions = field.options.map(opt => 
+                        multiOptions = field.options.map(opt =>
                             `<option value="${opt}" ${selectedValues.includes(opt) ? 'selected' : ''}>${opt}</option>`
                         ).join('');
                     }
                     return `<select id="${fieldId}" class="input-field" multiple ${onChangeMultiSelect}>
                         ${multiOptions}
                     </select>`;
-                
+
                 case 'radio':
                     if (field.options) {
                         return field.options.map(opt => `
@@ -371,16 +371,16 @@ function profileEntryApp() {
                         `).join('');
                     }
                     break;
-                
+
                 case 'checkbox':
                     return `<label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" id="${fieldId}" ${value ? 'checked' : ''} ${onChangeCheckbox} class="text-blue-600">
                         <span class="text-gray-700">${field.label}</span>
                     </label>`;
-                
+
                 case 'textarea':
                     return `<textarea id="${fieldId}" class="input-field" rows="3" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>${value}</textarea>`;
-                
+
                 case 'number':
                     const min = field.validation_rules?.min || '';
                     const max = field.validation_rules?.max || '';
@@ -390,19 +390,19 @@ function profileEntryApp() {
                         <input type="number" id="${fieldId}" class="input-field pr-12" value="${value}" min="${min}" max="${max}" step="${step}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>
                         ${unit ? `<span class="absolute right-3 top-2 text-gray-500 text-sm">${unit}</span>` : ''}
                     </div>`;
-                
+
                 case 'percentage':
                     return `<div class="relative">
                         <input type="number" id="${fieldId}" class="input-field pr-8" value="${value}" min="0" max="100" step="0.1" placeholder="Enter percentage..." ${onChange}>
                         <span class="absolute right-3 top-2 text-gray-500 text-sm">%</span>
                     </div>`;
-                
+
                 case 'currency':
                     return `<div class="relative">
                         <span class="absolute left-3 top-2 text-gray-500 text-sm">$</span>
                         <input type="number" id="${fieldId}" class="input-field pl-8" value="${value}" min="0" step="0.01" placeholder="0.00" ${onChange}>
                     </div>`;
-                
+
                 case 'slider':
                     const sliderMin = field.validation_rules?.min || 0;
                     const sliderMax = field.validation_rules?.max || 100;
@@ -415,17 +415,36 @@ function profileEntryApp() {
                             <span>${sliderMax}</span>
                         </div>
                     </div>`;
-                
+
+                case 'file':
+                    return `
+                    <div class="flex items-center justify-center w-full">
+                        <label for="${fieldId}" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                <svg class="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
+                                </svg>
+                                <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                                <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                            </div>
+                            <input id="${fieldId}" type="file" class="hidden" @change="updateField('${field.name}', $event.target.files[0] ? $event.target.files[0].name : '')" />
+                        </label>
+                    </div>
+                    <div v-if="formData['${field.name}']" class="mt-2 text-sm text-gray-600">
+                        Selected: {{ formData['${field.name}'] }}
+                    </div>
+                    `;
+
                 default:
                     // Default to text input
                     const pattern = field.validation_rules?.pattern || '';
                     const placeholder = `Enter ${field.label.toLowerCase()}...`;
                     return `<input type="text" id="${fieldId}" class="input-field" value="${value}" pattern="${pattern}" placeholder="${placeholder}" ${onChange}>`;
             }
-            
+
             return `<input type="text" id="${fieldId}" class="input-field" value="${value}" placeholder="Enter ${field.label.toLowerCase()}..." ${onChange}>`;
         },
-        
+
         getDefaultUIComponent(field) {
             // Determine UI component based on field name and data type
             if (field.data_type === 'boolean') return 'checkbox';
@@ -433,19 +452,19 @@ function profileEntryApp() {
             if (field.name.includes('percentage') || field.name.includes('discount')) return 'percentage';
             if (field.name.includes('price') || field.name.includes('cost')) return 'currency';
             if (field.name.includes('description') || field.name.includes('notes')) return 'textarea';
-            
+
             // Field-specific UI components based on CSV analysis
             const dropdownFields = ['type', 'company', 'material', 'opening_system', 'system_series'];
             const multiSelectFields = ['reinforcement_steel', 'colours'];
             const checkboxFields = ['renovation', 'builtin_flyscreen_track'];
-            
+
             if (dropdownFields.includes(field.name)) return 'dropdown';
             if (multiSelectFields.includes(field.name)) return 'multi-select';
             if (checkboxFields.includes(field.name)) return 'checkbox';
-            
+
             return 'text';
         },
-        
+
         getFieldOptions(fieldName) {
             // Return options based on CSV data analysis
             const optionsMap = {
@@ -458,10 +477,10 @@ function profileEntryApp() {
                 'reinforcement_steel': ['multi choice from steel database'],
                 'colours': ['White', 'whit, nussbaum', 'RAL9016', 'RAL7016']
             };
-            
+
             return optionsMap[fieldName] || [];
         },
-        
+
         getFieldUnit(fieldName) {
             // Return appropriate unit based on field name
             const unitMap = {
@@ -480,63 +499,63 @@ function profileEntryApp() {
                 'steel_material_thickness': 'mm',
                 'weight_per_meter': 'kg'
             };
-            
+
             return unitMap[fieldName] || '';
         },
-        
+
         updateMultiSelectField(fieldName, selectElement) {
             const selectedOptions = Array.from(selectElement.selectedOptions).map(option => option.value);
             this.updateField(fieldName, selectedOptions);
         },
-        
+
         updateField(fieldName, value) {
             // Update form data
             this.formData[fieldName] = value;
-            
+
             // Clear field error
             delete this.fieldErrors[fieldName];
-            
+
             // Update field visibility based on new data
             this.updateFieldVisibility();
-            
+
             // Validate field
             this.validateField(fieldName, value);
         },
-        
+
         validateField(fieldName, value) {
             if (!this.schema) return;
-            
+
             // Find field definition
             let field = null;
             for (const section of this.schema.sections) {
                 field = section.fields.find(f => f.name === fieldName);
                 if (field) break;
             }
-            
+
             if (!field) return;
-            
+
             // Skip validation for hidden fields
             if (!this.isFieldVisible(fieldName)) {
                 delete this.fieldErrors[fieldName];
                 return;
             }
-            
+
             // Required validation
             if (field.required && (!value || value === '' || (Array.isArray(value) && value.length === 0))) {
                 this.fieldErrors[fieldName] = `${field.label} is required`;
                 return;
             }
-            
+
             // Skip further validation if field is empty and not required
             if (!value || value === '') {
                 delete this.fieldErrors[fieldName];
                 return;
             }
-            
+
             // Validation rules
             if (field.validation_rules) {
                 const rules = field.validation_rules;
-                
+
                 // Range validation for numbers
                 if ((rules.min !== undefined || rules.max !== undefined) && !isNaN(value)) {
                     const numValue = parseFloat(value);
@@ -549,7 +568,7 @@ function profileEntryApp() {
                         return;
                     }
                 }
-                
+
                 // Pattern validation for strings
                 if (rules.pattern && typeof value === 'string') {
                     try {
@@ -561,7 +580,7 @@ function profileEntryApp() {
                         console.warn(`Invalid regex pattern for ${fieldName}:`, rules.pattern);
                     }
                 }
-                
+
                 // Length validation for strings
                 if (typeof value === 'string') {
                     if (rules.min_length && value.length < rules.min_length) {
@@ -573,7 +592,7 @@ function profileEntryApp() {
                         return;
                     }
                 }
-                
+
                 // Custom validation rules
                 if (rules.rule_type) {
                     switch (rules.rule_type) {
@@ -593,17 +612,17 @@ function profileEntryApp() {
                     }
                 }
             }
-            
+
             // Clear error if validation passes
             delete this.fieldErrors[fieldName];
         },
-        
+
         validateAllFields() {
             if (!this.schema) return;
-            
+
             // Clear all errors first
             this.fieldErrors = {};
-            
+
             // Validate all visible fields
             for (const section of this.schema.sections) {
                 for (const field of section.fields) {
@@ -613,7 +632,7 @@ function profileEntryApp() {
                 }
             }
         },
-        
+
         getPreviewValue(header) {
             // Map CSV headers to form field names (exact match with CSV structure)
             const headerMapping = {
@@ -647,21 +666,21 @@ function profileEntryApp() {
                 "Price per beam": "price_per_beam",
                 "UPVC Profile Discount": "upvc_profile_discount"
             };
-            
+
             const fieldName = headerMapping[header];
             if (!fieldName) return 'N/A';
-            
+
             const value = this.formData[fieldName];
-            
+
             // Handle conditional field visibility - if field is hidden, show N/A
             if (!this.isFieldVisible(fieldName)) {
                 return 'N/A';
             }
-            
+
             if (value === null || value === undefined || value === '') {
                 return 'N/A';
             }
-            
+
             // Format different data types to match CSV format
             if (typeof value === 'boolean') {
                 return value ? 'yes' : 'no';
@@ -680,39 +699,39 @@ function profileEntryApp() {
                 return String(value);
             }
         },
-        
+
         // Enhanced preview headers matching exact CSV structure
         get previewHeaders() {
             return [
                 "Name", "Type", "Company", "Material", "opening system", "system series",
-                "Code", "Length of Beam\nm", "Renovation\nonly for frame", "width", 
+                "Code", "Length of Beam\nm", "Renovation\nonly for frame", "width",
                 "builtin Flyscreen track only for sliding frame", "Total width\nonly for frame with builtin flyscreen",
                 "flyscreen track height\nonly for frame with builtin flyscreen", "front Height mm", "Rear heightt",
                 "Glazing height", "Renovation height mm\nonly for frame", "Glazing undercut heigth\nonly for glazing bead",
-                "Pic", "Sash overlap only for sashs", "flying mullion horizontal clearance", 
+                "Pic", "Sash overlap only for sashs", "flying mullion horizontal clearance",
                 "flying mullion vertical clearance", "Steel material thickness\nonly for reinforcement",
                 "Weight/m kg", "Reinforcement steel", "Colours", "Price/m", "Price per/beam", "UPVC Profile Discount%"
             ];
         },
-        
+
         async saveConfiguration() {
             // Validate all fields before saving
             this.validateAllFields();
-            
+
             if (!this.isFormValid) {
                 showToast('Please fix validation errors before saving', 'error');
                 // Scroll to first error
                 this.scrollToFirstError();
                 return;
             }
-            
+
             this.saving = true;
             this.error = null;
-            
+
             try {
                 // Prepare data for saving (exclude empty/null values for optional fields)
                 const saveData = this.prepareSaveData();
-                
+
                 const response = await fetch('/api/v1/admin/entry/profile/save', {
                     method: 'POST',
                     headers: {
@@ -721,7 +740,7 @@ function profileEntryApp() {
                     credentials: 'include',  // Include cookies for admin authentication
                     body: JSON.stringify(saveData)
                 });
-                
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     if (response.status === 422 && errorData.detail && errorData.detail.field_errors) {
@@ -739,22 +758,22 @@ function profileEntryApp() {
                     }
                     return;
                 }
-                
+
                 const configuration = await response.json();
                 showToast('Configuration saved successfully!', 'success');
-                
+
                 // Update UI state
                 this.lastSavedData = { ...this.formData };
-                
+
                 // Optionally redirect or update URL
                 if (configuration.id) {
                     const url = new URL(window.location);
                     url.searchParams.set('configuration_id', configuration.id);
                     window.history.replaceState({}, '', url);
                 }
-                
+
                 console.log('Saved configuration:', configuration);
-                
+
             } catch (err) {
                 console.error('Error saving configuration:', err);
                 this.error = err.message || 'Failed to save configuration';
@@ -763,10 +782,10 @@ function profileEntryApp() {
                 this.saving = false;
             }
         },
-        
+
         prepareSaveData() {
             const saveData = { ...this.formData };
-            
+
             // Remove fields that are not visible (conditional logic)
             if (this.schema) {
                 for (const section of this.schema.sections) {
@@ -777,17 +796,17 @@ function profileEntryApp() {
                     }
                 }
             }
-            
+
             // Convert empty strings to null for optional fields
             Object.keys(saveData).forEach(key => {
                 if (saveData[key] === '') {
                     saveData[key] = null;
                 }
             });
-            
+
             return saveData;
         },
-        
+
         scrollToFirstError() {
             const firstErrorField = Object.keys(this.fieldErrors)[0];
             if (firstErrorField) {
@@ -798,27 +817,27 @@ function profileEntryApp() {
                 }
             }
         },
-        
+
         // Auto-save functionality (optional)
         startAutoSave() {
             if (this.autoSaveInterval) {
                 clearInterval(this.autoSaveInterval);
             }
-            
+
             this.autoSaveInterval = setInterval(() => {
                 if (this.hasUnsavedChanges() && this.isFormValid) {
                     this.autoSave();
                 }
             }, 30000); // Auto-save every 30 seconds
         },
-        
+
         hasUnsavedChanges() {
             return JSON.stringify(this.formData) !== JSON.stringify(this.lastSavedData || {});
         },
-        
+
         async autoSave() {
             if (this.saving) return;
-            
+
             try {
                 await this.saveConfiguration();
                 console.log('Auto-saved configuration');
@@ -826,10 +845,10 @@ function profileEntryApp() {
                 console.warn('Auto-save failed:', err);
             }
         },
-        
+
         isValueChanged(header) {
             if (!this.lastSavedData) return false;
-            
+
             const headerMapping = {
                 "Name": "name",
                 "Type": "type",
@@ -861,22 +880,22 @@ function profileEntryApp() {
                 "Price per/beam": "price_per_beam",
                 "UPVC Profile Discount%": "upvc_profile_discount"
             };
-            
+
             const fieldName = headerMapping[header];
             if (!fieldName) return false;
-            
+
             return this.formData[fieldName] !== this.lastSavedData[fieldName];
         },
-        
+
         getCompletedFieldsCount() {
             if (!this.schema) return 0;
-            
+
             let completed = 0;
             for (const section of this.schema.sections) {
                 for (const field of section.fields) {
                     if (this.isFieldVisible(field.name)) {
                         const value = this.formData[field.name];
-                        if (value !== null && value !== undefined && value !== '' && 
+                        if (value !== null && value !== undefined && value !== '' &&
                             !(Array.isArray(value) && value.length === 0)) {
                             completed++;
                         }
@@ -885,10 +904,10 @@ function profileEntryApp() {
             }
             return completed;
         },
-        
+
         getTotalFieldsCount() {
             if (!this.schema) return 0;
-            
+
             let total = 0;
             for (const section of this.schema.sections) {
                 for (const field of section.fields) {

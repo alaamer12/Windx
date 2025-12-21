@@ -133,6 +133,14 @@ class FieldDefinition(BaseModel):
             examples=[["Frame", "Flying mullion"], ["Aluminum", "Vinyl", "Wood"]],
         ),
     ] = None
+    sort_order: Annotated[
+        int,
+        Field(
+            default=0,
+            description="Display order",
+            examples=[1, 10, 100],
+        ),
+    ] = 0
 
 
 class FormSection(BaseModel):

@@ -13,9 +13,26 @@
     {{ rbac_sidebar(active_page="dashboard") }}
 #}
 {% macro rbac_sidebar(active_page=None) %}
-  <aside class="sidebar">
+  <aside class="sidebar" x-data="{ collapsed: false }" :class="{ 'collapsed': collapsed }">
     <div class="sidebar-header">
-      <a href="/api/v1/admin/dashboard" class="logo">WindX Admin</a>
+      <a href="/api/v1/admin/dashboard" class="logo" x-show="!collapsed" x-transition>WindX Admin</a>
+      <!-- Toggle Button -->
+      <button 
+        @click="collapsed = !collapsed" 
+        class="sidebar-toggle-btn"
+        :class="{ 'collapsed': collapsed }"
+        title="Toggle Sidebar"
+        type="button">
+        <svg x-show="!collapsed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <svg x-show="collapsed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
     
     <nav class="sidebar-nav">
@@ -44,7 +61,7 @@
       
       {# Entry Pages - submenu #}
       <div class="nav-section">
-        <div class="nav-section-title">Entry</div>
+        <div class="nav-section-title" x-show="!collapsed" x-transition>Entry</div>
         {{ rbac.rbac_nav_item(
           'Profile',
           '/api/v1/admin/entry/profile',
@@ -127,11 +144,14 @@
     </nav>
     
     <div class="sidebar-footer">
-      <div class="user-info">
+      <div class="user-info" x-show="!collapsed" x-transition>
         <span class="user-icon">👤</span>
         <span class="user-name">{{ current_user.username if current_user else 'Admin' }}</span>
       </div>
-      <a href="/api/v1/admin/logout" class="logout-btn">Logout</a>
+      <a href="/api/v1/admin/logout" class="logout-btn" :class="{ 'icon-only': collapsed }">
+        <span x-show="!collapsed" x-transition>Logout</span>
+        <span x-show="collapsed" x-transition>🚪</span>
+      </a>
     </div>
   </aside>
 {% endmacro %}

@@ -1,10 +1,12 @@
 {% extends "admin/base.html.jinja" %}
 {% from "components/tables.html.jinja" import table_container with context %}
+{% from "admin/components/tooltip_component.html.jinja" import tooltip with context %}
 
 {% block title %}Profile Entry - {{ super() }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/profile-entry.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css">
 {% endblock %}
 
 {% block content %}
@@ -83,11 +85,13 @@
                                     
                                     <!-- Field Label -->
                                     <label class="field-label" :for="field.name">
-                                        <span x-text="field.label"></span>
-                                        <span x-show="field.required" class="text-red-500 ml-1">*</span>
-                                        <span x-show="field.description && field.description !== field.label" 
-                                              class="text-gray-400 text-xs ml-2 font-normal italic" 
-                                              x-text="'(' + field.description + ')'"></span>
+                                        <div class="flex items-center gap-2">
+                                            <span x-text="field.label"></span>
+                                            <span x-show="field.required" class="text-red-500">*</span>
+                                            <template x-if="field.description">
+                                                {{ tooltip(content="", alpine_binding="field.description", attrs='x-tooltip="field.description"') }}
+                                            </template>
+                                        </div>
                                     </label>
                                     
                                     <!-- Help Text -->
@@ -165,9 +169,28 @@
 <script>
 // Pass server-side data to JavaScript
 window.INITIAL_MANUFACTURING_TYPE_ID = {{ manufacturing_type_id or 'null' }};
+
+document.addEventListener('alpine:init', () => {
+    // Add a custom directive for tooltips
+    Alpine.directive('tooltip', (el, { expression }, { evaluate }) => {
+        const content = evaluate(expression);
+        if (!content) return;
+        
+        tippy(el, {
+            content: content,
+            theme: 'custom',
+            allowHTML: true,
+            delay: [200, 0],
+            interactive: true,
+            appendTo: () => document.body
+        });
+    });
+});
 </script>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js"></script>
 <script src="/static/js/profile-entry.js"></script>
 {% endblock %}

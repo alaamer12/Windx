@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "admin/components/tooltip_component.html.jinja" import tooltip with context %}
 
 {% block title %}{% if node %}Edit Node{% else %}Create Node{% endif %}{% endblock %}
 
@@ -443,7 +444,7 @@
                             <label>
                                 Node Name
                                 <span class="required-badge">Required</span>
-                                <span class="tooltip-icon" data-tippy-content="The display name shown to users when configuring products. Should be clear and descriptive.<br><br><strong>Examples:</strong><br>• 'Frame Material' - for material selection<br>• 'Glass Type' - for glass options<br>• 'Width' - for dimension input<br>• 'Premium Hardware' - for upgrade option">!</span>
+                                {{ tooltip(content="The display name shown to users when configuring products. Should be clear and descriptive.<br><br><strong>Examples:</strong><br>• 'Frame Material' - for material selection<br>• 'Glass Type' - for glass options<br>• 'Width' - for dimension input<br>• 'Premium Hardware' - for upgrade option") }}
                             </label>
                             <input type="text" 
                                    name="name" 
@@ -457,7 +458,7 @@
                             <label>
                                 Node Type
                                 <span class="required-badge">Required</span>
-                                <span class="tooltip-icon" data-tippy-content="Defines the node's role in the hierarchy:<br><br><strong>Category:</strong> Organizational grouping (e.g., 'Frame Options')<br>• No direct value, contains other nodes<br><br><strong>Attribute:</strong> Configurable property (e.g., 'Material Type')<br>• Has a data type and can be required<br><br><strong>Option:</strong> Selectable choice (e.g., 'Aluminum', 'Wood')<br>• Has price/weight impacts<br><br><strong>Component:</strong> Physical part (e.g., 'Handle', 'Lock')<br>• Represents a product component<br><br><strong>Technical Spec:</strong> Calculated property (e.g., 'U-Value')<br>• Uses formulas for technical data">!</span>
+                                {{ tooltip(content="Defines the node's role in the hierarchy:<br><br><strong>Category:</strong> Organizational grouping (e.g., 'Frame Options')<br>• No direct value, contains other nodes<br><br><strong>Attribute:</strong> Configurable property (e.g., 'Material Type')<br>• Has a data type and can be required<br><br><strong>Option:</strong> Selectable choice (e.g., 'Aluminum', 'Wood')<br>• Has price/weight impacts<br><br><strong>Component:</strong> Physical part (e.g., 'Handle', 'Lock')<br>• Represents a product component<br><br><strong>Technical Spec:</strong> Calculated property (e.g., 'U-Value')<br>• Uses formulas for technical data") }}
                             </label>
                             <select name="node_type" required>
                                 <option value="">-- Select Type --</option>
@@ -492,7 +493,7 @@
                         <div class="form-field">
                             <label>
                                 Parent Node
-                                <span class="tooltip-icon" data-tippy-content="The parent node in the hierarchy. Determines where this node appears in the tree structure.<br><br><strong>Effects:</strong><br>• Defines the LTREE path automatically<br>• Controls display order and nesting<br>• Enables conditional display logic<br><br><strong>Examples:</strong><br>• None (Root) - Top-level category<br>• 'Frame Options' - Child of root<br>• 'Material Type' - Child of Frame Options">!</span>
+                                {{ tooltip(content="The parent node in the hierarchy. Determines where this node appears in the tree structure.<br><br><strong>Effects:</strong><br>• Defines the LTREE path automatically<br>• Controls display order and nesting<br>• Enables conditional display logic<br><br><strong>Examples:</strong><br>• None (Root) - Top-level category<br>• 'Frame Options' - Child of root<br>• 'Material Type' - Child of Frame Options") }}
                             </label>
                             <select name="parent_node_id" id="parent_node_id">
                                 <option value="">-- None (Root Node) --</option>
@@ -510,7 +511,7 @@
                         <div class="form-field">
                             <label>
                                 Data Type
-                                <span class="tooltip-icon" data-tippy-content="The type of value stored for this attribute:<br><br><strong>String:</strong> Text values (e.g., 'Aluminum', 'White')<br>• Stored in string_value column<br><br><strong>Number:</strong> Numeric values (e.g., 48.5, 100)<br>• Stored in numeric_value column<br>• Used for dimensions, quantities<br><br><strong>Boolean:</strong> Yes/No choices<br>• Stored in boolean_value column<br>• For features (e.g., 'Energy Star Certified')<br><br><strong>Formula:</strong> Calculated values<br>• Uses formulas for dynamic calculation<br><br><strong>Dimension:</strong> Size measurements<br>• Special handling for width/height/depth<br><br><strong>Selection:</strong> Choice from predefined options">!</span>
+                                {{ tooltip(content="The type of value stored for this attribute:<br><br><strong>String:</strong> Text values (e.g., 'Aluminum', 'White')<br>• Stored in string_value column<br><br><strong>Number:</strong> Numeric values (e.g., 48.5, 100)<br>• Stored in numeric_value column<br>• Used for dimensions, quantities<br><br><strong>Boolean:</strong> Yes/No choices<br>• Stored in boolean_value column<br>• For features (e.g., 'Energy Star Certified')<br><br><strong>Formula:</strong> Calculated values<br>• Uses formulas for dynamic calculation<br><br><strong>Dimension:</strong> Size measurements<br>• Special handling for width/height/depth<br><br><strong>Selection:</strong> Choice from predefined options") }}
                             </label>
                             <select name="data_type">
                                 <option value="">-- Select Data Type --</option>
@@ -545,7 +546,7 @@
                         <div class="form-field">
                             <label>
                                 Sort Order
-                                <span class="tooltip-icon" data-tippy-content="Controls the display order among sibling nodes. Lower numbers appear first.<br><br><strong>Effects:</strong><br>• Determines UI display sequence<br>• Only affects nodes at the same level<br>• Can be reordered anytime<br><br><strong>Examples:</strong><br>• 0 - First item (e.g., 'Material Type')<br>• 1 - Second item (e.g., 'Color')<br>• 10 - Later item (e.g., 'Advanced Options')<br><br><strong>Tip:</strong> Use increments of 10 to allow easy insertion later">!</span>
+                                {{ tooltip(content="Controls the display order among sibling nodes. Lower numbers appear first.<br><br><strong>Effects:</strong><br>• Determines UI display sequence<br>• Only affects nodes at the same level<br>• Can be reordered anytime<br><br><strong>Examples:</strong><br>• 0 - First item (e.g., 'Material Type')<br>• 1 - Second item (e.g., 'Color')<br>• 10 - Later item (e.g., 'Advanced Options')<br><br><strong>Tip:</strong> Use increments of 10 to allow easy insertion later") }}
                             </label>
                             <input type="number" 
                                    name="sort_order" 
@@ -563,7 +564,7 @@
                                        {% if (form_data and form_data.required) or (node and node.required) %}checked{% endif %}>
                                 <div class="checkbox-label">
                                     <strong>Required Field</strong>
-                                    <span class="tooltip-icon" data-tippy-content="When checked, users MUST provide a value for this attribute before completing their configuration.<br><br><strong>Effects:</strong><br>• Blocks configuration completion if empty<br>• Shows validation error if skipped<br>• Marked with asterisk (*) in UI<br><br><strong>Use for:</strong><br>• Critical dimensions (Width, Height)<br>• Essential choices (Frame Material)<br>• Mandatory specifications<br><br><strong>Don't use for:</strong><br>• Optional upgrades<br>• Cosmetic preferences<br>• Advanced features">!</span>
+                                    {{ tooltip(content="When checked, users MUST provide a value for this attribute before completing their configuration.<br><br><strong>Effects:</strong><br>• Blocks configuration completion if empty<br>• Shows validation error if skipped<br>• Marked with asterisk (*) in UI<br><br><strong>Use for:</strong><br>• Critical dimensions (Width, Height)<br>• Essential choices (Frame Material)<br>• Mandatory specifications<br><br><strong>Don't use for:</strong><br>• Optional upgrades<br>• Cosmetic preferences<br>• Advanced features") }}
                                     <div class="field-help">Users must provide a value</div>
                                 </div>
                             </div>
@@ -586,7 +587,7 @@
                         <div class="form-field">
                             <label>
                                 Price Impact Type
-                                <span class="tooltip-icon" data-tippy-content="How this node affects the total product price:<br><br><strong>Fixed Amount:</strong><br>• Adds/subtracts a fixed dollar amount<br>• Example: Aluminum Frame adds $50<br>• Use Price Impact Value field<br><br><strong>Percentage:</strong><br>• Adds/subtracts a percentage of current price<br>• Example: Premium Finish adds 15%<br>• Value of 15 means 15% increase<br><br><strong>Formula:</strong><br>• Dynamic calculation based on other values<br>• Example: width * height * 0.05<br>• Use Price Formula field<br>• Can reference: width, height, base_price, etc.<br><br><strong>Calculation Order:</strong><br>1. Base price from manufacturing type<br>2. Fixed amounts added<br>3. Percentages applied<br>4. Formulas calculated">!</span>
+                                {{ tooltip(content="How this node affects the total product price:<br><br><strong>Fixed Amount:</strong><br>• Adds/subtracts a fixed dollar amount<br>• Example: Aluminum Frame adds $50<br>• Use Price Impact Value field<br><br><strong>Percentage:</strong><br>• Adds/subtracts a percentage of current price<br>• Example: Premium Finish adds 15%<br>• Value of 15 means 15% increase<br><br><strong>Formula:</strong><br>• Dynamic calculation based on other values<br>• Example: width * height * 0.05<br>• Use Price Formula field<br>• Can reference: width, height, base_price, etc.<br><br><strong>Calculation Order:</strong><br>1. Base price from manufacturing type<br>2. Fixed amounts added<br>3. Percentages applied<br>4. Formulas calculated") }}
                             </label>
                             <select name="price_impact_type">
                                 <option value="fixed" 
@@ -608,7 +609,7 @@
                         <div class="form-field">
                             <label>
                                 Price Impact Value
-                                <span class="tooltip-icon" data-tippy-content="The numeric value for price impact (used with Fixed or Percentage types):<br><br><strong>For Fixed Amount:</strong><br>• Enter dollar amount<br>• 50 = adds $50 to price<br>• -20 = subtracts $20 from price<br>• Example: Aluminum Frame = 50.00<br><br><strong>For Percentage:</strong><br>• Enter percentage as number<br>• 15 = adds 15% to current price<br>• -10 = subtracts 10% from price<br>• Example: Premium Finish = 15<br><br><strong>For Formula:</strong><br>• Leave empty, use Price Formula instead<br><br><strong>Tip:</strong> Use negative values for discounts or cost reductions">!</span>
+                                {{ tooltip(content="The numeric value for price impact (used with Fixed or Percentage types):<br><br><strong>For Fixed Amount:</strong><br>• Enter dollar amount<br>• 50 = adds $50 to price<br>• -20 = subtracts $20 from price<br>• Example: Aluminum Frame = 50.00<br><br><strong>For Percentage:</strong><br>• Enter percentage as number<br>• 15 = adds 15% to current price<br>• -10 = subtracts 10% from price<br>• Example: Premium Finish = 15<br><br><strong>For Formula:</strong><br>• Leave empty, use Price Formula instead<br><br><strong>Tip:</strong> Use negative values for discounts or cost reductions") }}
                             </label>
                             <input type="number" 
                                    name="price_impact_value" 
@@ -622,7 +623,7 @@
                     <div class="form-field">
                         <label>
                             Price Formula
-                            <span class="tooltip-icon" data-tippy-content="Dynamic formula for calculating price impact. Only used when Price Impact Type is 'Formula'.<br><br><strong>Available Variables:</strong><br>• width, height, depth - dimensions<br>• base_price - current base price<br>• quantity - order quantity<br>• area - calculated area (width * height)<br><br><strong>Examples:</strong><br>• 'width * height * 0.05' - $0.05 per sq inch<br>• '(width + height) * 2 * 3.50' - perimeter pricing<br>• 'base_price * 0.15' - 15% of base<br>• 'area > 1000 ? 500 : 300' - conditional pricing<br><br><strong>Operators:</strong> +, -, *, /, >, <, ==, ?, :<br><br><strong>Safety:</strong> Formulas are validated before execution">!</span>
+                            {{ tooltip(content="Dynamic formula for calculating price impact. Only used when Price Impact Type is 'Formula'.<br><br><strong>Available Variables:</strong><br>• width, height, depth - dimensions<br>• base_price - current base price<br>• quantity - order quantity<br>• area - calculated area (width * height)<br><br><strong>Examples:</strong><br>• 'width * height * 0.05' - $0.05 per sq inch<br>• '(width + height) * 2 * 3.50' - perimeter pricing<br>• 'base_price * 0.15' - 15% of base<br>• 'area > 1000 ? 500 : 300' - conditional pricing<br><br><strong>Operators:</strong> +, -, *, /, >, <, ==, ?, :<br><br><strong>Safety:</strong> Formulas are validated before execution") }}
                         </label>
                         <textarea name="price_formula" 
                                   rows="2"
@@ -646,7 +647,7 @@
                         <div class="form-field">
                             <label>
                                 Weight Impact (kg)
-                                <span class="tooltip-icon" data-tippy-content="Fixed weight added to the product when this option is selected. Measured in kilograms.<br><br><strong>Effects:</strong><br>• Added to total product weight<br>• Used for shipping calculations<br>• Affects freight costs<br>• Important for logistics planning<br><br><strong>Examples:</strong><br>• Aluminum Frame: 2.5 kg<br>• Triple Pane Glass: 8.0 kg<br>• Premium Hardware: 1.2 kg<br>• Lightweight Option: -0.5 kg (reduction)<br><br><strong>Tip:</strong> Use negative values for weight-reducing options">!</span>
+                                {{ tooltip(content="Fixed weight added to the product when this option is selected. Measured in kilograms.<br><br><strong>Effects:</strong><br>• Added to total product weight<br>• Used for shipping calculations<br>• Affects freight costs<br>• Important for logistics planning<br><br><strong>Examples:</strong><br>• Aluminum Frame: 2.5 kg<br>• Triple Pane Glass: 8.0 kg<br>• Premium Hardware: 1.2 kg<br>• Lightweight Option: -0.5 kg (reduction)<br><br><strong>Tip:</strong> Use negative values for weight-reducing options") }}
                             </label>
                             <input type="number" 
                                    name="weight_impact" 
@@ -659,7 +660,7 @@
                         <div class="form-field">
                             <label>
                                 Weight Formula
-                                <span class="tooltip-icon" data-tippy-content="Dynamic formula for calculating weight based on dimensions or other factors.<br><br><strong>Available Variables:</strong><br>• width, height, depth - dimensions<br>• area - width * height<br>• volume - width * height * depth<br>• base_weight - base product weight<br><br><strong>Examples:</strong><br>• 'area * 0.02' - 0.02 kg per sq inch<br>• 'width * height * depth * 0.001' - volume-based<br>• '(width + height) * 0.05' - perimeter-based<br>• 'area > 1000 ? 15 : 10' - conditional weight<br><br><strong>Use Cases:</strong><br>• Glass weight (area-based)<br>• Frame weight (perimeter-based)<br>• Material density calculations">!</span>
+                                {{ tooltip(content="Dynamic formula for calculating weight based on dimensions or other factors.<br><br><strong>Available Variables:</strong><br>• width, height, depth - dimensions<br>• area - width * height<br>• volume - width * height * depth<br>• base_weight - base product weight<br><br><strong>Examples:</strong><br>• 'area * 0.02' - 0.02 kg per sq inch<br>• 'width * height * depth * 0.001' - volume-based<br>• '(width + height) * 0.05' - perimeter-based<br>• 'area > 1000 ? 15 : 10' - conditional weight<br><br><strong>Use Cases:</strong><br>• Glass weight (area-based)<br>• Frame weight (perimeter-based)<br>• Material density calculations") }}
                             </label>
                             <textarea name="weight_formula" 
                                       rows="2"
@@ -683,7 +684,7 @@
                     <div class="form-field">
                         <label>
                             Technical Property Type
-                            <span class="tooltip-icon" data-tippy-content="Identifier for product-specific technical specifications. Used to categorize calculated technical data.<br><br><strong>Window Examples:</strong><br>• 'u_value' - Thermal insulation (lower is better)<br>• 'shgc' - Solar heat gain coefficient<br>• 'vt' - Visible transmittance<br>• 'air_infiltration' - Air leakage rating<br>• 'water_resistance' - Water penetration rating<br><br><strong>Door Examples:</strong><br>• 'fire_rating' - Fire resistance time<br>• 'security_rating' - Break-in resistance<br>• 'sound_transmission' - Noise reduction<br><br><strong>Furniture Examples:</strong><br>• 'load_capacity' - Maximum weight<br>• 'surface_hardness' - Durability rating<br><br><strong>Storage:</strong> Stored in calculated_technical_data JSONB field">!</span>
+                            {{ tooltip(content="Identifier for product-specific technical specifications. Used to categorize calculated technical data.<br><br><strong>Window Examples:</strong><br>• 'u_value' - Thermal insulation (lower is better)<br>• 'shgc' - Solar heat gain coefficient<br>• 'vt' - Visible transmittance<br>• 'air_infiltration' - Air leakage rating<br>• 'water_resistance' - Water penetration rating<br><br><strong>Door Examples:</strong><br>• 'fire_rating' - Fire resistance time<br>• 'security_rating' - Break-in resistance<br>• 'sound_transmission' - Noise reduction<br><br><strong>Furniture Examples:</strong><br>• 'load_capacity' - Maximum weight<br>• 'surface_hardness' - Durability rating<br><br><strong>Storage:</strong> Stored in calculated_technical_data JSONB field") }}
                         </label>
                         <input type="text" 
                                name="technical_property_type" 
@@ -695,7 +696,7 @@
                     <div class="form-field">
                         <label>
                             Technical Impact Formula
-                            <span class="tooltip-icon" data-tippy-content="Formula for calculating technical specifications. Results stored in calculated_technical_data.<br><br><strong>U-Value Example (Thermal Insulation):</strong><br>• '1 / (r_value + 0.5)' - Lower is better<br>• Double Pane: r_value = 3.0 → U = 0.29<br>• Triple Pane: r_value = 5.0 → U = 0.18<br><br><strong>Load Capacity Example:</strong><br>• 'base_capacity * thickness_factor'<br>• Thicker material = higher capacity<br><br><strong>SHGC Example (Solar Heat Gain):</strong><br>• '0.7 - (coating_layers * 0.15)'<br>• More coatings = less heat gain<br><br><strong>Available Variables:</strong><br>• Any numeric attribute from configuration<br>• Material properties (thickness, density)<br>• Constants for calculations<br><br><strong>Result:</strong> Aggregated into configuration's technical_data">!</span>
+                            {{ tooltip(content="Formula for calculating technical specifications. Results stored in calculated_technical_data.<br><br><strong>U-Value Example (Thermal Insulation):</strong><br>• '1 / (r_value + 0.5)' - Lower is better<br>• Double Pane: r_value = 3.0 → U = 0.29<br>• Triple Pane: r_value = 5.0 → U = 0.18<br><br><strong>Load Capacity Example:</strong><br>• 'base_capacity * thickness_factor'<br>• Thicker material = higher capacity<br><br><strong>SHGC Example (Solar Heat Gain):</strong><br>• '0.7 - (coating_layers * 0.15)'<br>• More coatings = less heat gain<br><br><strong>Available Variables:</strong><br>• Any numeric attribute from configuration<br>• Material properties (thickness, density)<br>• Constants for calculations<br><br><strong>Result:</strong> Aggregated into configuration's technical_data") }}
                         </label>
                         <textarea name="technical_impact_formula" 
                                   rows="3"
@@ -718,7 +719,7 @@
                     <div class="form-field">
                         <label>
                             UI Component
-                            <span class="tooltip-icon" data-tippy-content="The user interface control displayed for this attribute:<br><br><strong>Dropdown Menu:</strong><br>• Best for 5+ options<br>• Saves screen space<br>• Example: Color selection (20 colors)<br><br><strong>Radio Buttons:</strong><br>• Best for 2-5 options<br>• All options visible<br>• Example: Frame Material (Aluminum, Wood, Vinyl)<br><br><strong>Checkboxes:</strong><br>• For multiple selections<br>• Independent choices<br>• Example: Optional features (Energy Star, UV Protection)<br><br><strong>Slider:</strong><br>• For numeric ranges<br>• Visual feedback<br>• Example: Dimensions (24-96 inches)<br><br><strong>Text Input:</strong><br>• For free-form entry<br>• Custom values<br>• Example: Custom dimensions, notes">!</span>
+                            {{ tooltip(content="The user interface control displayed for this attribute:<br><br><strong>Dropdown Menu:</strong><br>• Best for 5+ options<br>• Saves screen space<br>• Example: Color selection (20 colors)<br><br><strong>Radio Buttons:</strong><br>• Best for 2-5 options<br>• All options visible<br>• Example: Frame Material (Aluminum, Wood, Vinyl)<br><br><strong>Checkboxes:</strong><br>• For multiple selections<br>• Independent choices<br>• Example: Optional features (Energy Star, UV Protection)<br><br><strong>Slider:</strong><br>• For numeric ranges<br>• Visual feedback<br>• Example: Dimensions (24-96 inches)<br><br><strong>Text Input:</strong><br>• For free-form entry<br>• Custom values<br>• Example: Custom dimensions, notes") }}
                         </label>
                         <select name="ui_component">
                             <option value="">-- Select Component --</option>
@@ -749,7 +750,7 @@
                     <div class="form-field">
                         <label>
                             Description
-                            <span class="tooltip-icon" data-tippy-content="User-facing description displayed during product configuration. Should be clear, helpful, and customer-friendly.<br><br><strong>Good Examples:</strong><br>• 'Choose the frame material for your window. Aluminum is durable and low-maintenance, while wood offers classic beauty.'<br>• 'Select glass type based on your energy efficiency needs. Triple pane provides maximum insulation.'<br>• 'Enter the width of your window opening in inches.'<br><br><strong>Tips:</strong><br>• Write for customers, not technical staff<br>• Explain benefits, not just features<br>• Keep it concise (2-3 sentences max)<br>• Avoid jargon unless necessary<br><br><strong>Displayed:</strong> Near the attribute in configuration UI">!</span>
+                            {{ tooltip(content="User-facing description displayed during product configuration. Should be clear, helpful, and customer-friendly.<br><br><strong>Good Examples:</strong><br>• 'Choose the frame material for your window. Aluminum is durable and low-maintenance, while wood offers classic beauty.'<br>• 'Select glass type based on your energy efficiency needs. Triple pane provides maximum insulation.'<br>• 'Enter the width of your window opening in inches.'<br><br><strong>Tips:</strong><br>• Write for customers, not technical staff<br>• Explain benefits, not just features<br>• Keep it concise (2-3 sentences max)<br>• Avoid jargon unless necessary<br><br><strong>Displayed:</strong> Near the attribute in configuration UI") }}
                         </label>
                         <textarea name="description" 
                                   rows="3"
@@ -761,7 +762,7 @@
                     <div class="form-field">
                         <label>
                             Help Text
-                            <span class="tooltip-icon" data-tippy-content="Additional guidance shown as a tooltip or help icon. Use for extra tips, warnings, or clarifications.<br><br><strong>Good Examples:</strong><br>• 'Aluminum is best for coastal areas due to corrosion resistance.'<br>• 'Measure the rough opening, not the existing window.'<br>• 'Triple pane adds significant weight - ensure proper support.'<br>• 'This option may extend lead time by 2 weeks.'<br><br><strong>Use For:</strong><br>• Technical tips<br>• Measurement instructions<br>• Material recommendations<br>• Lead time warnings<br>• Installation considerations<br><br><strong>Displayed:</strong> As tooltip (?) icon or expandable help section">!</span>
+                            {{ tooltip(content="Additional guidance shown as a tooltip or help icon. Use for extra tips, warnings, or clarifications.<br><br><strong>Good Examples:</strong><br>• 'Aluminum is best for coastal areas due to corrosion resistance.'<br>• 'Measure the rough opening, not the existing window.'<br>• 'Triple pane adds significant weight - ensure proper support.'<br>• 'This option may extend lead time by 2 weeks.'<br><br><strong>Use For:</strong><br>• Technical tips<br>• Measurement instructions<br>• Material recommendations<br>• Lead time warnings<br>• Installation considerations<br><br><strong>Displayed:</strong> As tooltip (?) icon or expandable help section") }}
                         </label>
                         <textarea name="help_text" 
                                   rows="2"

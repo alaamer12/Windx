@@ -1,3 +1,6 @@
-{% macro tooltip(content) %}
-<span class="tooltip-icon" data-tippy-content="{{ content }}">!</span>
+{% macro tooltip(content, alpine_binding=None, allow_html=True, attrs="") %}
+<span class="tooltip-icon" 
+      {% if alpine_binding %}:data-tippy-content="{{ alpine_binding }}"{% else %}data-tippy-content="{{ content }}"{% endif %}
+      {% if allow_html %}data-tippy-allowHTML="true"{% endif %}
+      {{ attrs }}>!</span>
 {% endmacro %}

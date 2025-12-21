@@ -136,53 +136,47 @@
     max-height: calc(100vh - 300px);
 }
 
-.preview-table {
-    width: 100%;
+#preview-tab table {
+    min-width: 1500px;
+    /* Increased for better legibility with many columns */
     border-collapse: collapse;
-    font-size: 0.75rem;
-    min-width: 1200px;
 }
 
-.preview-table th,
-.preview-table td {
-    border: 1px solid #d1d5db;
-    padding: 0.375rem 0.5rem;
-    text-align: left;
+#preview-tab th,
+#preview-tab td {
     vertical-align: top;
     white-space: nowrap;
-    max-width: 120px;
+    max-width: 180px;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.preview-table th {
-    background-color: #f9fafb;
+#preview-tab th {
     font-weight: 600;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    font-size: 0.7rem;
-    line-height: 1.2;
-    white-space: pre-line;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-.preview-table td {
-    background-color: white;
-    transition: background-color 0.2s;
-}
-
-.preview-table td:hover {
-    background-color: #f3f4f6;
-}
-
-.preview-table .na-value {
+.na-value {
     color: #9ca3af;
     font-style: italic;
 }
 
-.preview-table .value-changed {
+.value-changed {
+    color: #2563eb;
+    font-weight: 600;
     background-color: #fef3c7;
     animation: highlight 1s ease-out;
+}
+
+#preview-tab td {
+    background-color: white;
+    transition: background-color 0.2s;
+}
+
+#preview-tab td:hover {
+    background-color: #f3f4f6;
 }
 
 @keyframes highlight {

@@ -333,6 +333,10 @@ async def profile_page(
     """
     from app.services.entry import JAVASCRIPT_CONDITION_EVALUATOR
 
+    # If no manufacturing_type_id provided, use the Window Profile Entry type (ID: 475)
+    if manufacturing_type_id is None:
+        manufacturing_type_id = 475
+
     return templates.TemplateResponse(
         request,
         "admin/entry/profile.html.jinja",

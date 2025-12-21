@@ -109,8 +109,8 @@ async def test_create_attribute_node_workflow(
     await expect(success_alert).to_be_visible(timeout=10000)
     await expect(success_alert).to_contain_text("created", ignore_case=True)
 
-    # Verify node appears in tree (using strong tag from enhanced template)
-    node_in_tree = hierarchy_page.locator('strong:has-text("E2E Test Node")')
+    # Verify node appears in tree (nodes are clickable spans in the tree)
+    node_in_tree = hierarchy_page.locator('.tree-node-clickable:has-text("E2E Test Node")')
     await expect(node_in_tree).to_be_visible()
 
 
@@ -152,11 +152,17 @@ async def test_edit_attribute_node_workflow(
     )
     await hierarchy_page.wait_for_load_state("networkidle")
 
-    # Find and click on the node itself (enhanced template uses onclick="selectNode()")
-    # The node is rendered as a div with onclick handler
-    node_div = hierarchy_page.locator(f'div[onclick*="selectNode({node.id})"]')
-    await expect(node_div).to_be_visible(timeout=10000)
-    await node_div.click()
+    # Find and click on the node itself (nodes are rendered as clickable spans)
+    # The node is rendered as a span with onclick handler and class tree-node-clickable
+    node_span = hierarchy_page.locator(f'.tree-node-clickable[data-node-id="{node.id}"]')
+    await expect(node_span).to_be_visible(timeout=10000)
+    await node_span.click()
+
+    # Wait for node details to load, then click the edit button
+    await hierarchy_page.wait_for_timeout(1000)
+    edit_button = hierarchy_page.locator(f'a[href*="/node/{node.id}/edit"]')
+    await expect(edit_button).to_be_visible(timeout=5000)
+    await edit_button.click()
 
     # Wait for edit form to load
     await hierarchy_page.wait_for_timeout(1000)
@@ -186,7 +192,7 @@ async def test_edit_attribute_node_workflow(
     await expect(success_alert).to_contain_text("updated", ignore_case=True)
 
     # Verify updated name appears in tree
-    updated_node = hierarchy_page.locator('text="Updated Node Name"')
+    updated_node = hierarchy_page.locator('.tree-node-clickable:has-text("Updated Node Name")')
     await expect(updated_node).to_be_visible()
 
 
@@ -228,8 +234,8 @@ async def test_delete_attribute_node_with_confirmation(
     )
     await hierarchy_page.wait_for_load_state("networkidle")
 
-    # Verify node exists (enhanced template uses strong tags for node names)
-    node_text = hierarchy_page.locator('strong:has-text("Node To Delete")')
+    # Verify node exists (nodes are clickable spans in the tree)
+    node_text = hierarchy_page.locator('.tree-node-clickable:has-text("Node To Delete")')
     await expect(node_text).to_be_visible(timeout=10000)
 
     # Delete via direct POST to the delete endpoint (UI doesn't have delete button yet)
@@ -252,8 +258,8 @@ async def test_delete_attribute_node_with_confirmation(
     await expect(success_alert).to_be_visible(timeout=10000)
     await expect(success_alert).to_contain_text("deleted", ignore_case=True)
 
-    # Verify node is removed from tree (using strong tag)
-    deleted_node = hierarchy_page.locator('strong:has-text("Node To Delete")')
+    # Verify node is removed from tree (using clickable span)
+    deleted_node = hierarchy_page.locator('.tree-node-clickable:has-text("Node To Delete")')
     await expect(deleted_node).not_to_be_visible()
 
 
@@ -294,7 +300,7 @@ async def test_cancel_delete_attribute_node(
     await hierarchy_page.wait_for_load_state("networkidle")
 
     # Verify node exists initially
-    node_text = hierarchy_page.locator('strong:has-text("Node To Keep")')
+    node_text = hierarchy_page.locator('.tree-node-clickable:has-text("Node To Keep")')
     await expect(node_text).to_be_visible(timeout=10000)
 
     # Test that NOT deleting keeps the node (skip actual delete attempt)
@@ -306,7 +312,7 @@ async def test_cancel_delete_attribute_node(
     await hierarchy_page.wait_for_load_state("networkidle")
 
     # Verify node is still visible
-    node_text = hierarchy_page.locator('strong:has-text("Node To Keep")')
+    node_text = hierarchy_page.locator('.tree-node-clickable:has-text("Node To Keep")')
     await expect(node_text).to_be_visible()
 
 
@@ -377,14 +383,14 @@ async def test_navigation_and_display(
         error_text = await error_alert.first.text_content()
         print(f"⚠️ Error on page: {error_text}")
 
-    # Verify tree displays nodes (enhanced template renders nodes in divs with strong tags)
+    # Verify tree displays nodes (nodes are clickable spans in the tree)
     # The template shows nodes in a list format with ltree_path and name
-    root_node = hierarchy_page.locator('strong:has-text("Root Category")')
+    root_node = hierarchy_page.locator('.tree-node-clickable:has-text("Root Category")')
     await expect(root_node).to_be_visible(timeout=10000)
 
     # Child node should also be visible in the tree
-    # It's rendered as: <span>path</span><strong>Child Attribute</strong>
-    child_node = hierarchy_page.locator('strong:has-text("Child Attribute")')
+    # It's rendered as a clickable span with the node name
+    child_node = hierarchy_page.locator('.tree-node-clickable:has-text("Child Attribute")')
     child_count = await child_node.count()
 
     if child_count > 0:
@@ -395,9 +401,9 @@ async def test_navigation_and_display(
         # This is acceptable as the enhanced template may show a flat structure
         print("Child node not found in tree - enhanced template may show flat structure")
         # Verify we have at least some nodes displayed
-        all_strong_tags = hierarchy_page.locator("strong")
-        strong_count = await all_strong_tags.count()
-        assert strong_count >= 1, f"Expected at least 1 node, found {strong_count}"
+        all_clickable_nodes = hierarchy_page.locator(".tree-node-clickable")
+        node_count = await all_clickable_nodes.count()
+        assert node_count >= 1, f"Expected at least 1 node, found {node_count}"
 
     # Verify create button exists (actual text is "Create Root Node")
     create_button = hierarchy_page.locator(

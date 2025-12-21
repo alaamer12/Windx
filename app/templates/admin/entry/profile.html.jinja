@@ -500,9 +500,15 @@ function profileEntryApp() {
         
         // Methods
         async init() {
+            console.log('🚀 Initializing profileEntryApp...');
+            console.log('📋 manufacturingTypeId:', this.manufacturingTypeId);
+            
             await this.loadManufacturingTypes();
             if (this.manufacturingTypeId) {
+                console.log('📊 Loading schema for manufacturing type:', this.manufacturingTypeId);
                 await this.loadSchema();
+            } else {
+                console.log('⚠️ No manufacturingTypeId provided');
             }
         },
         
@@ -528,22 +534,34 @@ function profileEntryApp() {
                 return;
             }
             
+            console.log('🔄 Loading schema for manufacturing type:', this.manufacturingTypeId);
             this.loading = true;
             this.error = null;
             
             try {
-                const response = await fetch(`/api/v1/admin/entry/profile/schema/${this.manufacturingTypeId}`, {
+                const url = `/api/v1/admin/entry/profile/schema/${this.manufacturingTypeId}`;
+                console.log('📡 Fetching schema from:', url);
+                
+                const response = await fetch(url, {
                     credentials: 'include'  // Include cookies for admin authentication
                 });
                 
-                if (!response.ok) throw new Error('Failed to load schema');
+                console.log('📡 Response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Schema fetch failed:', response.status, errorText);
+                    throw new Error(`Failed to load schema: ${response.status}`);
+                }
                 
                 this.schema = await response.json();
+                console.log('✅ Schema loaded successfully:', this.schema);
+                
                 this.initializeFormData();
                 this.updateFieldVisibility();
             } catch (err) {
-                console.error('Error loading schema:', err);
-                this.error = 'Failed to load form schema';
+                console.error('❌ Error loading schema:', err);
+                this.error = 'Failed to load form schema: ' + err.message;
             } finally {
                 this.loading = false;
             }

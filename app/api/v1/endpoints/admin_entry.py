@@ -331,11 +331,31 @@ async def profile_page(
     Example:
         GET /api/v1/admin/entry/profile?manufacturing_type_id=1
     """
+    from app.core.manufacturing_type_resolver import ManufacturingTypeResolver
     from app.services.entry import JAVASCRIPT_CONDITION_EVALUATOR
 
-    # If no manufacturing_type_id provided, use the Window Profile Entry type (ID: 475)
+    # If no manufacturing_type_id provided, resolve the default profile entry type
     if manufacturing_type_id is None:
-        manufacturing_type_id = 475
+        from app.api.deps import get_db_session
+        
+        async for db in get_db_session():
+            default_type = await ManufacturingTypeResolver.get_default_profile_entry_type(db)
+            if default_type:
+                manufacturing_type_id = default_type.id
+            else:
+                # No manufacturing types exist - show error page or redirect to setup
+                return templates.TemplateResponse(
+                    request,
+                    "admin/error.html.jinja",
+                    get_admin_context(
+                        request,
+                        current_superuser,
+                        error_message="No manufacturing types found. Please run the setup script.",
+                        page_title="Setup Required",
+                    ),
+                    status_code=503,
+                )
+            break
 
     return templates.TemplateResponse(
         request,

@@ -507,8 +507,53 @@ async def create_attribute_nodes(
     result = await session.execute(stmt)
     existing_nodes = result.scalars().all()
 
+    # Comprehensive tooltip content for all fields
+    tooltip_content = {
+        "name": {
+            "description": "A unique identifier for this profile.<br><br><strong>Examples:</strong><br>• 'Standard Casement Window'<br>• 'Premium Sliding Door'<br>• 'Economy Frame Profile'<br><br><strong>Tip:</strong> Use descriptive names that clearly identify the product type and variant.",
+            "help_text": "This name will be used in reports, quotes, and inventory listings. Make it descriptive enough to distinguish between similar profiles."
+        },
+        "type": {
+            "description": "The category of this profile component.<br><br><strong>Options:</strong><br>• <strong>Frame</strong> - Main structural component that holds the glass<br>• <strong>Sash</strong> - Movable window panel<br>• <strong>Mullion</strong> - Vertical or horizontal divider<br>• <strong>Glazing Bead</strong> - Strip that holds glass in place<br>• <strong>Track</strong> - Sliding mechanism component",
+            "help_text": "Select the type that best describes this profile's function in the window or door assembly."
+        },
+        "company": {
+            "description": "The manufacturer or supplier of this profile system.<br><br><strong>Use:</strong><br>• Select from your database of approved suppliers<br>• Affects pricing, availability, and compatibility<br>• Used for inventory tracking and ordering<br><br><strong>Note:</strong> Different companies may have incompatible profile systems.",
+            "help_text": "Ensure all components in a project use compatible systems from the same manufacturer."
+        },
+        "material": {
+            "description": "The primary material composition of the profile.<br><br><strong>Common Options:</strong><br>• <strong>UPVC</strong> - Durable, low-maintenance plastic (most common)<br>• <strong>Aluminum</strong> - Strong, corrosion-resistant metal<br>• <strong>Wood</strong> - Traditional, natural material<br>• <strong>Composite</strong> - Combination of materials<br><br><strong>Properties:</strong><br>• Affects thermal performance<br>• Determines maintenance requirements<br>• Impacts pricing",
+            "help_text": "UPVC is the most popular choice for residential applications due to its durability and low maintenance."
+        },
+        "opening_system": {
+            "description": "The window or door opening mechanism type.<br><br><strong>Common Types:</strong><br>• <strong>Casement</strong> - Hinged window that opens outward<br>• <strong>Sliding</strong> - Horizontal sliding panels<br>• <strong>Tilt & Turn</strong> - Dual-action opening<br>• <strong>Fixed</strong> - Non-opening window<br>• <strong>Awning</strong> - Top-hinged, opens outward<br><br><strong>Selection Criteria:</strong><br>• Space availability<br>• Ventilation needs<br>• Ease of cleaning",
+            "help_text": "The opening system affects hardware requirements, pricing, and installation complexity."
+        },
+        "system_series": {
+            "description": "The specific profile system series from the manufacturer.<br><br><strong>Examples:</strong><br>• Kom700 - Standard residential series<br>• Kom701 - Enhanced thermal performance<br>• Kom800 - Premium commercial series<br><br><strong>Series Differences:</strong><br>• Chamber count (thermal efficiency)<br>• Wall thickness (strength)<br>• Glass capacity<br>• Price point",
+            "help_text": "Higher series numbers typically indicate better performance and higher cost. Verify compatibility with other components."
+        },
+        "width": {
+            "description": "The width of the profile cross-section in millimeters.<br><br><strong>Measurement:</strong><br>• Measure the actual profile width<br>• Include any flanges or extensions<br>• Exclude gaskets and seals<br><br><strong>Common Widths:</strong><br>• Frame profiles: 60-90mm<br>• Sash profiles: 50-70mm<br>• Mullions: 40-60mm<br><br><strong>Impact:</strong><br>• Affects glass capacity<br>• Determines thermal performance<br>• Influences material cost",
+            "help_text": "Wider profiles generally provide better insulation but cost more. Verify compatibility with glass thickness."
+        },
+        "upvc_profile_discount": {
+            "description": "Percentage discount applied to UPVC profile pricing.<br><br><strong>Usage:</strong><br>• Standard discount: 15-25%<br>• Volume discount: up to 40%<br>• Promotional discount: varies<br><br><strong>Application:</strong><br>• Applied to base profile price<br>• Before other calculations<br>• Affects final quote pricing<br><br><strong>Example:</strong><br>• Base price: $100/meter<br>• 20% discount: Final = $80/meter",
+            "help_text": "This discount is typically negotiated with suppliers based on volume commitments. Update regularly based on current agreements."
+        },
+        "price_per_meter": {
+            "description": "The cost per linear meter of this profile in your local currency.<br><br><strong>Includes:</strong><br>• Base material cost<br>• Manufacturing overhead<br>• Supplier markup<br><br><strong>Excludes:</strong><br>• Installation labor<br>• Hardware and accessories<br>• Glass and glazing<br><br><strong>Note:</strong> This is the list price before any discounts are applied.",
+            "help_text": "Update this price regularly to reflect current supplier pricing. Use for cost estimation and quoting."
+        },
+        "weight_per_meter": {
+            "description": "The weight of the profile per linear meter in kilograms.<br><br><strong>Purpose:</strong><br>• Shipping cost calculations<br>• Structural load analysis<br>• Hardware sizing<br>• Installation planning<br><br><strong>Typical Values:</strong><br>• Light profiles: 0.5-1.0 kg/m<br>• Standard profiles: 1.0-2.0 kg/m<br>• Heavy profiles: 2.0-4.0 kg/m",
+            "help_text": "Heavier profiles generally indicate thicker walls and better structural performance but increase shipping costs."
+        },
+        # Add more tooltip content for other fields as needed
+    }
+
     if existing_nodes:
-        print(f"  ⚠️  Found {len(existing_nodes)} existing nodes, updating metadata...")
+        print(f"  ⚠️  Found {len(existing_nodes)} existing nodes, updating metadata and tooltips...")
         existing_map = {n.name: n for n in existing_nodes}
         
         updated_count = 0
@@ -519,22 +564,37 @@ async def create_attribute_nodes(
                 node.ui_component = attr_def["ui_component"]
                 node.validation_rules = attr_def.get("validation_rules")
                 node.display_condition = attr_def.get("display_condition")
-                node.description = attr_def["description"]
-                node.help_text = attr_def["help_text"]
+                
+                # Update with rich tooltip content if available
+                if attr_def["name"] in tooltip_content:
+                    node.description = tooltip_content[attr_def["name"]]["description"]
+                    node.help_text = tooltip_content[attr_def["name"]]["help_text"]
+                else:
+                    node.description = attr_def["description"]
+                    node.help_text = attr_def["help_text"]
+                
                 updated_count += 1
         
         await session.commit()
-        print(f"  ✅ Updated {updated_count} attribute nodes")
+        print(f"  ✅ Updated {updated_count} attribute nodes with tooltips")
         return
 
     # Create attribute nodes if not existing
     created_count = 0
     for attr_def in attribute_definitions:
+        # Use rich tooltip content if available, otherwise use basic description
+        if attr_def["name"] in tooltip_content:
+            description = tooltip_content[attr_def["name"]]["description"]
+            help_text = tooltip_content[attr_def["name"]]["help_text"]
+        else:
+            description = attr_def["description"]
+            help_text = attr_def["help_text"]
+        
         node = AttributeNode(
             manufacturing_type_id=manufacturing_type.id,
             parent_node_id=None,  # All are root level for now
             name=attr_def["name"],
-            description=attr_def["description"],
+            description=description,
             node_type=attr_def["node_type"],
             data_type=attr_def["data_type"],
             required=attr_def["required"],
@@ -542,7 +602,7 @@ async def create_attribute_nodes(
             depth=attr_def["depth"],
             sort_order=attr_def["sort_order"],
             ui_component=attr_def["ui_component"],
-            help_text=attr_def["help_text"],
+            help_text=help_text,
             validation_rules=attr_def.get("validation_rules"),
             display_condition=attr_def.get("display_condition"),
         )
@@ -550,7 +610,7 @@ async def create_attribute_nodes(
         created_count += 1
 
     await session.commit()
-    print(f"  ✅ Created {created_count} attribute nodes")
+    print(f"  ✅ Created {created_count} attribute nodes with comprehensive tooltips")
 
 
 async def main():

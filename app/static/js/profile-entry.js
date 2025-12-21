@@ -92,6 +92,7 @@ function profileEntryApp() {
         fieldVisibility: {},
         fieldErrors: {},
         activeTab: 'input', // Default to input tab
+        imagePreviews: {}, // Store object URLs for image previews
 
         loading: false,
         saving: false,
@@ -418,20 +419,54 @@ function profileEntryApp() {
 
                 case 'file':
                     return `
-                    <div class="flex items-center justify-center w-full">
-                        <label for="${fieldId}" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                            <div class="flex flex-col items-center justify-center pt-5 pb-6">
-                                <svg class="w-8 h-8 mb-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/>
-                                </svg>
-                                <p class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
-                                <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                    <div class="w-full">
+                        <div class="flex flex-col space-y-2">
+                            <label :for="'${fieldId}'" 
+                                   class="file-upload-label flex flex-row items-center justify-start w-full h-24 px-6 border-2 border-gray-300 border-dashed rounded-lg bg-gray-50 hover:bg-gray-100 hover:border-blue-400 transition-all group cursor-pointer">
+                                
+                                <div class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-50 text-blue-600 mr-4 group-hover:bg-blue-100 transition-colors">
+                                    <svg style="width: 24px; height: 24px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                
+                                <div class="flex flex-col items-start text-left flex-grow">
+                                    <p class="mb-1 text-sm text-gray-700">
+                                        <span class="font-semibold text-blue-600">Click to upload</span> or drag and drop
+                                    </p>
+                                    <p class="text-xs text-gray-500">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
+                                </div>
+                                
+                                <!-- Reactive Image Preview -->
+                                <div x-show="imagePreviews['${field.name}']" class="ml-4 flex-shrink-0 animate-fade-in">
+                                    <img :src="imagePreviews['${field.name}']" 
+                                         class="h-16 w-16 object-cover rounded shadow-sm border-2 border-white ring-2 ring-gray-100"
+                                         @click.stop>
+                                </div>
+
+                                <input id="${fieldId}" 
+                                       type="file" 
+                                       class="hidden" 
+                                       accept="image/*" 
+                                       @change="handleFileChange('${field.name}', $event)" />
+                            </label>
+
+                            <!-- Selected File Banner -->
+                            <div x-show="formData['${field.name}']" 
+                                 x-transition 
+                                 class="flex items-center justify-between bg-blue-50/50 border border-blue-100 px-3 py-2 rounded-md text-sm">
+                                <div class="flex items-center overflow-hidden">
+                                    <i class="fas fa-file-image text-blue-500 mr-2 flex-shrink-0"></i>
+                                    <span class="text-gray-500 mr-1 flex-shrink-0">Selected:</span>
+                                    <span x-text="formData['${field.name}']" class="font-medium text-gray-900 truncate"></span>
+                                </div>
+                                <button type="button" 
+                                        @click="clearFile('${field.name}')" 
+                                        class="text-red-500 hover:text-red-700 font-semibold ml-4 flex-shrink-0 transition-colors">
+                                    Remove
+                                </button>
                             </div>
-                            <input id="${fieldId}" type="file" class="hidden" @change="updateField('${field.name}', $event.target.files[0] ? $event.target.files[0].name : '')" />
-                        </label>
-                    </div>
-                    <div v-if="formData['${field.name}']" class="mt-2 text-sm text-gray-600">
-                        Selected: {{ formData['${field.name}'] }}
+                        </div>
                     </div>
                     `;
 
@@ -506,6 +541,41 @@ function profileEntryApp() {
         updateMultiSelectField(fieldName, selectElement) {
             const selectedOptions = Array.from(selectElement.selectedOptions).map(option => option.value);
             this.updateField(fieldName, selectedOptions);
+        },
+
+        handleFileChange(fieldName, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Update form data with filename
+            this.updateField(fieldName, file.name);
+
+            // Create image preview if it's an image
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Force Alpine.js reactivity using spread
+                    this.imagePreviews = {
+                        ...this.imagePreviews,
+                        [fieldName]: e.target.result
+                    };
+                };
+                reader.readAsDataURL(file);
+            }
+        },
+
+        clearFile(fieldName) {
+            this.updateField(fieldName, '');
+            // Create a copy and delete to trigger reactivity
+            const updatedPreviews = { ...this.imagePreviews };
+            delete updatedPreviews[fieldName];
+            this.imagePreviews = updatedPreviews;
+
+            // Clear the file input element if it exists
+            const input = document.getElementById(fieldName);
+            if (input) {
+                input.value = '';
+            }
         },
 
         updateField(fieldName, value) {

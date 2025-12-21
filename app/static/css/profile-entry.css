@@ -3,8 +3,8 @@
 /* Tabbed Interface Styles */
 .tabbed-interface {
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    margin-left: 0 !important;
+    margin-right: auto !important;
 }
 
 .tab-buttons {
@@ -47,8 +47,9 @@
 
 /* Simple Field List Styles */
 .simple-field-list {
-    max-width: 600px;
-    margin: 0 auto;
+    max-width: 1000px;
+    margin-left: 0 !important;
+    margin-right: auto !important;
 }
 
 .field-item {
@@ -80,6 +81,7 @@
     color: #6b7280;
     font-size: 0.875rem;
     margin-bottom: 0.5rem;
+    text-align: left;
 }
 
 .input-field {
@@ -184,8 +186,13 @@
 }
 
 @keyframes highlight {
-    0% { background-color: #fbbf24; }
-    100% { background-color: #fef3c7; }
+    0% {
+        background-color: #fbbf24;
+    }
+
+    100% {
+        background-color: #fef3c7;
+    }
 }
 
 .loading-spinner {
@@ -199,7 +206,9 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .navigation-tabs {
@@ -225,6 +234,16 @@
 .nav-tab.active {
     color: #3b82f6;
     border-bottom-color: #3b82f6;
+    cursor: pointer;
+}
+
+.nav-tab,
+.tab-btn {
+    cursor: pointer;
+}
+
+.file-upload-label {
+    cursor: pointer;
 }
 
 @media (max-width: 1024px) {
@@ -232,7 +251,7 @@
         max-width: 100%;
         padding: 0 1rem;
     }
-    
+
     .preview-container {
         padding: 1rem;
     }

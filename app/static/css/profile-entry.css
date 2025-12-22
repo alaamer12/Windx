@@ -230,8 +230,6 @@ body, html {
 
 /* Horizontal Scroll Container with Viewport Constraints */
 #preview-tab .overflow-x-auto {
-    /* overflow-x: auto; */
-    /* overflow-y: visible; */
     -webkit-overflow-scrolling: touch;
     /* Smooth scrolling on iOS */
     max-width: 100%;
@@ -259,8 +257,6 @@ body, html {
 }
 
 #preview-tab table {
-    /* min-width: 1200px; */
-    /* Significantly reduced for viewport fit */
     border-collapse: collapse;
     width: 100%;
     table-layout: fixed;
@@ -277,8 +273,8 @@ body, html {
     max-width: 60px;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding: 0.25rem 0.5rem;
-    /* Very compact padding */
+    padding: 0.75rem 1rem;
+    /* Increased padding for better UI */
     font-size: 0.7rem;
     /* Smaller font size */
 }
@@ -289,6 +285,7 @@ body, html {
     width: 80px;
     min-width: 80px;
     max-width: 100px;
+    padding: 0.75rem 1rem;
 }
 
 /* Name column should be wider */
@@ -297,6 +294,7 @@ body, html {
     width: 100px;
     min-width: 100px;
     max-width: 120px;
+    padding: 0.75rem 1rem;
 }
 
 #preview-tab th {
@@ -311,6 +309,8 @@ body, html {
     z-index: 10;
     line-height: 1.2;
     /* Tighter line height */
+    padding: 1rem 1rem;
+    /* More padding for headers */
 }
 
 /* Sticky Actions Column */
@@ -323,6 +323,7 @@ body, html {
     width: 60px;
     min-width: 60px;
     max-width: 60px;
+    padding: 0.75rem 1rem;
 }
 
 .na-value {
@@ -339,27 +340,63 @@ body, html {
 
 #preview-tab td {
     background-color: white;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
     font-size: 0.7rem;
-    /* Small font for data cells */
+    border-right: 1px solid #f3f4f6; /* Subtle column separators */
+    position: relative; /* Enable absolute positioning for child elements */
+    overflow: visible; /* Allow input to extend beyond cell boundaries */
 }
 
 #preview-tab tr:hover td {
     background-color: #f9fafb;
+    cursor: pointer; /* Indicate cells are clickable */
 }
 
 #preview-tab tr:hover td.sticky {
     background-color: #f9fafb;
 }
 
-/* Inline Editing Input */
-#preview-tab td input[type="text"] {
-    width: 100%;
-    min-width: 35px;
-    max-width: 55px;
-    font-size: 0.7rem;
-    padding: 0.1rem 0.25rem;
-    /* Very compact input */
+#preview-tab td:hover {
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+/* Large Inline Editing Input - Positioned absolutely within cell */
+#preview-tab td input[type="text"],
+.inline-edit-input {
+    position: absolute;
+    /* Absolute positioning within the cell */
+    z-index: 9999;
+    /* High z-index to appear above everything */
+    width: 200px;
+    /* Large fixed width */
+    min-width: 200px;
+    max-width: 300px;
+    font-size: 0.875rem;
+    /* Larger font for editing */
+    padding: 0.5rem 0.75rem;
+    /* Generous padding */
+    border: 2px solid #3b82f6;
+    border-radius: 0.375rem;
+    background: white;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    /* Strong shadow for overlay effect */
+    outline: none;
+    transition: all 0.2s ease;
+    display: block;
+    /* Block display to respect width */
+    top: 0;
+    left: 0;
+    margin-top: -2px;
+    /* Align with cell content */
+}
+
+.inline-edit-input:focus {
+    border-color: #1d4ed8;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(59, 130, 246, 0.1);
+    transform: scale(1.02);
+    z-index: 10000;
+    /* Even higher when focused */
 }
 
 @keyframes highlight {
@@ -399,11 +436,6 @@ body, html {
 
     #preview-tab th {
         font-size: 0.55rem;
-    }
-
-    #preview-tab table {
-        /* min-width: 1000px; */
-        /* Further reduced for smaller screens */
     }
 
     .overflow-x-auto {
@@ -579,7 +611,28 @@ body, html {
     #preview-tab td {
         min-width: 40px;
         max-width: 80px;
-        padding: 0.25rem 0.3rem;
+        padding: 0.5rem 0.75rem; /* Still generous padding on mobile */
         font-size: 0.65rem;
+    }
+    
+    #preview-tab th {
+        padding: 0.75rem 0.75rem; /* Maintain header padding */
+    }
+    
+    /* Keep large input even on mobile - positioned absolutely */
+    #preview-tab td input[type="text"],
+    .inline-edit-input {
+        width: 180px; /* Slightly smaller on mobile but still large */
+        min-width: 180px;
+        font-size: 0.8rem;
+        padding: 0.4rem 0.6rem;
+        position: absolute;
+        /* Maintain absolute positioning on mobile */
+        z-index: 9999;
+        /* Maintain high z-index on mobile */
+        display: block;
+        top: 0;
+        left: 0;
+        margin-top: -2px;
     }
 }

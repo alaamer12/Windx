@@ -488,7 +488,7 @@
                                              @keydown.escape="cancelEditing()">
                                             
                                             <!-- Special handling for image fields -->
-                                            <template x-if="header === 'PIC'">
+                                            <template x-if="isImageField(header)">
                                                 <div class="flex items-center space-x-2">
                                                     <input type="file" 
                                                            accept="image/*"
@@ -503,7 +503,7 @@
                                             </template>
                                             
                                             <!-- Default text input for non-image fields -->
-                                            <template x-if="header !== 'PIC'">
+                                            <template x-if="!isImageField(header)">
                                                 <input type="text" 
                                                        x-model="editingCell.value"
                                                        @keydown.enter="saveInlineEdit(row.id, header)"

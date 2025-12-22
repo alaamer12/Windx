@@ -386,15 +386,36 @@ async def upload_image(
         form_data = await request.form()
         file = form_data.get("file")
         
-        if not file or not hasattr(file, 'filename'):
+        print(f"🦆 [BACKEND DEBUG] Upload endpoint called")
+        print(f"🦆 [BACKEND DEBUG] form_data keys: {list(form_data.keys())}")
+        print(f"🦆 [BACKEND DEBUG] file object: {file}")
+        print(f"🦆 [BACKEND DEBUG] file type: {type(file)}")
+        
+        if not file:
+            print(f"🦆 [BACKEND DEBUG] ❌ No file in form data")
             return {
                 "success": False,
                 "error": "No file provided"
             }
         
+        # Check if it's a proper file object
+        if not hasattr(file, 'filename') or not hasattr(file, 'read'):
+            print(f"🦆 [BACKEND DEBUG] ❌ Invalid file object - missing filename or read method")
+            print(f"🦆 [BACKEND DEBUG] file attributes: {dir(file)}")
+            return {
+                "success": False,
+                "error": "Invalid file object"
+            }
+        
+        print(f"🦆 [BACKEND DEBUG] file.filename: {file.filename}")
+        print(f"🦆 [BACKEND DEBUG] file content_type: {getattr(file, 'content_type', 'unknown')}")
+        
         # Use the storage service to handle the upload
         storage_service = get_storage_service()
+        print(f"🦆 [BACKEND DEBUG] Calling storage service upload_file...")
         result = await storage_service.upload_file(file)
+        
+        print(f"🦆 [BACKEND DEBUG] Upload result: {result}")
         
         if result.success:
             return {
@@ -410,6 +431,10 @@ async def upload_image(
             }
         
     except Exception as e:
+        print(f"🦆 [BACKEND DEBUG] ❌ Exception in upload endpoint: {e}")
+        print(f"🦆 [BACKEND DEBUG] Exception type: {type(e)}")
+        import traceback
+        print(f"🦆 [BACKEND DEBUG] Traceback: {traceback.format_exc()}")
         return {
             "success": False,
             "error": f"Upload failed: {str(e)}"

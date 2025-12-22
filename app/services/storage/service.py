@@ -9,7 +9,7 @@ from __future__ import annotations
 import mimetypes
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import UploadFile
 
@@ -57,7 +57,7 @@ class FileStorageService:
 
     async def upload_file(
         self,
-        file: UploadFile | bytes,
+        file: Any,  # Accept any file-like object with read() and filename
         filename: str | None = None,
     ) -> UploadResult:
         """Upload a file using the configured provider.
@@ -69,27 +69,51 @@ class FileStorageService:
         Returns:
             UploadResult: Result of the upload operation
         """
+        print(f"🦆 [STORAGE DEBUG] upload_file called")
+        print(f"🦆 [STORAGE DEBUG] file type: {type(file)}")
+        print(f"🦆 [STORAGE DEBUG] filename: {filename}")
+        
         # Handle different file input types
-        if isinstance(file, UploadFile):
+        if hasattr(file, 'read') and hasattr(file, 'filename'):
+            print(f"🦆 [STORAGE DEBUG] Processing UploadFile-like object...")
             file_content = await file.read()
             file_name = filename or file.filename or "unknown"
-            content_type = file.content_type
+            content_type = getattr(file, 'content_type', None)
+            print(f"🦆 [STORAGE DEBUG] file_content type: {type(file_content)}")
+            print(f"🦆 [STORAGE DEBUG] file_content length: {len(file_content)} bytes")
+            print(f"🦆 [STORAGE DEBUG] file_name: {file_name}")
+            print(f"🦆 [STORAGE DEBUG] content_type: {content_type}")
         else:
+            print(f"🦆 [STORAGE DEBUG] Processing bytes...")
             file_content = file
             file_name = filename or "unknown"
             content_type = None
+            print(f"🦆 [STORAGE DEBUG] file_content type: {type(file_content)}")
+            print(f"🦆 [STORAGE DEBUG] file_content length: {len(file_content)} bytes")
 
         # Validate file
+        print(f"🦆 [STORAGE DEBUG] Validating file...")
         validation_result = self._validate_file(file_content, file_name)
         if not validation_result.success:
+            print(f"🦆 [STORAGE DEBUG] ❌ Validation failed: {validation_result.error}")
             return validation_result
+
+        print(f"🦆 [STORAGE DEBUG] ✅ Validation passed")
 
         # Process image if it's an image file and processing is enabled
         processed_content = file_content
         if self.image_processor and self._is_image_file(file_name):
+            print(f"🦆 [STORAGE DEBUG] Processing image...")
+            print(f"🦆 [STORAGE DEBUG] Calling image_processor.process_image with:")
+            print(f"🦆 [STORAGE DEBUG] - file_content type: {type(file_content)}")
+            print(f"🦆 [STORAGE DEBUG] - file_name: {file_name}")
+            
             processing_result = self.image_processor.process_image(file_content, file_name)
             
+            print(f"🦆 [STORAGE DEBUG] Image processing result: {processing_result}")
+            
             if not processing_result.success:
+                print(f"🦆 [STORAGE DEBUG] ❌ Image processing failed: {processing_result.error}")
                 return UploadResult(
                     success=False,
                     error=processing_result.error or "Image processing failed",
@@ -112,6 +136,12 @@ class FileStorageService:
         # Guess content type if not provided
         if not content_type:
             content_type, _ = mimetypes.guess_type(file_name)
+
+        print(f"🦆 [STORAGE DEBUG] Uploading to provider...")
+        print(f"🦆 [STORAGE DEBUG] - processed_content type: {type(processed_content)}")
+        print(f"🦆 [STORAGE DEBUG] - processed_content length: {len(processed_content)} bytes")
+        print(f"🦆 [STORAGE DEBUG] - final file_name: {file_name}")
+        print(f"🦆 [STORAGE DEBUG] - content_type: {content_type}")
 
         # Upload using provider
         return await self.provider.upload_file(

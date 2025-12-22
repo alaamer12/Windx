@@ -339,12 +339,21 @@ function profileEntryApp(options = {}) {
         },
 
         startEditing(rowId, field, value) {
-            console.log('Start editing:', rowId, field, value);
+            console.log('🦆 [EDITING DEBUG] ========================================');
+            console.log('🦆 [EDITING DEBUG] startEditing called');
+            console.log('🦆 [EDITING DEBUG] rowId:', rowId);
+            console.log('🦆 [EDITING DEBUG] field:', field);
+            console.log('🦆 [EDITING DEBUG] value:', value);
+            console.log('🦆 [EDITING DEBUG] isImageField(field):', this.isImageField(field));
+            
             this.editingCell = {
                 rowId: rowId,
                 field: field,
                 value: value === 'N/A' ? '' : value
             };
+            
+            console.log('🦆 [EDITING DEBUG] editingCell set to:', this.editingCell);
+            console.log('🦆 [EDITING DEBUG] ========================================');
         },
 
         cancelEditing() {
@@ -586,24 +595,49 @@ function profileEntryApp(options = {}) {
         },
 
         handleFileChange(fieldName, event) {
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] ========================================');
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] handleFileChange called');
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] fieldName:', fieldName);
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] event:', event);
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] event.target:', event.target);
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] event.target.files:', event.target.files);
+            
             const file = event.target.files[0];
-            if (!file) return;
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] Selected file:', file);
+            
+            if (!file) {
+                console.log('🦆 [MAIN FORM UPLOAD DEBUG] ❌ No file selected');
+                return;
+            }
+            
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] File details:');
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] - name:', file.name);
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] - size:', file.size);
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] - type:', file.type);
 
             // Update form data with filename
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] Updating form data with filename:', file.name);
             this.updateField(fieldName, file.name);
 
             // Create image preview if it's an image
             if (file.type.startsWith('image/')) {
+                console.log('🦆 [MAIN FORM UPLOAD DEBUG] Creating image preview...');
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    console.log('🦆 [MAIN FORM UPLOAD DEBUG] FileReader loaded, creating preview');
                     // Force Alpine.js reactivity using spread
                     this.imagePreviews = {
                         ...this.imagePreviews,
                         [fieldName]: e.target.result
                     };
+                    console.log('🦆 [MAIN FORM UPLOAD DEBUG] Image preview created for:', fieldName);
                 };
                 reader.readAsDataURL(file);
+            } else {
+                console.log('🦆 [MAIN FORM UPLOAD DEBUG] Not an image file, skipping preview');
             }
+            
+            console.log('🦆 [MAIN FORM UPLOAD DEBUG] ========================================');
         },
 
         clearFile(fieldName) {
@@ -621,6 +655,30 @@ function profileEntryApp(options = {}) {
         },
 
         // Image handling methods
+        isImageField(fieldName) {
+            console.log('🦆 [IMAGE FIELD DEBUG] isImageField called with:', fieldName);
+            
+            if (!fieldName) {
+                console.log('🦆 [IMAGE FIELD DEBUG] ❌ No fieldName provided');
+                return false;
+            }
+            
+            const imageFields = ['pic', 'image', 'photo', 'picture', 'img', 'thumbnail', 'avatar', 'logo'];
+            const fieldNameLower = fieldName.toLowerCase();
+            
+            console.log('🦆 [IMAGE FIELD DEBUG] fieldNameLower:', fieldNameLower);
+            console.log('🦆 [IMAGE FIELD DEBUG] imageFields:', imageFields);
+            
+            const isImage = imageFields.some(imgField => {
+                const matches = fieldNameLower.includes(imgField);
+                console.log(`🦆 [IMAGE FIELD DEBUG] Checking "${imgField}" in "${fieldNameLower}":`, matches);
+                return matches;
+            });
+            
+            console.log('🦆 [IMAGE FIELD DEBUG] Final result:', isImage);
+            return isImage;
+        },
+
         openImageModal(imageSrc) {
             window.openImageModal(imageSrc);
         },
@@ -1285,67 +1343,137 @@ window.openImageModal = function(imageSrc) {
 };
 
 window.handleInlineImageChange = function(rowId, field, event) {
+    console.log('🦆 [UPLOAD DEBUG] ========================================');
+    console.log('🦆 [UPLOAD DEBUG] handleInlineImageChange called');
+    console.log('🦆 [UPLOAD DEBUG] rowId:', rowId);
+    console.log('🦆 [UPLOAD DEBUG] field:', field);
+    console.log('🦆 [UPLOAD DEBUG] event:', event);
+    console.log('🦆 [UPLOAD DEBUG] event.target:', event.target);
+    console.log('🦆 [UPLOAD DEBUG] event.target.files:', event.target.files);
+    
     const file = event.target.files[0];
-    if (!file) return;
+    console.log('🦆 [UPLOAD DEBUG] Selected file:', file);
+    
+    if (!file) {
+        console.log('🦆 [UPLOAD DEBUG] ❌ No file selected');
+        return;
+    }
+    
+    console.log('🦆 [UPLOAD DEBUG] File details:');
+    console.log('🦆 [UPLOAD DEBUG] - name:', file.name);
+    console.log('🦆 [UPLOAD DEBUG] - size:', file.size);
+    console.log('🦆 [UPLOAD DEBUG] - type:', file.type);
+    console.log('🦆 [UPLOAD DEBUG] - lastModified:', file.lastModified);
     
     // Validate file type
     if (!file.type.startsWith('image/')) {
+        console.log('🦆 [UPLOAD DEBUG] ❌ Invalid file type:', file.type);
         alert('Please select an image file');
         return;
     }
+    console.log('🦆 [UPLOAD DEBUG] ✅ File type validation passed');
     
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
+        console.log('🦆 [UPLOAD DEBUG] ❌ File too large:', file.size);
         alert('Image file must be smaller than 5MB');
         return;
     }
+    console.log('🦆 [UPLOAD DEBUG] ✅ File size validation passed');
     
     // Create FormData for upload
+    console.log('🦆 [UPLOAD DEBUG] Creating FormData...');
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('field', field);
-    formData.append('rowId', rowId);
+    
+    console.log('🦆 [UPLOAD DEBUG] FormData created:');
+    console.log('🦆 [UPLOAD DEBUG] - FormData entries:', [...formData.entries()]);
     
     // Show loading state
     const loadingText = 'Uploading...';
+    console.log('🦆 [UPLOAD DEBUG] Starting upload...');
     
-    // Upload the file
+    // Upload the file with credentials for authentication
     fetch('/api/v1/admin/entry/upload-image', {
         method: 'POST',
+        credentials: 'include',  // Include cookies for authentication
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('🦆 [UPLOAD DEBUG] Response received:');
+        console.log('🦆 [UPLOAD DEBUG] - status:', response.status);
+        console.log('🦆 [UPLOAD DEBUG] - statusText:', response.statusText);
+        console.log('🦆 [UPLOAD DEBUG] - ok:', response.ok);
+        console.log('🦆 [UPLOAD DEBUG] - headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('🦆 [UPLOAD DEBUG] Response data:', data);
+        
         if (data.success) {
+            console.log('🦆 [UPLOAD DEBUG] ✅ Upload successful!');
+            console.log('🦆 [UPLOAD DEBUG] - filename:', data.filename);
+            console.log('🦆 [UPLOAD DEBUG] - url:', data.url);
+            console.log('🦆 [UPLOAD DEBUG] - message:', data.message);
+            
             // Update the row data with the new filename or URL
             const app = Alpine.store('profileEntry') || window.profileEntryApp;
-            if (app) {
+            console.log('🦆 [UPLOAD DEBUG] Alpine app:', app);
+            console.log('🦆 [UPLOAD DEBUG] app.savedConfigurations:', app?.savedConfigurations);
+            
+            if (app && app.savedConfigurations) {
                 const row = app.savedConfigurations.find(r => r.id === rowId);
+                console.log('🦆 [UPLOAD DEBUG] Found row:', row);
+                
                 if (row) {
-                    // Store the filename for database, but the URL might be different
-                    row[field] = data.filename;
+                    // Use the URL for display if available, otherwise use filename
+                    const displayValue = data.url || data.filename;
+                    console.log('🦆 [UPLOAD DEBUG] Setting display value:', displayValue);
+                    row[field] = displayValue;
                     
-                    // Also update pending edits
+                    // Also update pending edits - use filename for database storage
+                    if (!app.pendingEdits) {
+                        app.pendingEdits = {};
+                    }
                     if (!app.pendingEdits[rowId]) {
                         app.pendingEdits[rowId] = {};
                     }
-                    app.pendingEdits[rowId][field] = data.filename;
+                    app.pendingEdits[rowId][field] = data.filename; // Store filename in database
                     app.hasUnsavedEdits = true;
+                    
+                    console.log('🦆 [UPLOAD DEBUG] Updated row data:', row);
+                    console.log('🦆 [UPLOAD DEBUG] Updated pending edits:', app.pendingEdits);
+                } else {
+                    console.log('🦆 [UPLOAD DEBUG] ❌ Row not found with id:', rowId);
                 }
                 
                 // Cancel editing mode
+                console.log('🦆 [UPLOAD DEBUG] Canceling editing mode...');
                 app.cancelEditing();
+            } else {
+                console.log('🦆 [UPLOAD DEBUG] ❌ App or savedConfigurations not available');
+                console.log('🦆 [UPLOAD DEBUG] - app exists:', !!app);
+                console.log('🦆 [UPLOAD DEBUG] - savedConfigurations exists:', !!(app && app.savedConfigurations));
             }
             
             if (window.showToast) {
                 window.showToast('Image uploaded successfully', 'success');
             }
         } else {
+            console.log('🦆 [UPLOAD DEBUG] ❌ Upload failed:', data.error);
             alert('Failed to upload image: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        console.error('Upload error:', error);
-        alert('Failed to upload image');
+        console.log('🦆 [UPLOAD DEBUG] ❌ Upload error caught:', error);
+        console.log('🦆 [UPLOAD DEBUG] Error details:', error.message);
+        console.log('🦆 [UPLOAD DEBUG] Error stack:', error.stack);
+        alert('Failed to upload image: ' + error.message);
     });
+    
+    console.log('🦆 [UPLOAD DEBUG] ========================================');
 };

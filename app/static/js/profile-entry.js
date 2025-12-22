@@ -155,6 +155,44 @@ function profileEntryApp(options = {}) {
                 error: this.error
             });
 
+            // Add event listener for image uploads
+            this.$el.addEventListener('image-uploaded', (event) => {
+                console.log('🦆 [EVENT DEBUG] Image uploaded event received:', event.detail);
+                const { rowId, field, filename, url } = event.detail;
+                
+                // Update the savedConfigurations data if it exists
+                if (this.savedConfigurations && Array.isArray(this.savedConfigurations)) {
+                    const row = this.savedConfigurations.find(r => r.id === rowId);
+                    if (row) {
+                        console.log('🦆 [EVENT DEBUG] Updating row data via event...');
+                        console.log('🦆 [EVENT DEBUG] Row before update:', row[field]);
+                        
+                        // Use URL for display, filename for database
+                        row[field] = url || filename;
+                        
+                        console.log('🦆 [EVENT DEBUG] Row after update:', row[field]);
+                        
+                        // Force Alpine.js reactivity
+                        this.savedConfigurations = [...this.savedConfigurations];
+                    }
+                }
+                
+                // Initialize pendingEdits if it doesn't exist
+                if (!this.pendingEdits) {
+                    this.pendingEdits = {};
+                }
+                if (!this.pendingEdits[rowId]) {
+                    this.pendingEdits[rowId] = {};
+                }
+                
+                // Store the filename for database commit
+                this.pendingEdits[rowId][field] = filename;
+                this.hasUnsavedEdits = true;
+                
+                console.log('🦆 [EVENT DEBUG] Updated pendingEdits via event:', this.pendingEdits);
+                console.log('🦆 [EVENT DEBUG] hasUnsavedEdits set to:', this.hasUnsavedEdits);
+            });
+
             // Load from session storage first
             this.loadFromSession();
 
@@ -357,7 +395,14 @@ function profileEntryApp(options = {}) {
         },
 
         cancelEditing() {
+            console.log('🦆 [CANCEL EDITING DEBUG] ========================================');
+            console.log('🦆 [CANCEL EDITING DEBUG] cancelEditing called');
+            console.log('🦆 [CANCEL EDITING DEBUG] Current editingCell:', this.editingCell);
+            
             this.editingCell = { rowId: null, field: null, value: null };
+            
+            console.log('🦆 [CANCEL EDITING DEBUG] editingCell reset to:', this.editingCell);
+            console.log('🦆 [CANCEL EDITING DEBUG] ========================================');
         },
 
         async saveInlineEdit(rowId, field) {
@@ -688,23 +733,47 @@ function profileEntryApp(options = {}) {
         },
 
         getImageUrl(filename) {
+            console.log('🦆 [IMAGE URL DEBUG] getImageUrl called with:', filename);
+            
             // Handle both full URLs and relative filenames
             if (!filename || filename === 'N/A') {
+                console.log('🦆 [IMAGE URL DEBUG] No filename or N/A, returning empty string');
                 return '';
             }
             
             // If it's already a full URL (starts with http), return as-is
             if (filename.startsWith('http')) {
+                console.log('🦆 [IMAGE URL DEBUG] Full URL detected, returning as-is:', filename);
                 return filename;
             }
             
             // If it starts with a path separator, it's a relative URL
             if (filename.startsWith('/')) {
-                return filename;
+                console.log('🦆 [IMAGE URL DEBUG] Relative URL detected, adding cache buster');
+                // Add cache-busting parameter
+                const cacheBuster = `?t=${Date.now()}`;
+                const urlWithCache = filename + cacheBuster;
+                console.log('🦆 [IMAGE URL DEBUG] URL with cache buster:', urlWithCache);
+                return urlWithCache;
             }
             
             // Otherwise, assume it's a filename and construct the URL
-            return `/static/uploads/${filename}`;
+            const constructedUrl = `/static/uploads/${filename}?t=${Date.now()}`;
+            console.log('🦆 [IMAGE URL DEBUG] Constructed URL with cache buster:', constructedUrl);
+            return constructedUrl;
+        },
+
+        // Add debugging method to check template conditions
+        debugImageField(header, rowValue) {
+            console.log('🦆 [TEMPLATE DEBUG] debugImageField called');
+            console.log('🦆 [TEMPLATE DEBUG] - header:', header);
+            console.log('🦆 [TEMPLATE DEBUG] - rowValue:', rowValue);
+            console.log('🦆 [TEMPLATE DEBUG] - header.toLowerCase():', header.toLowerCase());
+            console.log('🦆 [TEMPLATE DEBUG] - header.toLowerCase() === "pic":', header.toLowerCase() === 'pic');
+            console.log('🦆 [TEMPLATE DEBUG] - rowValue exists:', !!rowValue);
+            console.log('🦆 [TEMPLATE DEBUG] - rowValue !== "N/A":', rowValue !== 'N/A');
+            console.log('🦆 [TEMPLATE DEBUG] - should show image:', header.toLowerCase() === 'pic' && rowValue && rowValue !== 'N/A');
+            return header.toLowerCase() === 'pic' && rowValue && rowValue !== 'N/A';
         },
 
         updateField(fieldName, value) {
@@ -1421,19 +1490,101 @@ window.handleInlineImageChange = function(rowId, field, event) {
             console.log('🦆 [UPLOAD DEBUG] - message:', data.message);
             
             // Update the row data with the new filename or URL
-            const app = Alpine.store('profileEntry') || window.profileEntryApp;
-            console.log('🦆 [UPLOAD DEBUG] Alpine app:', app);
+            console.log('🦆 [UPLOAD DEBUG] Looking for Alpine app...');
+            
+            // Try multiple ways to get the Alpine app instance
+            let app = null;
+            
+            // Method 1: Alpine store
+            if (window.Alpine && window.Alpine.store) {
+                app = window.Alpine.store('profileEntry');
+                console.log('🦆 [UPLOAD DEBUG] Method 1 (Alpine.store):', app);
+            }
+            
+            // Method 2: Global window reference
+            if (!app && window.profileEntryApp) {
+                app = window.profileEntryApp;
+                console.log('🦆 [UPLOAD DEBUG] Method 2 (window.profileEntryApp):', app);
+            }
+            
+            // Method 3: Try to find Alpine component in DOM
+            if (!app) {
+                const profileContainer = document.querySelector('[x-data*="profileEntryApp"]');
+                console.log('🦆 [UPLOAD DEBUG] Profile container found:', profileContainer);
+                
+                if (profileContainer && profileContainer._x_dataStack) {
+                    app = profileContainer._x_dataStack[0];
+                    console.log('🦆 [UPLOAD DEBUG] Method 3 (DOM search):', app);
+                } else if (profileContainer && window.Alpine) {
+                    // Try Alpine.$data method
+                    try {
+                        app = window.Alpine.$data(profileContainer);
+                        console.log('🦆 [UPLOAD DEBUG] Method 3b (Alpine.$data):', app);
+                    } catch (e) {
+                        console.log('🦆 [UPLOAD DEBUG] Alpine.$data failed:', e);
+                    }
+                }
+            }
+            
+            // Method 4: Try to access Alpine component data directly
+            if (!app) {
+                const profileContainer = document.querySelector('[x-data*="profileEntryApp"]');
+                if (profileContainer && profileContainer.__x) {
+                    app = profileContainer.__x.$data;
+                    console.log('🦆 [UPLOAD DEBUG] Method 4 (__x.$data):', app);
+                }
+            }
+            
+            console.log('🦆 [UPLOAD DEBUG] Final app:', app);
+            console.log('🦆 [UPLOAD DEBUG] app type:', typeof app);
             console.log('🦆 [UPLOAD DEBUG] app.savedConfigurations:', app?.savedConfigurations);
             
+            // If app is a function, it means we got the factory function, not the instance
+            if (typeof app === 'function') {
+                console.log('🦆 [UPLOAD DEBUG] App is a function, trying to find the actual instance...');
+                
+                // Try to find the actual Alpine.js instance in the DOM
+                const profileContainer = document.querySelector('[x-data*="profileEntryApp"]');
+                if (profileContainer) {
+                    console.log('🦆 [UPLOAD DEBUG] Found profile container, checking for Alpine data...');
+                    
+                    // Try different ways to access Alpine data
+                    if (profileContainer._x_dataStack && profileContainer._x_dataStack[0]) {
+                        app = profileContainer._x_dataStack[0];
+                        console.log('🦆 [UPLOAD DEBUG] Found via _x_dataStack:', app);
+                    } else if (profileContainer.__x && profileContainer.__x.$data) {
+                        app = profileContainer.__x.$data;
+                        console.log('🦆 [UPLOAD DEBUG] Found via __x.$data:', app);
+                    } else {
+                        console.log('🦆 [UPLOAD DEBUG] Could not find Alpine instance, will use DOM fallback');
+                        app = null; // Force DOM fallback
+                    }
+                }
+            }
+            
             if (app && app.savedConfigurations) {
+                console.log('🦆 [UPLOAD DEBUG] Searching for row with id:', rowId);
+                console.log('🦆 [UPLOAD DEBUG] Available row IDs:', app.savedConfigurations.map(r => r.id));
+                
                 const row = app.savedConfigurations.find(r => r.id === rowId);
                 console.log('🦆 [UPLOAD DEBUG] Found row:', row);
                 
                 if (row) {
+                    console.log('🦆 [UPLOAD DEBUG] Row before update:', JSON.stringify(row));
+                    
                     // Use the URL for display if available, otherwise use filename
                     const displayValue = data.url || data.filename;
                     console.log('🦆 [UPLOAD DEBUG] Setting display value:', displayValue);
+                    console.log('🦆 [UPLOAD DEBUG] Field to update:', field);
+                    
+                    // Update the row data
                     row[field] = displayValue;
+                    
+                    console.log('🦆 [UPLOAD DEBUG] Row after update:', JSON.stringify(row));
+                    
+                    // Force Alpine.js reactivity by creating a new array reference
+                    app.savedConfigurations = [...app.savedConfigurations];
+                    console.log('🦆 [UPLOAD DEBUG] Forced Alpine reactivity update');
                     
                     // Also update pending edits - use filename for database storage
                     if (!app.pendingEdits) {
@@ -1445,19 +1596,93 @@ window.handleInlineImageChange = function(rowId, field, event) {
                     app.pendingEdits[rowId][field] = data.filename; // Store filename in database
                     app.hasUnsavedEdits = true;
                     
-                    console.log('🦆 [UPLOAD DEBUG] Updated row data:', row);
                     console.log('🦆 [UPLOAD DEBUG] Updated pending edits:', app.pendingEdits);
+                    console.log('🦆 [UPLOAD DEBUG] hasUnsavedEdits set to:', app.hasUnsavedEdits);
+                    
+                    // Force Alpine.js to detect the change
+                    setTimeout(() => {
+                        console.log('🦆 [UPLOAD DEBUG] Post-update hasUnsavedEdits check:', app.hasUnsavedEdits);
+                    }, 100);
                 } else {
                     console.log('🦆 [UPLOAD DEBUG] ❌ Row not found with id:', rowId);
+                    console.log('🦆 [UPLOAD DEBUG] Available rows:', app.savedConfigurations);
                 }
                 
                 // Cancel editing mode
                 console.log('🦆 [UPLOAD DEBUG] Canceling editing mode...');
                 app.cancelEditing();
+                
+                // Force a small delay to ensure Alpine.js processes the changes
+                setTimeout(() => {
+                    console.log('🦆 [UPLOAD DEBUG] Post-update check - editingCell:', app.editingCell);
+                    console.log('🦆 [UPLOAD DEBUG] Post-update check - row data:', app.savedConfigurations.find(r => r.id === rowId));
+                }, 100);
+                
             } else {
-                console.log('🦆 [UPLOAD DEBUG] ❌ App or savedConfigurations not available');
-                console.log('🦆 [UPLOAD DEBUG] - app exists:', !!app);
-                console.log('🦆 [UPLOAD DEBUG] - savedConfigurations exists:', !!(app && app.savedConfigurations));
+                console.log('🦆 [UPLOAD DEBUG] ❌ App or savedConfigurations not available, trying manual DOM update...');
+                
+                // Fallback: Try to update the DOM directly
+                const tableCell = document.querySelector(`[data-row-id="${rowId}"][data-field="${field}"]`);
+                if (tableCell) {
+                    console.log('🦆 [UPLOAD DEBUG] Found table cell, updating directly');
+                    const displayValue = data.url || data.filename;
+                    
+                    // Create image element
+                    const img = document.createElement('img');
+                    img.src = displayValue;
+                    img.alt = `Image for ${field}`;
+                    img.className = 'h-12 w-12 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow';
+                    img.onclick = () => window.openImageModal && window.openImageModal(displayValue);
+                    
+                    // Replace cell content
+                    tableCell.innerHTML = '';
+                    tableCell.appendChild(img);
+                } else {
+                    console.log('🦆 [UPLOAD DEBUG] ❌ Could not find table cell to update');
+                }
+                
+                // Try to set hasUnsavedEdits flag even if we don't have savedConfigurations
+                if (app && typeof app === 'object' && app.hasUnsavedEdits !== undefined) {
+                    console.log('🦆 [UPLOAD DEBUG] Setting hasUnsavedEdits flag on Alpine instance...');
+                    
+                    // Initialize pendingEdits if it doesn't exist
+                    if (!app.pendingEdits) {
+                        app.pendingEdits = {};
+                    }
+                    if (!app.pendingEdits[rowId]) {
+                        app.pendingEdits[rowId] = {};
+                    }
+                    
+                    // Store the filename for database commit
+                    app.pendingEdits[rowId][field] = data.filename;
+                    app.hasUnsavedEdits = true;
+                    
+                    console.log('🦆 [UPLOAD DEBUG] Updated pendingEdits:', app.pendingEdits);
+                    console.log('🦆 [UPLOAD DEBUG] hasUnsavedEdits set to:', app.hasUnsavedEdits);
+                } else {
+                    console.log('🦆 [UPLOAD DEBUG] Could not set hasUnsavedEdits - trying DOM manipulation...');
+                    
+                    // Try to find and manipulate the Alpine component directly
+                    const profileContainer = document.querySelector('[x-data*="profileEntryApp"]');
+                    if (profileContainer) {
+                        // Try to trigger Alpine.js reactivity by dispatching a custom event
+                        const event = new CustomEvent('image-uploaded', {
+                            detail: { 
+                                rowId, 
+                                field, 
+                                filename: data.filename,
+                                url: data.url || data.filename
+                            }
+                        });
+                        profileContainer.dispatchEvent(event);
+                        console.log('🦆 [UPLOAD DEBUG] Dispatched image-uploaded event with URL:', data.url);
+                    }
+                }
+                
+                // Still try to cancel editing if we have an app
+                if (app && app.cancelEditing) {
+                    app.cancelEditing();
+                }
             }
             
             if (window.showToast) {

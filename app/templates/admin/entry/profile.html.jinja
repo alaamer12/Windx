@@ -456,26 +456,30 @@
                             <tr class="border-b border-gray-100 transition-all duration-150 hover:bg-gray-50/50">
                                 <template x-for="header in previewHeaders" :key="header">
                                     <td class="px-4 py-3 text-sm text-gray-900 border-r border-gray-100 relative group whitespace-nowrap"
+                                        :data-row-id="row.id"
+                                        :data-field="header"
                                         @dblclick="canEdit && startEditing(row.id, header, row[header])">
                                         
                                         <div x-show="editingCell.rowId !== row.id || editingCell.field !== header">
                                             <!-- Special handling for image fields -->
-                                            <template x-if="header === 'PIC' && row[header] && row[header] !== 'N/A'">
-                                                <div class="flex items-center">
+                                            <template x-if="header.toLowerCase() === 'pic' && row[header] && row[header] !== 'N/A'">
+                                                <div class="flex items-center" x-init="console.log('🦆 [TEMPLATE DEBUG] Image template rendered for:', header, row[header])">
                                                     <img :src="getImageUrl(row[header])" 
                                                          :alt="'Image for ' + header"
                                                          class="h-12 w-12 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
                                                          @click="openImageModal(getImageUrl(row[header]))"
-                                                         @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='flex';"
-                                                         style="display: block;">
-                                                    <div class="image-placeholder hidden" style="display: none;">
-                                                        <span class="text-xs">No Image</span>
+                                                         @load="console.log('🦆 [IMAGE DEBUG] Image loaded successfully:', getImageUrl(row[header])); $event.target.style.display='block'; $event.target.nextElementSibling.style.display='none';"
+                                                         @error="console.log('🦆 [IMAGE DEBUG] Image failed to load:', getImageUrl(row[header])); $event.target.style.display='none'; $event.target.nextElementSibling.style.display='flex';"
+                                                         style="display: block;"
+                                                         x-init="console.log('🦆 [IMG INIT] Image element initialized with src:', getImageUrl(row[header]))">
+                                                    <div class="image-placeholder" style="display: none; width: 48px; height: 48px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; align-items: center; justify-content: center; font-size: 10px; color: #6b7280;">
+                                                        <span>No Image</span>
                                                     </div>
                                                 </div>
                                             </template>
                                             
                                             <!-- Default text display for non-image fields -->
-                                            <template x-if="header !== 'PIC' || !row[header] || row[header] === 'N/A'">
+                                            <template x-if="header.toLowerCase() !== 'pic' || !row[header] || row[header] === 'N/A'">
                                                 <span :class="{ 'na-value': !row[header] || row[header] === 'N/A' }" 
                                                       x-text="row[header] || 'N/A'"></span>
                                             </template>

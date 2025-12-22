@@ -359,8 +359,10 @@ class TestAdminEntry:
         assert login_response.status_code == 200
         token = login_response.json()["access_token"]
         
-        # Try to upload a text file
-        files = {"file": ("test.txt", b"This is not an image", "text/plain")}
+        # Try to upload a text file (make it large enough to pass size validation)
+        # Create a 2KB text file to pass minimum size check
+        large_text = b"This is not an image. " * 100  # ~2.2KB
+        files = {"file": ("test.txt", large_text, "text/plain")}
         response = await client.post(
             "/api/v1/admin/entry/upload-image",
             headers={"Authorization": f"Bearer {token}"},
@@ -369,7 +371,8 @@ class TestAdminEntry:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
-        assert "Invalid file type" in data["error"]
+        # Should fail on file type validation (txt not in allowed extensions)
+        assert "not allowed" in data["error"] or "File type" in data["error"]
 
     @pytest.mark.asyncio
     async def test_upload_image_file_too_large(

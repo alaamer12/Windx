@@ -419,7 +419,7 @@ async def create_attribute_nodes(
             "sort_order": 24,
             "ui_component": "number",
             "help_text": "Weight per meter in kg",
-            "validation_rules": {"min": 0, "max": 50},
+            "validation_rules": {"min": 0, "max": 2000},
         },
         {
             "name": "reinforcement_steel",

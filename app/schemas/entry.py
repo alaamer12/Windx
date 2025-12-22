@@ -559,3 +559,28 @@ class ProfilePreviewData(BaseModel):
     ]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InlineEditRequest(BaseModel):
+    """Request schema for inline table editing.
+
+    Attributes:
+        field: Field name (header) to edit
+        value: New value for the field
+    """
+
+    field: Annotated[
+        str,
+        Field(
+            description="Field name (header) to edit",
+            examples=["width_inches", "material_type"],
+        ),
+    ]
+    value: Annotated[
+        Any,
+        Field(
+            description="New value for the field",
+            examples=["Aluminum", 48.5],
+        ),
+    ]
+

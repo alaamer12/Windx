@@ -28,7 +28,14 @@ from pydantic import PositiveInt
 from app.api.deps import get_admin_context
 from app.api.types import CurrentSuperuser, DBSession
 from app.schemas.configuration import Configuration
-from app.schemas.entry import ProfileEntryData, ProfilePreviewData, ProfileSchema
+from app.schemas.entry import (
+    InlineEditRequest,
+    PreviewTable,
+    ProfileEntryData,
+    ProfilePreviewData,
+    ProfileSchema,
+)
+
 from app.schemas.responses import get_common_responses
 
 __all__ = ["router"]
@@ -143,7 +150,15 @@ async def save_profile_data(
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    return await entry_service.save_profile_configuration(profile_data, current_superuser)
+    try:
+        return await entry_service.save_profile_configuration(profile_data, current_superuser)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(f"Save Profile Validation Error: {str(e)}")
+        if hasattr(e, 'field_errors'):
+             logger.error(f"Field Errors: {e.field_errors}")
+        raise e
 
 
 @router.get(
@@ -238,6 +253,93 @@ async def get_profile_preview(
 
     entry_service = EntryService(db)
     return await entry_service.generate_preview_data(configuration_id, current_superuser)
+
+
+@router.get(
+    "/profile/previews/{manufacturing_type_id}",
+    response_model=PreviewTable,
+    summary="List Profile Previews (Admin)",
+    description="List all profile configurations for a manufacturing type (admin interface)",
+    response_description="Table with all configurations",
+    operation_id="listAdminProfilePreviews",
+    responses={
+        200: {
+            "description": "Successfully retrieved profile previews",
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
+async def list_profile_previews(
+    manufacturing_type_id: PositiveInt,
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> PreviewTable:
+    """List all profile configuration previews (admin interface)."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.list_previews(manufacturing_type_id, current_superuser)
+
+
+@router.patch(
+    "/profile/preview/{configuration_id}/update-cell",
+    response_model=Configuration,
+    summary="Update Preview Cell (Admin)",
+    description="Update a single field in a configuration from the table preview (admin interface)",
+    response_description="Updated configuration",
+    operation_id="updateAdminPreviewCell",
+    responses={
+        200: {
+            "description": "Cell successfully updated",
+        },
+        404: {
+            "description": "Configuration not found",
+        },
+        **get_common_responses(401, 403, 422, 500),
+    },
+)
+async def update_preview_cell(
+    configuration_id: PositiveInt,
+    edit_req: InlineEditRequest,
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> Configuration:
+    """Update a specific field in a configuration from the preview table (admin interface)."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.update_preview_value(
+        configuration_id, edit_req.field, edit_req.value, current_superuser
+    )
+
+
+@router.delete(
+    "/profile/configuration/{configuration_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete Configuration (Admin)",
+    description="Delete a profile configuration (admin interface)",
+    operation_id="deleteAdminConfiguration",
+    responses={
+        204: {
+            "description": "Configuration successfully deleted",
+        },
+        404: {
+            "description": "Configuration not found",
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
+async def delete_configuration(
+    configuration_id: PositiveInt,
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> None:
+    """Delete a configuration (admin interface)."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    await entry_service.delete_profile_configuration(configuration_id, current_superuser)
+
 
 
 @router.post(
@@ -365,8 +467,11 @@ async def profile_page(
             manufacturing_type_id=manufacturing_type_id,
             page_title="Profile Entry",
             JAVASCRIPT_CONDITION_EVALUATOR=JAVASCRIPT_CONDITION_EVALUATOR,
+            can_edit=True,  # TODO: Implement granular RBAC check
+            can_delete=True,  # TODO: Implement granular RBAC check
         ),
     )
+
 
 
 @router.get(

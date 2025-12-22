@@ -61,6 +61,20 @@ ConfigurationViewer = Privilege(
 
 AdminAccess = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
+# Targeted privileges for inline editing and deletion (TODO: Refine with role-based restrictions)
+ConfigurationEditor = Privilege(
+    roles=[Role.DATA_ENTRY, Role.SUPERADMIN],
+    permission=Permission("configuration", "update"),
+    resource=ResourceOwnership("configuration"),
+)
+
+ConfigurationDeleter = Privilege(
+    roles=[Role.DATA_ENTRY, Role.SUPERADMIN],
+    permission=Permission("configuration", "delete"),
+    resource=ResourceOwnership("configuration"),
+)
+
+
 
 def _safe_numeric_compare(a: Any, b: Any, compare_fn) -> bool:
     """Safely compare two values numerically, handling type conversions.
@@ -497,11 +511,28 @@ class EntryService(BaseService):
             str | None: Error message if validation fails, None if valid
         """
         try:
+            # Handle Decimal and ensure numeric types for comparison
+            # Import Decimal inside function to avoid circular imports if needed, 
+            # but usually top-level is fine. Assuming simple float conversion for range check.
+            from decimal import Decimal
+            
+            is_numeric = isinstance(value, (int, float, Decimal))
+            if is_numeric:
+                try:
+                    num_value = float(value)
+                except (ValueError, TypeError):
+                    return None # Cannot convert to float for comparison
+
             # Range validation for numbers
-            if "min" in rules and isinstance(value, (int, float)) and isinstance(rules["min"], (int, float)) and value < rules["min"]:
-                return f"{field_label} must be at least {rules['min']}"
-            if "max" in rules and isinstance(value, (int, float)) and isinstance(rules["max"], (int, float)) and value > rules["max"]:
-                return f"{field_label} must be at most {rules['max']}"
+            if "min" in rules and is_numeric:
+                min_val = float(rules["min"]) if isinstance(rules["min"], (int, float, Decimal)) else rules["min"]
+                if num_value < min_val:
+                    return f"{field_label} must be at least {rules['min']}"
+            
+            if "max" in rules and is_numeric:
+                max_val = float(rules["max"]) if isinstance(rules["max"], (int, float, Decimal)) else rules["max"]
+                if num_value > max_val:
+                    return f"{field_label} must be at most {rules['max']}"
 
             # Pattern validation for strings
             if "pattern" in rules and isinstance(value, str) and isinstance(rules["pattern"], str):
@@ -524,10 +555,11 @@ class EntryService(BaseService):
             if "rule_type" in rules:
                 rule_type = rules["rule_type"]
 
-                if rule_type == "range" and isinstance(value, (int, float)):
-                    min_val = rules.get("min", float("-inf"))
-                    max_val = rules.get("max", float("inf"))
-                    if isinstance(min_val, (int, float)) and isinstance(max_val, (int, float)) and not (min_val <= value <= max_val):
+                if rule_type == "range" and is_numeric:
+                    min_val = float(rules.get("min", float("-inf")))
+                    max_val = float(rules.get("max", float("inf")))
+                    
+                    if not (min_val <= num_value <= max_val):
                         custom_message = rules.get(
                             "message", f"{field_label} must be between {min_val} and {max_val}"
                         )
@@ -602,14 +634,7 @@ class EntryService(BaseService):
                     "Vertical clearance is required for flying mullion type"
                 )
 
-        # If reinforcement_steel is provided, steel_material_thickness should be provided
-        if form_data.get("reinforcement_steel"):
-            if not form_data.get("steel_material_thickness"):
-                errors["steel_material_thickness"] = (
-                    "Steel material thickness is required when reinforcement steel is specified"
-                )
-
-        # Logical validations
+            # Logical validations
         if form_data.get("front_height") and form_data.get("rear_height"):
             front_height = form_data["front_height"]
             rear_height = form_data["rear_height"]
@@ -621,10 +646,13 @@ class EntryService(BaseService):
         # Price validation
         if form_data.get("price_per_meter") and form_data.get("price_per_beam"):
             if form_data.get("length_of_beam"):
-                expected_beam_price = form_data["price_per_meter"] * form_data["length_of_beam"]
-                actual_beam_price = form_data["price_per_beam"]
+                # Handle Decimal types for price calculations
+                price_per_meter = float(form_data["price_per_meter"])
+                price_per_beam = float(form_data["price_per_beam"])
+                
+                expected_beam_price = price_per_meter * form_data["length_of_beam"]
                 if (
-                    abs(expected_beam_price - actual_beam_price) > expected_beam_price * 0.1
+                    abs(expected_beam_price - price_per_beam) > expected_beam_price * 0.1
                 ):  # 10% tolerance
                     errors["price_per_beam"] = (
                         "Price per beam should be approximately price per meter × length of beam"
@@ -818,7 +846,7 @@ class EntryService(BaseService):
         # No need for manual authorization checks
 
         # Generate preview table
-        preview_table = self.generate_preview_table(configuration)
+        preview_table = await self.generate_preview_table(configuration)
 
         return ProfilePreviewData(
             configuration_id=configuration.id,
@@ -826,115 +854,153 @@ class EntryService(BaseService):
             last_updated=configuration.updated_at,
         )
 
-    def generate_preview_table(self, data: Configuration | dict[str, Any]) -> PreviewTable:
+    HEADER_MAPPING = {
+        "id": "id",  # Special case for record identification
+        "Name": "name",
+        "Type": "type",
+        "Company": "company",
+        "Material": "material",
+        "opening system": "opening_system",
+        "system series": "system_series",
+        "Code": "code",
+        "Length of Beam\nm": "length_of_beam",
+        "Renovation\nonly for frame": "renovation",
+        "width": "width",
+        "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
+        "Total width\nonly for frame with builtin flyscreen": "total_width",
+        "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
+        "front Height mm": "front_height",
+        "Rear heightt": "rear_height",
+        "Glazing height": "glazing_height",
+        "Renovation height mm\nonly for frame": "renovation_height",
+        "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
+        "Pic": "pic",
+        "Sash overlap only for sashs": "sash_overlap",
+        "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
+        "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
+        "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
+        "Weight/m kg": "weight_per_meter",
+        "Reinforcement steel": "reinforcement_steel",
+        "Colours": "colours",
+        "Price/m": "price_per_meter",
+        "Price per/beam": "price_per_beam",
+        "UPVC Profile Discount%": "upvc_profile_discount",
+    }
+
+    REVERSE_HEADER_MAPPING = {v: k for k, v in HEADER_MAPPING.items()}
+
+    @require(ConfigurationViewer)
+    @require(AdminAccess)  # Admins can view any configuration
+    async def list_previews(self, manufacturing_type_id: int, user: User) -> PreviewTable:
+        """List all profile configuration previews for a manufacturing type.
+
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            user: Current user
+
+        Returns:
+            PreviewTable: Table with all configurations
+        """
+        # Fetch all configurations for this manufacturing type and user
+        # In admin context, we might want to see all for this type
+        stmt = (
+            select(Configuration)
+            .where(Configuration.manufacturing_type_id == manufacturing_type_id)
+            .options(selectinload(Configuration.selections))
+            .order_by(Configuration.updated_at.desc())
+        )
+        
+        # Apply RBAC filtering if not superadmin
+        if user.role != Role.SUPERADMIN.value:
+            from app.services.rbac import RBACService
+            rbac_service = RBACService(self.db)
+            accessible_customers = await rbac_service.get_accessible_customers(user)
+            if accessible_customers:
+                stmt = stmt.where(Configuration.customer_id.in_(accessible_customers))
+            else:
+                # If no accessible customers, return empty table
+                return PreviewTable(headers=list(self.HEADER_MAPPING.keys()), rows=[])
+
+        result = await self.db.execute(stmt)
+        configurations = result.scalars().all()
+
+        return await self.generate_preview_table(configurations)
+
+    async def generate_preview_table(self, data: Configuration | list[Configuration] | dict[str, Any]) -> PreviewTable:
         """Generate preview table from configuration data or form data.
 
         Args:
-            data: Configuration with selections or form data dictionary
+            data: Configuration(s) or form data dictionary
 
         Returns:
             PreviewTable: Preview table structure
         """
-        # Define CSV column headers (all 29 columns) - exact match with template
-        headers = [
-            "Name",
-            "Type",
-            "Company",
-            "Material",
-            "opening system",
-            "system series",
-            "Code",
-            "Length of Beam\nm",
-            "Renovation\nonly for frame",
-            "width",
-            "builtin Flyscreen track only for sliding frame",
-            "Total width\nonly for frame with builtin flyscreen",
-            "flyscreen track height\nonly for frame with builtin flyscreen",
-            "front Height mm",
-            "Rear heightt",
-            "Glazing height",
-            "Renovation height mm\nonly for frame",
-            "Glazing undercut heigth\nonly for glazing bead",
-            "Pic",
-            "Sash overlap only for sashs",
-            "flying mullion horizontal clearance",
-            "flying mullion vertical clearance",
-            "Steel material thickness\nonly for reinforcement",
-            "Weight/m kg",
-            "Reinforcement steel",
-            "Colours",
-            "Price/m",
-            "Price per/beam",
-            "UPVC Profile Discount%",
-        ]
+        headers = list(self.HEADER_MAPPING.keys())
+        rows = []
 
-        # Header to field mapping (exact match with template)
-        header_mapping = {
-            "Name": "name",
-            "Type": "type",
-            "Company": "company",
-            "Material": "material",
-            "opening system": "opening_system",
-            "system series": "system_series",
-            "Code": "code",
-            "Length of Beam\nm": "length_of_beam",
-            "Renovation\nonly for frame": "renovation",
-            "width": "width",
-            "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
-            "Total width\nonly for frame with builtin flyscreen": "total_width",
-            "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
-            "front Height mm": "front_height",
-            "Rear heightt": "rear_height",
-            "Glazing height": "glazing_height",
-            "Renovation height mm\nonly for frame": "renovation_height",
-            "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
-            "Pic": "pic",
-            "Sash overlap only for sashs": "sash_overlap",
-            "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
-            "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
-            "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
-            "Weight/m kg": "weight_per_meter",
-            "Reinforcement steel": "reinforcement_steel",
-            "Colours": "colours",
-            "Price/m": "price_per_meter",
-            "Price per/beam": "price_per_beam",
-            "UPVC Profile Discount%": "upvc_profile_discount",
-        }
+        if isinstance(data, list):
+            for item in data:
+                rows.append(await self._create_row(item))
+        else:
+            rows.append(await self._create_row(data))
 
-        # Create row data
+        return PreviewTable(headers=headers, rows=rows)
+
+    async def _create_row(self, data: Configuration | dict[str, Any]) -> dict[str, Any]:
+        """Create a single table row.
+
+        Args:
+            data: Configuration or form data dictionary
+
+        Returns:
+            dict: Row data
+        """
         row_data: dict[str, Any] = {}
 
         if isinstance(data, Configuration):
-            # Handle Configuration object
+            row_data["id"] = data.id
             row_data["Name"] = data.name
 
-            # Map selections to CSV columns
-            for selection in data.selections:
-                field_name = selection.selection_path
-                value = (
-                    selection.string_value
-                    or selection.json_value
-                    or selection.numeric_value
-                    or selection.boolean_value
-                )
+            # Preload attribute nodes for this configuration's manufacturing type
+            stmt = select(AttributeNode).where(
+                AttributeNode.manufacturing_type_id == data.manufacturing_type_id
+            )
+            result = await self.db.execute(stmt)
+            attribute_nodes = {node.id: node.name for node in result.scalars().all()}
 
-                # Find header for this field
-                for header, field in header_mapping.items():
-                    if field == field_name:
+            # Map selections to CSV columns using attribute node names
+            for selection in data.selections:
+                field_name = attribute_nodes.get(selection.attribute_node_id)
+                if field_name:
+                    value = (
+                        selection.string_value
+                        if selection.string_value is not None
+                        else selection.json_value
+                        if selection.json_value is not None
+                        else selection.numeric_value
+                        if selection.numeric_value is not None
+                        else selection.boolean_value
+                    )
+
+                    header = self.REVERSE_HEADER_MAPPING.get(field_name)
+                    if header:
                         row_data[header] = self.format_preview_value(value)
-                        break
         else:
             # Handle dictionary (form data)
-            for header, field_name in header_mapping.items():
+            row_data["id"] = data.get("id", "N/A")
+            for header, field_name in self.HEADER_MAPPING.items():
+                if header == "id":
+                    continue
                 value = data.get(field_name)
                 row_data[header] = self.format_preview_value(value)
 
         # Fill missing columns with N/A
-        for header in headers:
+        for header in self.HEADER_MAPPING.keys():
             if header not in row_data:
                 row_data[header] = "N/A"
 
-        return PreviewTable(headers=headers, rows=[row_data])
+        return row_data
+
 
     def format_preview_value(self, value: Any) -> str:
         """Format value for preview display.
@@ -962,6 +1028,105 @@ class EntryService(BaseService):
             return str(value)  # TODO: Better dict formatting
         else:
             return str(value)
+
+    @require(ConfigurationEditor)
+    async def update_preview_value(self, configuration_id: int, field: str, value: Any, user: User) -> Configuration:
+        """Update a specific field in a configuration from table preview.
+
+        Args:
+            configuration_id: Configuration ID
+            field: Header name or field path
+            value: New value
+            user: Current user
+
+        Returns:
+            Configuration: Updated configuration
+        """
+        # Load configuration with selections
+        stmt = (
+            select(Configuration)
+            .where(Configuration.id == configuration_id)
+            .options(selectinload(Configuration.selections))
+        )
+        result = await self.db.execute(stmt)
+        config = result.scalar_one_or_none()
+
+        if not config:
+            raise NotFoundException(f"Configuration {configuration_id} not found")
+
+        # Resolve field name from header if needed
+        field_path = self.HEADER_MAPPING.get(field, field)
+
+        if field_path == "name":
+            config.name = str(value)
+        else:
+            # Get attribute node to determine data type
+            stmt = select(AttributeNode).where(
+                AttributeNode.manufacturing_type_id == config.manufacturing_type_id,
+                AttributeNode.ltree_path == field_path
+            )
+            res = await self.db.execute(stmt)
+            node = res.scalar_one_or_none()
+
+            if not node:
+                raise ValidationException(f"Field {field_path} not found for this product type")
+
+            # Find existing selection or create new
+            selection = next((s for s in config.selections if s.selection_path == field_path), None)
+
+            if not selection:
+                selection = ConfigurationSelection(
+                    configuration_id=config.id,
+                    attribute_node_id=node.id,
+                    selection_path=node.ltree_path
+                )
+                self.db.add(selection)
+
+            # Store value in appropriate field based on data type
+            # (matches logic in save_profile_configuration)
+            data_type = node.data_type
+            
+            # Clear all value fields first
+            selection.string_value = None
+            selection.numeric_value = None
+            selection.boolean_value = None
+            selection.json_value = None
+
+            if data_type == "boolean" or isinstance(value, bool):
+                selection.boolean_value = bool(value) if isinstance(value, bool) else (str(value).lower() == "yes")
+            elif data_type in ["number", "dimension"] or isinstance(value, (int, float)):
+                try:
+                    selection.numeric_value = Decimal(str(value))
+                except (TypeError, ValueError):
+                    raise ValidationException(f"Invalid numeric value: {value}")
+            elif data_type == "selection" and isinstance(value, (list, dict)):
+                selection.json_value = value
+            else:
+                selection.string_value = str(value)
+
+        config.updated_at = datetime.now()
+        await self.commit()
+        await self.refresh(config)
+        return config
+
+    @require(ConfigurationDeleter)
+    async def delete_profile_configuration(self, configuration_id: int, user: User) -> None:
+        """Delete a profile configuration.
+
+        Args:
+            configuration_id: Configuration ID
+            user: Current user
+        """
+        stmt = select(Configuration).where(Configuration.id == configuration_id)
+        result = await self.db.execute(stmt)
+        config = result.scalar_one_or_none()
+
+        if not config:
+            raise NotFoundException(f"Configuration {configuration_id} not found")
+
+        await self.db.delete(config)
+        await self.commit()
+
 
     # Customer management is now handled by RBACService
     # This method is deprecated - use rbac_service.get_or_create_customer_for_user() instead

@@ -86,7 +86,7 @@ class ConditionEvaluator {
 const SESSION_KEY = 'profile_entry_form_data';
 const COMMIT_STATUS_KEY = 'profile_entry_committed';
 
-function profileEntryApp() {
+function profileEntryApp(options = {}) {
     return {
         // State
         manufacturingTypeId: window.INITIAL_MANUFACTURING_TYPE_ID || null,
@@ -104,6 +104,13 @@ function profileEntryApp() {
         hasUnsavedData: false, // Track if session has uncommitted data
         lastSavedData: null,
         autoSaveInterval: null,
+
+        // Inline Editing & Table Preview
+        canEdit: options.canEdit || false,
+        canDelete: options.canDelete || false,
+        savedConfigurations: [],
+        editingCell: { rowId: null, field: null, value: null },
+
 
         // Computed
         get isFormValid() {
@@ -153,9 +160,12 @@ function profileEntryApp() {
             console.log('🦆 [STEP 1] Manufacturing types loaded:', this.manufacturingTypes.length, 'types');
 
             if (this.manufacturingTypeId) {
-                console.log('🦆 [STEP 2] Manufacturing type ID found, loading schema...');
-                await this.loadSchema();
-                console.log('🦆 [STEP 2] Schema loading completed');
+                console.log('🦆 [STEP 2] Manufacturing type ID found, loading schema and previews...');
+                await Promise.all([
+                    this.loadSchema(),
+                    this.loadPreviews()
+                ]);
+                console.log('🦆 [STEP 2] Data loading completed');
             } else {
                 console.warn('🦆 [WARNING] No manufacturingTypeId provided - cannot load schema');
             }
@@ -163,14 +173,19 @@ function profileEntryApp() {
             // Setup navigation guards
             this.setupNavigationGuards();
 
+
             console.log('🦆 [DUCK DEBUG] ========================================');
             console.log('🦆 [DUCK DEBUG] Initialization Complete');
-            console.log('🦆 [DUCK DEBUG] Final state:', {
+            console.log('🦆 [DUCK DEBUG] ✨ LOUD DUCK DEBUG - Final state:', {
                 loading: this.loading,
                 hasSchema: !!this.schema,
                 schemaSection: this.schema?.sections?.length || 0,
-                error: this.error
+                error: this.error,
+                schemaKeys: Object.keys(this.schema || {}),
+                fullSchema: this.schema
             });
+            console.log('🦆 [DUCK DEBUG] ✨ LOUD DUCK DEBUG - Form data keys:', Object.keys(this.formData));
+            console.log('🦆 [DUCK DEBUG] ✨ LOUD DUCK DEBUG - Field visibility:', this.fieldVisibility);
             console.log('🦆 [DUCK DEBUG] ========================================');
         },
 
@@ -211,6 +226,7 @@ function profileEntryApp() {
             if (!this.manufacturingTypeId) {
                 console.warn('🦆 [SCHEMA] ⚠️ No manufacturing type ID - aborting');
                 this.schema = null;
+                this.loading = false;
                 return;
             }
 
@@ -243,52 +259,150 @@ function profileEntryApp() {
 
                 console.log('🦆 [SCHEMA] Parsing JSON response...');
                 this.schema = await response.json();
+                console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Schema loaded:', this.schema);
+                console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Schema type:', typeof this.schema);
+                console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Schema keys:', Object.keys(this.schema || {}));
+                console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Has sections?', !!this.schema?.sections);
+                console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Sections length:', this.schema?.sections?.length || 0);
+                console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Sections content:', this.schema?.sections);
+
+                // Ensure schema is properly reactive by forcing Alpine.js to detect the change
+                if (this.schema && this.schema.sections) {
+                    // Force Alpine.js reactivity by triggering multiple updates
+                    const tempSchema = this.schema;
+                    this.schema = null;
+                    await new Promise(resolve => setTimeout(resolve, 50)); // Longer delay
+                    this.schema = tempSchema;
+                    
+                    // Force another update cycle
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    this.schema = { ...tempSchema }; // Create new object reference
+                    
+                    console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Forced multiple Alpine reactivity updates');
+                }
 
                 // Pre-calculate component types for stable rendering
                 if (this.schema && this.schema.sections) {
                     console.log('🦆 [SCHEMA] Pre-calculating component types...');
-                    this.schema.sections.forEach(section => {
-                        if (section.fields) {
-                            section.fields.forEach(field => {
-                                // Calculate and store component type once
-                                field.componentType = field.ui_component || this.getUIComponent(field);
-
-                                // Debug logging
-                                console.log(`🦆 Field: ${field.name} -> componentType: ${field.componentType}`);
-                            });
-                        }
+                    console.log('🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Processing sections:', this.schema.sections.length);
+                    this.schema.sections.forEach((section, sectionIndex) => {
+                        console.log(`🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Section ${sectionIndex}:`, section.title, 'Fields:', section.fields?.length || 0);
+                        section.fields.forEach((field, fieldIndex) => {
+                            console.log(`🦆 [SCHEMA] ✨ LOUD DUCK DEBUG - Field ${fieldIndex}:`, field.name, 'Type:', field.data_type);
+                            field.componentType = this.getUIComponent(field);
+                            // Set default value if not in formData
+                            if (this.formData[field.name] === undefined) {
+                                this.formData[field.name] = null;
+                            }
+                        });
                     });
+                    console.log('🦆 [SCHEMA] ✅ Schema processing complete');
+                } else {
+                    console.warn('🦆 [SCHEMA] ⚠️ LOUD DUCK DEBUG - Schema has no sections!');
+                    console.warn('🦆 [SCHEMA] ⚠️ LOUD DUCK DEBUG - Schema object:', JSON.stringify(this.schema, null, 2));
                 }
-                console.log('🦆 [SCHEMA] ✅ Schema parsed successfully!');
-                console.log('🦆 [SCHEMA] Schema structure:', {
-                    manufacturing_type_id: this.schema.manufacturing_type_id,
-                    sections_count: this.schema.sections?.length || 0,
-                    has_conditional_logic: !!this.schema.conditional_logic,
-                    conditional_fields: Object.keys(this.schema.conditional_logic || {}).length
-                });
-                console.log('🦆 [SCHEMA] Full schema object:', this.schema);
-
-                console.log('🦆 [SCHEMA] Initializing form data...');
-                this.initializeFormData();
-                console.log('🦆 [SCHEMA] Form data initialized:', this.formData);
-
-                console.log('🦆 [SCHEMA] Updating field visibility...');
-                this.updateFieldVisibility();
-                console.log('🦆 [SCHEMA] Field visibility updated:', this.fieldVisibility);
-
-                console.log('🦆 [SCHEMA] ✅ Schema loading completed successfully!');
             } catch (err) {
-                console.error('🦆 [SCHEMA ERROR] ❌❌❌ EXCEPTION CAUGHT ❌❌❌');
-                console.error('🦆 [SCHEMA ERROR] Error message:', err.message);
-                console.error('🦆 [SCHEMA ERROR] Error stack:', err.stack);
-                console.error('🦆 [SCHEMA ERROR] Full error object:', err);
-                this.error = 'Failed to load form schema: ' + err.message;
+                console.error('🦆 [SCHEMA ERROR] ❌ Exception caught:', err);
+                this.error = 'Failed to load form schema';
             } finally {
-                console.log('🦆 [SCHEMA] Setting loading state to false...');
+                console.log('🦆 [SCHEMA] Setting loading to false');
                 this.loading = false;
-                console.log('🦆 [SCHEMA] ========================================');
             }
         },
+
+        async loadPreviews() {
+            if (!this.manufacturingTypeId) return;
+
+            try {
+                const response = await fetch(`/api/v1/admin/entry/profile/previews/${this.manufacturingTypeId}`, {
+                    credentials: 'include'  // Include cookies for admin authentication
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.savedConfigurations = data.rows || [];
+                    console.log(`Loaded ${this.savedConfigurations.length} previews`);
+                } else if (response.status === 403) {
+                    console.warn('🔒 Preview access forbidden - user may not have permission');
+                    this.savedConfigurations = [];
+                } else {
+                    console.warn(`Failed to load previews: ${response.status}`);
+                    this.savedConfigurations = [];
+                }
+            } catch (err) {
+                console.error('Failed to load previews:', err);
+                this.savedConfigurations = [];
+            }
+        },
+
+        startEditing(rowId, field, value) {
+            console.log('Start editing:', rowId, field, value);
+            this.editingCell = {
+                rowId: rowId,
+                field: field,
+                value: value === 'N/A' ? '' : value
+            };
+        },
+
+        cancelEditing() {
+            this.editingCell = { rowId: null, field: null, value: null };
+        },
+
+        async saveInlineEdit(rowId, field) {
+            const newValue = this.editingCell.value;
+            console.log('Saving inline edit:', rowId, field, newValue);
+
+            try {
+                const response = await fetch(`/api/v1/admin/entry/profile/preview/${rowId}/update-cell`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ field: field, value: newValue })
+                });
+
+                if (response.ok) {
+                    // Update local state
+                    const row = this.savedConfigurations.find(r => r.id === rowId);
+                    if (row) {
+                        row[field] = newValue || 'N/A';
+                    }
+                    this.cancelEditing();
+
+                    // Show success toast
+                    if (window.showToast) {
+                        window.showToast('Updated successfully', 'success');
+                    }
+                } else {
+                    const error = await response.json();
+                    alert('Error updating: ' + (error.message || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Save error:', err);
+                alert('Connection error while saving');
+            }
+        },
+
+        async deleteRow(rowId) {
+            if (!confirm('Are you sure you want to delete this configuration?')) return;
+
+            try {
+                const response = await fetch(`/api/v1/admin/entry/profile/configuration/${rowId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    this.savedConfigurations = this.savedConfigurations.filter(r => r.id !== rowId);
+
+                    if (window.showToast) {
+                        window.showToast('Deleted successfully', 'success');
+                    }
+                } else {
+                    alert('Failed to delete');
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+            }
+        },
+
 
         initializeFormData() {
             this.formData = {
@@ -325,7 +439,7 @@ function profileEntryApp() {
         },
 
         updateFieldVisibility() {
-            if (!this.schema) return;
+            if (!this.schema || !this.schema.conditional_logic) return;
 
             // Evaluate all conditional logic
             for (const [fieldName, condition] of Object.entries(this.schema.conditional_logic)) {
@@ -718,6 +832,10 @@ function profileEntryApp() {
 
                 console.log('Saved configuration:', configuration);
 
+                // Reload previews to show the new record
+                await this.loadPreviews();
+
+
             } catch (err) {
                 console.error('Error saving configuration:', err);
                 this.error = err.message || 'Failed to save configuration';
@@ -728,7 +846,10 @@ function profileEntryApp() {
         },
 
         prepareSaveData() {
-            const saveData = { ...this.formData };
+            const saveData = {
+                ...this.formData,
+                manufacturing_type_id: this.manufacturingTypeId
+            };
 
             // Remove fields that are not visible (conditional logic)
             if (this.schema) {
@@ -753,12 +874,35 @@ function profileEntryApp() {
 
         scrollToFirstError() {
             const firstErrorField = Object.keys(this.fieldErrors)[0];
+            console.log('🎯 Scrolling to first error field:', firstErrorField, 'All errors:', this.fieldErrors);
+            
             if (firstErrorField) {
-                const element = document.getElementById(firstErrorField);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.focus();
+                // Switch to input tab if we're not already there
+                if (this.activeTab !== 'input') {
+                    this.activeTab = 'input';
+                    console.log('🔄 Switched to input tab to show error');
                 }
+                
+                // Wait a bit for tab switch to complete, then scroll
+                setTimeout(() => {
+                    const element = document.getElementById(firstErrorField);
+                    console.log('🔍 Found error element:', element);
+                    
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        element.focus();
+                        
+                        // Add a temporary highlight effect
+                        element.classList.add('error-highlight');
+                        setTimeout(() => {
+                            element.classList.remove('error-highlight');
+                        }, 3000);
+                        
+                        console.log('✅ Scrolled to and focused error field:', firstErrorField);
+                    } else {
+                        console.warn('⚠️ Could not find element for field:', firstErrorField);
+                    }
+                }, 100);
             }
         },
 
@@ -899,37 +1043,99 @@ function profileEntryApp() {
             }
             this.saving = true;
             this.error = null;
+            
+            // Clear previous field errors
+            this.fieldErrors = {};
+            
             try {
                 const saveData = this.prepareSaveData();
+                console.log('🔄 Sending data to server:', saveData);
+                
                 const response = await fetch('/api/v1/admin/entry/profile/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
                     body: JSON.stringify(saveData)
                 });
+                
+                console.log('📡 Server response status:', response.status);
+                
                 if (!response.ok) {
                     const errorData = await response.json();
-                    if (response.status === 422 && errorData.detail && errorData.detail.field_errors) {
-                        this.fieldErrors = { ...this.fieldErrors, ...errorData.detail.field_errors };
-                        showToast('Please fix validation errors', 'error');
-                        this.scrollToFirstError();
+                    console.log('❌ Server error data:', errorData);
+
+                    // Specific handling for 422 Validation Errors
+                    if (response.status === 422) {
+                        if (errorData.detail) {
+                            // If detail is an array (standard FastAPI validation error)
+                            if (Array.isArray(errorData.detail)) {
+                                const fieldErrorsFromServer = {};
+                                const messages = errorData.detail.map(e => {
+                                    const field = e.loc ? e.loc[e.loc.length - 1] : 'Unknown field';
+                                    const msg = e.msg || 'Invalid value';
+                                    fieldErrorsFromServer[field] = msg;
+                                    return `${field}: ${msg}`;
+                                });
+                                
+                                // Update field errors for UI highlighting
+                                this.fieldErrors = { ...this.fieldErrors, ...fieldErrorsFromServer };
+                                console.log('🎯 Updated field errors:', this.fieldErrors);
+                                
+                                // Scroll to first error field
+                                this.scrollToFirstError();
+                                
+                                const errorMessage = `Validation errors found:\n${messages.join('\n')}`;
+                                showToast('Please fix the highlighted validation errors', 'error', 8000);
+                                return; // Don't throw, just return to show field errors
+                            }
+                            // If detail is an object with specific field_errors (EntryService custom validation)
+                            else if (errorData.detail.field_errors) {
+                                // Update field errors for UI highlighting
+                                this.fieldErrors = { ...this.fieldErrors, ...errorData.detail.field_errors };
+                                console.log('🎯 Updated field errors from server:', this.fieldErrors);
+
+                                // Scroll to first error field
+                                this.scrollToFirstError();
+
+                                // Create a readable list of errors for toast
+                                const errorList = Object.entries(errorData.detail.field_errors)
+                                    .map(([field, msg]) => `• ${field.replace(/_/g, ' ')}: ${msg}`)
+                                    .join('\n');
+
+                                showToast('Please fix the highlighted validation errors', 'error', 8000);
+                                return; // Don't throw, just return to show field errors
+                            }
+                            // Generic detail message
+                            else {
+                                throw new Error(errorData.detail.message || errorData.detail || 'Validation failed');
+                            }
+                        }
                     } else if (response.status === 401) {
-                        showToast('Authentication required', 'error');
+                        showToast('Authentication session expired', 'error');
                         window.location.href = '/api/v1/admin/login';
-                    } else {
-                        throw new Error(errorData.detail?.message || 'Failed to record');
+                        return;
+                    } else if (response.status === 500) {
+                        throw new Error('Server Error: ' + (errorData.detail?.message || 'Internal server error occurred'));
                     }
-                    return;
+
+                    throw new Error(errorData.message || errorData.detail || `Server returned ${response.status}`);
                 }
+                
                 const configuration = await response.json();
+                console.log('✅ Configuration saved successfully:', configuration);
+                
                 sessionStorage.setItem(COMMIT_STATUS_KEY, 'true');
                 this.hasUnsavedData = false;
                 showToast('Configuration recorded successfully!', 'success');
-                console.log('Recorded:', configuration);
+
+                // Refresh previews to show the new record
+                await this.loadPreviews();
+
             } catch (err) {
-                console.error('Error recording:', err);
+                console.error('❌ Error recording configuration:', err);
                 this.error = err.message;
-                showToast(err.message || 'Failed to record', 'error');
+                showToast(err.message, 'error', 8000);
+                this.scrollToFirstError();
             } finally {
                 this.saving = false;
             }

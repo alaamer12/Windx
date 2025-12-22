@@ -1,5 +1,10 @@
 /* Profile Entry Page Styles */
 
+/* Hide elements with x-cloak until Alpine.js loads */
+[x-cloak] {
+    display: none !important;
+}
+
 /* Tabbed Interface Styles */
 .tabbed-interface {
     width: 100%;
@@ -68,6 +73,41 @@
 .field-item.error {
     border-left: 4px solid #dc2626;
     background-color: #fef2f2;
+    box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.1);
+    animation: errorPulse 0.5s ease-out;
+}
+
+@keyframes errorPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+    }
+}
+
+.input-field.invalid,
+.field-item.error .input-field {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+
+.input-field.error-highlight {
+    animation: fieldErrorHighlight 2s ease-out;
+}
+
+@keyframes fieldErrorHighlight {
+    0%, 50% {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3);
+    }
+    100% {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
 }
 
 .field-label {
@@ -265,6 +305,11 @@
 }
 
 /* Input Group Styles */
+.input-group.error-border {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1) !important;
+}
+
 .input-group {
     display: flex;
     align-items: stretch;

@@ -266,11 +266,11 @@ body, html {
 #preview-tab th,
 #preview-tab td {
     vertical-align: middle;
-    white-space: nowrap;
+    /* white-space: nowrap; */
     width: 40px;
     /* Very small fixed width for most columns */
     min-width: 40px;
-    max-width: 60px;
+    /* max-width: 60px; */
     overflow: hidden;
     text-overflow: ellipsis;
     padding: 0.75rem 1rem;
@@ -291,25 +291,28 @@ body, html {
 /* Name column should be wider */
 #preview-tab th:nth-child(2),
 #preview-tab td:nth-child(2) {
-    width: 100px;
-    min-width: 100px;
+    width: 90px;
+    min-width: 119px;
     max-width: 120px;
-    padding: 0.75rem 1rem;
+    height: 90px;
+    /* background-color: gray; */
+    padding: -0.4rem 1rem;
 }
 
 #preview-tab th {
     font-weight: 600;
     font-size: 0.6rem;
     /* Very small font for headers */
-    text-transform: uppercase;
+    /* text-transform: uppercase; */
     letter-spacing: 0.02em;
-    position: sticky;
+    /* position: sticky; */
     top: 0;
-    background: linear-gradient(to right, #f9fafb, rgba(249, 250, 251, 0.5));
+    background: cornflowerblue;
     z-index: 10;
+    border: black;
     line-height: 1.2;
     /* Tighter line height */
-    padding: 1rem 1rem;
+    /* padding: 1rem 1rem; */
     /* More padding for headers */
 }
 

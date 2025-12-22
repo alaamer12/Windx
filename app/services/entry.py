@@ -1044,6 +1044,8 @@ class EntryService(BaseService):
         Returns:
             Configuration: Updated configuration
         """
+        print(f"🦆 [UPDATE DEBUG] Updating field '{field}' with value '{value}' for config {configuration_id}")
+        
         # Load configuration with selections
         stmt = (
             select(Configuration)
@@ -1058,23 +1060,30 @@ class EntryService(BaseService):
 
         # Resolve field name from header if needed
         field_path = self.HEADER_MAPPING.get(field, field)
+        print(f"🦆 [UPDATE DEBUG] Resolved field_path: '{field_path}'")
 
         if field_path == "name":
             config.name = str(value)
+            print(f"🦆 [UPDATE DEBUG] Updated config name to: {config.name}")
         else:
-            # Get attribute node to determine data type
+            # Get attribute node by name (not ltree_path!)
             stmt = select(AttributeNode).where(
                 AttributeNode.manufacturing_type_id == config.manufacturing_type_id,
-                AttributeNode.ltree_path == field_path
+                AttributeNode.name == field_path  # Use name instead of ltree_path
             )
             res = await self.db.execute(stmt)
             node = res.scalar_one_or_none()
+            
+            print(f"🦆 [UPDATE DEBUG] Found attribute node: {node}")
+            print(f"🦆 [UPDATE DEBUG] Node name: {node.name if node else 'None'}")
+            print(f"🦆 [UPDATE DEBUG] Node data_type: {node.data_type if node else 'None'}")
 
             if not node:
                 raise ValidationException(f"Field {field_path} not found for this product type")
 
             # Find existing selection or create new
-            selection = next((s for s in config.selections if s.selection_path == field_path), None)
+            selection = next((s for s in config.selections if s.attribute_node_id == node.id), None)
+            print(f"🦆 [UPDATE DEBUG] Found existing selection: {selection}")
 
             if not selection:
                 selection = ConfigurationSelection(
@@ -1083,10 +1092,12 @@ class EntryService(BaseService):
                     selection_path=node.ltree_path
                 )
                 self.db.add(selection)
+                print(f"🦆 [UPDATE DEBUG] Created new selection")
 
             # Store value in appropriate field based on data type
             # (matches logic in save_profile_configuration)
             data_type = node.data_type
+            print(f"🦆 [UPDATE DEBUG] Data type: {data_type}")
             
             # Clear all value fields first
             selection.string_value = None
@@ -1096,19 +1107,24 @@ class EntryService(BaseService):
 
             if data_type == "boolean" or isinstance(value, bool):
                 selection.boolean_value = bool(value) if isinstance(value, bool) else (str(value).lower() == "yes")
+                print(f"🦆 [UPDATE DEBUG] Set boolean_value: {selection.boolean_value}")
             elif data_type in ["number", "dimension"] or isinstance(value, (int, float)):
                 try:
                     selection.numeric_value = Decimal(str(value))
+                    print(f"🦆 [UPDATE DEBUG] Set numeric_value: {selection.numeric_value}")
                 except (TypeError, ValueError):
                     raise ValidationException(f"Invalid numeric value: {value}")
             elif data_type == "selection" and isinstance(value, (list, dict)):
                 selection.json_value = value
+                print(f"🦆 [UPDATE DEBUG] Set json_value: {selection.json_value}")
             else:
                 selection.string_value = str(value)
+                print(f"🦆 [UPDATE DEBUG] Set string_value: {selection.string_value}")
 
         config.updated_at = datetime.now()
         await self.commit()
         await self.refresh(config)
+        print(f"🦆 [UPDATE DEBUG] Successfully updated configuration")
         return config
 
     @require(ConfigurationDeleter)

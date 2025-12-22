@@ -449,12 +449,16 @@ function profileEntryApp(options = {}) {
                 for (const [rowId, edits] of Object.entries(this.pendingEdits)) {
                     for (const [field, value] of Object.entries(edits)) {
                         try {
+                            console.log(`🦆 [COMMIT DEBUG] Saving ${field} for row ${rowId} with value:`, value);
+                            
                             const response = await fetch(`/api/v1/admin/entry/profile/preview/${rowId}/update-cell`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
                                 credentials: 'include',
                                 body: JSON.stringify({ field: field, value: value })
                             });
+
+                            console.log(`🦆 [COMMIT DEBUG] Response status for ${field}:`, response.status);
 
                             if (response.ok) {
                                 successCount++;

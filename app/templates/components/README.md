@@ -4,11 +4,12 @@ This directory contains reusable Jinja2 macros for building RBAC-aware UI compon
 
 ## Overview
 
-The component library provides three main categories of macros:
+The component library provides four main categories of macros:
 
 1. **RBAC Helpers** (`rbac_helpers.html.jinja`) - Core RBAC-aware UI elements
 2. **Navigation** (`navigation.html.jinja`) - Navigation components with automatic permission filtering
 3. **Tables** (`tables.html.jinja`) - Data table components with RBAC-aware actions
+4. **Buttons** (`buttons.html.jinja`) - Professional button components with comprehensive styling
 
 ## Prerequisites
 
@@ -19,6 +20,180 @@ All macros assume the following context variables are available:
 - `has` - Role checking helper (e.g., `has.role('SUPERADMIN')`)
 
 These are automatically injected by the `RBACTemplateMiddleware`.
+
+## Button Components
+
+### button
+
+Renders a professional button with comprehensive styling and state management.
+
+**Parameters:**
+- `text` (required) - Button text to display (default: "Button")
+- `type` (optional) - Button type: "button", "submit", "reset" (default: "button")
+- `variant` (optional) - Style variant: "primary", "outline", "ghost", "danger", "success", "warning", "tab" (default: "primary")
+- `size` (optional) - Size: "xs", "sm", "md", "lg", "xl" (default: "md")
+- `href` (optional) - URL to link to (renders as `<a>` instead of `<button>`)
+- `onclick` (optional) - JavaScript onclick handler
+- `disabled` (optional) - Boolean to disable the button (default: false)
+- `loading` (optional) - Boolean to show loading spinner (default: false)
+- `icon` (optional) - FontAwesome icon class (e.g., "fas fa-save")
+- `icon_position` (optional) - Icon position: "left", "right" (default: "left")
+- `icon_only` (optional) - Boolean to show only icon, no text (default: false)
+- `class` (optional) - Additional CSS classes
+- `style` (optional) - Inline styles
+- `id` (optional) - Element ID
+- `title` (optional) - Tooltip text
+- `target` (optional) - Link target for href buttons (default: "_self")
+- `form` (optional) - Form ID for submit buttons
+- `alpine_attrs` (optional) - Alpine.js attributes (e.g., '@click="handler()"')
+- `data_attrs` (optional) - Data attributes
+- `aria_label` (optional) - Accessibility label
+
+**Examples:**
+
+```jinja2
+{% from "components/buttons.html.jinja" import button %}
+
+{# Basic buttons #}
+{{ button("Save Changes", variant="primary") }}
+{{ button("Cancel", variant="outline") }}
+{{ button("Delete", variant="danger") }}
+
+{# Buttons with icons #}
+{{ button("Save", variant="primary", icon="fas fa-save") }}
+{{ button("Download", variant="outline", icon="fas fa-download", icon_position="right") }}
+{{ button("Settings", variant="ghost", icon="fas fa-cog", icon_only=true, title="Open Settings") }}
+
+{# Different sizes #}
+{{ button("Small", size="sm") }}
+{{ button("Large", size="lg") }}
+
+{# States #}
+{{ button("Disabled", disabled=true) }}
+{{ button("Loading...", loading=true, disabled=true) }}
+
+{# Link buttons #}
+{{ button("Go to Dashboard", href="/admin", variant="primary") }}
+{{ button("External Link", href="https://example.com", target="_blank") }}
+
+{# Form buttons #}
+{{ button("Submit", type="submit", variant="primary") }}
+{{ button("Reset", type="reset", variant="outline") }}
+
+{# With Alpine.js #}
+{{ button("Save", variant="primary", alpine_attrs='@click="save()" :disabled="saving"') }}
+
+{# With onclick handler #}
+{{ button("Confirm", variant="danger", onclick="confirm('Are you sure?')") }}
+
+{# Tab buttons #}
+{{ button("Input", variant="tab", icon="fas fa-edit", class="active") }}
+{{ button("Preview", variant="tab", icon="fas fa-eye") }}
+```
+
+### button_group
+
+Creates a group of buttons with proper spacing and alignment.
+
+**Parameters:**
+- `align` (optional) - Alignment: "left", "center", "right" (default: "left")
+- `gap` (optional) - Gap size: "xs", "sm", "md", "lg" (default: "md")
+- `class` (optional) - Additional CSS classes
+- `style` (optional) - Inline styles
+
+**Examples:**
+
+```jinja2
+{% from "components/buttons.html.jinja" import button, button_group %}
+
+{# Basic button group #}
+{% call button_group() %}
+  {{ button("First", variant="outline") }}
+  {{ button("Second", variant="outline") }}
+  {{ button("Third", variant="primary") }}
+{% endcall %}
+
+{# Right-aligned with custom gap #}
+{% call button_group(align="right", gap="sm") %}
+  {{ button("Cancel", variant="outline") }}
+  {{ button("Save", variant="primary") }}
+{% endcall %}
+
+{# Form button group #}
+{% call button_group(align="right", gap="md", class="pt-4 border-t") %}
+  {{ button("Reset", type="reset", variant="outline") }}
+  {{ button("Save", type="submit", variant="primary", icon="fas fa-save") }}
+{% endcall %}
+```
+
+### fab (Floating Action Button)
+
+Creates a floating action button for primary actions.
+
+**Parameters:**
+- `text` (required) - Button text (shown on hover)
+- `icon` (optional) - FontAwesome icon class (default: "fas fa-plus")
+- `onclick` (optional) - JavaScript onclick handler
+- `href` (optional) - URL to link to
+- `position` (optional) - Position: "bottom-right", "bottom-left", "top-right", "top-left" (default: "bottom-right")
+- `class` (optional) - Additional CSS classes
+- `style` (optional) - Inline styles
+
+**Examples:**
+
+```jinja2
+{% from "components/buttons.html.jinja" import fab %}
+
+{# Basic FAB #}
+{{ fab("Add New Item") }}
+
+{# Custom icon and position #}
+{{ fab("Create", icon="fas fa-plus", position="bottom-left") }}
+
+{# With onclick handler #}
+{{ fab("Quick Action", onclick="openModal()") }}
+
+{# As link #}
+{{ fab("New Customer", href="/customers/new") }}
+```
+
+## Button Styling System
+
+The button component uses a comprehensive CSS system with the following features:
+
+### Variants
+- **Primary**: Blue background, white text - for main actions
+- **Outline**: Transparent background, colored border - for secondary actions
+- **Ghost**: Transparent background, no border - for subtle actions
+- **Danger**: Red background, white text - for destructive actions
+- **Success**: Green background, white text - for positive actions
+- **Warning**: Orange background, white text - for warning actions
+- **Tab**: Transparent background, bottom border - for tab navigation
+
+### Sizes
+- **xs**: Extra small (0.25rem padding, 0.75rem font)
+- **sm**: Small (0.375rem padding, 0.8125rem font)
+- **md**: Medium (0.625rem padding, 0.875rem font) - default
+- **lg**: Large (0.75rem padding, 1rem font)
+- **xl**: Extra large (1rem padding, 1.125rem font)
+
+### States
+- **Normal**: Default interactive state
+- **Hover**: Enhanced styling with subtle animations
+- **Active**: Pressed state with reduced elevation
+- **Disabled**: Reduced opacity, no interactions
+- **Loading**: Animated spinner, disabled interactions
+- **Focus**: Accessibility-compliant focus indicators
+
+### Features
+- Smooth transitions and micro-animations
+- Consistent spacing and typography
+- Icon support with proper alignment
+- Loading states with spinners
+- Accessibility compliance (ARIA labels, focus management)
+- Alpine.js integration
+- Form integration
+- Link button support
 
 ## RBAC Helpers
 

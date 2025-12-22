@@ -1,11 +1,12 @@
 {% extends "admin/base.html.jinja" %}
 {% from "components/tables.html.jinja" import table_container with context %}
+{% from "components/buttons.html.jinja" import button, button_group with context %}
 {% from "admin/components/tooltip_component.html.jinja" import tooltip with context %}
 
 {% block title %}Profile Entry - {{ super() }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/profile-entry.css">
+<link rel="stylesheet" href="/static/css/profile-entry.css?v=10">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css">
 {% endblock %}
 
@@ -18,13 +19,13 @@
     <!-- Navigation Tabs -->
     <div class="navigation-tabs">
         <a href="/api/v1/admin/entry/profile" class="nav-tab active">
-            <i class="fas fa-user-cog mr-2"></i>Profile
+            👤 Profile
         </a>
         <a href="/api/v1/admin/entry/accessories" class="nav-tab">
-            <i class="fas fa-puzzle-piece mr-2"></i>Accessories
+            🧩 Accessories
         </a>
         <a href="/api/v1/admin/entry/glazing" class="nav-tab">
-            <i class="fas fa-window-maximize mr-2"></i>Glazing
+            🪟 Glazing
         </a>
     </div>
 
@@ -47,7 +48,7 @@
     <!-- Error State -->
     <div x-show="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
         <div class="flex items-center">
-            <i class="fas fa-exclamation-circle text-red-500 mr-2"></i>
+            <span class="text-red-500 mr-2 text-lg">⚠️</span>
             <span class="text-red-700" x-text="error"></span>
         </div>
     </div>
@@ -64,7 +65,7 @@
         <div class="flex items-start gap-3">
             <div class="flex-shrink-0">
                 <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-clock text-amber-600"></i>
+                    <span class="text-amber-600 text-lg">⏰ </span>
                 </div>
             </div>
             <div class="flex-1">
@@ -75,11 +76,10 @@
             </div>
             <button @click="hasUnsavedData = false" 
                     type="button"
-                    class="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-amber-500 hover:bg-amber-200/50 hover:text-amber-700 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-1"
-                    aria-label="Close">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
+                    class="action-btn close-btn"
+                    aria-label="Close notification"
+                    title="Close">
+                ✕
             </button>
         </div>
     </div>
@@ -88,11 +88,17 @@
     <div x-show="schema && schema.sections && !loading" x-cloak class="tabbed-interface">
         <!-- Tab Buttons -->
         <div class="tab-buttons">
-            <button class="tab-btn active" @click="switchTab('input')" :class="{ 'active': activeTab === 'input' }">
-                <i class="fas fa-edit mr-2"></i>Input
+            <button @click="switchTab('input')" 
+                    :class="{ 'active': activeTab === 'input' }"
+                    type="button"
+                    class="tab-btn active">
+                📝 Input
             </button>
-            <button class="tab-btn" @click="switchTab('preview')" :class="{ 'active': activeTab === 'preview' }">
-                <i class="fas fa-eye mr-2"></i>Preview
+            <button @click="switchTab('preview')" 
+                    :class="{ 'active': activeTab === 'preview' }"
+                    type="button"
+                    class="tab-btn">
+                👁️ Preview
             </button>
         </div>
         
@@ -373,27 +379,25 @@
                         </template>
                         
                         <!-- Action Buttons -->
-                        <div class="w-full flex justify-end gap-3 mt-10 pt-8 border-t border-gray-200">
-                            <button type="button"
-                                    @click="recordConfiguration()"
-                                    :disabled="!hasUnsavedData || saving"
-                                    class="group relative inline-flex items-center justify-center px-10 py-3.5 overflow-hidden font-bold text-white transition-all duration-300 bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-blue-200 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none hover:scale-[1.02] active:scale-95">
-                                <span class="relative flex items-center gap-2">
-                                    <template x-if="!saving">
-                                        <svg class="w-5 h-5 transition-transform group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
-                                        </svg>
-                                    </template>
-                                    <template x-if="saving">
-                                        <svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    </template>
-                                    <span x-text="saving ? 'Recording...' : 'Record to Database'"></span>
-                                </span>
-                            </button>
-                        </div>
+                        {% call button_group(align="right", gap="md", class="w-full mt-10 pt-8 border-t border-gray-200") %}
+                            <div x-show="!saving">
+                                <button @click="recordConfiguration()" 
+                                        :disabled="!hasUnsavedData || saving"
+                                        type="button"
+                                        class="action-btn primary-btn large-btn">
+                                    💾 Record to Database
+                                </button>
+                            </div>
+                            <div x-show="saving">
+                                {{ button(
+                                    text="Recording...",
+                                    variant="primary",
+                                    size="lg",
+                                    loading=true,
+                                    disabled=true
+                                ) }}
+                            </div>
+                        {% endcall %}
                     </form>
                 </div>
             </div>
@@ -405,21 +409,25 @@
                      class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center">
-                            <i class="fas fa-exclamation-triangle text-amber-600 mr-2"></i>
+                            <span class="text-amber-600 mr-2 text-lg">⚠️</span>
                             <span class="text-amber-800 font-medium">You have unsaved table edits</span>
                         </div>
-                        <button @click="commitTableChanges()" 
-                                :disabled="committingChanges"
-                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span x-show="!committingChanges">Commit Changes</span>
-                            <span x-show="committingChanges" class="flex items-center">
-                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Committing...
-                            </span>
-                        </button>
+                        <div x-show="!committingChanges">
+                            <button @click="commitTableChanges()" 
+                                    :disabled="committingChanges"
+                                    type="button"
+                                    class="action-btn primary-btn">
+                                💾 Commit Changes
+                            </button>
+                        </div>
+                        <div x-show="committingChanges">
+                            {{ button(
+                                text="Committing...",
+                                variant="primary",
+                                loading=true,
+                                disabled=true
+                            ) }}
+                        </div>
                     </div>
                 </div>
 
@@ -471,9 +479,10 @@
                                 </template>
                                 <td x-show="canDelete" class="px-4 py-3 text-right text-sm font-medium sticky right-0 bg-white group-hover:bg-gray-50/50 z-10">
                                     <button @click="deleteRow(row.id)" 
-                                            class="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                                            type="button"
+                                            class="action-btn delete-btn"
                                             title="Delete Record">
-                                        <i class="fas fa-trash-alt"></i>
+                                        🗑️
                                     </button>
                                 </td>
                             </tr>

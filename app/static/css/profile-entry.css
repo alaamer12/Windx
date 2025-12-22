@@ -636,3 +636,233 @@ body, html {
         margin-top: -2px;
     }
 }
+
+/* Enhanced Action Button Styles for Better UX - Override Infima */
+button.action-btn,
+.action-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    padding: 0.5rem 1rem !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    font-size: 0.875rem !important;
+    line-height: 1.25rem !important;
+    text-decoration: none !important;
+    user-select: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+}
+
+/* Primary Action Button */
+button.action-btn.primary-btn,
+.action-btn.primary-btn {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+    color: white !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2) !important;
+}
+
+button.action-btn.primary-btn:hover:not(:disabled),
+.action-btn.primary-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+    transform: translateY(-1px) !important;
+}
+
+button.action-btn.primary-btn:active,
+.action-btn.primary-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Large Button Size */
+button.action-btn.large-btn,
+.action-btn.large-btn {
+    padding: 0.75rem 2rem !important;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+}
+
+/* Delete Button */
+button.action-btn.delete-btn,
+.action-btn.delete-btn {
+    background: transparent !important;
+    color: #ef4444 !important;
+    border: 1px solid transparent !important;
+    padding: 0.375rem !important;
+    border-radius: 0.375rem !important;
+    font-size: 1rem !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+}
+
+button.action-btn.delete-btn:hover:not(:disabled),
+.action-btn.delete-btn:hover:not(:disabled) {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+    border-color: #fecaca !important;
+    transform: scale(1.1) !important;
+}
+
+button.action-btn.delete-btn:active,
+.action-btn.delete-btn:active {
+    transform: scale(1.05) !important;
+    background: #fee2e2 !important;
+}
+
+/* Close Button (X) */
+button.action-btn.close-btn,
+.action-btn.close-btn {
+    background: transparent !important;
+    color: #f59e0b !important;
+    border: 1px solid transparent !important;
+    padding: 0.25rem !important;
+    border-radius: 50% !important;
+    font-size: 1rem !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-weight: bold !important;
+}
+
+button.action-btn.close-btn:hover:not(:disabled),
+.action-btn.close-btn:hover:not(:disabled) {
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: #d97706 !important;
+    transform: rotate(90deg) scale(1.1) !important;
+}
+
+button.action-btn.close-btn:active,
+.action-btn.close-btn:active {
+    transform: rotate(90deg) scale(1.05) !important;
+}
+
+/* Check Mark Button */
+button.action-btn.check-btn,
+.action-btn.check-btn {
+    background: transparent !important;
+    color: #10b981 !important;
+    border: 1px solid transparent !important;
+    padding: 0.25rem !important;
+    border-radius: 0.375rem !important;
+    font-size: 1rem !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    min-height: 2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+button.action-btn.check-btn:hover:not(:disabled),
+.action-btn.check-btn:hover:not(:disabled) {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+    border-color: #a7f3d0 !important;
+    transform: scale(1.1) !important;
+}
+
+button.action-btn.check-btn:active,
+.action-btn.check-btn:active {
+    transform: scale(1.05) !important;
+    background: #d1fae5 !important;
+}
+
+/* Disabled State */
+button.action-btn:disabled,
+.action-btn:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Loading State */
+button.action-btn.loading,
+.action-btn.loading {
+    position: relative !important;
+    color: transparent !important;
+}
+
+button.action-btn.loading::after,
+.action-btn.loading::after {
+    content: "" !important;
+    position: absolute !important;
+    width: 1rem !important;
+    height: 1rem !important;
+    border: 2px solid transparent !important;
+    border-top: 2px solid white !important;
+    border-radius: 50% !important;
+    animation: spin 1s linear infinite !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+}
+
+@keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Button Focus States */
+button.action-btn:focus-visible,
+.action-btn:focus-visible {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px !important;
+}
+
+button.action-btn.delete-btn:focus-visible,
+.action-btn.delete-btn:focus-visible {
+    outline-color: #ef4444 !important;
+}
+
+button.action-btn.close-btn:focus-visible,
+.action-btn.close-btn:focus-visible {
+    outline-color: #f59e0b !important;
+}
+
+button.action-btn.check-btn:focus-visible,
+.action-btn.check-btn:focus-visible {
+    outline-color: #10b981 !important;
+}
+
+/* Button Ripple Effect */
+button.action-btn::before,
+.action-btn::before {
+    content: "" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.3) !important;
+    transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 0 !important;
+}
+
+button.action-btn:active::before,
+.action-btn:active::before {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+button.action-btn > *,
+.action-btn > * {
+    position: relative !important;
+    z-index: 1 !important;
+}

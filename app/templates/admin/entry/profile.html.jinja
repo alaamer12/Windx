@@ -399,24 +399,55 @@
             </div>
 
             <!-- Preview Tab -->
-            <div x-show="activeTab === 'preview'" class="tab-pane" id="preview-tab">
-                {% call table_container(title="Configuration Preview", description="Live preview of the current configuration as it will appear in the system") %}
-                    <thead class="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
-                        <tr>
+            <div x-show="activeTab === 'preview'" class="tab-pane" id="preview-tab" style="max-width: 100vw; overflow-x: hidden;">
+                <!-- Commit Changes Button -->
+                <div x-show="hasUnsavedEdits" 
+                     class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-amber-600 mr-2"></i>
+                            <span class="text-amber-800 font-medium">You have unsaved table edits</span>
+                        </div>
+                        <button @click="commitTableChanges()" 
+                                :disabled="committingChanges"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="!committingChanges">Commit Changes</span>
+                            <span x-show="committingChanges" class="flex items-center">
+                                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Committing...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Viewport-Constrained Table Container -->
+                <div class="w-full bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden responsive-table-container">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Configuration Preview</h3>
+                        <p class="text-sm text-gray-600 mt-1">Live preview of the current configuration as it will appear in the system</p>
+                    </div>
+                    
+                    <!-- Horizontal Scroll Container with Viewport Constraints -->
+                    <div class="w-full overflow-x-auto responsive-table-scroll">
+                        <table class="min-w-full divide-y divide-gray-200 responsive-table">
+                            <thead class="bg-gradient-to-r from-gray-50 to-gray-100/50 border-b border-gray-200">
+                                <tr>
                             <template x-for="header in previewHeaders" :key="header">
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider" 
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider whitespace-nowrap" 
                                     x-text="header" 
                                     :title="header.replace(/\\n/g, ' ')"></th>
                             </template>
                             <th x-show="canDelete" class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider sticky right-0 bg-gray-50 z-10 w-24">Actions</th>
                         </tr>
-
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         <template x-for="row in savedConfigurations" :key="row.id">
                             <tr class="border-b border-gray-100 transition-all duration-150 hover:bg-gray-50/50">
                                 <template x-for="header in previewHeaders" :key="header">
-                                    <td class="px-4 py-3 text-sm text-gray-900 border-r border-gray-100 relative group"
+                                    <td class="px-4 py-3 text-sm text-gray-900 border-r border-gray-100 relative group whitespace-nowrap"
                                         @dblclick="canEdit && startEditing(row.id, header, row[header])">
                                         
                                         <div x-show="editingCell.rowId !== row.id || editingCell.field !== header">
@@ -425,12 +456,14 @@
                                             <i x-show="canEdit" class="fas fa-pencil-alt ml-2 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"></i>
                                         </div>
 
-                                        <div x-show="editingCell.rowId === row.id && editingCell.field === header" @click.away="cancelEditing()">
+                                        <div x-show="editingCell.rowId === row.id && editingCell.field === header" 
+                                             @click.away="saveInlineEdit(row.id, header)"
+                                             @keydown.escape="cancelEditing()">
                                             <input type="text" 
                                                    x-model="editingCell.value"
                                                    @keydown.enter="saveInlineEdit(row.id, header)"
-                                                   @keydown.escape="cancelEditing()"
-                                                   class="w-full px-2 py-1 text-sm border-2 border-primary-500 rounded focus:outline-none focus:ring-0 shadow-sm"
+                                                   @blur="saveInlineEdit(row.id, header)"
+                                                   class="w-full px-2 py-1 text-sm border-2 border-primary-500 rounded focus:outline-none focus:ring-0 shadow-sm min-w-[120px]"
                                                    x-init="setTimeout(() => $el.focus(), 10)">
                                         </div>
                                     </td>
@@ -457,8 +490,9 @@
                             </tr>
                         </template>
                     </tbody>
-
-                {% endcall %}
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -490,5 +524,5 @@ document.addEventListener('alpine:init', () => {
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js" crossorigin="anonymous"></script>
-<script src="/static/js/profile-entry.js?v=9"></script>
+<script src="/static/js/profile-entry.js?v=12"></script>
 {% endblock %}

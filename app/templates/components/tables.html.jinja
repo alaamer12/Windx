@@ -132,10 +132,10 @@
 
 {#
   Table Container Macro
-  Wraps table with modern card-like container
+  Wraps table with modern card-like container with proper viewport constraints
 #}
 {% macro table_container(content=None, title=None, description=None, actions=None) %}
-  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+  <div class="w-full max-w-full bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" style="max-width: calc(100vw - 4rem);">
     {% if title or description or actions %}
       <div class="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
         <div class="flex items-center justify-between">
@@ -155,7 +155,7 @@
         </div>
       </div>
     {% endif %}
-    <div class="overflow-x-auto">
+    <div class="w-full overflow-x-auto" style="max-width: calc(100vw - 4rem);">
       <table class="min-w-full divide-y divide-gray-200">
         {% if caller %}
           {{ caller() }}

@@ -20,6 +20,8 @@ Features:
 from __future__ import annotations
 
 import re
+from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -1029,7 +1031,7 @@ class EntryService(BaseService):
         else:
             return str(value)
 
-    @require(ConfigurationEditor)
+    @require(AdminAccess)  # Allow admins to edit configurations
     async def update_preview_value(self, configuration_id: int, field: str, value: Any, user: User) -> Configuration:
         """Update a specific field in a configuration from table preview.
 

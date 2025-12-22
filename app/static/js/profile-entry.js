@@ -110,6 +110,9 @@ function profileEntryApp(options = {}) {
         canDelete: options.canDelete || false,
         savedConfigurations: [],
         editingCell: { rowId: null, field: null, value: null },
+        pendingEdits: {}, // Track unsaved edits: { rowId: { field: value } }
+        hasUnsavedEdits: false,
+        committingChanges: false,
 
 
         // Computed
@@ -350,34 +353,90 @@ function profileEntryApp(options = {}) {
 
         async saveInlineEdit(rowId, field) {
             const newValue = this.editingCell.value;
-            console.log('Saving inline edit:', rowId, field, newValue);
+            const originalValue = this.savedConfigurations.find(r => r.id === rowId)?.[field];
+            
+            console.log('Saving inline edit:', rowId, field, newValue, 'Original:', originalValue);
+
+            // If value hasn't changed, just cancel editing
+            if (newValue === originalValue || (newValue === '' && originalValue === 'N/A')) {
+                this.cancelEditing();
+                return;
+            }
+
+            // Store the edit in pending edits (don't save to server yet)
+            if (!this.pendingEdits[rowId]) {
+                this.pendingEdits[rowId] = {};
+            }
+            this.pendingEdits[rowId][field] = newValue || 'N/A';
+            this.hasUnsavedEdits = true;
+
+            // Update local display immediately
+            const row = this.savedConfigurations.find(r => r.id === rowId);
+            if (row) {
+                row[field] = newValue || 'N/A';
+            }
+
+            this.cancelEditing();
+            console.log('Edit stored locally. Pending edits:', this.pendingEdits);
+        },
+
+        async commitTableChanges() {
+            if (Object.keys(this.pendingEdits).length === 0) {
+                return;
+            }
+
+            this.committingChanges = true;
+            let successCount = 0;
+            let errorCount = 0;
+            const totalEdits = Object.values(this.pendingEdits).reduce((sum, edits) => sum + Object.keys(edits).length, 0);
 
             try {
-                const response = await fetch(`/api/v1/admin/entry/profile/preview/${rowId}/update-cell`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ field: field, value: newValue })
-                });
+                // Process each row's edits
+                for (const [rowId, edits] of Object.entries(this.pendingEdits)) {
+                    for (const [field, value] of Object.entries(edits)) {
+                        try {
+                            const response = await fetch(`/api/v1/admin/entry/profile/preview/${rowId}/update-cell`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ field: field, value: value })
+                            });
 
-                if (response.ok) {
-                    // Update local state
-                    const row = this.savedConfigurations.find(r => r.id === rowId);
-                    if (row) {
-                        row[field] = newValue || 'N/A';
+                            if (response.ok) {
+                                successCount++;
+                                console.log(`✅ Successfully saved ${field} for row ${rowId}`);
+                            } else {
+                                errorCount++;
+                                const error = await response.json();
+                                console.error(`❌ Failed to save ${field} for row ${rowId}:`, error);
+                            }
+                        } catch (err) {
+                            errorCount++;
+                            console.error(`❌ Network error saving ${field} for row ${rowId}:`, err);
+                        }
                     }
-                    this.cancelEditing();
-
-                    // Show success toast
-                    if (window.showToast) {
-                        window.showToast('Updated successfully', 'success');
-                    }
-                } else {
-                    const error = await response.json();
-                    alert('Error updating: ' + (error.message || 'Unknown error'));
                 }
+
+                // Clear pending edits and show results
+                this.pendingEdits = {};
+                this.hasUnsavedEdits = false;
+
+                if (errorCount === 0) {
+                    showToast(`Successfully committed ${successCount} changes`, 'success');
+                } else if (successCount > 0) {
+                    showToast(`Committed ${successCount} changes, ${errorCount} failed`, 'warning');
+                } else {
+                    showToast(`Failed to commit ${errorCount} changes`, 'error');
+                }
+
+                // Reload the preview data to ensure consistency
+                await this.loadPreviews();
+
             } catch (err) {
-                console.error('Save error:', err);
-                alert('Connection error while saving');
+                console.error('Error committing changes:', err);
+                showToast('Failed to commit changes', 'error');
+            } finally {
+                this.committingChanges = false;
             }
         },
 

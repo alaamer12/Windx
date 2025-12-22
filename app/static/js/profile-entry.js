@@ -620,6 +620,35 @@ function profileEntryApp(options = {}) {
             }
         },
 
+        // Image handling methods
+        openImageModal(imageSrc) {
+            window.openImageModal(imageSrc);
+        },
+
+        handleInlineImageChange(rowId, field, event) {
+            window.handleInlineImageChange(rowId, field, event);
+        },
+
+        getImageUrl(filename) {
+            // Handle both full URLs and relative filenames
+            if (!filename || filename === 'N/A') {
+                return '';
+            }
+            
+            // If it's already a full URL (starts with http), return as-is
+            if (filename.startsWith('http')) {
+                return filename;
+            }
+            
+            // If it starts with a path separator, it's a relative URL
+            if (filename.startsWith('/')) {
+                return filename;
+            }
+            
+            // Otherwise, assume it's a filename and construct the URL
+            return `/static/uploads/${filename}`;
+        },
+
         updateField(fieldName, value) {
             // Update form data
             this.formData[fieldName] = value;
@@ -1220,3 +1249,103 @@ function profileEntryApp(options = {}) {
         }
     };
 }
+
+// Image handling functions for profile entry
+window.openImageModal = function(imageSrc) {
+    // Create modal overlay
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+    modal.style.zIndex = '9999';
+    
+    // Create modal content
+    modal.innerHTML = `
+        <div class="relative max-w-4xl max-h-full p-4">
+            <button class="absolute top-2 right-2 text-white text-2xl hover:text-gray-300 z-10" onclick="this.closest('.fixed').remove()">
+                ×
+            </button>
+            <img src="${imageSrc}" alt="Preview" class="max-w-full max-h-full object-contain rounded shadow-lg">
+        </div>
+    `;
+    
+    // Close on click outside
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // Close on escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            modal.remove();
+        }
+    }, { once: true });
+    
+    document.body.appendChild(modal);
+};
+
+window.handleInlineImageChange = function(rowId, field, event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Image file must be smaller than 5MB');
+        return;
+    }
+    
+    // Create FormData for upload
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('field', field);
+    formData.append('rowId', rowId);
+    
+    // Show loading state
+    const loadingText = 'Uploading...';
+    
+    // Upload the file
+    fetch('/api/v1/admin/entry/upload-image', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the row data with the new filename or URL
+            const app = Alpine.store('profileEntry') || window.profileEntryApp;
+            if (app) {
+                const row = app.savedConfigurations.find(r => r.id === rowId);
+                if (row) {
+                    // Store the filename for database, but the URL might be different
+                    row[field] = data.filename;
+                    
+                    // Also update pending edits
+                    if (!app.pendingEdits[rowId]) {
+                        app.pendingEdits[rowId] = {};
+                    }
+                    app.pendingEdits[rowId][field] = data.filename;
+                    app.hasUnsavedEdits = true;
+                }
+                
+                // Cancel editing mode
+                app.cancelEditing();
+            }
+            
+            if (window.showToast) {
+                window.showToast('Image uploaded successfully', 'success');
+            }
+        } else {
+            alert('Failed to upload image: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        alert('Failed to upload image');
+    });
+};

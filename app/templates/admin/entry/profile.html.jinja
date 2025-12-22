@@ -6,7 +6,7 @@
 {% block title %}Profile Entry - {{ super() }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/profile-entry.css?v=10">
+<link rel="stylesheet" href="/static/css/profile-entry.css?v=11">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css">
 {% endblock %}
 
@@ -459,21 +459,59 @@
                                         @dblclick="canEdit && startEditing(row.id, header, row[header])">
                                         
                                         <div x-show="editingCell.rowId !== row.id || editingCell.field !== header">
-                                            <span :class="{ 'na-value': !row[header] || row[header] === 'N/A' }" 
-                                                  x-text="row[header] || 'N/A'"></span>
+                                            <!-- Special handling for image fields -->
+                                            <template x-if="header === 'PIC' && row[header] && row[header] !== 'N/A'">
+                                                <div class="flex items-center">
+                                                    <img :src="getImageUrl(row[header])" 
+                                                         :alt="'Image for ' + header"
+                                                         class="h-12 w-12 object-cover rounded border shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                                         @click="openImageModal(getImageUrl(row[header]))"
+                                                         @error="$event.target.style.display='none'; $event.target.nextElementSibling.style.display='flex';"
+                                                         style="display: block;">
+                                                    <div class="image-placeholder hidden" style="display: none;">
+                                                        <span class="text-xs">No Image</span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- Default text display for non-image fields -->
+                                            <template x-if="header !== 'PIC' || !row[header] || row[header] === 'N/A'">
+                                                <span :class="{ 'na-value': !row[header] || row[header] === 'N/A' }" 
+                                                      x-text="row[header] || 'N/A'"></span>
+                                            </template>
+                                            
                                             <i x-show="canEdit" class="fas fa-pencil-alt ml-2 text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"></i>
                                         </div>
 
                                         <div x-show="editingCell.rowId === row.id && editingCell.field === header" 
                                              @click.away="saveInlineEdit(row.id, header)"
                                              @keydown.escape="cancelEditing()">
-                                            <input type="text" 
-                                                   x-model="editingCell.value"
-                                                   @keydown.enter="saveInlineEdit(row.id, header)"
-                                                   @blur="saveInlineEdit(row.id, header)"
-                                                   class="inline-edit-input"
-                                                   placeholder="Enter value..."
-                                                   x-init="setTimeout(() => $el.focus(), 10)">
+                                            
+                                            <!-- Special handling for image fields -->
+                                            <template x-if="header === 'PIC'">
+                                                <div class="flex items-center space-x-2">
+                                                    <input type="file" 
+                                                           accept="image/*"
+                                                           @change="handleInlineImageChange(row.id, header, $event)"
+                                                           class="text-sm file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                                                           x-init="setTimeout(() => $el.focus(), 10)">
+                                                    <button @click="cancelEditing()" 
+                                                            class="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- Default text input for non-image fields -->
+                                            <template x-if="header !== 'PIC'">
+                                                <input type="text" 
+                                                       x-model="editingCell.value"
+                                                       @keydown.enter="saveInlineEdit(row.id, header)"
+                                                       @blur="saveInlineEdit(row.id, header)"
+                                                       class="inline-edit-input"
+                                                       placeholder="Enter value..."
+                                                       x-init="setTimeout(() => $el.focus(), 10)">
+                                            </template>
                                         </div>
                                     </td>
                                 </template>
@@ -534,5 +572,5 @@ document.addEventListener('alpine:init', () => {
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js" crossorigin="anonymous"></script>
-<script src="/static/js/profile-entry.js?v=13"></script>
+<script src="/static/js/profile-entry.js?v=16"></script>
 {% endblock %}

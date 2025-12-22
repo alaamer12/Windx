@@ -55,12 +55,15 @@ class TestAdminEntry:
         test_user_with_rbac: User,
     ):
         """Test that admin entry profile page requires superuser privileges."""
+        from tests.config import get_test_settings
+        test_settings = get_test_settings()
+        
         # Login as regular user
         login_response = await client.post(
             "/api/v1/auth/login",
             json={
                 "username": test_user_with_rbac.username,
-                "password": "UserPassword123!",  # Use the standard test password
+                "password": test_settings.test_user_password,  # Use test settings
             },
         )
         assert login_response.status_code == 200
@@ -272,3 +275,236 @@ class TestAdminEntry:
         assert "/api/v1/admin/entry/profile" in content
         assert "/api/v1/admin/entry/accessories" in content
         assert "/api/v1/admin/entry/glazing" in content
+
+    @pytest.mark.asyncio
+    async def test_upload_image_requires_auth(
+        self,
+        client: AsyncClient,
+    ):
+        """Test that image upload requires authentication."""
+        response = await client.post("/api/v1/admin/entry/upload-image")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_upload_image_requires_superuser(
+        self,
+        client: AsyncClient,
+        test_user_with_rbac: User,
+    ):
+        """Test that image upload requires superuser privileges."""
+        from tests.config import get_test_settings
+        test_settings = get_test_settings()
+        
+        # Login as regular user
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_user_with_rbac.username,
+                "password": test_settings.test_user_password,
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Try to upload image
+        response = await client.post(
+            "/api/v1/admin/entry/upload-image",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_upload_image_no_file(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that upload fails when no file is provided."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Try to upload without file (should raise HTTPException with 400)
+        response = await client.post(
+            "/api/v1/admin/entry/upload-image",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_upload_image_invalid_file_type(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that upload fails for non-image files."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Try to upload a text file
+        files = {"file": ("test.txt", b"This is not an image", "text/plain")}
+        response = await client.post(
+            "/api/v1/admin/entry/upload-image",
+            headers={"Authorization": f"Bearer {token}"},
+            files=files,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "Invalid file type" in data["error"]
+
+    @pytest.mark.asyncio
+    async def test_upload_image_file_too_large(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that upload fails for files larger than 5MB."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Create a file larger than 5MB
+        large_file_content = b"x" * (6 * 1024 * 1024)  # 6MB
+        files = {"file": ("large.jpg", large_file_content, "image/jpeg")}
+        response = await client.post(
+            "/api/v1/admin/entry/upload-image",
+            headers={"Authorization": f"Bearer {token}"},
+            files=files,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert "too large" in data["error"]
+
+    @pytest.mark.asyncio
+    async def test_upload_image_success(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test successful image upload."""
+        import os
+        from pathlib import Path
+        
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Create a small test image (1x1 pixel PNG)
+        # PNG header + minimal image data
+        png_data = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            b'\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x01'
+            b'\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
+        
+        files = {"file": ("test_image.png", png_data, "image/png")}
+        response = await client.post(
+            "/api/v1/admin/entry/upload-image",
+            headers={"Authorization": f"Bearer {token}"},
+            files=files,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "filename" in data
+        assert data["filename"].startswith("profile_image_")
+        assert data["filename"].endswith(".png")
+        assert "message" in data
+        
+        # Verify file was created
+        uploads_dir = Path("app/static/uploads")
+        uploaded_file = uploads_dir / data["filename"]
+        assert uploaded_file.exists()
+        
+        # Clean up
+        try:
+            uploaded_file.unlink()
+        except Exception:
+            pass
+
+    @pytest.mark.asyncio
+    async def test_upload_image_generates_unique_filenames(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that multiple uploads generate unique filenames."""
+        from pathlib import Path
+        
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Create a small test image
+        png_data = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+            b'\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\x00\x01'
+            b'\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
+        
+        filenames = []
+        uploads_dir = Path("app/static/uploads")
+        
+        try:
+            # Upload same file twice
+            for _ in range(2):
+                files = {"file": ("test.png", png_data, "image/png")}
+                response = await client.post(
+                    "/api/v1/admin/entry/upload-image",
+                    headers={"Authorization": f"Bearer {token}"},
+                    files=files,
+                )
+                assert response.status_code == 200
+                data = response.json()
+                assert data["success"] is True
+                filenames.append(data["filename"])
+            
+            # Verify filenames are unique
+            assert filenames[0] != filenames[1]
+            assert len(set(filenames)) == 2
+            
+        finally:
+            # Clean up
+            for filename in filenames:
+                try:
+                    (uploads_dir / filename).unlink()
+                except Exception:
+                    pass

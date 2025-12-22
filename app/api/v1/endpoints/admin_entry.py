@@ -341,6 +341,81 @@ async def delete_configuration(
     await entry_service.delete_profile_configuration(configuration_id, current_superuser)
 
 
+@router.post(
+    "/upload-image",
+    summary="Upload Image File (Admin)",
+    description="Upload an image file for profile entry fields (admin interface)",
+    response_description="Upload result with filename",
+    operation_id="uploadAdminImage",
+    responses={
+        200: {
+            "description": "Image uploaded successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "filename": "uploaded_image_123456.jpg",
+                        "url": "https://example.com/path/to/image.jpg",
+                        "message": "Image uploaded successfully"
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Invalid file or upload error",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "error": "Invalid file type. Only images are allowed."
+                    }
+                }
+            }
+        }
+    },
+)
+async def upload_image(
+    request: Request,
+    current_superuser: CurrentSuperuser,
+) -> dict[str, Any]:
+    """Upload an image file for profile entry fields (admin interface)."""
+    from app.services.storage import get_storage_service
+    
+    try:
+        # Parse multipart form data
+        form_data = await request.form()
+        file = form_data.get("file")
+        
+        if not file or not hasattr(file, 'filename'):
+            return {
+                "success": False,
+                "error": "No file provided"
+            }
+        
+        # Use the storage service to handle the upload
+        storage_service = get_storage_service()
+        result = await storage_service.upload_file(file)
+        
+        if result.success:
+            return {
+                "success": True,
+                "filename": result.filename,
+                "url": result.url,
+                "message": "Image uploaded successfully"
+            }
+        else:
+            return {
+                "success": False,
+                "error": result.error or "Upload failed"
+            }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Upload failed: {str(e)}"
+        }
+
+
 
 @router.post(
     "/profile/evaluate-conditions",

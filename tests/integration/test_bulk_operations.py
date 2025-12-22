@@ -39,7 +39,7 @@ class TestBulkUserCreation:
             create_user_data(
                 email=f"bulk{i}@example.com",
                 username=f"bulk{i}",
-                password="BulkPass123!",
+                # Use factory default password instead of hardcoded
             )
             for i in range(3)
         ]

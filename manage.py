@@ -538,11 +538,14 @@ async def seed_data_command(args: argparse.Namespace):
             # Create sample users
             print("Creating sample users...")
 
+            from tests.config import get_test_settings
+            test_settings = get_test_settings()
+
             admin_user = User(
                 email="admin@example.com",
                 username="admin",
                 full_name="Admin User",
-                hashed_password=get_password_hash("Admin123!"),
+                hashed_password=get_password_hash(test_settings.test_admin_password),
                 is_active=True,
                 is_superuser=True,
             )
@@ -551,7 +554,7 @@ async def seed_data_command(args: argparse.Namespace):
                 email="user@example.com",
                 username="user",
                 full_name="Regular User",
-                hashed_password=get_password_hash("User123!"),
+                hashed_password=get_password_hash(test_settings.test_user_password),
                 is_active=True,
                 is_superuser=False,
             )

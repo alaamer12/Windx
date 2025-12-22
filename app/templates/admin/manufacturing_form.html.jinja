@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group with context %}
 
 {% block title %}{{ action }} Manufacturing Type - WindX Admin{% endblock %}
 
@@ -7,9 +8,11 @@
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">{{ action }} Manufacturing Type</h1>
-    <a href="/api/v1/admin/manufacturing-types" class="btn btn-outline">
-        &larr; Back to List
-    </a>
+    {{ button(
+        text="← Back to List",
+        href="/api/v1/admin/manufacturing-types",
+        variant="outline"
+    ) }}
 </div>
 
 <div class="card" style="max-width: 800px; margin: 0 auto;">
@@ -53,21 +56,31 @@
             <label for="is_active" class="form-label" style="margin-bottom: 0;">Active</label>
         </div>
 
-        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: flex-end;">
-            <a href="/api/v1/admin/manufacturing-types" class="btn btn-outline">Cancel</a>
-            <button type="submit" class="btn btn-primary">
-                {{ action }} Type
-            </button>
-        </div>
+        {% call button_group(align="right", gap="md", style="margin-top: 2rem;") %}
+            {{ button(
+                text="Cancel",
+                href="/api/v1/admin/manufacturing-types",
+                variant="outline"
+            ) }}
+            {{ button(
+                text="💾 " + action + " Type",
+                type="submit",
+                variant="primary"
+            ) }}
+        {% endcall %}
     </form>
 </div>
 
 {% if action == 'Edit' %}
 <div class="card" style="max-width: 800px; margin: 2rem auto 0; border-color: #fecaca;">
-    <h3 style="color: #991b1b; margin-bottom: 1rem;">Danger Zone</h3>
+    <h3 style="color: #991b1b; margin-bottom: 1rem;">⚠️ Danger Zone</h3>
     <p style="margin-bottom: 1rem;">Deleting this manufacturing type will also delete all associated attribute hierarchies and configurations.</p>
     <form method="POST" action="/api/v1/admin/manufacturing-types/{{ mfg_type.id }}/delete" onsubmit="return confirm('Are you sure? This action cannot be undone.');">
-        <button type="submit" class="btn btn-danger">Delete Manufacturing Type</button>
+        {{ button(
+            text="🗑️ Delete Manufacturing Type",
+            type="submit",
+            variant="danger"
+        ) }}
     </form>
 </div>
 {% endif %}

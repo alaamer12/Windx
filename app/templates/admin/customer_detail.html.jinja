@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group %}
 
 {% block title %}Customer Details - WindX Admin{% endblock %}
 
@@ -8,14 +9,10 @@
         <h1 class="page-title">{{ customer.company_name or customer.contact_person }}</h1>
         <p class="text-gray-500 mt-1">Customer ID: #{{ customer.id }}</p>
     </div>
-    <div class="flex gap-2">
-        <a href="/api/v1/admin/customers" class="btn btn-outline">
-            <span>←</span> Back
-        </a>
-        <a href="/api/v1/admin/customers/{{ customer.id }}/edit" class="btn btn-primary">
-            <span>✏️</span> Edit Customer
-        </a>
-    </div>
+    {% call button_group(align="right", gap="sm") %}
+        {{ button("← Back", href="/api/v1/admin/customers", variant="outline", size="md") }}
+        {{ button("✏️ Edit Customer", href="/api/v1/admin/customers/" + customer.id|string + "/edit", variant="primary", size="md") }}
+    {% endcall %}
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -133,7 +130,7 @@
                             <td class="px-4 py-2">${{ "%.2f"|format(config.total_price or 0) }}</td>
                             <td class="px-4 py-2">{{ config.created_at.strftime('%Y-%m-%d') }}</td>
                             <td class="px-4 py-2">
-                                <a href="#" class="text-blue-600 hover:underline">View</a>
+                                {{ button("👁️ View", href="#", variant="outline", size="xs", title="View Configuration") }}
                             </td>
                         </tr>
                         {% endfor %}
@@ -182,7 +179,7 @@
                             </td>
                             <td class="px-4 py-2">{{ quote.valid_until.strftime('%Y-%m-%d') }}</td>
                             <td class="px-4 py-2">
-                                <a href="#" class="text-blue-600 hover:underline">View</a>
+                                {{ button("👁️ View", href="#", variant="outline", size="xs", title="View Quote") }}
                             </td>
                         </tr>
                         {% endfor %}

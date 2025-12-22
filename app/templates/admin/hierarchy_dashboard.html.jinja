@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button with context %}
 
 {% block title %}Hierarchy Dashboard - WindX Admin{% endblock %}
 
@@ -127,7 +128,11 @@
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn btn-primary">Load</button>
+        {{ button(
+            text="Load",
+            type="submit",
+            variant="primary"
+        ) }}
     </form>
 </div>
 
@@ -139,9 +144,12 @@
         <span style="margin: 0 0.5rem; opacity: 0.5;">|</span>
         Base Price: ${{ "%.2f"|format(selected_manufacturing_type.base_price) }}
     </div>
-    <a href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" class="btn btn-primary" style="font-size: 0.875rem; padding: 0.4rem 0.8rem;">
-        + Create Root Node
-    </a>
+    {{ button(
+        text="➕ Create Root Node",
+        href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id=" + selected_type_id|string,
+        variant="primary",
+        size="sm"
+    ) }}
 </div>
 
 <div class="dashboard-grid">
@@ -157,9 +165,11 @@
                 <div class="empty-state">
                     <div class="empty-state-icon">🌳</div>
                     <p>No attribute nodes found.</p>
-                    <a href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" class="btn btn-primary">
-                        Create First Node
-                    </a>
+                    {{ button(
+                        text="Create First Node",
+                        href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id=" + selected_type_id|string,
+                        variant="primary"
+                    ) }}
                 </div>
             {% endif %}
         </div>
@@ -168,8 +178,8 @@
     <!-- Right Column: Visualizations -->
     <div style="display: flex; flex-direction: column;">
         <div class="tab-nav">
-            <button class="tab-btn active" onclick="openTab(event, 'ascii-pane')">ASCII Tree</button>
-            <button class="tab-btn" onclick="openTab(event, 'diagram-pane')">Diagram</button>
+            {{ button("🌳 ASCII Tree", onclick="openTab(event, 'ascii-pane')", variant="tab", class="tab-btn active", type="button") }}
+            {{ button("📊 Diagram", onclick="openTab(event, 'diagram-pane')", variant="tab", class="tab-btn", type="button") }}
         </div>
         <div class="tab-content">
             <div id="ascii-pane" class="tab-pane active">

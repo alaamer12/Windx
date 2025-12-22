@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group %}
 
 {% block title %}Customers - WindX Admin{% endblock %}
 
@@ -8,9 +9,7 @@
         <h1 class="page-title">👥 Customers</h1>
         <p class="text-gray-500 mt-1">Manage customer accounts and information</p>
     </div>
-    <a href="/api/v1/admin/customers/new" class="btn btn-primary">
-        <span>➕</span> New Customer
-    </a>
+    {{ button("➕ New Customer", href="/api/v1/admin/customers/new", variant="primary", size="md") }}
 </div>
 
 <div class="card">
@@ -33,10 +32,12 @@
                 <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive</option>
             </select>
             
-            <button type="submit" class="btn btn-outline">Filter</button>
-            {% if search or type_filter or status_filter %}
-            <a href="/api/v1/admin/customers" class="btn btn-outline text-red-600">Clear</a>
-            {% endif %}
+            {% call button_group(align="left", gap="sm") %}
+                {{ button("🔍 Filter", type="submit", variant="outline", size="sm") }}
+                {% if search or type_filter or status_filter %}
+                    {{ button("🗑️ Clear", href="/api/v1/admin/customers", variant="outline", size="sm", class="text-red-600") }}
+                {% endif %}
+            {% endcall %}
         </form>
     </div>
     
@@ -87,14 +88,10 @@
                             {{ customer.created_at.strftime('%Y-%m-%d') }}
                         </td>
                         <td class="p-4 text-right">
-                            <div class="flex justify-end gap-2">
-                                <a href="/api/v1/admin/customers/{{ customer.id }}" class="btn btn-sm btn-outline" title="View Details">
-                                    👁️
-                                </a>
-                                <a href="/api/v1/admin/customers/{{ customer.id }}/edit" class="btn btn-sm btn-outline" title="Edit">
-                                    ✏️
-                                </a>
-                            </div>
+                            {% call button_group(align="right", gap="xs") %}
+                                {{ button("👁️", href="/api/v1/admin/customers/" + customer.id|string, variant="outline", size="sm", title="View Details", icon_only=true) }}
+                                {{ button("✏️", href="/api/v1/admin/customers/" + customer.id|string + "/edit", variant="outline", size="sm", title="Edit Customer", icon_only=true) }}
+                            {% endcall %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -105,7 +102,7 @@
             {% if total_pages > 1 %}
             <div class="p-4 border-t border-gray-200 flex justify-center gap-2">
                 {% if page > 1 %}
-                <a href="?page={{ page - 1 }}&search={{ search or '' }}&type={{ type_filter or '' }}&status={{ status_filter or '' }}" class="btn btn-outline btn-sm">Previous</a>
+                    {{ button("← Previous", href="?page=" + (page - 1)|string + "&search=" + (search or '') + "&type=" + (type_filter or '') + "&status=" + (status_filter or ''), variant="outline", size="sm") }}
                 {% endif %}
                 
                 <span class="flex items-center px-3 text-sm text-gray-600">
@@ -113,7 +110,7 @@
                 </span>
                 
                 {% if page < total_pages %}
-                <a href="?page={{ page + 1 }}&search={{ search or '' }}&type={{ type_filter or '' }}&status={{ status_filter or '' }}" class="btn btn-outline btn-sm">Next</a>
+                    {{ button("Next →", href="?page=" + (page + 1)|string + "&search=" + (search or '') + "&type=" + (type_filter or '') + "&status=" + (status_filter or ''), variant="outline", size="sm") }}
                 {% endif %}
             </div>
             {% endif %}
@@ -123,7 +120,7 @@
                 <div class="text-4xl mb-2">👥</div>
                 <h3 class="text-lg font-medium text-gray-900">No Customers Found</h3>
                 <p class="mb-4">Try adjusting your filters or create a new customer.</p>
-                <a href="/api/v1/admin/customers/new" class="btn btn-primary">Create Customer</a>
+                {{ button("➕ Create Customer", href="/api/v1/admin/customers/new", variant="primary", size="md") }}
             </div>
         {% endif %}
     </div>

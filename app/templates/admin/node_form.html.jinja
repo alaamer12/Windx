@@ -1,5 +1,6 @@
 {% extends "admin/base.html.jinja" %}
 {% from "admin/components/tooltip_component.html.jinja" import tooltip with context %}
+{% from "components/buttons.html.jinja" import button, button_group %}
 
 {% block title %}{% if node %}Edit Node{% else %}Create Node{% endif %}{% endblock %}
 
@@ -776,17 +777,14 @@
 
         <!-- Sticky Action Buttons -->
         <div class="form-actions-sticky">
-            <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ manufacturing_type.id }}" 
-               class="btn-enhanced btn-secondary-enhanced">
-                ← Cancel
-            </a>
-            <button type="submit" class="btn-enhanced btn-primary-enhanced">
+            {% call button_group(align="space-between", gap="md", class="w-full") %}
+                {{ button("← Cancel", href="/api/v1/admin/hierarchy?manufacturing_type_id=" + manufacturing_type.id|string, variant="outline", size="lg") }}
                 {% if node %}
-                💾 Update Node
+                    {{ button("💾 Update Node", type="submit", variant="primary", size="lg") }}
                 {% else %}
-                ✨ Create Node
+                    {{ button("✨ Create Node", type="submit", variant="primary", size="lg") }}
                 {% endif %}
-            </button>
+            {% endcall %}
         </div>
     </form>
 </div>

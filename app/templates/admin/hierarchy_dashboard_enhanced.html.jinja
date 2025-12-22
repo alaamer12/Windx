@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group %}
 
 {% block title %}Hierarchy Editor - WindX Admin{% endblock %}
 
@@ -390,9 +391,7 @@
         </h1>
         <p style="color: var(--text-light); margin-top: 0.5rem;">Build dynamic attribute hierarchies for your products</p>
     </div>
-    <a href="/api/v1/admin/documentation#hierarchy" class="btn btn-outline">
-        📚 View Guide
-    </a>
+    {{ button("📚 View Guide", href="/api/v1/admin/documentation#hierarchy", variant="outline", size="md") }}
 </div>
 
 <!-- Manufacturing Type Selector - Compact -->
@@ -412,7 +411,7 @@
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn">Load Hierarchy</button>
+        {{ button("🔄 Load Hierarchy", type="submit", variant="primary", size="md") }}
     </form>
 </div>
 
@@ -426,10 +425,7 @@
             Base Weight: {{ "%.2f"|format(selected_manufacturing_type.base_weight) }} kg
         </div>
     </div>
-    <a href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" class="btn">
-        + Create Root Node
-        <span class="tooltip-trigger" data-tooltip="Create the first node in your hierarchy. This is the top-level category that will contain all other attributes.">!</span>
-    </a>
+    {{ button("➕ Create Root Node", href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id=" + selected_type_id|string, variant="primary", size="md") }}
 </div>
 
 <!-- Help Box - Compact -->
@@ -478,12 +474,8 @@
             <div id="diagram-tab" class="tab-pane active">
                 {% if diagram_tree %}
                     <div class="diagram-controls">
-                        <button onclick="toggleFullscreen()" title="Fullscreen">
-                            🔍 Fullscreen
-                        </button>
-                        <button onclick="downloadDiagram()" title="Download">
-                            💾 Download
-                        </button>
+                        {{ button("🔍 Fullscreen", onclick="toggleFullscreen()", variant="outline", size="sm", title="Fullscreen") }}
+                        {{ button("💾 Download", onclick="downloadDiagram()", variant="outline", size="sm", title="Download") }}
                     </div>
                     <div class="diagram-view-content">
                         <div class="diagram-container">
@@ -497,9 +489,7 @@
                             <h3>No Diagram Available</h3>
                             <p>Create some nodes to see the hierarchy diagram.</p>
                             {% if not attribute_nodes %}
-                            <a href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id={{ selected_type_id }}" class="btn btn-primary" style="margin-top: 1rem;">
-                                Create First Node
-                            </a>
+                            {{ button("➕ Create First Node", href="/api/v1/admin/hierarchy/node/create?manufacturing_type_id=" + selected_type_id|string, variant="primary", size="md", style="margin-top: 1rem;") }}
                             {% endif %}
                         </div>
                     </div>
@@ -528,9 +518,7 @@
         Select a manufacturing type above to start building its attribute hierarchy.
     </p>
     {% if not manufacturing_types %}
-    <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary">
-        Create Your First Manufacturing Type
-    </a>
+    {{ button("➕ Create Your First Manufacturing Type", href="/api/v1/admin/manufacturing-types/create", variant="primary", size="md") }}
     {% endif %}
 </div>
 {% endif %}

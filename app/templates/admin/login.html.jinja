@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button with context %}
 
 {% block title %}Login - WindX Admin{% endblock %}
 
@@ -56,9 +57,13 @@
                 <input type="password" id="password" name="password" class="form-control" required>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                Sign In
-            </button>
+            {{ button(
+                text="🔐 Sign In",
+                type="submit",
+                variant="primary",
+                size="lg",
+                style="width: 100%; margin-top: 1rem;"
+            ) }}
         </form>
     </div>
 </div>

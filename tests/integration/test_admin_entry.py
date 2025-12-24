@@ -49,6 +49,15 @@ class TestAdminEntry:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_admin_entry_profile_page_with_page_type_requires_auth(
+        self,
+        client: AsyncClient,
+    ):
+        """Test that admin entry profile page with page_type parameter requires authentication."""
+        response = await client.get("/api/v1/admin/entry/profile?page_type=accessories")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
     async def test_get_preview_headers_requires_auth(
         self,
         client: AsyncClient,
@@ -133,6 +142,62 @@ class TestAdminEntry:
         assert "Profile Data Entry" in response.text
 
     @pytest.mark.asyncio
+    async def test_admin_entry_profile_page_with_page_type_success(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that superuser can access admin entry profile page with page_type parameter."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Test different page types
+        page_types = ["profile", "accessories", "glazing"]
+        for page_type in page_types:
+            response = await client.get(
+                f"/api/v1/admin/entry/profile?page_type={page_type}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 200
+            assert "text/html" in response.headers["content-type"]
+            assert f"{page_type.title()} Data Entry" in response.text
+
+    @pytest.mark.asyncio
+    async def test_admin_entry_profile_page_invalid_page_type(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that invalid page_type returns 400 error."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Test invalid page type
+        response = await client.get(
+            "/api/v1/admin/entry/profile?page_type=invalid",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 400
+        assert "text/html" in response.headers["content-type"]
+        assert "Invalid page type" in response.text
+
+    @pytest.mark.asyncio
     async def test_admin_entry_accessories_page_success(
         self,
         client: AsyncClient,
@@ -150,9 +215,9 @@ class TestAdminEntry:
         assert login_response.status_code == 200
         token = login_response.json()["access_token"]
         
-        # Access admin entry accessories page
+        # Access admin entry accessories page via page_type parameter
         response = await client.get(
-            "/api/v1/admin/entry/accessories",
+            "/api/v1/admin/entry/profile?page_type=accessories",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
@@ -177,9 +242,9 @@ class TestAdminEntry:
         assert login_response.status_code == 200
         token = login_response.json()["access_token"]
         
-        # Access admin entry glazing page
+        # Access admin entry glazing page via page_type parameter
         response = await client.get(
-            "/api/v1/admin/entry/glazing",
+            "/api/v1/admin/entry/profile?page_type=glazing",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
@@ -214,6 +279,37 @@ class TestAdminEntry:
         schema = response.json()
         assert "manufacturing_type_id" in schema
         assert "sections" in schema
+
+    @pytest.mark.asyncio
+    async def test_admin_entry_schema_api_with_page_type(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+        simple_manufacturing_type: ManufacturingType,
+    ):
+        """Test that admin entry schema API works with page_type parameter."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Test schema API with different page types
+        page_types = ["profile", "accessories", "glazing"]
+        for page_type in page_types:
+            response = await client.get(
+                f"/api/v1/admin/entry/profile/schema/{simple_manufacturing_type.id}?page_type={page_type}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 200
+            schema = response.json()
+            assert "manufacturing_type_id" in schema
+            assert "sections" in schema
 
     @pytest.mark.asyncio
     async def test_admin_entry_save_api_success(
@@ -274,18 +370,19 @@ class TestAdminEntry:
         
         # Check profile page has correct navigation
         response = await client.get(
-            "/api/v1/admin/entry/profile",
+            "/api/v1/admin/entry/profile?page_type=profile",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
         content = response.text
+        # Navigation should still show the old URLs for backward compatibility
         assert "/api/v1/admin/entry/profile" in content
         assert "/api/v1/admin/entry/accessories" in content
         assert "/api/v1/admin/entry/glazing" in content
         
         # Check accessories page has correct navigation
         response = await client.get(
-            "/api/v1/admin/entry/accessories",
+            "/api/v1/admin/entry/profile?page_type=accessories",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
@@ -296,7 +393,7 @@ class TestAdminEntry:
         
         # Check glazing page has correct navigation
         response = await client.get(
-            "/api/v1/admin/entry/glazing",
+            "/api/v1/admin/entry/profile?page_type=glazing",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert response.status_code == 200
@@ -548,3 +645,71 @@ class TestAdminEntry:
                     (uploads_dir / filename).unlink()
                 except Exception:
                     pass
+
+    @pytest.mark.asyncio
+    async def test_manufacturing_type_resolution_with_page_types(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+    ):
+        """Test that manufacturing type resolution works with different page types."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Test that page loads without manufacturing_type_id (should resolve default)
+        page_types = ["profile", "accessories", "glazing"]
+        for page_type in page_types:
+            response = await client.get(
+                f"/api/v1/admin/entry/profile?page_type={page_type}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            # Should either succeed (200) or show setup required (503)
+            assert response.status_code in [200, 503]
+            
+            if response.status_code == 200:
+                assert f"{page_type.title()} Data Entry" in response.text
+            else:
+                assert "Setup Required" in response.text or "No manufacturing types found" in response.text
+
+    @pytest.mark.asyncio
+    async def test_page_type_context_variables(
+        self,
+        client: AsyncClient,
+        test_superuser_with_rbac: User,
+        simple_manufacturing_type: ManufacturingType,
+    ):
+        """Test that page_type context variables are correctly set."""
+        # Login as superuser
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_superuser_with_rbac.username,
+                "password": "AdminPassword123!",
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Test different page types have correct titles
+        page_types = {
+            "profile": "Profile Entry",
+            "accessories": "Accessories Entry", 
+            "glazing": "Glazing Entry"
+        }
+        
+        for page_type, expected_title in page_types.items():
+            response = await client.get(
+                f"/api/v1/admin/entry/profile?page_type={page_type}&manufacturing_type_id={simple_manufacturing_type.id}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert response.status_code == 200
+            # Check that the page title is correctly set
+            assert expected_title in response.text

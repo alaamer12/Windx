@@ -16,7 +16,13 @@ Convert the Entry Page Schema-Driven Refactor design into a series of implementa
 
 ## Task List
 
-- [ ] 1. Backend Schema Enhancement and Dynamic Header Generation
+- [x] 1. Backend Schema Enhancement and Dynamic Header Generation
+
+
+
+
+
+
   - Remove hardcoded `HEADER_MAPPING` dictionary from `app/services/entry.py`
   - Implement `generate_preview_headers()` method in EntryService to create headers from attribute nodes
   - Implement `generate_header_mapping()` method to create field mappings dynamically
@@ -42,6 +48,10 @@ Convert the Entry Page Schema-Driven Refactor design into a series of implementa
     - _Requirements: 1.1, 1.2, 7.1_
 
 - [ ] 2. Frontend Dynamic Headers Implementation
+
+
+
+
   - Replace hardcoded `previewHeaders` array in `app/static/js/profile-entry.js`
   - Implement `loadDynamicHeaders()` method to fetch headers from new backend endpoint
   - Update `getPreviewValue()` method to use dynamic header mapping

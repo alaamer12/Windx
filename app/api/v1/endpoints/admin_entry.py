@@ -95,6 +95,54 @@ async def get_profile_schema(
     return await entry_service.get_profile_schema(manufacturing_type_id)
 
 
+@router.get(
+    "/profile/headers/{manufacturing_type_id}",
+    response_model=list[str],
+    summary="Get Dynamic Preview Headers (Admin)",
+    description="Get dynamic preview headers for a manufacturing type based on attribute nodes",
+    response_description="List of preview headers in correct order",
+    operation_id="getAdminPreviewHeaders",
+    responses={
+        200: {
+            "description": "Successfully retrieved preview headers",
+        },
+        404: {
+            "description": "Manufacturing type not found",
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
+async def get_preview_headers(
+    manufacturing_type_id: PositiveInt,
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> list[str]:
+    """Get dynamic preview headers for a manufacturing type (admin interface).
+
+    Generates dynamic preview headers based on the attribute hierarchy
+    defined for the specified manufacturing type, respecting sort_order.
+
+    Args:
+        manufacturing_type_id (PositiveInt): Manufacturing type ID
+        current_superuser (User): Current authenticated superuser
+        db (AsyncSession): Database session
+
+    Returns:
+        list[str]: Ordered list of preview headers
+
+    Raises:
+        NotFoundException: If manufacturing type not found
+
+    Example:
+        GET /api/v1/admin/entry/profile/headers/1
+        Response: ["id", "Name", "Type", "Material", "Company", ...]
+    """
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.generate_preview_headers(manufacturing_type_id)
+
+
 @router.post(
     "/profile/save",
     response_model=Configuration,

@@ -817,6 +817,7 @@ class EntryService(BaseService):
         return ProfileEntryData(**form_data)
 
     @require(ConfigurationViewer)
+    @require(ConfigurationViewer)
     @require(AdminAccess)  # Admins can view any configuration
     async def generate_preview_data(self, configuration_id: int, user: User) -> ProfilePreviewData:
         """Generate preview data for a configuration.
@@ -847,8 +848,8 @@ class EntryService(BaseService):
         # Authorization is handled by the @require decorator
         # No need for manual authorization checks
 
-        # Generate preview table
-        preview_table = await self.generate_preview_table(configuration)
+        # Generate preview table with manufacturing_type_id
+        preview_table = await self.generate_preview_table(configuration, configuration.manufacturing_type_id)
 
         return ProfilePreviewData(
             configuration_id=configuration.id,
@@ -856,40 +857,125 @@ class EntryService(BaseService):
             last_updated=configuration.updated_at,
         )
 
-    HEADER_MAPPING = {
-        "id": "id",  # Special case for record identification
-        "Name": "name",
-        "Type": "type",
-        "Company": "company",
-        "Material": "material",
-        "opening system": "opening_system",
-        "system series": "system_series",
-        "Code": "code",
-        "Length of Beam\nm": "length_of_beam",
-        "Renovation\nonly for frame": "renovation",
-        "width": "width",
-        "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
-        "Total width\nonly for frame with builtin flyscreen": "total_width",
-        "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
-        "front Height mm": "front_height",
-        "Rear heightt": "rear_height",
-        "Glazing height": "glazing_height",
-        "Renovation height mm\nonly for frame": "renovation_height",
-        "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
-        "Pic": "pic",
-        "Sash overlap only for sashs": "sash_overlap",
-        "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
-        "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
-        "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
-        "Weight/m kg": "weight_per_meter",
-        "Reinforcement steel": "reinforcement_steel",
-        "Colours": "colours",
-        "Price/m": "price_per_meter",
-        "Price per/beam": "price_per_beam",
-        "UPVC Profile Discount%": "upvc_profile_discount",
-    }
+    # Cache for generated headers and mappings to improve performance
+    _header_cache: dict[int, list[str]] = {}
+    _mapping_cache: dict[int, dict[str, str]] = {}
+    _reverse_mapping_cache: dict[int, dict[str, str]] = {}
 
-    REVERSE_HEADER_MAPPING = {v: k for k, v in HEADER_MAPPING.items()}
+    async def generate_preview_headers(self, manufacturing_type_id: int) -> list[str]:
+        """Generate dynamic preview headers from attribute nodes.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            
+        Returns:
+            list[str]: Ordered list of preview headers
+        """
+        # Check cache first
+        if manufacturing_type_id in self._header_cache:
+            return self._header_cache[manufacturing_type_id]
+        
+        # Get attribute nodes for this manufacturing type, ordered by sort_order
+        stmt = (
+            select(AttributeNode)
+            .where(
+                AttributeNode.manufacturing_type_id == manufacturing_type_id,
+                AttributeNode.node_type == "attribute"  # Only attributes generate headers
+            )
+            .order_by(AttributeNode.sort_order, AttributeNode.name)
+        )
+        result = await self.db.execute(stmt)
+        attribute_nodes = result.scalars().all()
+        
+        # Generate headers list starting with id and Name
+        headers = ["id", "Name"]
+        
+        for node in attribute_nodes:
+            # Use the human-readable label as the header
+            header = self._generate_label_from_name(node.name)
+            headers.append(header)
+        
+        # Cache the result
+        self._header_cache[manufacturing_type_id] = headers
+        return headers
+
+    async def generate_header_mapping(self, manufacturing_type_id: int) -> dict[str, str]:
+        """Generate dynamic header-to-field mapping from attribute nodes.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            
+        Returns:
+            dict[str, str]: Mapping from header names to field names
+        """
+        # Check cache first
+        if manufacturing_type_id in self._mapping_cache:
+            return self._mapping_cache[manufacturing_type_id]
+        
+        # Get attribute nodes for this manufacturing type, ordered by sort_order
+        stmt = (
+            select(AttributeNode)
+            .where(
+                AttributeNode.manufacturing_type_id == manufacturing_type_id,
+                AttributeNode.node_type == "attribute"  # Only attributes generate mappings
+            )
+            .order_by(AttributeNode.sort_order, AttributeNode.name)
+        )
+        result = await self.db.execute(stmt)
+        attribute_nodes = result.scalars().all()
+        
+        # Generate mapping starting with special cases
+        mapping = {
+            "id": "id",
+            "Name": "name"
+        }
+        
+        for node in attribute_nodes:
+            # Map human-readable header to field name
+            header = self._generate_label_from_name(node.name)
+            mapping[header] = node.name
+        
+        # Cache the result
+        self._mapping_cache[manufacturing_type_id] = mapping
+        return mapping
+
+    async def get_reverse_header_mapping(self, manufacturing_type_id: int) -> dict[str, str]:
+        """Get reverse mapping from field names to headers.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID
+            
+        Returns:
+            dict[str, str]: Mapping from field names to header names
+        """
+        # Check cache first
+        if manufacturing_type_id in self._reverse_mapping_cache:
+            return self._reverse_mapping_cache[manufacturing_type_id]
+        
+        # Generate forward mapping first
+        forward_mapping = await self.generate_header_mapping(manufacturing_type_id)
+        
+        # Create reverse mapping
+        reverse_mapping = {v: k for k, v in forward_mapping.items()}
+        
+        # Cache the result
+        self._reverse_mapping_cache[manufacturing_type_id] = reverse_mapping
+        return reverse_mapping
+
+    def clear_header_cache(self, manufacturing_type_id: int | None = None) -> None:
+        """Clear header cache for a specific manufacturing type or all types.
+        
+        Args:
+            manufacturing_type_id: Manufacturing type ID to clear, or None for all
+        """
+        if manufacturing_type_id is None:
+            self._header_cache.clear()
+            self._mapping_cache.clear()
+            self._reverse_mapping_cache.clear()
+        else:
+            self._header_cache.pop(manufacturing_type_id, None)
+            self._mapping_cache.pop(manufacturing_type_id, None)
+            self._reverse_mapping_cache.pop(manufacturing_type_id, None)
 
     @require(ConfigurationViewer)
     @require(AdminAccess)  # Admins can view any configuration
@@ -921,43 +1007,63 @@ class EntryService(BaseService):
                 stmt = stmt.where(Configuration.customer_id.in_(accessible_customers))
             else:
                 # If no accessible customers, return empty table
-                return PreviewTable(headers=list(self.HEADER_MAPPING.keys()), rows=[])
+                headers = await self.generate_preview_headers(manufacturing_type_id)
+                return PreviewTable(headers=headers, rows=[])
 
         result = await self.db.execute(stmt)
         configurations = result.scalars().all()
 
-        return await self.generate_preview_table(configurations)
+        return await self.generate_preview_table(configurations, manufacturing_type_id)
 
-    async def generate_preview_table(self, data: Configuration | list[Configuration] | dict[str, Any]) -> PreviewTable:
+    async def generate_preview_table(self, data: Configuration | list[Configuration] | dict[str, Any], manufacturing_type_id: int | None = None) -> PreviewTable:
         """Generate preview table from configuration data or form data.
 
         Args:
             data: Configuration(s) or form data dictionary
+            manufacturing_type_id: Manufacturing type ID (required for dynamic headers)
 
         Returns:
             PreviewTable: Preview table structure
         """
-        headers = list(self.HEADER_MAPPING.keys())
+        # Determine manufacturing_type_id if not provided
+        if manufacturing_type_id is None:
+            if isinstance(data, Configuration):
+                manufacturing_type_id = data.manufacturing_type_id
+            elif isinstance(data, list) and data:
+                manufacturing_type_id = data[0].manufacturing_type_id
+            elif isinstance(data, dict):
+                manufacturing_type_id = data.get("manufacturing_type_id")
+            
+            if manufacturing_type_id is None:
+                raise ValueError("manufacturing_type_id is required for dynamic header generation")
+        
+        # Generate dynamic headers
+        headers = await self.generate_preview_headers(manufacturing_type_id)
         rows = []
 
         if isinstance(data, list):
             for item in data:
-                rows.append(await self._create_row(item))
+                rows.append(await self._create_row(item, manufacturing_type_id))
         else:
-            rows.append(await self._create_row(data))
+            rows.append(await self._create_row(data, manufacturing_type_id))
 
         return PreviewTable(headers=headers, rows=rows)
 
-    async def _create_row(self, data: Configuration | dict[str, Any]) -> dict[str, Any]:
+    async def _create_row(self, data: Configuration | dict[str, Any], manufacturing_type_id: int) -> dict[str, Any]:
         """Create a single table row.
 
         Args:
             data: Configuration or form data dictionary
+            manufacturing_type_id: Manufacturing type ID for dynamic mapping
 
         Returns:
             dict: Row data
         """
         row_data: dict[str, Any] = {}
+        
+        # Get dynamic mappings
+        header_mapping = await self.generate_header_mapping(manufacturing_type_id)
+        reverse_mapping = await self.get_reverse_header_mapping(manufacturing_type_id)
 
         if isinstance(data, Configuration):
             row_data["id"] = data.id
@@ -984,20 +1090,20 @@ class EntryService(BaseService):
                         else selection.boolean_value
                     )
 
-                    header = self.REVERSE_HEADER_MAPPING.get(field_name)
+                    header = reverse_mapping.get(field_name)
                     if header:
                         row_data[header] = self.format_preview_value(value)
         else:
             # Handle dictionary (form data)
             row_data["id"] = data.get("id", "N/A")
-            for header, field_name in self.HEADER_MAPPING.items():
+            for header, field_name in header_mapping.items():
                 if header == "id":
                     continue
                 value = data.get(field_name)
                 row_data[header] = self.format_preview_value(value)
 
         # Fill missing columns with N/A
-        for header in self.HEADER_MAPPING.keys():
+        for header in header_mapping.keys():
             if header not in row_data:
                 row_data[header] = "N/A"
 
@@ -1058,8 +1164,11 @@ class EntryService(BaseService):
         if not config:
             raise NotFoundException(f"Configuration {configuration_id} not found")
 
+        # Get dynamic header mapping for this manufacturing type
+        header_mapping = await self.generate_header_mapping(config.manufacturing_type_id)
+        
         # Resolve field name from header if needed
-        field_path = self.HEADER_MAPPING.get(field, field)
+        field_path = header_mapping.get(field, field)
         print(f"🦆 [UPDATE DEBUG] Resolved field_path: '{field_path}'")
 
         if field_path == "name":

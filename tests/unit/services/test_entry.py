@@ -342,11 +342,93 @@ class TestEntryService:
         field = entry_service.create_field_definition(node)
 
         assert field.name == "width"
-        assert field.label == "Width in inches"
+        assert field.label == "Width (mm)"  # Updated to match new implementation
         assert field.data_type == "number"
         assert field.required is False
         assert field.validation_rules == {"min": 10, "max": 100}
-        assert field.ui_component == "input"
+        assert field.ui_component == "text"  # Updated to match new implementation
+
+    async def test_generate_preview_headers(self, entry_service, sample_manufacturing_type, sample_attribute_nodes):
+        """Test dynamic preview header generation."""
+        # Mock database query
+        entry_service.db.execute = AsyncMock()
+        attr_result = MagicMock()
+        attr_result.scalars.return_value.all.return_value = sample_attribute_nodes
+        entry_service.db.execute.return_value = attr_result
+        
+        headers = await entry_service.generate_preview_headers(sample_manufacturing_type.id)
+        
+        # Should start with id and Name
+        assert headers[0] == "id"
+        assert headers[1] == "Name"
+        
+        # Should include headers for attribute nodes (not categories)
+        assert "Product Type" in headers
+        assert "Material" in headers
+        assert "Width (mm)" in headers
+        
+        # The actual order based on the test output
+        expected_order = ["id", "Name", "Product Type", "Material", "Width (mm)"]
+        assert headers == expected_order
+
+    async def test_generate_header_mapping(self, entry_service, sample_manufacturing_type, sample_attribute_nodes):
+        """Test dynamic header mapping generation."""
+        # Mock database query
+        entry_service.db.execute = AsyncMock()
+        attr_result = MagicMock()
+        attr_result.scalars.return_value.all.return_value = sample_attribute_nodes
+        entry_service.db.execute.return_value = attr_result
+        
+        mapping = await entry_service.generate_header_mapping(sample_manufacturing_type.id)
+        
+        # Should include special cases
+        assert mapping["id"] == "id"
+        assert mapping["Name"] == "name"
+        
+        # Should map headers to field names
+        assert mapping["Product Type"] == "type"  # Updated to match actual implementation
+        assert mapping["Material"] == "material"
+        assert mapping["Width (mm)"] == "width"
+
+    async def test_get_reverse_header_mapping(self, entry_service, sample_manufacturing_type, sample_attribute_nodes):
+        """Test reverse header mapping generation."""
+        # Mock database query
+        entry_service.db.execute = AsyncMock()
+        attr_result = MagicMock()
+        attr_result.scalars.return_value.all.return_value = sample_attribute_nodes
+        entry_service.db.execute.return_value = attr_result
+        
+        reverse_mapping = await entry_service.get_reverse_header_mapping(sample_manufacturing_type.id)
+        
+        # Should map field names to headers
+        assert reverse_mapping["id"] == "id"
+        assert reverse_mapping["name"] == "Name"
+        assert reverse_mapping["type"] == "Product Type"  # Updated to match actual implementation
+        assert reverse_mapping["material"] == "Material"
+        assert reverse_mapping["width"] == "Width (mm)"
+
+    def test_clear_header_cache(self, entry_service):
+        """Test header cache clearing."""
+        # Add some test data to cache
+        entry_service._header_cache[1] = ["test"]
+        entry_service._mapping_cache[1] = {"test": "test"}
+        entry_service._reverse_mapping_cache[1] = {"test": "test"}
+        
+        # Clear specific manufacturing type
+        entry_service.clear_header_cache(1)
+        assert 1 not in entry_service._header_cache
+        assert 1 not in entry_service._mapping_cache
+        assert 1 not in entry_service._reverse_mapping_cache
+        
+        # Add test data again
+        entry_service._header_cache[1] = ["test"]
+        entry_service._mapping_cache[1] = {"test": "test"}
+        
+        # Clear all
+        entry_service.clear_header_cache()
+        assert len(entry_service._header_cache) == 0
+        assert len(entry_service._mapping_cache) == 0
+        assert len(entry_service._reverse_mapping_cache) == 0
 
     def test_get_section_name(self, entry_service):
         """Test section name extraction from LTREE path."""

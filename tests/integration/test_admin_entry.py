@@ -49,6 +49,35 @@ class TestAdminEntry:
         assert response.status_code == 401
 
     @pytest.mark.asyncio
+    async def test_get_preview_headers_requires_auth(
+        self,
+        client: AsyncClient,
+    ):
+        """Test that preview headers endpoint requires authentication."""
+        response = await client.get("/api/v1/admin/entry/profile/headers/1")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_get_preview_headers_success(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+        simple_manufacturing_type: ManufacturingType,
+    ):
+        """Test successful preview headers retrieval."""
+        # Get preview headers with auth headers
+        response = await client.get(
+            f"/api/v1/admin/entry/profile/headers/{simple_manufacturing_type.id}",
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 200
+        
+        headers = response.json()
+        assert isinstance(headers, list)
+        assert "id" in headers
+        assert "Name" in headers
+
+    @pytest.mark.asyncio
     async def test_admin_entry_profile_page_requires_superuser(
         self,
         client: AsyncClient,

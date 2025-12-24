@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button with context %}
 
 {% block title %}Settings - WindX Admin{% endblock %}
 
@@ -112,7 +113,7 @@
     <div class="card">
         <!-- Username Section -->
         <div class="settings-section">
-            <h2 class="settings-section-title">Change Username</h2>
+            <h2 class="settings-section-title">👤 Change Username</h2>
             <form method="POST" action="/api/v1/admin/settings/update-username">
                 <div class="form-group">
                     <label class="form-label" for="current_username">Current Username</label>
@@ -142,7 +143,11 @@
                 </div>
 
                 <div class="btn-group">
-                    <button type="submit" class="btn btn-primary">Update Username</button>
+                    {{ button(
+                        text="💾 Update Username",
+                        type="submit",
+                        variant="primary"
+                    ) }}
                 </div>
             </form>
         </div>
@@ -151,7 +156,7 @@
 
         <!-- Password Section -->
         <div class="settings-section">
-            <h2 class="settings-section-title">Change Password</h2>
+            <h2 class="settings-section-title">🔒 Change Password</h2>
             <form method="POST" action="/api/v1/admin/settings/update-password">
                 <div class="form-group">
                     <label class="form-label" for="new_password">New Password</label>
@@ -190,7 +195,11 @@
                 </div>
 
                 <div class="btn-group">
-                    <button type="submit" class="btn btn-primary">Update Password</button>
+                    {{ button(
+                        text="🔐 Update Password",
+                        type="submit",
+                        variant="primary"
+                    ) }}
                 </div>
             </form>
         </div>

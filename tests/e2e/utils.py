@@ -8,35 +8,35 @@ from playwright.async_api import Page, expect
 
 async def wait_for_success_message(page: Page, message: str | None = None) -> None:
     """Wait for success alert to appear.
-    
+
     Args:
         page: Playwright page
         message: Optional specific message to check for
     """
-    success_alert = page.locator('.alert-success')
+    success_alert = page.locator(".alert-success")
     await expect(success_alert).to_be_visible(timeout=5000)
-    
+
     if message:
         await expect(success_alert).to_contain_text(message)
 
 
 async def wait_for_error_message(page: Page, message: str | None = None) -> None:
     """Wait for error alert to appear.
-    
+
     Args:
         page: Playwright page
         message: Optional specific message to check for
     """
-    error_alert = page.locator('.alert-danger, .alert-error')
+    error_alert = page.locator(".alert-danger, .alert-error")
     await expect(error_alert).to_be_visible(timeout=5000)
-    
+
     if message:
         await expect(error_alert).to_contain_text(message)
 
 
 async def fill_form_field(page: Page, field_name: str, value: str) -> None:
     """Fill a form field by name.
-    
+
     Args:
         page: Playwright page
         field_name: Name attribute of the field
@@ -48,7 +48,7 @@ async def fill_form_field(page: Page, field_name: str, value: str) -> None:
 
 async def select_dropdown_option(page: Page, field_name: str, value: str) -> None:
     """Select dropdown option by name.
-    
+
     Args:
         page: Playwright page
         field_name: Name attribute of the select element
@@ -60,7 +60,7 @@ async def select_dropdown_option(page: Page, field_name: str, value: str) -> Non
 
 async def click_button_with_text(page: Page, text: str) -> None:
     """Click button containing specific text.
-    
+
     Args:
         page: Playwright page
         text: Text content of the button
@@ -71,7 +71,7 @@ async def click_button_with_text(page: Page, text: str) -> None:
 
 async def verify_element_visible(page: Page, selector: str) -> None:
     """Verify element is visible.
-    
+
     Args:
         page: Playwright page
         selector: CSS selector for the element
@@ -82,7 +82,7 @@ async def verify_element_visible(page: Page, selector: str) -> None:
 
 async def verify_element_not_visible(page: Page, selector: str) -> None:
     """Verify element is not visible.
-    
+
     Args:
         page: Playwright page
         selector: CSS selector for the element
@@ -93,7 +93,7 @@ async def verify_element_not_visible(page: Page, selector: str) -> None:
 
 async def verify_text_present(page: Page, text: str) -> None:
     """Verify text is present on the page.
-    
+
     Args:
         page: Playwright page
         text: Text to search for
@@ -104,7 +104,7 @@ async def verify_text_present(page: Page, text: str) -> None:
 
 async def accept_confirmation_dialog(page: Page) -> None:
     """Set up handler to accept confirmation dialogs.
-    
+
     Args:
         page: Playwright page
     """
@@ -113,7 +113,7 @@ async def accept_confirmation_dialog(page: Page) -> None:
 
 async def dismiss_confirmation_dialog(page: Page) -> None:
     """Set up handler to dismiss confirmation dialogs.
-    
+
     Args:
         page: Playwright page
     """
@@ -122,7 +122,7 @@ async def dismiss_confirmation_dialog(page: Page) -> None:
 
 async def take_screenshot(page: Page, name: str) -> None:
     """Take a screenshot for debugging.
-    
+
     Args:
         page: Playwright page
         name: Name for the screenshot file
@@ -132,7 +132,7 @@ async def take_screenshot(page: Page, name: str) -> None:
 
 async def wait_for_navigation(page: Page, url_pattern: str, timeout: int = 5000) -> None:
     """Wait for navigation to URL matching pattern.
-    
+
     Args:
         page: Playwright page
         url_pattern: URL pattern to match (can include wildcards)

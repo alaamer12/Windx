@@ -204,22 +204,30 @@ class TestLoginEndpoint:
         db_session: AsyncSession,
     ):
         """Test login with inactive user fails."""
-        # Deactivate user
-        test_user.is_active = False
-        await db_session.commit()
+        # Store original state
+        original_is_active = test_user.is_active
+        
+        try:
+            # Deactivate user
+            test_user.is_active = False
+            await db_session.commit()
 
-        response = await client.post(
-            "/api/v1/auth/login",
-            json={
-                "username": test_user_data["username"],
-                "password": test_user_data["password"],
-            },
-        )
+            response = await client.post(
+                "/api/v1/auth/login",
+                json={
+                    "username": test_user_data["username"],
+                    "password": test_user_data["password"],
+                },
+            )
 
-        assert response.status_code == 401
-        data = response.json()
-        assert data["error"] == "authentication_error"
-        assert "inactive" in data["message"].lower()
+            assert response.status_code == 401
+            data = response.json()
+            assert data["error"] == "authentication_error"
+            assert "inactive" in data["message"].lower()
+        finally:
+            # Restore original state
+            test_user.is_active = original_is_active
+            await db_session.commit()
 
 
 class TestLogoutEndpoint:
@@ -324,8 +332,16 @@ class TestAuthenticationFlow:
         client: AsyncClient,
         test_user,
         test_user_data: dict,
+        db_session: AsyncSession,
     ):
         """Test that token cannot be reused after logout."""
+        # Ensure user is active before login (fix test isolation issue)
+        await db_session.refresh(test_user)
+        if not test_user.is_active:
+            test_user.is_active = True
+            await db_session.commit()
+            await db_session.refresh(test_user)
+        
         # Login
         login_response = await client.post(
             "/api/v1/auth/login",
@@ -334,6 +350,8 @@ class TestAuthenticationFlow:
                 "password": test_user_data["password"],
             },
         )
+        
+        assert login_response.status_code == 200, f"Login failed: {login_response.json()}"
         token = login_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 

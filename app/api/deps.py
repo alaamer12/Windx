@@ -82,6 +82,7 @@ async def get_current_user(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
     user_id = decode_access_token(token)
 
     if user_id is None:
@@ -152,16 +153,26 @@ def get_admin_context(
 ) -> dict[str, Any]:
     """Return a template context dictionary with common admin data.
 
-    Includes the request, current_user, active_page, and the experimental feature flags.
+    Includes the request, current_user, active_page, RBAC helpers, and the experimental feature flags.
     Additional keyword arguments are merged into the context.
     """
+    from app.core.rbac_template_helpers import RBACHelper
+
     settings = get_settings()
+
+    # Create RBAC helper for template context
+    rbac_helper = RBACHelper(current_user)
+
     context: dict[str, Any] = {
         "request": request,
         "current_user": current_user,
         "active_page": active_page,
         "enable_customers": settings.windx.experimental_customers_page,
         "enable_orders": settings.windx.experimental_orders_page,
+        # Add RBAC helpers
+        "rbac": rbac_helper,
+        "can": rbac_helper.can,
+        "has": rbac_helper.has,
     }
     context.update(extra)
     return context

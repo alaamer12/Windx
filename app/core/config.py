@@ -39,6 +39,7 @@ __all__ = [
     "SecuritySettings",
     "CacheSettings",
     "LimiterSettings",
+    "FileStorageSettings",
     "WindxSettings",
     "Settings",
     "get_settings",
@@ -167,6 +168,15 @@ class DatabaseSettings(BaseSettings):
             description="Echo SQL queries to stdout",
         ),
     ] = False
+
+    schema_: Annotated[
+        str,
+        Field(
+            default="public",
+            description="PostgreSQL schema to use (for test isolation)",
+            alias="schema",
+        ),
+    ] = "public"
 
     @computed_field
     @property
@@ -484,6 +494,213 @@ class LimiterSettings(BaseSettings):
     )
 
 
+class FileStorageSettings(BaseSettings):
+    """File storage configuration settings.
+
+    Configuration for file upload and storage including provider selection,
+    bucket configuration, and file validation settings.
+    """
+
+    provider: Literal["supabase", "local", "azure"] = Field(
+        default="local",
+        description="File storage provider (supabase, local, azure)",
+    )
+
+    # Supabase Storage settings
+    supabase_bucket: str = Field(
+        default="windx-uploads",
+        description="Supabase Storage bucket name",
+    )
+
+    # Local storage settings
+    local_dir: str = Field(
+        default="app/static/uploads",
+        description="Local storage directory path",
+    )
+
+    # File validation settings
+    max_size: int = Field(
+        default=5242880,  # 5MB
+        description="Maximum file size in bytes",
+        gt=0,
+        le=50 * 1024 * 1024,  # Max 50MB
+    )
+
+    min_size: int = Field(
+        default=1024,  # 1KB
+        description="Minimum file size in bytes",
+        gt=0,
+    )
+
+    allowed_extensions: list[str] = Field(
+        default=["jpg", "jpeg", "png", "gif", "webp", "svg"],
+        description="Allowed file extensions",
+    )
+
+    # Image quality settings
+    max_width: int = Field(
+        default=4096,
+        description="Maximum image width in pixels",
+        gt=0,
+        le=8192,
+    )
+
+    max_height: int = Field(
+        default=4096,
+        description="Maximum image height in pixels",
+        gt=0,
+        le=8192,
+    )
+
+    min_width: int = Field(
+        default=32,
+        description="Minimum image width in pixels",
+        gt=0,
+    )
+
+    min_height: int = Field(
+        default=32,
+        description="Minimum image height in pixels",
+        gt=0,
+    )
+
+    # Image processing settings
+    enable_compression: bool = Field(
+        default=True,
+        description="Enable automatic image compression",
+    )
+
+    compression_quality: int = Field(
+        default=85,
+        description="JPEG compression quality (1-100)",
+        ge=1,
+        le=100,
+    )
+
+    auto_resize: bool = Field(
+        default=True,
+        description="Automatically resize images that exceed max dimensions",
+    )
+
+    # URL configuration
+    base_url: str = Field(
+        default="/static/uploads",
+        description="Base URL path for serving files",
+    )
+
+    @field_validator("allowed_extensions")
+    @classmethod
+    def validate_extensions(cls, v: list[str]) -> list[str]:
+        """Validate and normalize file extensions."""
+        if not v:
+            raise ValueError("At least one file extension must be allowed")
+        
+        # Normalize extensions (remove dots, convert to lowercase, strip whitespace)
+        normalized = []
+        for ext in v:
+            ext = ext.strip().lower()
+            # Remove all dots, not just leading ones
+            ext = ext.replace('.', '')
+            if ext:
+                normalized.append(ext)
+        
+        if not normalized:
+            raise ValueError("No valid file extensions provided")
+        
+        return normalized
+
+    @field_validator("min_size")
+    @classmethod
+    def validate_min_size(cls, v: int, info) -> int:
+        """Validate minimum file size."""
+        if hasattr(info, 'data') and 'max_size' in info.data:
+            max_size = info.data['max_size']
+            if v >= max_size:
+                raise ValueError("min_size must be less than max_size")
+        return v
+
+    @field_validator("min_width")
+    @classmethod
+    def validate_min_width(cls, v: int, info) -> int:
+        """Validate minimum image width."""
+        if hasattr(info, 'data') and 'max_width' in info.data:
+            max_width = info.data['max_width']
+            if v >= max_width:
+                raise ValueError("min_width must be less than max_width")
+        return v
+
+    @field_validator("min_height")
+    @classmethod
+    def validate_min_height(cls, v: int, info) -> int:
+        """Validate minimum image height."""
+        if hasattr(info, 'data') and 'max_height' in info.data:
+            max_height = info.data['max_height']
+            if v >= max_height:
+                raise ValueError("min_height must be less than max_height")
+        return v
+
+    @model_validator(mode="after")
+    def validate_supabase_requirements(self) -> FileStorageSettings:
+        """Validate Supabase configuration when using Supabase provider."""
+        if self.provider == "supabase":
+            # Check environment variables directly to avoid recursion
+            import os
+            
+            supabase_url = os.environ.get('SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_SERVICE_ROLE_KEY')
+            
+            # Check in order of importance
+            if not supabase_url:
+                raise ValueError(
+                    "SUPABASE_URL is required when FILE_STORAGE_PROVIDER=supabase. "
+                    "Please set SUPABASE_URL in your environment variables."
+                )
+            
+            if not supabase_key:
+                raise ValueError(
+                    "SUPABASE_SERVICE_ROLE_KEY is required when FILE_STORAGE_PROVIDER=supabase. "
+                    "Please set SUPABASE_SERVICE_ROLE_KEY in your environment variables."
+                )
+            
+            # Check bucket name (warn if using default)
+            if not self.supabase_bucket or self.supabase_bucket == "windx-uploads":
+                # If using default, just warn but don't fail
+                import warnings
+                warnings.warn(
+                    "Using default Supabase bucket name 'windx-uploads'. "
+                    "Set FILE_STORAGE_SUPABASE_BUCKET to customize.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        
+        return self
+
+    @computed_field
+    @property
+    def max_size_mb(self) -> float:
+        """Maximum file size in megabytes."""
+        return self.max_size / (1024 * 1024)
+
+    @computed_field
+    @property
+    def min_size_kb(self) -> float:
+        """Minimum file size in kilobytes."""
+        return self.min_size / 1024
+
+    @computed_field
+    @property
+    def is_image_processing_enabled(self) -> bool:
+        """Check if image processing features are enabled."""
+        return self.enable_compression or self.auto_resize
+
+    model_config = SettingsConfigDict(
+        env_prefix="FILE_STORAGE_",
+        validate_assignment=True,
+        use_attribute_docstrings=True,
+        extra="ignore",
+    )
+
+
 class WindxSettings(BaseSettings):
     """Windx configurator system settings.
 
@@ -718,11 +935,35 @@ class Settings(BaseSettings):
         ),
     ]
 
+    # Supabase configuration (optional - for Supabase client features)
+    supabase_url: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Supabase project URL",
+        ),
+    ] = None
+    supabase_anon_key: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Supabase anonymous/public API key",
+        ),
+    ] = None
+    supabase_service_role_key: Annotated[
+        SecretStr | None,
+        Field(
+            default=None,
+            description="Supabase service role key (keep secret!)",
+        ),
+    ] = None
+
     # Nested settings
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     cache: CacheSettings = Field(default_factory=CacheSettings)
     limiter: LimiterSettings = Field(default_factory=LimiterSettings)
+    file_storage: FileStorageSettings = Field(default_factory=FileStorageSettings)
     windx: WindxSettings = Field(default_factory=WindxSettings)
 
     @field_validator("backend_cors_origins", mode="before")

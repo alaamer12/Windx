@@ -39,13 +39,33 @@ jobs:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+        continue-on-error: true
+        id: setup-uv
+
+      - name: Install uv manually (fallback)
+        if: steps.setup-uv.outcome == 'failure'
+        run: |
+          echo "Action failed, installing uv manually..."
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Verify uv installation
+        run: |
+          uv --version
+          echo "✅ uv is ready"
 
       - name: Install dependencies
         run: uv sync
 
       - name: Install dev dependencies
-        run: uv sync --dev
+        run: |
+          echo "📦 Installing enhanced pytest plugins..."
+          uv sync --dev
+          uv add --dev pytest-sugar pytest-clarity pytest-instafail pytest-emoji pytest-icdiff
 
       - name: Install PostgreSQL client
         run: |
@@ -165,7 +185,18 @@ jobs:
           DATABASE_DISABLE_POOLER_WARNING: "True"
 
       - name: Run E2E tests
-        run: uv run pytest tests/e2e/ -v --tb=short -m e2e --cov=app --cov-report=xml --cov-report=term
+        run: |
+          echo "🎭 Running E2E tests with enhanced error reporting..."
+          uv run pytest tests/e2e/ \
+            --tb=short \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=term-missing:skip-covered \
+            --junit-xml=e2e-results.xml \
+            -m e2e \
+            -q \
+            --disable-warnings \
+            || echo "❌ E2E tests failed - check output above for details"
         env:
           ENV: test
           DEBUG: "True"
@@ -216,17 +247,63 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Test Summary
+      - name: Parse E2E results and show failures only
         if: always()
         run: |
-          echo "## 🎭 E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎭 E2E Test Results Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ All E2E tests passed!" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f e2e-results.xml ]; then
+            # Extract failed E2E tests from JUnit XML
+            python3 -c "
+          import xml.etree.ElementTree as ET
+          import sys
+          try:
+              tree = ET.parse('e2e-results.xml')
+              root = tree.getroot()
+              failures = []
+              errors = []
+              
+              for testcase in root.findall('.//testcase'):
+                  failure = testcase.find('failure')
+                  error = testcase.find('error')
+                  
+                  if failure is not None:
+                      failures.append({
+                          'name': testcase.get('name'),
+                          'classname': testcase.get('classname'),
+                          'message': failure.get('message', '').split('\n')[0][:150]
+                      })
+                  elif error is not None:
+                      errors.append({
+                          'name': testcase.get('name'),
+                          'classname': testcase.get('classname'),
+                          'message': error.get('message', '').split('\n')[0][:150]
+                      })
+              
+              if failures or errors:
+                  print('### ❌ Failed E2E Tests')
+                  for f in failures:
+                      print(f'- **{f[\"name\"]}**')
+                      print(f'  \`{f[\"message\"]}\`')
+                      print(f'  📸 Check artifacts for screenshots/videos')
+                  for e in errors:
+                      print(f'- **{e[\"name\"]}** (ERROR)')
+                      print(f'  \`{e[\"message\"]}\`')
+                      print(f'  📸 Check artifacts for screenshots/videos')
+              else:
+                  print('### ✅ All E2E tests passed!')
+                  print('**Browser:** Chromium (Playwright)')
+                  
+          except Exception as e:
+              print(f'Could not parse E2E results: {e}')
+          " >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ job.status }}" != "success" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Browser:** Chromium (Playwright)" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ E2E tests failed. Check the logs and screenshots for details." >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📸 Screenshots and videos have been uploaded as artifacts." >> $GITHUB_STEP_SUMMARY
+            echo "💡 **Debug Tips:**" >> $GITHUB_STEP_SUMMARY
+            echo "- Download screenshots/videos from artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "- Run \`pytest tests/e2e/ --headed\` locally for visual debugging" >> $GITHUB_STEP_SUMMARY
+            echo "- Check browser console logs in test output" >> $GITHUB_STEP_SUMMARY
           fi

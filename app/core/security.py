@@ -15,6 +15,7 @@ Features:
     - Configurable token expiration
     - Secure password verification
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

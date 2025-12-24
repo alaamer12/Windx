@@ -21,6 +21,31 @@ from app.models import *  # noqa: F401, F403
 # this is the Alembic Config object
 config = context.config
 
+
+def include_name(name, type_, parent_names):
+    """Filter function to ignore certain database objects during comparison.
+    
+    This prevents Alembic from trying to manage certain database objects
+    that should be ignored during schema comparison.
+    """
+    if type_ == "index":
+        # Only ignore indexes that are NOT defined in models but exist in database
+        # These are legacy indexes from old migrations that we want to keep
+        legacy_indexes = {
+            'idx_configuration_selections_config_id',  # Old naming convention
+            'idx_customers_email',  # Created by migration, not in model
+            'idx_orders_quote_id',  # Created by migration, not in model  
+            'idx_quotes_customer_id',  # Created by migration, not in model
+            'idx_sessions_is_active',  # Created by migration, not in model
+            'idx_sessions_user_id',  # Created by migration, not in model
+            'idx_users_role',  # Created by migration, not in model
+        }
+        
+        if name in legacy_indexes:
+            return False  # Ignore these legacy indexes
+    
+    return True  # Include everything else (including model-defined indexes)
+
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -52,6 +77,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
         compare_server_default=True,
+        include_name=include_name,
     )
 
     with context.begin_transaction():
@@ -69,6 +95,7 @@ def do_run_migrations(connection: Connection) -> None:
         target_metadata=target_metadata,
         compare_type=True,
         compare_server_default=True,
+        include_name=include_name,
     )
 
     with context.begin_transaction():

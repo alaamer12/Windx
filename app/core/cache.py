@@ -16,6 +16,8 @@ Features:
     - Easy decorator-based caching
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from functools import lru_cache
 from typing import Any
@@ -148,6 +150,7 @@ def cache_key_builder(
     prefix = settings.cache.prefix
 
     # Build key from function name
+    # noinspection PyUnresolvedReferences
     cache_key = f"{prefix}:{namespace}:{func.__module__}:{func.__name__}"
 
     # Add request path if available

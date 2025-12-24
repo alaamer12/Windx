@@ -21,6 +21,7 @@ Features:
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING, Any
 
 from app.schemas.customer import CustomerCreate
@@ -37,18 +38,23 @@ __all__ = [
     "CustomerFactory",
 ]
 
-_counter = 0
+
+def reset_counter() -> None:
+    """Reset the global counter for test isolation.
+
+    Note: This function is kept for compatibility but is no longer needed
+    since we use UUIDs for uniqueness.
+    """
+    pass  # No-op since we use UUIDs now
 
 
-def _get_unique_id() -> int:
+def _get_unique_id() -> str:
     """Get unique ID for test data.
 
     Returns:
-        int: Unique counter value
+        str: Unique UUID-based identifier
     """
-    global _counter
-    _counter += 1
-    return _counter
+    return str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for readability
 
 
 def create_customer_data(
@@ -124,22 +130,22 @@ def create_customer_data(
         contact_person = f"Contact Person {unique_id}"
 
     if email is None:
-        email = f"customer{unique_id}@example.com"
+        email = f"customer-{unique_id}@example.com"
 
     if phone is None:
-        phone = f"555-{unique_id:04d}"
+        phone = f"555-{unique_id}"
 
     if address is None:
         address = {
             "street": f"{unique_id} Test Street",
             "city": "Test City",
             "state": "TS",
-            "zip": f"{unique_id:05d}",
+            "zip": f"{unique_id[:5]}",
             "country": "USA",
         }
 
     if tax_id is None and customer_type != "residential":
-        tax_id = f"{unique_id:02d}-{unique_id:07d}"
+        tax_id = f"{unique_id}-TAX"
 
     data = {
         "company_name": company_name,

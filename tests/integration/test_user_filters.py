@@ -282,18 +282,16 @@ class TestUserListSearch:
 
         # Create users with specific full names
         await user_service.create_user(
-            UserCreate(
+            create_user_create_schema(
                 email="charlie@example.com",
                 username="charlie",
-                password="Password123!",
                 full_name="Charlie Brown",
             )
         )
         await user_service.create_user(
-            UserCreate(
+            create_user_create_schema(
                 email="david@example.com",
                 username="david",
-                password="Password123!",
                 full_name="David Green",
             )
         )

@@ -3,6 +3,7 @@
 Tests the get_popular method added to ConfigurationTemplateRepository:
 - get_popular: Get most popular templates by usage count
 """
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -102,9 +103,7 @@ class TestConfigurationTemplateRepositoryGetPopular:
         assert popular[1].usage_count == 40  # Template 4
         assert popular[2].usage_count == 30  # Template 3
 
-    async def test_get_popular_filters_by_manufacturing_type(
-        self, db_session: AsyncSession
-    ):
+    async def test_get_popular_filters_by_manufacturing_type(self, db_session: AsyncSession):
         """Test get_popular filters by manufacturing_type_id when provided."""
         # Arrange
         mfg_type1 = ManufacturingType(
@@ -144,18 +143,14 @@ class TestConfigurationTemplateRepositoryGetPopular:
         repo = ConfigurationTemplateRepository(db_session)
 
         # Act
-        window_popular = await repo.get_popular(
-            limit=10, manufacturing_type_id=mfg_type1.id
-        )
+        window_popular = await repo.get_popular(limit=10, manufacturing_type_id=mfg_type1.id)
 
         # Assert
         assert len(window_popular) == 1
         assert window_popular[0].name == "Window Template"
         assert window_popular[0].manufacturing_type_id == mfg_type1.id
 
-    async def test_get_popular_excludes_inactive_templates(
-        self, db_session: AsyncSession
-    ):
+    async def test_get_popular_excludes_inactive_templates(self, db_session: AsyncSession):
         """Test get_popular excludes templates where is_active is False."""
         # Arrange
         mfg_type = ManufacturingType(
@@ -194,9 +189,7 @@ class TestConfigurationTemplateRepositoryGetPopular:
         assert len(popular) == 1
         assert popular[0].name == "Active Template"
 
-    async def test_get_popular_excludes_private_templates(
-        self, db_session: AsyncSession
-    ):
+    async def test_get_popular_excludes_private_templates(self, db_session: AsyncSession):
         """Test get_popular excludes templates where is_public is False."""
         # Arrange
         mfg_type = ManufacturingType(
@@ -235,9 +228,7 @@ class TestConfigurationTemplateRepositoryGetPopular:
         assert len(popular) == 1
         assert popular[0].name == "Public Template"
 
-    async def test_get_popular_returns_empty_list_when_no_templates(
-        self, db_session: AsyncSession
-    ):
+    async def test_get_popular_returns_empty_list_when_no_templates(self, db_session: AsyncSession):
         """Test get_popular returns empty list when no templates exist."""
         # Arrange
         repo = ConfigurationTemplateRepository(db_session)

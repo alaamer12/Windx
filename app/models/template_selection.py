@@ -14,6 +14,7 @@ Features:
     - Unique constraint per template and attribute
     - Automatic timestamp management
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime

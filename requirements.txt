@@ -7,9 +7,15 @@ pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
-email-validator
 alembic
 jinja2
 fastapi-pagination
 matplotlib
 networkx
+platformdirs
+psutil
+requests
+email-validator
+casbin
+casbin-sqlalchemy-adapter
+Pillow>=10.0.0

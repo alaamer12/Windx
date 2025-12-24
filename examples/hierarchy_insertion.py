@@ -24,7 +24,7 @@ import asyncio
 import json
 from decimal import Decimal
 
-from app.core.database import get_async_session
+from app.database.connection import get_async_session
 from app.services.hierarchy_builder import HierarchyBuilderService
 
 

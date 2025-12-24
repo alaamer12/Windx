@@ -16,6 +16,7 @@ Features:
     - Reusable response schemas
     - Type-safe error handling
 """
+
 from __future__ import annotations
 
 from typing import Any

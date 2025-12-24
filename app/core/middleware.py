@@ -29,6 +29,8 @@ Features:
     - Request timeout enforcement
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import time
@@ -155,10 +157,12 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "geolocation=(), microphone=(), camera=(), "
                 "payment=(), usb=(), magnetometer=(), gyroscope=()"
             ),
-            # Content Security Policy (allow Swagger UI CDN)
+            # Content Security Policy (allow Swagger UI CDN and Alpine.js)
+            # Note: 'unsafe-eval' is required for Alpine.js to parse and execute
+            # expressions in x-data, x-on, x-show, and other Alpine attributes
             "Content-Security-Policy": (
                 "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "
                 "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
                 "img-src 'self' data: https:; "
                 "font-src 'self' https://cdn.jsdelivr.net; "
@@ -559,6 +563,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 # ============================================================================
 
 
+# noinspection PyTypeChecker
 def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
     """Configure all middleware for the application.
 

@@ -13,6 +13,7 @@ Features:
     - Automatic timestamp management
     - One-to-many relationship with sessions
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -91,6 +92,24 @@ class User(Base):
         index=True,  # Index for filtering superusers
         doc="Superuser privileges flag",
     )
+    role: Mapped[str] = mapped_column(
+        String(50),
+        default="customer",
+        nullable=False,
+        index=True,  # Index for role-based filtering
+        doc="User role for RBAC (customer, salesman, data_entry, partner, superadmin)",
+    )
+
+    def __init__(self, **kwargs):
+        """Initialize User with default role if not provided."""
+        if "role" not in kwargs:
+            # Set role based on is_superuser flag
+            if kwargs.get("is_superuser", False):
+                kwargs["role"] = "superadmin"
+            else:
+                kwargs["role"] = "customer"
+        super().__init__(**kwargs)
+
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         default=lambda: datetime.now(UTC),
@@ -114,6 +133,17 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+
+    def has_role(self, role: str) -> bool:
+        """Check if user has specific role.
+
+        Args:
+            role: Role to check (string value from Role enum)
+
+        Returns:
+            True if user has the role or is superadmin, False otherwise
+        """
+        return self.role == role or self.role == "superadmin"
 
     def __repr__(self) -> str:
         """String representation of User.

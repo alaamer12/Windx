@@ -51,7 +51,6 @@ dependencies = [
     "pydantic-settings",
     "python-jose[cryptography]",
     "passlib[bcrypt]",
-    "email-validator",
     "alembic",
     "fastapi-cache2[redis]",
     "fastapi-limiter",
@@ -63,6 +62,13 @@ dependencies = [
     "matplotlib",
     "networkx",
     # "pygraphviz",
+    "pandas>=2.3.3",
+    "rich",
+    "platformdirs",
+    "requests",
+    "email-validator", # Required by pydantic even if it is not used explicitly
+    "casbin",
+    "casbin-sqlalchemy-adapter",
 ]
 
 [dependency-groups]
@@ -71,10 +77,22 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",
     "pytest-mock",
+    "pytest-xdist",           # Parallel test execution
+    "pytest-sugar",           # Better test output
+    "pytest-clarity",         # Better assertion diffs
+    "pytest-icdiff",          # Improved diff output
+    "pytest-html",            # HTML test reports
+    "pytest-json-report",     # JSON test reports
+    "pytest-emoji",           # Emoji test output
+    "pytest-instafail",       # Show failures instantly
+    "pytest-picked",          # Run only changed tests
     "ruff",
     "httpx",
     "playwright",
     "pytest-playwright",
+    "psutil",
+    "hypothesis",
+    "aiohttp"
 ]
 
 [project.urls]
@@ -118,14 +136,19 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = [
-    "-v",
-    "-l",
-    "-ra",
-    "--strict-markers",
-    "-W", "default",
-    "--cov=app",
-    "--cov-report=html",
-    "--cov-report=term-missing",
+    "-v",                           # Verbose output
+    "-l",                           # Show local variables in tracebacks
+    "-ra",                          # Show all test results summary
+    "--strict-markers",             # Strict marker checking
+    "-W", "default",                # Show warnings
+    "--tb=short",                   # Short traceback format
+    "--cov-report=term-missing",    # Terminal coverage with missing lines
+    # "--maxfail=5",                # Commented out - let CI control this
+    "--instafail",                  # Show failures instantly
+    # Optional plugins - only enabled if available:
+    # "--emoji",                    # Use emoji in output (pytest-emoji)
+    # "--sugar",                    # Better test output formatting (pytest-sugar)
+    # "--clarity",                  # Better assertion diffs (pytest-clarity)
 ]
 markers = [
     "unit: Unit tests (fast, isolated)",
@@ -136,6 +159,8 @@ markers = [
     "users: User management tests",
     "services: Service layer tests",
     "repositories: Repository layer tests",
+    "redis: Tests requiring Redis (cache and rate limiting)",
+    "ci_cd_issue: Tests that have known issues in CI/CD environment but pass locally",
 ]
 log_cli = false
 log_cli_level = "INFO"
@@ -146,3 +171,8 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+# Enhanced error reporting
+junit_family = "xunit2"
+junit_logging = "all"
+junit_log_passing_tests = false

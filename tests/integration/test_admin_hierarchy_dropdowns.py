@@ -3,6 +3,8 @@
 Tests that all dropdown options are present and functional.
 """
 
+import random
+import time
 from decimal import Decimal
 
 import pytest
@@ -16,19 +18,25 @@ from app.services.hierarchy_builder import HierarchyBuilderService
 async def test_node_form_has_all_node_type_options(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test that node form includes all 5 node type options."""
-    # Create manufacturing type
-    service = HierarchyBuilderService(db_session)
-    mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
-        base_price=Decimal("200.00"),
+    # Create manufacturing type via API with timestamp and random to ensure uniqueness
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": f"Test Window Node Types {unique_id}",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
+    mfg_type_id = create_response.json()["id"]
 
     # Get create node form
     response = await client.get(
-        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
+        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type_id}",
         headers=superuser_auth_headers,
     )
 
@@ -54,19 +62,25 @@ async def test_node_form_has_all_node_type_options(
 async def test_node_form_has_all_data_type_options(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test that node form includes all 6 data type options."""
-    # Create manufacturing type
-    service = HierarchyBuilderService(db_session)
-    mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
-        base_price=Decimal("200.00"),
+    # Create manufacturing type via API with timestamp and random to ensure uniqueness
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": f"Test Window Data Types {unique_id}",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
+    mfg_type_id = create_response.json()["id"]
 
     # Get create node form
     response = await client.get(
-        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
+        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type_id}",
         headers=superuser_auth_headers,
     )
 
@@ -94,19 +108,26 @@ async def test_node_form_has_all_data_type_options(
 async def test_node_form_has_all_price_impact_type_options(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test that node form includes all 3 price impact type options."""
-    # Create manufacturing type
-    service = HierarchyBuilderService(db_session)
-    mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
-        base_price=Decimal("200.00"),
+
+    # Create manufacturing type via API with timestamp and random to ensure uniqueness
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": f"Test Window Price Impact {unique_id}",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
+    mfg_type_id = create_response.json()["id"]
 
     # Get create node form
     response = await client.get(
-        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
+        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type_id}",
         headers=superuser_auth_headers,
     )
 
@@ -128,19 +149,25 @@ async def test_node_form_has_all_price_impact_type_options(
 async def test_node_form_has_all_ui_component_options(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test that node form includes all 5 UI component options."""
-    # Create manufacturing type
-    service = HierarchyBuilderService(db_session)
-    mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
-        base_price=Decimal("200.00"),
+    # Create manufacturing type via API with timestamp and random to ensure uniqueness
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": f"Test Window UI Components {unique_id}",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
+    mfg_type_id = create_response.json()["id"]
 
     # Get create node form
     response = await client.get(
-        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type.id}",
+        f"/api/v1/admin/hierarchy/node/create?manufacturing_type_id={mfg_type_id}",
         headers=superuser_auth_headers,
     )
 

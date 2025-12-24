@@ -185,6 +185,7 @@ class TestDashboardStatsEndpoint:
         # With 10,000+ users, should be < 100ms
         assert response_time < 1.0, f"Response took {response_time}s"
 
+    @pytest.mark.redis
     async def test_get_stats_caching_behavior(
         self,
         client: AsyncClient,
@@ -214,6 +215,7 @@ class TestDashboardStatsEndpoint:
         assert timestamp1 == timestamp2
         assert data1 == data2
 
+    @pytest.mark.redis
     async def test_get_stats_cache_performance(
         self,
         client: AsyncClient,

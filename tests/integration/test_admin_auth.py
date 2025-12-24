@@ -127,6 +127,35 @@ class TestAdminLogin:
         assert response.status_code == 403
         assert b"Not enough permissions" in response.content
 
+    async def test_login_database_error(
+        self,
+        client: AsyncClient,
+        monkeypatch,
+    ):
+        """Test login handles database errors gracefully."""
+        from app.repositories.user import UserRepository
+
+        # Mock the authenticate method to raise a database error
+        async def mock_authenticate(*args, **kwargs):
+            raise Exception("relation 'users' does not exist")
+
+        monkeypatch.setattr(UserRepository, "authenticate", mock_authenticate)
+
+        response = await client.post(
+            "/api/v1/admin/login",
+            data={
+                "username": "testuser",
+                "password": "testpass",
+            },
+            follow_redirects=False,
+        )
+
+        # Should return 500 with setup error message
+        assert response.status_code == 500
+        assert b"Database not initialized" in response.content
+        assert b"create_tables" in response.content
+        assert b"seed_data" in response.content
+
 
 @pytest.mark.asyncio
 class TestAdminLogout:
@@ -177,11 +206,11 @@ class TestAdminDashboard:
             },
             follow_redirects=False,
         )
-        
+
         # Extract cookie and set it on the client
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         # Access dashboard with cookie
         response = await client.get(
             "/api/v1/admin/dashboard",
@@ -214,13 +243,13 @@ class TestAdminDashboard:
         # Try to login as regular user via admin login (should fail)
         # But we can create a session manually for testing
         from app.core.security import create_access_token
-        
+
         # Create a token for the regular user
         token = create_access_token(subject=test_user.id)
-        
+
         # Set cookie on client instance to avoid deprecation warning
         client.cookies.set("access_token", f"Bearer {token}")
-        
+
         # Try to access admin dashboard with regular user cookie
         response = await client.get(
             "/api/v1/admin/dashboard",
@@ -253,7 +282,9 @@ class TestAdminDashboard:
     ):
         """Test dashboard redirects with expired authentication token."""
         # Create an expired token (this would need token creation with past expiry)
-        expired_token = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MDk0NTkyMDB9.invalid"
+        expired_token = (
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MDk0NTkyMDB9.invalid"
+        )
 
         response = await client.get(
             "/api/v1/admin/dashboard",
@@ -293,7 +324,7 @@ class TestAdminAuthFlow:
         # Step 2: Access dashboard with cookie
         cookie_value = login_response.cookies["access_token"]
         client.cookies.set("access_token", cookie_value)
-        
+
         dashboard_response = await client.get(
             "/api/v1/admin/dashboard",
         )

@@ -1,4 +1,8 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group with context %}
+
+{% import "components/rbac_helpers.html.jinja" as rbac with context %}
+{% import "components/tables.html.jinja" as tables with context %}
 
 {% block title %}Manufacturing Types - WindX Admin{% endblock %}
 
@@ -18,12 +22,12 @@
 {% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1 class="page-title">Manufacturing Types</h1>
-    <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary">
-        + New Type
-    </a>
-</div>
+{# Use RBAC-aware page header macro #}
+{{ rbac.rbac_page_header(
+    "Manufacturing Types",
+    subtitle="Manage product categories and base configurations",
+    actions=page_actions if page_actions else []
+) }}
 
 <div class="card">
     {% if manufacturing_types %}
@@ -50,32 +54,56 @@
                 </td>
                 <td style="padding: 1rem;">${{ "%.2f"|format(type.base_price) }}</td>
                 <td style="padding: 1rem;">
-                    {% if type.is_active %}
-                    <span style="background: #dcfce7; color: #15803d; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">Active</span>
-                    {% else %}
-                    <span style="background: #f1f5f9; color: #64748b; padding: 0.25rem 0.5rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500;">Inactive</span>
-                    {% endif %}
+                    {# Use status badge macro #}
+                    {{ tables.status_badge("active" if type.is_active else "inactive", type="success" if type.is_active else "info") }}
                 </td>
                 <td style="padding: 1rem; text-align: right;">
-                    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                        <a href="/api/v1/admin/manufacturing-types/{{ type.id }}/edit" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Edit</a>
-                        <a href="/api/v1/admin/hierarchy?manufacturing_type_id={{ type.id }}" class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;">Hierarchy</a>
-                        <button type="button" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.875rem;" onclick="confirmDelete({{ type.id }}, '{{ type.name }}')">Delete</button>
-                    </div>
+                    {% call button_group(align="right", gap="xs") %}
+                        {# RBAC-aware action buttons #}
+                        {% if can('manufacturing_type:update') %}
+                            {{ button(
+                                text="✏️",
+                                href="/api/v1/admin/manufacturing-types/" + type.id|string + "/edit",
+                                variant="ghost",
+                                size="sm",
+                                title="Edit"
+                            ) }}
+                        {% endif %}
+                        {% if can('attribute_node:read') %}
+                            {{ button(
+                                text="🌳",
+                                href="/api/v1/admin/hierarchy?manufacturing_type_id=" + type.id|string,
+                                variant="ghost",
+                                size="sm",
+                                title="Hierarchy"
+                            ) }}
+                        {% endif %}
+                        {% if can('manufacturing_type:delete') %}
+                            {{ button(
+                                text="🗑️",
+                                variant="ghost",
+                                size="sm",
+                                class="text-red-400 hover:text-red-600 hover:bg-red-50",
+                                onclick="confirmDelete(" + type.id|string + ", '" + type.name + "')",
+                                title="Delete"
+                            ) }}
+                        {% endif %}
+                    {% endcall %}
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div style="text-align: center; padding: 3rem 1rem; color: var(--text-light);">
-        <div style="font-size: 3rem; opacity: 0.5; margin-bottom: 1rem;">🏭</div>
-        <h3>No Manufacturing Types</h3>
-        <p>Create your first product type to get started.</p>
-        <a href="/api/v1/admin/manufacturing-types/create" class="btn btn-primary" style="margin-top: 1rem;">
-            Create First Type
-        </a>
-    </div>
+    {# Use empty state macro with RBAC-aware action button #}
+    {{ tables.empty_state(
+        icon="🏭",
+        title="No Manufacturing Types",
+        message="Create your first product type to get started.",
+        action_text="Create First Type",
+        action_href="/api/v1/admin/manufacturing-types/create",
+        action_permission="manufacturing_type:create"
+    ) }}
     {% endif %}
     <!-- Delete Confirmation Modal -->
     <div id="deleteModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
@@ -84,10 +112,18 @@
             <p style="margin-bottom: 1.5rem; color: var(--text-light);">Are you sure you want to delete <strong id="deleteItemName"></strong>? This action cannot be undone and will delete all associated attribute hierarchies and configurations.</p>
             
             <form id="deleteForm" method="POST" action="">
-                <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                    <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete Permanently</button>
-                </div>
+                {% call button_group(align="right", gap="md") %}
+                    {{ button(
+                        text="Cancel",
+                        variant="outline",
+                        onclick="closeDeleteModal()"
+                    ) }}
+                    {{ button(
+                        text="🗑️ Delete Permanently",
+                        type="submit",
+                        variant="danger"
+                    ) }}
+                {% endcall %}
             </form>
         </div>
     </div>

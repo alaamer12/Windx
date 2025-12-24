@@ -83,6 +83,9 @@ __all__ = [
     "RequiredIntForm",
     "OptionalStrForm",
     "RequiredStrForm",
+    "AllowEmptyStrForm",
+    "OptionalStrOrNoneForm",
+    "StrOrIntForm",
     "OptionalBoolForm",
     "RequiredBoolForm",
 ]
@@ -330,6 +333,53 @@ Usage:
         name: RequiredStrForm,
     ):
         # name is required
+        pass
+    ```
+"""
+
+AllowEmptyStrForm = Annotated[str, Form()]
+"""String form parameter that allows empty strings.
+
+This type allows empty strings to pass through FastAPI validation
+so they can be validated by Pydantic schemas with custom error messages.
+Use this when you want to provide better validation error messages
+for empty/invalid strings rather than FastAPI's default "field required" error.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        name: AllowEmptyStrForm,  # Allows "" to reach Pydantic validation
+    ):
+        # name can be empty string, will be validated by Pydantic schema
+        pass
+    ```
+"""
+
+OptionalStrOrNoneForm = Annotated[str | None, Form()]
+"""Optional string form parameter that can be None or string.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        parent_id: OptionalStrOrNoneForm = None,
+    ):
+        # parent_id can be None or string
+        pass
+    ```
+"""
+
+StrOrIntForm = Annotated[str | int, Form()]
+"""Form parameter that accepts either string or integer.
+
+Usage:
+    ```python
+    @router.post("/items")
+    async def create_item(
+        sort_order: StrOrIntForm = 0,
+    ):
+        # sort_order can be string or int
         pass
     ```
 """

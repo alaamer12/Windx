@@ -27,18 +27,25 @@ __all__ = [
     "QuoteFactory",
 ]
 
-_counter = 0
+import uuid
 
 
-def _get_unique_id() -> int:
+def reset_counter() -> None:
+    """Reset the global counter for test isolation.
+
+    Note: This function is kept for compatibility but is no longer needed
+    since we use UUIDs for uniqueness.
+    """
+    pass  # No-op since we use UUIDs now
+
+
+def _get_unique_id() -> str:
     """Get unique ID for test data.
 
     Returns:
-        int: Unique counter value
+        str: Unique UUID-based identifier
     """
-    global _counter
-    _counter += 1
-    return _counter
+    return str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for readability
 
 
 def create_quote_data(
@@ -90,7 +97,7 @@ def create_quote_data(
     # Generate default values
     if quote_number is None:
         today = date.today()
-        quote_number = f"Q-{today.strftime('%Y%m%d')}-{unique_id:03d}"
+        quote_number = f"Q-{today.strftime('%Y%m%d')}-{unique_id}"
 
     if subtotal is None:
         subtotal = Decimal("500.00")

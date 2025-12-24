@@ -17,6 +17,7 @@ Features:
     - Type-safe with Annotated types
     - Automatic ORM conversion support
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -62,6 +63,15 @@ class UserBase(BaseModel):
             examples=["John Doe"],
         ),
     ] = None
+    role: Annotated[
+        str,
+        Field(
+            default="customer",
+            max_length=50,
+            description="User role for RBAC",
+            examples=["customer", "salesman", "data_entry", "partner", "superadmin"],
+        ),
+    ] = "customer"
 
 
 class UserCreate(UserBase):
@@ -136,6 +146,14 @@ class UserUpdate(BaseModel):
             description="Whether user account is active",
         ),
     ] = None
+    role: Annotated[
+        str | None,
+        Field(
+            default=None,
+            max_length=50,
+            description="User role for RBAC",
+        ),
+    ] = None
 
 
 class User(UserBase):
@@ -168,6 +186,10 @@ class User(UserBase):
     updated_at: Annotated[
         datetime,
         Field(description="Last update timestamp"),
+    ]
+    role: Annotated[
+        str,
+        Field(description="User role for RBAC"),
     ]
 
     model_config = ConfigDict(from_attributes=True)

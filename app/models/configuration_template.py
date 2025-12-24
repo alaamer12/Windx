@@ -14,6 +14,7 @@ Features:
     - Relationships with manufacturing types, users, and selections
     - Automatic timestamp management
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -36,6 +37,7 @@ from app.database.base import Base
 if TYPE_CHECKING:
     from app.models.manufacturing_type import ManufacturingType
     from app.models.template_selection import TemplateSelection
+    from app.models.user import User
 
 __all__ = ["ConfigurationTemplate"]
 
@@ -177,18 +179,18 @@ class ConfigurationTemplate(Base):
     )
 
     # Relationships
-    manufacturing_type: Mapped["ManufacturingType"] = relationship(
+    manufacturing_type: Mapped[ManufacturingType] = relationship(
         "ManufacturingType",
         back_populates="templates",
         doc="Related manufacturing type",
     )
-    selections: Mapped[list["TemplateSelection"]] = relationship(
+    selections: Mapped[list[TemplateSelection]] = relationship(
         "TemplateSelection",
         back_populates="template",
         cascade="all, delete-orphan",
         doc="Related template selections",
     )
-    creator: Mapped["User | None"] = relationship(
+    creator: Mapped[User | None] = relationship(
         "User",
         doc="User who created the template",
     )

@@ -1,4 +1,5 @@
 """Pydantic schemas for AttributeNode model."""
+
 from __future__ import annotations
 
 import re
@@ -13,12 +14,12 @@ class DisplayCondition(BaseModel):
     """Conditional display logic for attribute nodes."""
 
     operator: Annotated[
-        str, Field(description="Operator: equals, contains, gt, lt, gte, lte, exists, and, or")
+        str, Field(description="Operator: equals, not_equals, greater_than, less_than, greater_equal, less_equal, contains, starts_with, ends_with, matches_pattern, in, not_in, any_of, all_of, exists, not_exists, is_empty, is_not_empty, and, or, not")
     ]
     field: Annotated[str | None, Field(default=None, description="Field to check")]
     value: Annotated[Any | None, Field(default=None, description="Value to compare")]
     conditions: Annotated[
-        list["DisplayCondition"] | None, Field(default=None, description="Nested conditions")
+        list[DisplayCondition] | None, Field(default=None, description="Nested conditions")
     ]
 
     model_config = ConfigDict(from_attributes=True)
@@ -42,7 +43,7 @@ class ValidationRule(BaseModel):
 class AttributeNodeBase(BaseModel):
     """Base schema for AttributeNode with common fields."""
 
-    name: Annotated[str, Field(max_length=200, description="Display name of the attribute")]
+    name: Annotated[str, Field(min_length=1, max_length=200, description="Display name of the attribute")]
     node_type: Annotated[
         str, Field(description="Node type: category, attribute, option, component, technical_spec")
     ]
@@ -75,7 +76,7 @@ class AttributeNodeBase(BaseModel):
     weight_impact: Annotated[
         Decimal,
         Field(
-            default=Decimal("0"), ge=0, decimal_places=2, description="Fixed weight addition in kg"
+            default=Decimal("0"), ge=0, decimal_places=2, description="Fixed weight addition in grams"
         ),
     ]
     weight_formula: Annotated[
@@ -278,7 +279,7 @@ class AttributeNodeTree(AttributeNode):
     """Schema for AttributeNode with children for tree representation."""
 
     children: Annotated[
-        list["AttributeNodeTree"],
+        list[AttributeNodeTree],
         Field(default_factory=list, description="Child nodes in the hierarchy"),
     ]
 

@@ -58,6 +58,14 @@ def get_engine() -> AsyncEngine:
         "max_overflow": settings.database.max_overflow,
     }
 
+    # Set schema search path if specified (for test isolation)
+    schema = settings.database.schema_
+    if schema and schema != "public":
+        if "connect_args" not in engine_kwargs:
+            engine_kwargs["connect_args"] = {}
+        # Include public schema for extensions like ltree
+        engine_kwargs["connect_args"]["server_settings"] = {"search_path": f"{schema}, public"}
+
     # Supabase-specific optimizations
     if settings.database.is_supabase:
         # Supabase has connection limits, so we use smaller pool
@@ -73,8 +81,12 @@ def get_engine() -> AsyncEngine:
         print(f"[INFO] Connection mode: {settings.database.connection_mode}")
         print(f"[INFO] Host: {settings.database.host}")
 
+        # Merge with existing connect_args if any
+        if "connect_args" not in engine_kwargs:
+            engine_kwargs["connect_args"] = {}
+
         # Disable at asyncpg level
-        engine_kwargs["connect_args"] = {"statement_cache_size": 0}
+        engine_kwargs["connect_args"]["statement_cache_size"] = 0
 
         # Disable at SQLAlchemy level
         engine_kwargs["execution_options"] = {"prepared_statement_cache_size": 0}

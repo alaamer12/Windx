@@ -13,6 +13,7 @@ Features:
     - Configuration validation
     - Detailed configuration retrieval
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -24,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import NotFoundException, ValidationException
+from app.core.rbac import Permission, Privilege, ResourceOwnership, Role, require
 from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
 from app.repositories.attribute_node import AttributeNodeRepository
@@ -37,8 +39,31 @@ from app.schemas.configuration_selection import (
 )
 from app.services.base import BaseService
 from app.services.pricing import PricingService
+from app.services.rbac import RBACService
 
 __all__ = ["ConfigurationService"]
+
+
+# Define reusable Privilege objects for Configuration Service operations
+ConfigurationManagement = Privilege(
+    roles=[Role.SALESMAN, Role.PARTNER],
+    permission=Permission("configuration", "update"),
+    resource=ResourceOwnership("customer", id_param="customer_id"),
+)
+
+ConfigurationOwnership = Privilege(
+    roles=Role.CUSTOMER,
+    permission=Permission("configuration", "update"),
+    resource=ResourceOwnership("configuration", id_param="config_id"),
+)
+
+ConfigurationReader = Privilege(
+    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
+    permission=Permission("configuration", "read"),
+    resource=ResourceOwnership("configuration", id_param="config_id"),
+)
+
+AdminPrivileges = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
 class ConfigurationService(BaseService):
@@ -68,8 +93,10 @@ class ConfigurationService(BaseService):
         self.mfg_type_repo = ManufacturingTypeRepository(db)
         self.attr_node_repo = AttributeNodeRepository(db)
         self.pricing_service = PricingService(db)
+        self.rbac_service = RBACService(db)
 
-    async def get_configuration(self, config_id: PositiveInt) -> Configuration:
+    @require(Permission("configuration", "read"))
+    async def get_configuration(self, config_id: PositiveInt, user: Any = None) -> Configuration:
         """Get configuration by ID.
 
         Args:
@@ -89,7 +116,10 @@ class ConfigurationService(BaseService):
             )
         return config
 
-    async def get_configuration_with_details(self, config_id: PositiveInt) -> Configuration:
+    @require(ConfigurationReader)
+    async def get_configuration_with_details(
+        self, config_id: PositiveInt, user: Any = None
+    ) -> Configuration:
         """Get configuration with full selection data.
 
         Loads configuration with all related data including selections,
@@ -122,7 +152,6 @@ class ConfigurationService(BaseService):
             )
 
         return config
-
 
     async def add_selection(
         self, config_id: PositiveInt, selection_value: ConfigurationSelectionValue
@@ -262,18 +291,20 @@ class ConfigurationService(BaseService):
 
         return totals
 
-
+    @require(Permission("configuration", "read"))
     async def list_configurations(
         self,
+        user: Any,
         skip: int = 0,
         limit: int = 100,
         manufacturing_type_id: int | None = None,
         customer_id: int | None = None,
         status: str | None = None,
     ) -> list[Configuration]:
-        """List configurations with filters.
+        """List configurations with automatic RBAC filtering.
 
         Args:
+            user: Current user for RBAC filtering
             skip (int): Number of records to skip
             limit (int): Maximum number of records to return
             manufacturing_type_id (int | None): Filter by manufacturing type
@@ -281,9 +312,21 @@ class ConfigurationService(BaseService):
             status (str | None): Filter by status
 
         Returns:
-            list[Configuration]: List of configurations
+            list[Configuration]: List of configurations accessible to user
         """
         query = select(Configuration)
+
+        # Apply RBAC filtering using the same database session
+        # Get accessible customers for user using existing session
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        
+        if user.role != Role.SUPERADMIN.value:
+            if not accessible_customers:
+                # User has no accessible customers - return empty result
+                query = query.where(False)
+            else:
+                # Filter by accessible customers
+                query = query.where(Configuration.customer_id.in_(accessible_customers))
 
         if manufacturing_type_id:
             query = query.where(Configuration.manufacturing_type_id == manufacturing_type_id)
@@ -301,7 +344,7 @@ class ConfigurationService(BaseService):
 
     @staticmethod
     def get_user_configurations_query(
-            user: Any,
+        user: Any,
         manufacturing_type_id: int | None = None,
         status: str | None = None,
     ):
@@ -356,18 +399,22 @@ class ConfigurationService(BaseService):
         """
         from app.core.exceptions import AuthorizationException
 
-        config = await self.get_configuration_with_details(config_id)
+        config = await self.get_configuration_with_details(config_id, user)
 
-        # Authorization check
-        if not user.is_superuser and config.customer_id != user.id:
+        # Authorization check using RBAC service
+        accessible_customers = await self.rbac_service.get_accessible_customers(user)
+        if user.role != Role.SUPERADMIN.value and config.customer_id not in accessible_customers:
             raise AuthorizationException("You do not have permission to access this configuration")
 
         return config
 
+    @require(ConfigurationManagement)  # Salesmen can update configurations for their customers
+    @require(ConfigurationOwnership)  # Customers can update their own configurations
+    @require(AdminPrivileges)  # Superadmins can update any configuration
     async def update_configuration(
         self, config_id: PositiveInt, config_update: ConfigurationUpdate, user: Any
     ) -> Configuration:
-        """Update configuration with authorization check.
+        """Update configuration with Casbin authorization.
 
         Args:
             config_id (PositiveInt): Configuration ID
@@ -379,15 +426,9 @@ class ConfigurationService(BaseService):
 
         Raises:
             NotFoundException: If configuration not found
-            AuthorizationException: If user lacks permission
+            HTTPException: 403 if user lacks permission (handled by Casbin decorator)
         """
-        from app.core.exceptions import AuthorizationException
-
-        config = await self.get_configuration(config_id)
-
-        # Authorization check
-        if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException("You do not have permission to update this configuration")
+        config = await self.get_configuration(config_id, user)
 
         # Update configuration fields
         update_data = config_update.model_dump(exclude_unset=True, exclude={"selections"})
@@ -399,10 +440,13 @@ class ConfigurationService(BaseService):
 
         return config
 
+    @require(ConfigurationManagement)  # Salesmen can update selections for their customers
+    @require(ConfigurationOwnership)  # Customers can update their own selections
+    @require(AdminPrivileges)  # Superadmins can update any selections
     async def update_selections(
         self, config_id: PositiveInt, selections: list[ConfigurationSelectionCreate], user: Any
     ) -> Configuration:
-        """Update selections with authorization check.
+        """Update selections with Casbin authorization.
 
         Args:
             config_id (PositiveInt): Configuration ID
@@ -414,15 +458,9 @@ class ConfigurationService(BaseService):
 
         Raises:
             NotFoundException: If configuration not found
-            AuthorizationException: If user lacks permission
+            HTTPException: 403 if user lacks permission (handled by Casbin decorator)
         """
-        from app.core.exceptions import AuthorizationException
-
-        config = await self.get_configuration(config_id)
-
-        # Authorization check
-        if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException("You do not have permission to update this configuration")
+        config = await self.get_configuration(config_id, user)
 
         # Delete existing selections
         await self.selection_repo.delete_by_configuration(config_id)
@@ -437,8 +475,11 @@ class ConfigurationService(BaseService):
         await self.refresh(config)
         return config
 
+    @require(ConfigurationManagement)  # Salesmen can delete configurations for their customers
+    @require(ConfigurationOwnership)  # Customers can delete their own configurations
+    @require(AdminPrivileges)  # Superadmins can delete any configuration
     async def delete_configuration(self, config_id: PositiveInt, user: Any) -> None:
-        """Delete configuration with authorization check.
+        """Delete configuration with Casbin authorization.
 
         Args:
             config_id (PositiveInt): Configuration ID
@@ -446,23 +487,18 @@ class ConfigurationService(BaseService):
 
         Raises:
             NotFoundException: If configuration not found
-            AuthorizationException: If user lacks permission
+            HTTPException: 403 if user lacks permission (handled by Casbin decorator)
         """
-        from app.core.exceptions import AuthorizationException
-
-        config = await self.get_configuration(config_id)
-
-        # Authorization check
-        if not user.is_superuser and config.customer_id != user.id:
-            raise AuthorizationException("You do not have permission to delete this configuration")
+        config = await self.get_configuration(config_id, user)
 
         await self.config_repo.delete(config_id)
         await self.commit()
 
+    @require(Permission("configuration", "create"))
     async def create_configuration(
         self, config_in: ConfigurationCreate, user: Any
     ) -> Configuration:
-        """Create new configuration with user association.
+        """Create new configuration with proper customer relationship.
 
         Args:
             config_in (ConfigurationCreate): Configuration creation data
@@ -482,11 +518,12 @@ class ConfigurationService(BaseService):
                 details={"manufacturing_type_id": config_in.manufacturing_type_id},
             )
 
+        # Get or create customer for user using RBAC service
+        customer = await self.rbac_service.get_or_create_customer_for_user(user)
+
         # Create configuration with base price from manufacturing type
-        # Associate with current user if customer_id not provided
         config_data = config_in.model_dump(exclude={"selections"})
-        if not config_data.get("customer_id"):
-            config_data["customer_id"] = user.id
+        config_data["customer_id"] = customer.id  # Use proper customer ID
 
         config = Configuration(
             **config_data,
@@ -500,7 +537,7 @@ class ConfigurationService(BaseService):
         await self.refresh(config)
 
         # Add initial selections if provided
-        if hasattr(config_in, 'selections') and config_in.selections:
+        if hasattr(config_in, "selections") and config_in.selections:
             for selection_value in config_in.selections:
                 await self._add_selection_internal(config.id, selection_value)
 

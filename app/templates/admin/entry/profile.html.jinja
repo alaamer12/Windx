@@ -576,5 +576,57 @@ document.addEventListener('alpine:init', () => {
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy-bundle.umd.min.js" crossorigin="anonymous"></script>
-<script src="/static/js/profile-entry.js?v=16"></script>
+
+<!-- Global utility functions -->
+<script>
+// Simple toast notification function
+window.showToast = function(message, type = 'info', duration = 4000) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-x-full`;
+    
+    // Set background color based on type
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500', 
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    toast.classList.add(colors[type] || colors.info);
+    
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 10);
+    
+    // Auto remove
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
+};
+</script>
+
+<!-- Load window utility functions -->
+<script src="/static/js/_profile/_window.js?v=1"></script>
+
+<!-- Load modular classes first (order matters!) -->
+<script src="/static/js/_profile/ConditionEvaluator.js?v=1"></script>
+<script src="/static/js/_profile/SessionManager.js?v=1"></script>
+<script src="/static/js/_profile/DataLoader.js?v=1"></script>
+<script src="/static/js/_profile/FormValidator.js?v=1"></script>
+<script src="/static/js/_profile/ImageHandler.js?v=1"></script>
+<script src="/static/js/_profile/TableEditor.js?v=1"></script>
+<script src="/static/js/_profile/FormHelpers.js?v=1"></script>
+<script src="/static/js/_profile/ConfigurationSaver.js?v=1"></script>
+
+<!-- Load main application file last -->
+<script src="/static/js/profile-entry.js?v=17"></script>
 {% endblock %}

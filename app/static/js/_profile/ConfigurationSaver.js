@@ -63,10 +63,36 @@ class ConfigurationSaver {
                         showFieldErrors: true
                     };
                 }
+                // If detail is a string with ValidationException message
+                else if (typeof errorData.detail === 'string' && errorData.detail.includes('field_errors')) {
+                    try {
+                        // Try to extract field errors from ValidationException string
+                        const match = errorData.detail.match(/field_errors=({.*})/);
+                        if (match) {
+                            const fieldErrorsStr = match[1].replace(/'/g, '"');
+                            const fieldErrors = JSON.parse(fieldErrorsStr);
+                            return {
+                                fieldErrors: fieldErrors,
+                                message: 'Please fix the highlighted validation errors',
+                                showFieldErrors: true
+                            };
+                        }
+                    } catch (parseError) {
+                        console.warn('Failed to parse field errors from ValidationException:', parseError);
+                    }
+                }
                 // Generic detail message
                 else {
                     message = errorData.detail.message || errorData.detail || 'Validation failed';
                 }
+            }
+            // Handle ValidationException with field_errors attribute
+            else if (errorData.field_errors) {
+                return {
+                    fieldErrors: errorData.field_errors,
+                    message: 'Please fix the highlighted validation errors',
+                    showFieldErrors: true
+                };
             }
         } else if (status === 401) {
             return {

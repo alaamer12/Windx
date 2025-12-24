@@ -20,6 +20,11 @@ function profileEntryApp(options = {}) {
         lastSavedData: null,
         autoSaveInterval: null,
 
+        // Dynamic headers state
+        dynamicHeaders: null,
+        headersLoading: false,
+        headersError: null,
+
         // Inline Editing & Table Preview
         canEdit: options.canEdit || false,
         canDelete: options.canDelete || false,
@@ -102,11 +107,12 @@ function profileEntryApp(options = {}) {
             console.log('🦆 [STEP 1] Manufacturing types loaded:', this.manufacturingTypes.length, 'types');
 
             if (this.manufacturingTypeId) {
-                console.log('🦆 [STEP 2] Manufacturing type ID found, loading schema and previews...');
+                console.log('🦆 [STEP 2] Manufacturing type ID found, loading schema, headers, and previews...');
                 this.loading = true;
                 try {
-                    const [schema, previews] = await Promise.all([
+                    const [schema, headers, previews] = await Promise.all([
                         DataLoader.loadSchema(this.manufacturingTypeId),
+                        this.loadDynamicHeaders(),
                         DataLoader.loadPreviews(this.manufacturingTypeId)
                     ]);
                     
@@ -197,6 +203,52 @@ function profileEntryApp(options = {}) {
             }
         },
 
+        async loadDynamicHeaders() {
+            if (!this.manufacturingTypeId) {
+                console.warn('🦆 [HEADERS] No manufacturing type ID - cannot load headers');
+                return;
+            }
+
+            this.headersLoading = true;
+            this.headersError = null;
+
+            try {
+                console.log('🦆 [HEADERS] Loading dynamic headers for manufacturing type:', this.manufacturingTypeId);
+                const headers = await DataLoader.loadDynamicHeaders(this.manufacturingTypeId);
+                
+                this.dynamicHeaders = headers;
+                
+                // Set the headers in FormHelpers for use throughout the application
+                FormHelpers.setDynamicHeaders(headers);
+                
+                console.log('🦆 [HEADERS] ✅ Dynamic headers loaded and set:', headers);
+                return headers;
+            } catch (err) {
+                console.error('🦆 [HEADERS] ❌ Failed to load dynamic headers:', err);
+                this.headersError = err.message;
+                
+                // Fall back to hardcoded headers on error
+                console.log('🦆 [HEADERS] Falling back to hardcoded headers');
+                const fallbackHeaders = [
+                    "Name", "Type", "Company", "Material", "opening system", "system series",
+                    "Code", "Length of Beam\nm", "Renovation\nonly for frame", "width",
+                    "builtin Flyscreen track only for sliding frame", "Total width\nonly for frame with builtin flyscreen",
+                    "flyscreen track height\nonly for frame with builtin flyscreen", "front Height mm", "Rear heightt",
+                    "Glazing height", "Renovation height mm\nonly for frame", "Glazing undercut heigth\nonly for glazing bead",
+                    "Pic", "Sash overlap only for sashs", "flying mullion horizontal clearance",
+                    "flying mullion vertical clearance", "Steel material thickness\nonly for reinforcement",
+                    "Weight/m kg", "Reinforcement steel", "Colours", "Price/m", "Price per/beam", "UPVC Profile Discount%"
+                ];
+                
+                this.dynamicHeaders = fallbackHeaders;
+                FormHelpers.setDynamicHeaders(fallbackHeaders);
+                
+                return fallbackHeaders;
+            } finally {
+                this.headersLoading = false;
+            }
+        },
+
         startEditing(rowId, field, value) {
             console.log('🦆 [EDITING DEBUG] ========================================');
             console.log('🦆 [EDITING DEBUG] startEditing called');
@@ -251,6 +303,23 @@ function profileEntryApp(options = {}) {
             try {
                 const result = await TableEditor.commitTableChanges(this.pendingEdits);
                 
+                // Handle field-specific errors from inline editing
+                if (result.fieldErrors && Object.keys(result.fieldErrors).length > 0) {
+                    // Highlight cells with errors in the preview table
+                    if (this.$el) {
+                        TableEditor.highlightInlineEditErrors(result.fieldErrors, this.$el);
+                    }
+                    
+                    // Show detailed error information
+                    const errorCount = Object.keys(result.fieldErrors).length;
+                    const errorMessages = Object.values(result.fieldErrors).join('; ');
+                    showToast(
+                        `${errorCount} field${errorCount > 1 ? 's' : ''} failed to save: ${errorMessages}`, 
+                        'error', 
+                        8000
+                    );
+                }
+                
                 // Clear pending edits and show results
                 this.pendingEdits = {};
                 this.hasUnsavedEdits = false;
@@ -268,7 +337,7 @@ function profileEntryApp(options = {}) {
 
             } catch (err) {
                 console.error('Error committing changes:', err);
-                showToast('Failed to commit changes', 'error');
+                showToast('Failed to commit changes: ' + (err.message || 'Unknown error'), 'error');
             } finally {
                 this.committingChanges = false;
             }
@@ -323,15 +392,33 @@ function profileEntryApp(options = {}) {
                     this.fieldVisibility[fieldName] = true; // Default to visible
                 }
             }
+
+            // Apply business rules for field availability
+            const businessRulesVisibility = BusinessRulesEngine.evaluateFieldAvailability(this.formData);
+            Object.assign(this.fieldVisibility, businessRulesVisibility);
+
+            // Update UI field visibility
+            if (this.$el) {
+                BusinessRulesEngine.updateFieldVisibility(this.formData, this.$el);
+            }
         },
 
         isFieldVisible(fieldName) {
-            // If no conditional logic, field is visible
+            // If no conditional logic, check business rules
             if (!this.schema || !this.schema.conditional_logic[fieldName]) {
-                return true;
+                return BusinessRulesEngine.isFieldValidForCurrentContext(fieldName, this.formData);
             }
 
             return this.fieldVisibility[fieldName] !== false;
+        },
+
+        /**
+         * Check if a field is valid for the current context (replaces broken implementation)
+         * @param {string} fieldName - Field name to check
+         * @returns {boolean} True if field is valid for current context
+         */
+        isFieldValidForCurrentContext(fieldName) {
+            return BusinessRulesEngine.isFieldValidForCurrentContext(fieldName, this.formData);
         },
 
         getUIComponent(field) {
@@ -400,8 +487,22 @@ function profileEntryApp(options = {}) {
             SessionManager.saveToSession(this.formData);
             this.hasUnsavedData = true;
 
-            // Clear field error
-            delete this.fieldErrors[fieldName];
+            // Clear field error when user corrects the field
+            if (this.fieldErrors[fieldName]) {
+                this.fieldErrors = FormValidator.clearFieldError(this.fieldErrors, fieldName);
+                
+                // Remove visual error highlighting
+                if (this.$el) {
+                    const fieldElement = this.$el.querySelector(`#${fieldName}, [name="${fieldName}"], [data-field="${fieldName}"]`);
+                    if (fieldElement) {
+                        fieldElement.classList.remove('field-error-highlight');
+                        const fieldContainer = fieldElement.closest('.field-container, .form-field, .input-group');
+                        if (fieldContainer) {
+                            fieldContainer.classList.remove('field-error-highlight');
+                        }
+                    }
+                }
+            }
 
             // Update field visibility based on new data
             this.updateFieldVisibility();
@@ -425,6 +526,12 @@ function profileEntryApp(options = {}) {
             const isVisible = this.isFieldVisible(fieldName);
             const fieldErrors = FormValidator.validateField(field, value, isVisible);
             
+            // Add business rules validation
+            const businessRuleErrors = BusinessRulesEngine.validateBusinessRules(this.formData);
+            if (businessRuleErrors[fieldName]) {
+                fieldErrors[fieldName] = businessRuleErrors[fieldName];
+            }
+            
             // Update field errors
             if (Object.keys(fieldErrors).length > 0) {
                 this.fieldErrors = { ...this.fieldErrors, ...fieldErrors };
@@ -438,14 +545,27 @@ function profileEntryApp(options = {}) {
 
         validateAllFields() {
             this.fieldErrors = FormValidator.validateAllFields(this.schema, this.formData, this.fieldVisibility);
+            
+            // Add business rules validation
+            const businessRuleErrors = BusinessRulesEngine.validateBusinessRules(this.formData);
+            Object.assign(this.fieldErrors, businessRuleErrors);
         },
 
         getPreviewValue(header) {
-            return FormHelpers.getPreviewValue(header, this.formData, this.fieldVisibility);
+            const headerMapping = FormHelpers.getHeaderMapping();
+            const fieldName = headerMapping[header] || header.toLowerCase().replace(/\s+/g, '_');
+            const value = this.formData[fieldName];
+            
+            // Use business rules to determine display value
+            return BusinessRulesEngine.getDisplayValue(fieldName, value, this.formData);
         },
 
-        // Enhanced preview headers matching exact CSV structure
+        // Enhanced preview headers using dynamic headers from backend
         get previewHeaders() {
+            // Use dynamic headers if available, otherwise fall back to FormHelpers
+            if (this.dynamicHeaders && this.dynamicHeaders.length > 0) {
+                return this.dynamicHeaders;
+            }
             return FormHelpers.getPreviewHeaders();
         },
 
@@ -571,7 +691,12 @@ function profileEntryApp(options = {}) {
             
             this.saving = true;
             this.error = null;
+            
+            // Clear previous field errors and visual highlights
             this.fieldErrors = {};
+            if (this.$el) {
+                FormValidator.highlightInvalidFields({}, this.$el);
+            }
             
             try {
                 const saveData = this.prepareSaveData();
@@ -590,11 +715,26 @@ function profileEntryApp(options = {}) {
                     const errorInfo = ConfigurationSaver.handleSaveError(result.status, result.errorData);
                     
                     if (errorInfo.fieldErrors) {
+                        // Update field errors with specific messages from server
                         this.fieldErrors = { ...this.fieldErrors, ...errorInfo.fieldErrors };
                         console.log('🎯 Updated field errors:', this.fieldErrors);
+                        
+                        // Highlight invalid fields in both input and preview tabs
+                        if (this.$el) {
+                            FormValidator.highlightInvalidFields(this.fieldErrors, this.$el);
+                        }
+                        
                         if (errorInfo.showFieldErrors) {
                             this.scrollToFirstError();
-                            showToast('Please fix the highlighted validation errors', 'error', 8000);
+                            
+                            // Show detailed error message with field count
+                            const errorCount = Object.keys(this.fieldErrors).length;
+                            const errorFields = Object.keys(this.fieldErrors).join(', ');
+                            showToast(
+                                `Please fix ${errorCount} validation error${errorCount > 1 ? 's' : ''}: ${errorFields}`, 
+                                'error', 
+                                8000
+                            );
                             return;
                         }
                     }
@@ -610,10 +750,31 @@ function profileEntryApp(options = {}) {
             } catch (err) {
                 console.error('❌ Error recording configuration:', err);
                 this.error = err.message;
-                showToast(err.message, 'error', 8000);
+                
+                // Show user-friendly error message
+                const userMessage = this.getUserFriendlyErrorMessage(err.message);
+                showToast(userMessage, 'error', 6000);
+                
                 this.scrollToFirstError();
             } finally {
                 this.saving = false;
+            }
+        },
+
+        getUserFriendlyErrorMessage(errorMessage) {
+            // Convert technical error messages to user-friendly ones
+            if (errorMessage.includes('ValidationException')) {
+                return 'Please check your input values and try again';
+            } else if (errorMessage.includes('NotFoundException')) {
+                return 'The requested resource was not found. Please refresh the page and try again';
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                return 'Network error. Please check your connection and try again';
+            } else if (errorMessage.includes('timeout')) {
+                return 'Request timed out. Please try again';
+            } else if (errorMessage.includes('500')) {
+                return 'Server error occurred. Please try again later or contact support';
+            } else {
+                return errorMessage || 'An unexpected error occurred. Please try again';
             }
         },
 

@@ -20,13 +20,14 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import PositiveInt
 
 from app.api.deps import get_admin_context
 from app.api.types import CurrentSuperuser, DBSession
+from app.core.exceptions import ValidationException
 from app.schemas.configuration import Configuration
 from app.schemas.entry import (
     InlineEditRequest,
@@ -200,13 +201,44 @@ async def save_profile_data(
     entry_service = EntryService(db)
     try:
         return await entry_service.save_profile_configuration(profile_data, current_superuser)
-    except Exception as e:
+    except ValidationException as e:
         import logging
         logger = logging.getLogger("uvicorn.error")
         logger.error(f"Save Profile Validation Error: {str(e)}")
+        if hasattr(e, 'field_errors') and e.field_errors:
+            logger.error(f"Field Errors: {e.field_errors}")
+            # Return structured error response with field errors
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": e.message,
+                    "field_errors": e.field_errors,
+                    "error_type": "validation_error"
+                }
+            )
+        else:
+            # Return generic validation error
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": str(e),
+                    "error_type": "validation_error"
+                }
+            )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(f"Save Profile Unexpected Error: {str(e)}")
+        logger.error(f"Error Type: {type(e).__name__}")
         if hasattr(e, 'field_errors'):
              logger.error(f"Field Errors: {e.field_errors}")
-        raise e
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "An unexpected error occurred while saving the configuration",
+                "error_type": "server_error"
+            }
+        )
 
 
 @router.get(
@@ -538,6 +570,62 @@ async def evaluate_display_conditions(
     entry_service = EntryService(db)
     schema = await entry_service.get_profile_schema(manufacturing_type_id)
     return await entry_service.evaluate_display_conditions(form_data, schema)
+
+
+@router.post(
+    "/profile/validate-business-rules",
+    response_model=dict[str, str],
+    summary="Validate Business Rules (Admin)",
+    description="Validate business rules for profile data and return field-specific errors",
+    response_description="Field errors from business rule violations",
+    operation_id="validateAdminBusinessRules",
+    responses={
+        200: {
+            "description": "Business rules validation completed",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "renovation": "Renovation is only applicable for frame types",
+                        "sash_overlap": "Sash overlap is only applicable for sash types"
+                    }
+                }
+            }
+        },
+        422: {"description": "Validation Error"},
+    },
+)
+async def validate_business_rules(
+    form_data: dict[str, Any],
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> dict[str, str]:
+    """Validate business rules for profile data (admin interface).
+
+    Validates business rules for type-based field availability and returns
+    field-specific error messages for any violations.
+
+    Args:
+        form_data (dict): Form data to validate
+        current_superuser (User): Current authenticated superuser
+        db (AsyncSession): Database session
+
+    Returns:
+        dict[str, str]: Field errors from business rule violations
+
+    Example:
+        POST /api/v1/admin/entry/profile/validate-business-rules
+        {
+            "type": "sash",
+            "renovation": "yes",
+            "sash_overlap": "8"
+        }
+        
+        Response: {"renovation": "Renovation is only applicable for frame types"}
+    """
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return entry_service.validate_business_rules(form_data)
 
 
 # HTML Page Endpoints

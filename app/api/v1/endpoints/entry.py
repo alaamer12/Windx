@@ -20,12 +20,13 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Request, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import PositiveInt
 
 from app.api.types import CurrentUser, DBSession
+from app.core.exceptions import ValidationException
 from app.schemas.configuration import Configuration
 from app.schemas.entry import ProfileEntryData, ProfilePreviewData, ProfileSchema
 from app.schemas.responses import get_common_responses
@@ -168,7 +169,46 @@ async def save_profile_data(
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    return await entry_service.save_profile_configuration(profile_data, current_user)
+    try:
+        return await entry_service.save_profile_configuration(profile_data, current_user)
+    except ValidationException as e:
+        import logging
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(f"Save Profile Validation Error: {str(e)}")
+        if hasattr(e, 'field_errors') and e.field_errors:
+            logger.error(f"Field Errors: {e.field_errors}")
+            # Return structured error response with field errors
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": e.message,
+                    "field_errors": e.field_errors,
+                    "error_type": "validation_error"
+                }
+            )
+        else:
+            # Return generic validation error
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "message": str(e),
+                    "error_type": "validation_error"
+                }
+            )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(f"Save Profile Unexpected Error: {str(e)}")
+        logger.error(f"Error Type: {type(e).__name__}")
+        if hasattr(e, 'field_errors'):
+             logger.error(f"Field Errors: {e.field_errors}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "An unexpected error occurred while saving the configuration",
+                "error_type": "server_error"
+            }
+        )
 
 
 @router.get(

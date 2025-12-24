@@ -1,4 +1,60 @@
 class FormHelpers {
+    // Store dynamic headers and mappings
+    static dynamicHeaders = null;
+    static dynamicHeaderMapping = null;
+
+    static setDynamicHeaders(headers) {
+        console.log('🦆 [FORMHELPERS] Setting dynamic headers:', headers);
+        this.dynamicHeaders = headers;
+        this.dynamicHeaderMapping = this.generateHeaderMapping(headers);
+        console.log('🦆 [FORMHELPERS] Generated dynamic header mapping:', this.dynamicHeaderMapping);
+    }
+
+    static generateHeaderMapping(headers) {
+        // Generate mapping from headers to field names
+        const mapping = {};
+        
+        for (const header of headers) {
+            // Convert header to field name (lowercase, replace spaces with underscores)
+            let fieldName = header.toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/[^\w_]/g, '')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '');
+            
+            // Handle special cases for consistency with existing field names
+            const specialMappings = {
+                'opening_system': 'opening_system',
+                'system_series': 'system_series',
+                'length_of_beam': 'length_of_beam',
+                'builtin_flyscreen_track': 'builtin_flyscreen_track',
+                'total_width': 'total_width',
+                'flyscreen_track_height': 'flyscreen_track_height',
+                'front_height': 'front_height',
+                'rear_height': 'rear_height',
+                'glazing_height': 'glazing_height',
+                'renovation_height': 'renovation_height',
+                'glazing_undercut_height': 'glazing_undercut_height',
+                'sash_overlap': 'sash_overlap',
+                'flying_mullion_horizontal_clearance': 'flying_mullion_horizontal_clearance',
+                'flying_mullion_vertical_clearance': 'flying_mullion_vertical_clearance',
+                'steel_material_thickness': 'steel_material_thickness',
+                'weight_per_meter': 'weight_per_meter',
+                'reinforcement_steel': 'reinforcement_steel',
+                'price_per_meter': 'price_per_meter',
+                'price_per_beam': 'price_per_beam',
+                'upvc_profile_discount': 'upvc_profile_discount'
+            };
+            
+            if (specialMappings[fieldName]) {
+                fieldName = specialMappings[fieldName];
+            }
+            
+            mapping[header] = fieldName;
+        }
+        
+        return mapping;
+    }
     static getUIComponent(field) {
         // Determine UI component based on field name and data type
         if (field.data_type === 'boolean') return 'checkbox';
@@ -73,8 +129,8 @@ class FormHelpers {
     }
 
     static getPreviewValue(header, formData, fieldVisibility) {
-        // Map CSV headers to form field names (exact match with CSV structure)
-        const headerMapping = {
+        // Use dynamic header mapping if available, otherwise fall back to hardcoded mapping
+        const headerMapping = this.dynamicHeaderMapping || {
             "Name": "name",
             "Type": "type",
             "Company": "company",
@@ -116,6 +172,12 @@ class FormHelpers {
             return 'N/A';
         }
 
+        // Use BusinessRulesEngine if available to determine display value
+        if (typeof BusinessRulesEngine !== 'undefined') {
+            return BusinessRulesEngine.getDisplayValue(fieldName, value, formData);
+        }
+
+        // Fallback to original logic if BusinessRulesEngine is not available
         if (value === null || value === undefined || value === '') {
             return 'N/A';
         }
@@ -139,7 +201,49 @@ class FormHelpers {
         }
     }
 
+    static getHeaderMapping() {
+        // Return the current header mapping (dynamic or fallback)
+        return this.dynamicHeaderMapping || {
+            "Name": "name",
+            "Type": "type",
+            "Company": "company",
+            "Material": "material",
+            "Opening System": "opening_system",
+            "System Series": "system_series",
+            "Code": "code",
+            "Length of beam": "length_of_beam",
+            "Renovation": "renovation",
+            "Width": "width",
+            "Builtin Flyscreen Track": "builtin_flyscreen_track",
+            "Total Width": "total_width",
+            "Flyscreen Track Height": "flyscreen_track_height",
+            "Front Height": "front_height",
+            "Rear Height": "rear_height",
+            "Glazing Height": "glazing_height",
+            "Renovation Height": "renovation_height",
+            "Glazing Undercut Height": "glazing_undercut_height",
+            "Pic": "pic",
+            "Sash Overlap": "sash_overlap",
+            "Flying Mullion Horizontal Clearance": "flying_mullion_horizontal_clearance",
+            "Flying Mullion Vertical Clearance": "flying_mullion_vertical_clearance",
+            "Steel Material Thickness": "steel_material_thickness",
+            "Weight per meter": "weight_per_meter",
+            "Reinforcement Steel": "reinforcement_steel",
+            "Colours": "colours",
+            "Price per meter": "price_per_meter",
+            "Price per beam": "price_per_beam",
+            "UPVC Profile Discount": "upvc_profile_discount"
+        };
+    }
+
     static getPreviewHeaders() {
+        // Use dynamic headers if available, otherwise fall back to hardcoded headers
+        if (this.dynamicHeaders && this.dynamicHeaders.length > 0) {
+            console.log('🦆 [FORMHELPERS] Using dynamic headers:', this.dynamicHeaders);
+            return this.dynamicHeaders;
+        }
+        
+        console.log('🦆 [FORMHELPERS] Falling back to hardcoded headers');
         return [
             "Name", "Type", "Company", "Material", "opening system", "system series",
             "Code", "Length of Beam\nm", "Renovation\nonly for frame", "width",
@@ -214,7 +318,8 @@ class FormHelpers {
     static isValueChanged(header, formData, lastSavedData) {
         if (!lastSavedData) return false;
 
-        const headerMapping = {
+        // Use dynamic header mapping if available, otherwise fall back to hardcoded mapping
+        const headerMapping = this.dynamicHeaderMapping || {
             "Name": "name",
             "Type": "type",
             "Company": "company",

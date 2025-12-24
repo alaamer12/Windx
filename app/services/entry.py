@@ -446,7 +446,90 @@ class EntryService(BaseService):
                 print(f"Error evaluating condition for {field_name}: {e}")
                 visibility[field_name] = True
 
+        # Apply business rules for field availability
+        business_rules_visibility = self.evaluate_business_rules(form_data)
+        visibility.update(business_rules_visibility)
+
         return visibility
+
+    def evaluate_business_rules(self, form_data: dict[str, Any]) -> dict[str, bool]:
+        """Evaluate business rules for field availability based on Type selection.
+
+        Args:
+            form_data: Current form data
+
+        Returns:
+            dict[str, bool]: Field visibility map based on business rules
+        """
+        visibility: dict[str, bool] = {}
+        product_type = form_data.get("type", "").lower()
+        opening_system = form_data.get("opening_system", "").lower()
+
+        # Business Rule 1: "Renovation only for frame" → Only when Type = "Frame"
+        renovation_field = "renovation"
+        visibility[renovation_field] = product_type == "frame"
+
+        # Business Rule 2: "builtin Flyscreen track only for sliding frame" → Only for sliding frames
+        flyscreen_field = "builtin_flyscreen_track"
+        visibility[flyscreen_field] = (
+            product_type == "frame" and "sliding" in opening_system
+        )
+
+        # Business Rule 3: "Total width only for frame with builtin flyscreen"
+        total_width_field = "total_width"
+        visibility[total_width_field] = (
+            product_type == "frame" and form_data.get("builtin_flyscreen_track") is True
+        )
+
+        # Business Rule 4: "flyscreen track height only for frame with builtin flyscreen"
+        flyscreen_height_field = "flyscreen_track_height"
+        visibility[flyscreen_height_field] = (
+            product_type == "frame" and form_data.get("builtin_flyscreen_track") is True
+        )
+
+        # Business Rule 5: "Sash overlap only for sashs" → Only when Type = "sash"
+        sash_overlap_field = "sash_overlap"
+        visibility[sash_overlap_field] = product_type == "sash"
+
+        # Business Rule 6: "Flying mullion clearances" → Only when Type = "Flying mullion"
+        flying_mullion_horizontal_field = "flying_mullion_horizontal_clearance"
+        flying_mullion_vertical_field = "flying_mullion_vertical_clearance"
+        visibility[flying_mullion_horizontal_field] = product_type == "flying mullion"
+        visibility[flying_mullion_vertical_field] = product_type == "flying mullion"
+
+        # Business Rule 7: "Glazing undercut height only for glazing bead" → Only when Type = "glazing bead"
+        glazing_undercut_field = "glazing_undercut_height"
+        visibility[glazing_undercut_field] = product_type == "glazing bead"
+
+        # Business Rule 8: "Renovation height mm only for frame"
+        renovation_height_field = "renovation_height"
+        visibility[renovation_height_field] = product_type == "frame"
+
+        # Business Rule 9: "Steel material thickness only for reinforcement"
+        steel_thickness_field = "steel_material_thickness"
+        visibility[steel_thickness_field] = product_type == "reinforcement"
+
+        return visibility
+
+    def get_field_display_value(self, field_name: str, value: Any, form_data: dict[str, Any]) -> str:
+        """Get display value for a field, showing 'N/A' for fields that don't apply to current type.
+
+        Args:
+            field_name: Field name
+            value: Field value
+            form_data: Current form data
+
+        Returns:
+            str: Display value or 'N/A' if field doesn't apply
+        """
+        # Check if field should be visible based on business rules
+        business_rules_visibility = self.evaluate_business_rules(form_data)
+        
+        if field_name in business_rules_visibility and not business_rules_visibility[field_name]:
+            return "N/A"
+        
+        # Format the value normally if field is applicable
+        return self.format_preview_value(value)
 
     async def validate_profile_data(self, data: ProfileEntryData) -> dict[str, Any]:
         """Validate profile data against schema rules.
@@ -493,6 +576,10 @@ class EntryService(BaseService):
         # Cross-field validation
         cross_field_errors = self.validate_cross_field_rules(form_data, schema)
         errors.update(cross_field_errors)
+
+        # Business rules validation
+        business_rule_errors = await self.validate_business_rules(form_data)
+        errors.update(business_rule_errors)
 
         if errors:
             raise ValidationException("Validation failed", field_errors=errors)
@@ -597,6 +684,65 @@ class EntryService(BaseService):
             return None
 
         return None
+
+    async def validate_business_rules(self, form_data: dict[str, Any]) -> dict[str, str]:
+        """Validate business rules and return field-specific errors.
+
+        Args:
+            form_data: Form data to validate
+
+        Returns:
+            dict[str, str]: Field errors from business rule violations
+        """
+        errors: dict[str, str] = {}
+        product_type = form_data.get("type", "").lower()
+        opening_system = form_data.get("opening_system", "").lower()
+
+        # Validate business rule violations
+        
+        # Rule 1: Renovation should only have values for frames
+        if form_data.get("renovation") is not None and product_type != "frame":
+            errors["renovation"] = "Renovation is only applicable for frame types"
+
+        # Rule 2: Builtin flyscreen track should only be set for sliding frames
+        if (form_data.get("builtin_flyscreen_track") is not None and 
+            not (product_type == "frame" and "sliding" in opening_system)):
+            errors["builtin_flyscreen_track"] = "Builtin flyscreen track is only applicable for sliding frames"
+
+        # Rule 3: Total width should only be set when builtin flyscreen is enabled
+        if (form_data.get("total_width") is not None and 
+            not (product_type == "frame" and form_data.get("builtin_flyscreen_track") is True)):
+            errors["total_width"] = "Total width is only applicable when builtin flyscreen track is enabled"
+
+        # Rule 4: Flyscreen track height should only be set when builtin flyscreen is enabled
+        if (form_data.get("flyscreen_track_height") is not None and 
+            not (product_type == "frame" and form_data.get("builtin_flyscreen_track") is True)):
+            errors["flyscreen_track_height"] = "Flyscreen track height is only applicable when builtin flyscreen track is enabled"
+
+        # Rule 5: Sash overlap should only have values for sash types
+        if form_data.get("sash_overlap") is not None and product_type != "sash":
+            errors["sash_overlap"] = "Sash overlap is only applicable for sash types"
+
+        # Rule 6: Flying mullion clearances should only have values for flying mullion types
+        if form_data.get("flying_mullion_horizontal_clearance") is not None and product_type != "flying mullion":
+            errors["flying_mullion_horizontal_clearance"] = "Flying mullion horizontal clearance is only applicable for flying mullion types"
+        
+        if form_data.get("flying_mullion_vertical_clearance") is not None and product_type != "flying mullion":
+            errors["flying_mullion_vertical_clearance"] = "Flying mullion vertical clearance is only applicable for flying mullion types"
+
+        # Rule 7: Glazing undercut height should only have values for glazing bead types
+        if form_data.get("glazing_undercut_height") is not None and product_type != "glazing bead":
+            errors["glazing_undercut_height"] = "Glazing undercut height is only applicable for glazing bead types"
+
+        # Rule 8: Renovation height should only have values for frame types
+        if form_data.get("renovation_height") is not None and product_type != "frame":
+            errors["renovation_height"] = "Renovation height is only applicable for frame types"
+
+        # Rule 9: Steel material thickness should only have values for reinforcement types
+        if form_data.get("steel_material_thickness") is not None and product_type != "reinforcement":
+            errors["steel_material_thickness"] = "Steel material thickness is only applicable for reinforcement types"
+
+        return errors
 
     def validate_cross_field_rules(
         self, form_data: dict[str, Any], schema: ProfileSchema
@@ -1076,6 +1222,22 @@ class EntryService(BaseService):
             result = await self.db.execute(stmt)
             attribute_nodes = {node.id: node.name for node in result.scalars().all()}
 
+            # Create form data for business rules evaluation
+            form_data = {"name": data.name}
+            for selection in data.selections:
+                field_name = attribute_nodes.get(selection.attribute_node_id)
+                if field_name:
+                    value = (
+                        selection.string_value
+                        if selection.string_value is not None
+                        else selection.json_value
+                        if selection.json_value is not None
+                        else selection.numeric_value
+                        if selection.numeric_value is not None
+                        else selection.boolean_value
+                    )
+                    form_data[field_name] = value
+
             # Map selections to CSV columns using attribute node names
             for selection in data.selections:
                 field_name = attribute_nodes.get(selection.attribute_node_id)
@@ -1092,7 +1254,8 @@ class EntryService(BaseService):
 
                     header = reverse_mapping.get(field_name)
                     if header:
-                        row_data[header] = self.format_preview_value(value)
+                        # Use business rules to determine display value
+                        row_data[header] = self.get_field_display_value(field_name, value, form_data)
         else:
             # Handle dictionary (form data)
             row_data["id"] = data.get("id", "N/A")
@@ -1100,7 +1263,8 @@ class EntryService(BaseService):
                 if header == "id":
                     continue
                 value = data.get(field_name)
-                row_data[header] = self.format_preview_value(value)
+                # Use business rules to determine display value
+                row_data[header] = self.get_field_display_value(field_name, value, data)
 
         # Fill missing columns with N/A
         for header in header_mapping.keys():

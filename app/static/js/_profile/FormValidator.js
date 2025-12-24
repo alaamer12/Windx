@@ -138,6 +138,7 @@ class FormValidator {
                 console.log('🔍 Found error element:', element);
                 
                 if (element) {
+                    // Scroll to element
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     element.focus();
                     
@@ -150,8 +151,44 @@ class FormValidator {
                     console.log('✅ Scrolled to and focused error field:', firstErrorField);
                 } else {
                     console.warn('⚠️ Could not find element for field:', firstErrorField);
+                    
+                    // Try to find the field by name attribute or data-field attribute
+                    const alternativeElement = document.querySelector(`[name="${firstErrorField}"], [data-field="${firstErrorField}"]`);
+                    if (alternativeElement) {
+                        alternativeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        alternativeElement.focus();
+                        console.log('✅ Found and scrolled to alternative element for:', firstErrorField);
+                    }
                 }
             }, 100);
         }
+    }
+
+    static clearFieldError(fieldErrors, fieldName) {
+        const updatedErrors = { ...fieldErrors };
+        delete updatedErrors[fieldName];
+        return updatedErrors;
+    }
+
+    static highlightInvalidFields(fieldErrors, containerElement) {
+        if (!containerElement) return;
+
+        // Clear previous highlights
+        const previouslyHighlighted = containerElement.querySelectorAll('.field-error-highlight');
+        previouslyHighlighted.forEach(el => el.classList.remove('field-error-highlight'));
+
+        // Highlight current invalid fields
+        Object.keys(fieldErrors).forEach(fieldName => {
+            const fieldElement = containerElement.querySelector(`#${fieldName}, [name="${fieldName}"], [data-field="${fieldName}"]`);
+            if (fieldElement) {
+                fieldElement.classList.add('field-error-highlight');
+                
+                // Also highlight the parent field container
+                const fieldContainer = fieldElement.closest('.field-container, .form-field, .input-group');
+                if (fieldContainer) {
+                    fieldContainer.classList.add('field-error-highlight');
+                }
+            }
+        });
     }
 }

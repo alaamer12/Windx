@@ -104,4 +104,51 @@ class DataLoader {
             return [];
         }
     }
+
+    static async loadDynamicHeaders(manufacturingTypeId) {
+        console.log('🦆 [HEADERS] ========================================');
+        console.log('🦆 [HEADERS] Starting dynamic headers load process...');
+
+        if (!manufacturingTypeId) {
+            console.warn('🦆 [HEADERS] ⚠️ No manufacturing type ID - aborting');
+            return [];
+        }
+
+        console.log('🦆 [HEADERS] Manufacturing type ID:', manufacturingTypeId);
+
+        try {
+            const url = `/api/v1/admin/entry/profile/headers/${manufacturingTypeId}`;
+            console.log('🦆 [HEADERS] Constructed URL:', url);
+            console.log('🦆 [HEADERS] Initiating fetch request...');
+
+            const response = await fetch(url, {
+                credentials: 'include'  // Include cookies for admin authentication
+            });
+
+            console.log('🦆 [HEADERS] Response received!');
+            console.log('🦆 [HEADERS] Status:', response.status);
+            console.log('🦆 [HEADERS] Status text:', response.statusText);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('🦆 [HEADERS ERROR] ❌ Response not OK');
+                console.error('🦆 [HEADERS ERROR] Status:', response.status);
+                console.error('🦆 [HEADERS ERROR] Error body:', errorText);
+                throw new Error(`Failed to load dynamic headers: ${response.status}`);
+            }
+
+            console.log('🦆 [HEADERS] Parsing JSON response...');
+            const headers = await response.json();
+            console.log('🦆 [HEADERS] ✨ LOUD DUCK DEBUG - Headers loaded:', headers);
+            console.log('🦆 [HEADERS] ✨ LOUD DUCK DEBUG - Headers type:', typeof headers);
+            console.log('🦆 [HEADERS] ✨ LOUD DUCK DEBUG - Headers length:', headers?.length || 0);
+            console.log('🦆 [HEADERS] ✅ Success! Loaded', headers.length, 'headers');
+
+            return headers;
+        } catch (err) {
+            console.error('🦆 [HEADERS ERROR] ❌ Exception caught:', err);
+            console.error('🦆 [HEADERS ERROR] Error stack:', err.stack);
+            throw new Error('Failed to load dynamic headers');
+        }
+    }
 }

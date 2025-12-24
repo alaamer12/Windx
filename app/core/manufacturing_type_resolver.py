@@ -25,6 +25,14 @@ class ManufacturingTypeResolver:
     CASEMENT_WINDOW = "Casement Window"
     SLIDING_DOOR = "Sliding Door"
     
+    # Page type constants
+    PAGE_TYPE_PROFILE = "profile"
+    PAGE_TYPE_ACCESSORIES = "accessories"
+    PAGE_TYPE_GLAZING = "glazing"
+    
+    # Valid page types
+    VALID_PAGE_TYPES = {PAGE_TYPE_PROFILE, PAGE_TYPE_ACCESSORIES, PAGE_TYPE_GLAZING}
+    
     # Cache for resolved IDs (per-session)
     _cache: dict[str, int] = {}
     
@@ -91,6 +99,54 @@ class ManufacturingTypeResolver:
         return mfg_type.id if mfg_type else None
     
     @classmethod
+    async def get_default_for_page_type(
+        cls,
+        db: AsyncSession,
+        page_type: str,
+        manufacturing_category: str = "window",
+    ) -> Optional[ManufacturingType]:
+        """Get the default manufacturing type for a specific page type.
+        
+        This method provides a fallback chain based on page type and category:
+        1. Try specific page type + category combination
+        2. Try first active type matching category
+        3. Try any active manufacturing type
+        
+        Args:
+            db: Database session
+            page_type: Page type (profile, accessories, glazing)
+            manufacturing_category: Category (window, door, etc.)
+            
+        Returns:
+            ManufacturingType or None if no types exist
+        """
+        # Validate page type
+        if page_type not in cls.VALID_PAGE_TYPES:
+            raise ValueError(f"Invalid page_type '{page_type}'. Must be one of: {cls.VALID_PAGE_TYPES}")
+        
+        # For profile pages, use the existing logic
+        if page_type == cls.PAGE_TYPE_PROFILE:
+            return await cls.get_default_profile_entry_type(db)
+        
+        # For accessories and glazing, try to find appropriate manufacturing type
+        # First try category-specific types
+        stmt = select(ManufacturingType).where(
+            ManufacturingType.base_category == manufacturing_category,
+            ManufacturingType.is_active == True,
+        ).limit(1)
+        result = await db.execute(stmt)
+        mfg_type = result.scalar_one_or_none()
+        if mfg_type:
+            return mfg_type
+        
+        # Fallback: Any active type
+        stmt = select(ManufacturingType).where(
+            ManufacturingType.is_active == True
+        ).limit(1)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    @classmethod
     async def get_default_profile_entry_type(
         cls,
         db: AsyncSession,
@@ -129,6 +185,20 @@ class ManufacturingTypeResolver:
         ).limit(1)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+    
+    @classmethod
+    def validate_page_type(cls, page_type: str | None) -> bool:
+        """Validate if page_type is valid.
+        
+        Args:
+            page_type: Page type to validate
+            
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        if page_type is None:
+            return False
+        return page_type in cls.VALID_PAGE_TYPES
     
     @classmethod
     def clear_cache(cls):

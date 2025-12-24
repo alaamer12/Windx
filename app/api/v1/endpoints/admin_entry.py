@@ -653,6 +653,10 @@ async def profile_page(
         PositiveInt | None,
         Query(description="Manufacturing type ID for form generation"),
     ] = None,
+    page_type: Annotated[
+        str,
+        Query(description="Page type: profile, accessories, glazing"),
+    ] = "profile",
 ) -> HTMLResponse:
     """Render the admin profile data entry page.
 
@@ -664,19 +668,36 @@ async def profile_page(
         current_superuser (User): Current authenticated superuser
         db (AsyncSession): Database session
         manufacturing_type_id (PositiveInt | None): Optional manufacturing type ID
+        page_type (str): Page type (profile, accessories, glazing)
 
     Returns:
         HTMLResponse: Rendered HTML page
 
     Example:
-        GET /api/v1/admin/entry/profile?manufacturing_type_id=1
+        GET /api/v1/admin/entry/profile?manufacturing_type_id=1&page_type=profile
     """
     from app.core.manufacturing_type_resolver import ManufacturingTypeResolver
     from app.services.entry import JAVASCRIPT_CONDITION_EVALUATOR
 
-    # If no manufacturing_type_id provided, resolve the default profile entry type
+    # Validate page_type
+    if not ManufacturingTypeResolver.validate_page_type(page_type):
+        return templates.TemplateResponse(
+            request,
+            "admin/error.html.jinja",
+            get_admin_context(
+                request,
+                current_superuser,
+                error_message=f"Invalid page type '{page_type}'. Must be one of: profile, accessories, glazing",
+                page_title="Invalid Page Type",
+            ),
+            status_code=400,
+        )
+
+    # If no manufacturing_type_id provided, resolve the default for this page type
     if manufacturing_type_id is None:
-        default_type = await ManufacturingTypeResolver.get_default_profile_entry_type(db)
+        default_type = await ManufacturingTypeResolver.get_default_for_page_type(
+            db, page_type, "window"
+        )
         if default_type:
             manufacturing_type_id = default_type.id
         else:
@@ -687,21 +708,40 @@ async def profile_page(
                 get_admin_context(
                     request,
                     current_superuser,
-                    error_message="No manufacturing types found. Please run the setup script.",
+                    error_message=f"No manufacturing types found for {page_type} page. Please run the setup script.",
                     page_title="Setup Required",
                 ),
                 status_code=503,
             )
 
+    # Determine the template based on page_type
+    template_map = {
+        "profile": "admin/entry/profile.html.jinja",
+        "accessories": "admin/entry/accessories.html.jinja", 
+        "glazing": "admin/entry/glazing.html.jinja",
+    }
+    
+    template_name = template_map.get(page_type, "admin/entry/profile.html.jinja")
+    
+    # Determine active page for navigation
+    active_page_map = {
+        "profile": "entry_profile",
+        "accessories": "entry_accessories",
+        "glazing": "entry_glazing",
+    }
+    
+    active_page = active_page_map.get(page_type, "entry_profile")
+
     return templates.TemplateResponse(
         request,
-        "admin/entry/profile.html.jinja",
+        template_name,
         get_admin_context(
             request,
             current_superuser,
-            active_page="entry_profile",
+            active_page=active_page,
             manufacturing_type_id=manufacturing_type_id,
-            page_title="Profile Entry",
+            page_type=page_type,
+            page_title=f"{page_type.title()} Entry",
             JAVASCRIPT_CONDITION_EVALUATOR=JAVASCRIPT_CONDITION_EVALUATOR,
             can_edit=True,  # TODO: Implement granular RBAC check
             can_delete=True,  # TODO: Implement granular RBAC check
@@ -714,7 +754,7 @@ async def profile_page(
     "/accessories",
     response_class=HTMLResponse,
     summary="Admin Accessories Entry Page",
-    description="Render the admin accessories data entry page (scaffold)",
+    description="Render the admin accessories data entry page",
     operation_id="adminAccessoriesEntryPage",
     responses={
         200: {
@@ -727,22 +767,58 @@ async def profile_page(
 async def accessories_page(
     request: Request,
     current_superuser: CurrentSuperuser,
+    db: DBSession,
+    manufacturing_type_id: Annotated[
+        PositiveInt | None,
+        Query(description="Manufacturing type ID for form generation"),
+    ] = None,
+    type: Annotated[
+        str,
+        Query(description="Manufacturing category: window, door"),
+    ] = "window",
 ) -> HTMLResponse:
-    """Render the admin accessories data entry page (scaffold).
+    """Render the admin accessories data entry page.
 
-    Displays a scaffold page for future accessories data entry implementation
-    within the admin interface.
+    Displays the accessories entry page with dynamic form generation
+    and real-time preview capabilities within the admin interface.
 
     Args:
         request (Request): FastAPI request object
         current_superuser (User): Current authenticated superuser
+        db (AsyncSession): Database session
+        manufacturing_type_id (PositiveInt | None): Optional manufacturing type ID
+        type (str): Manufacturing category (window, door)
 
     Returns:
         HTMLResponse: Rendered HTML page
 
     Example:
-        GET /api/v1/admin/entry/accessories
+        GET /api/v1/admin/entry/accessories?type=window
     """
+    from app.core.manufacturing_type_resolver import ManufacturingTypeResolver
+    from app.services.entry import JAVASCRIPT_CONDITION_EVALUATOR
+
+    # If no manufacturing_type_id provided, resolve the default for accessories
+    if manufacturing_type_id is None:
+        default_type = await ManufacturingTypeResolver.get_default_for_page_type(
+            db, "accessories", type
+        )
+        if default_type:
+            manufacturing_type_id = default_type.id
+        else:
+            # No manufacturing types exist - show error page
+            return templates.TemplateResponse(
+                request,
+                "admin/error.html.jinja",
+                get_admin_context(
+                    request,
+                    current_superuser,
+                    error_message=f"No manufacturing types found for {type} accessories. Please run the setup script.",
+                    page_title="Setup Required",
+                ),
+                status_code=503,
+            )
+
     return templates.TemplateResponse(
         request,
         "admin/entry/accessories.html.jinja",
@@ -750,7 +826,13 @@ async def accessories_page(
             request,
             current_superuser,
             active_page="entry_accessories",
-            page_title="Accessories Entry",
+            manufacturing_type_id=manufacturing_type_id,
+            page_type="accessories",
+            manufacturing_category=type,
+            page_title=f"{type.title()} Accessories Entry",
+            JAVASCRIPT_CONDITION_EVALUATOR=JAVASCRIPT_CONDITION_EVALUATOR,
+            can_edit=True,  # TODO: Implement granular RBAC check
+            can_delete=True,  # TODO: Implement granular RBAC check
         ),
     )
 
@@ -759,7 +841,7 @@ async def accessories_page(
     "/glazing",
     response_class=HTMLResponse,
     summary="Admin Glazing Entry Page",
-    description="Render the admin glazing data entry page (scaffold)",
+    description="Render the admin glazing data entry page",
     operation_id="adminGlazingEntryPage",
     responses={
         200: {
@@ -772,22 +854,58 @@ async def accessories_page(
 async def glazing_page(
     request: Request,
     current_superuser: CurrentSuperuser,
+    db: DBSession,
+    manufacturing_type_id: Annotated[
+        PositiveInt | None,
+        Query(description="Manufacturing type ID for form generation"),
+    ] = None,
+    type: Annotated[
+        str,
+        Query(description="Manufacturing category: window, door"),
+    ] = "window",
 ) -> HTMLResponse:
-    """Render the admin glazing data entry page (scaffold).
+    """Render the admin glazing data entry page.
 
-    Displays a scaffold page for future glazing data entry implementation
-    within the admin interface.
+    Displays the glazing entry page with dynamic form generation
+    and real-time preview capabilities within the admin interface.
 
     Args:
         request (Request): FastAPI request object
         current_superuser (User): Current authenticated superuser
+        db (AsyncSession): Database session
+        manufacturing_type_id (PositiveInt | None): Optional manufacturing type ID
+        type (str): Manufacturing category (window, door)
 
     Returns:
         HTMLResponse: Rendered HTML page
 
     Example:
-        GET /api/v1/admin/entry/glazing
+        GET /api/v1/admin/entry/glazing?type=window
     """
+    from app.core.manufacturing_type_resolver import ManufacturingTypeResolver
+    from app.services.entry import JAVASCRIPT_CONDITION_EVALUATOR
+
+    # If no manufacturing_type_id provided, resolve the default for glazing
+    if manufacturing_type_id is None:
+        default_type = await ManufacturingTypeResolver.get_default_for_page_type(
+            db, "glazing", type
+        )
+        if default_type:
+            manufacturing_type_id = default_type.id
+        else:
+            # No manufacturing types exist - show error page
+            return templates.TemplateResponse(
+                request,
+                "admin/error.html.jinja",
+                get_admin_context(
+                    request,
+                    current_superuser,
+                    error_message=f"No manufacturing types found for {type} glazing. Please run the setup script.",
+                    page_title="Setup Required",
+                ),
+                status_code=503,
+            )
+
     return templates.TemplateResponse(
         request,
         "admin/entry/glazing.html.jinja",
@@ -795,6 +913,12 @@ async def glazing_page(
             request,
             current_superuser,
             active_page="entry_glazing",
-            page_title="Glazing Entry",
+            manufacturing_type_id=manufacturing_type_id,
+            page_type="glazing",
+            manufacturing_category=type,
+            page_title=f"{type.title()} Glazing Entry",
+            JAVASCRIPT_CONDITION_EVALUATOR=JAVASCRIPT_CONDITION_EVALUATOR,
+            can_edit=True,  # TODO: Implement granular RBAC check
+            can_delete=True,  # TODO: Implement granular RBAC check
         ),
     )

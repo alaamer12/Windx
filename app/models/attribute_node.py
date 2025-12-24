@@ -75,6 +75,14 @@ class AttributeNode(Base):
         nullable=True,
     )
 
+    # Page type for multi-page architecture
+    page_type: Mapped[str] = mapped_column(
+        String(20),
+        default="profile",
+        nullable=False,
+        comment="Page type: profile, accessories, glazing",
+    )
+
     # Basic information
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     node_type: Mapped[str] = mapped_column(
@@ -220,7 +228,14 @@ class AttributeNode(Base):
             "ltree_path",
             postgresql_using="gist",
         ),
-        # Composite index for filtering by manufacturing type and node type
+        # Composite index for filtering by manufacturing type, page type, and node type
+        Index(
+            "idx_attribute_nodes_mfg_page_node_type",
+            "manufacturing_type_id",
+            "page_type", 
+            "node_type",
+        ),
+        # Composite index for filtering by manufacturing type and node type (backward compatibility)
         Index(
             "idx_attribute_nodes_mfg_type_node_type",
             "manufacturing_type_id",

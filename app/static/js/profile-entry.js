@@ -34,6 +34,14 @@ function profileEntryApp(options = {}) {
         hasUnsavedEdits: false,
         committingChanges: false,
 
+        // Search and Filter functionality
+        searchEngine: new SearchEngine(),
+        searchQuery: '',
+        columnFilters: {},
+        showAdvancedSearch: false,
+        searchResults: { total: 0, filtered: 0 },
+        filteredConfigurations: [],
+
         // Computed
         get isFormValid() {
             return FormValidator.isFormValid(this.schema, this.formData, this.fieldVisibility, this.fieldErrors);
@@ -197,9 +205,16 @@ function profileEntryApp(options = {}) {
         async loadPreviews() {
             try {
                 this.savedConfigurations = await DataLoader.loadPreviews(this.manufacturingTypeId);
+                
+                // Initialize search engine with loaded configurations
+                this.searchEngine.initialize(this.savedConfigurations);
+                this.updateSearchState();
+                
             } catch (err) {
                 console.error('Failed to load previews:', err);
                 this.savedConfigurations = [];
+                this.searchEngine.initialize([]);
+                this.updateSearchState();
             }
         },
 
@@ -287,6 +302,7 @@ function profileEntryApp(options = {}) {
             if (result.changed) {
                 this.pendingEdits = result.pendingEdits;
                 this.savedConfigurations = result.savedConfigurations;
+                this.updateConfigurationsData(); // Update search engine
                 this.hasUnsavedEdits = true;
             }
 
@@ -348,6 +364,7 @@ function profileEntryApp(options = {}) {
             
             if (result.success) {
                 this.savedConfigurations = this.savedConfigurations.filter(r => r.id !== rowId);
+                this.updateConfigurationsData(); // Update search engine
                 if (window.showToast) {
                     window.showToast('Deleted successfully', 'success');
                 }
@@ -780,6 +797,59 @@ function profileEntryApp(options = {}) {
 
         setupNavigationGuards() {
             SessionManager.setupNavigationGuards(() => this.hasUnsavedData);
+        },
+
+        // Search and Filter Methods
+        updateSearchState() {
+            const searchState = this.searchEngine.getSearchState();
+            this.searchQuery = searchState.searchQuery;
+            this.columnFilters = searchState.columnFilters;
+            this.showAdvancedSearch = searchState.showAdvancedSearch;
+            this.searchResults = searchState.searchResults;
+            this.filteredConfigurations = searchState.filteredConfigurations;
+        },
+
+        performSearch() {
+            this.searchEngine.setSearchQuery(this.searchQuery);
+            this.updateSearchState();
+        },
+
+        clearSearch() {
+            this.searchEngine.clearSearch();
+            this.updateSearchState();
+        },
+
+        toggleAdvancedSearch() {
+            this.searchEngine.toggleAdvancedSearch();
+            this.updateSearchState();
+        },
+
+        clearAllFilters() {
+            this.searchEngine.clearAllFilters();
+            this.updateSearchState();
+        },
+
+        setColumnFilter(header, value) {
+            this.searchEngine.setColumnFilter(header, value);
+            this.updateSearchState();
+        },
+
+        highlightSearchTerm(text, header) {
+            return this.searchEngine.highlightSearchTerm(text, header);
+        },
+
+        isRowHighlighted(row) {
+            return this.searchEngine.isRowHighlighted(row);
+        },
+
+        exportSearchResults() {
+            this.searchEngine.exportSearchResults(this.previewHeaders);
+        },
+
+        // Update configurations when data changes
+        updateConfigurationsData() {
+            this.searchEngine.updateConfigurations(this.savedConfigurations);
+            this.updateSearchState();
         }
     };
 }

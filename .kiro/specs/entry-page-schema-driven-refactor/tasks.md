@@ -150,7 +150,9 @@ Convert the Entry Page Schema-Driven Refactor design into a series of implementa
     - Test error clearing when fields are corrected
     - _Requirements: 3.1, 3.2, 3.3, 6.1, 6.2_
 
-- [-] 5. Search and Filter Functionality Implementation
+- [x] 5. Search and Filter Functionality Implementation
+
+
 
 
 
@@ -174,13 +176,15 @@ Convert the Entry Page Schema-Driven Refactor design into a series of implementa
     - Test search adaptation to schema changes
     - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 6. Enhanced Inline Edit Validation
+- [-] 6. Enhanced Inline Edit Validation
+
+
+
+
+
+
   - Implement field-type aware inline editing to replace generic text inputs
-  - Add dropdown controls for Type field with valid options (Frame, sash, Mullion, etc.)
-  - Add number inputs with min/max validation for dimension fields
-  - Add date picker controls for date fields
-  - Add file upload functionality for image fields (Pic field)
-  - Implement validation rules during inline editing to prevent invalid data entry
+  - Utilise the validation rules used by the input view tab, in order to have one source of truth in validation
   - Add field-specific error messages during inline editing
   - Prevent saving of invalid edits and show specific error messages
   - Update `startEditing()`, `saveInlineEdit()`, and related methods

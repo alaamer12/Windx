@@ -590,6 +590,7 @@ async def create_attribute_nodes(
             help_text=help_text,
             validation_rules=attr_def.get("validation_rules"),
             display_condition=attr_def.get("display_condition"),
+            page_type="profile",  # Set page_type for profile attributes
         )
         session.add(node)
         created_count += 1

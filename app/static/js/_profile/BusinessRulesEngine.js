@@ -95,6 +95,23 @@ class BusinessRulesEngine {
     }
 
     /**
+     * Check if a field value is meaningful (not null, empty, or default false for booleans)
+     * @param {*} value - Field value to check
+     * @returns {boolean} True if value is meaningful, False otherwise
+     */
+    static _hasMeaningfulValue(value) {
+        if (value === null || value === undefined || value === '') {
+            return false;
+        }
+        // For boolean fields, false is not considered meaningful in this context
+        // because unchecked checkboxes should not trigger validation errors
+        if (typeof value === 'boolean' && value === false) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Validate business rules and return field-specific errors
      * @param {Object} formData - Form data to validate
      * @returns {Object} Field errors from business rule violations
@@ -105,64 +122,58 @@ class BusinessRulesEngine {
         const openingSystem = (formData.opening_system || '').toLowerCase();
 
         // Rule 1: Renovation should only have values for frames
-        if (formData.renovation !== null && formData.renovation !== undefined && 
-            formData.renovation !== '' && productType !== 'frame') {
+        if (this._hasMeaningfulValue(formData.renovation) && productType !== 'frame') {
             errors.renovation = 'Renovation is only applicable for frame types';
         }
 
         // Rule 2: Builtin flyscreen track should only be set for sliding frames
-        if (formData.builtin_flyscreen_track !== null && formData.builtin_flyscreen_track !== undefined &&
+        if (this._hasMeaningfulValue(formData.builtin_flyscreen_track) &&
             !(productType === 'frame' && openingSystem.includes('sliding'))) {
             errors.builtin_flyscreen_track = 'Builtin flyscreen track is only applicable for sliding frames';
         }
 
         // Rule 3: Total width should only be set when builtin flyscreen is enabled
-        if (formData.total_width !== null && formData.total_width !== undefined && formData.total_width !== '' &&
+        if (this._hasMeaningfulValue(formData.total_width) &&
             !(productType === 'frame' && formData.builtin_flyscreen_track === true)) {
             errors.total_width = 'Total width is only applicable when builtin flyscreen track is enabled';
         }
 
         // Rule 4: Flyscreen track height should only be set when builtin flyscreen is enabled
-        if (formData.flyscreen_track_height !== null && formData.flyscreen_track_height !== undefined && 
-            formData.flyscreen_track_height !== '' &&
+        if (this._hasMeaningfulValue(formData.flyscreen_track_height) &&
             !(productType === 'frame' && formData.builtin_flyscreen_track === true)) {
             errors.flyscreen_track_height = 'Flyscreen track height is only applicable when builtin flyscreen track is enabled';
         }
 
         // Rule 5: Sash overlap should only have values for sash types
-        if (formData.sash_overlap !== null && formData.sash_overlap !== undefined && 
-            formData.sash_overlap !== '' && productType !== 'sash') {
+        if (this._hasMeaningfulValue(formData.sash_overlap) && productType !== 'sash') {
             errors.sash_overlap = 'Sash overlap is only applicable for sash types';
         }
 
         // Rule 6: Flying mullion clearances should only have values for flying mullion types
-        if (formData.flying_mullion_horizontal_clearance !== null && 
-            formData.flying_mullion_horizontal_clearance !== undefined && 
-            formData.flying_mullion_horizontal_clearance !== '' && productType !== 'flying mullion') {
+        if (this._hasMeaningfulValue(formData.flying_mullion_horizontal_clearance) && 
+            productType !== 'flying mullion') {
             errors.flying_mullion_horizontal_clearance = 'Flying mullion horizontal clearance is only applicable for flying mullion types';
         }
 
-        if (formData.flying_mullion_vertical_clearance !== null && 
-            formData.flying_mullion_vertical_clearance !== undefined && 
-            formData.flying_mullion_vertical_clearance !== '' && productType !== 'flying mullion') {
+        if (this._hasMeaningfulValue(formData.flying_mullion_vertical_clearance) && 
+            productType !== 'flying mullion') {
             errors.flying_mullion_vertical_clearance = 'Flying mullion vertical clearance is only applicable for flying mullion types';
         }
 
         // Rule 7: Glazing undercut height should only have values for glazing bead types
-        if (formData.glazing_undercut_height !== null && formData.glazing_undercut_height !== undefined && 
-            formData.glazing_undercut_height !== '' && productType !== 'glazing bead') {
+        if (this._hasMeaningfulValue(formData.glazing_undercut_height) && 
+            productType !== 'glazing bead') {
             errors.glazing_undercut_height = 'Glazing undercut height is only applicable for glazing bead types';
         }
 
         // Rule 8: Renovation height should only have values for frame types
-        if (formData.renovation_height !== null && formData.renovation_height !== undefined && 
-            formData.renovation_height !== '' && productType !== 'frame') {
+        if (this._hasMeaningfulValue(formData.renovation_height) && productType !== 'frame') {
             errors.renovation_height = 'Renovation height is only applicable for frame types';
         }
 
         // Rule 9: Steel material thickness should only have values for reinforcement types
-        if (formData.steel_material_thickness !== null && formData.steel_material_thickness !== undefined && 
-            formData.steel_material_thickness !== '' && productType !== 'reinforcement') {
+        if (this._hasMeaningfulValue(formData.steel_material_thickness) && 
+            productType !== 'reinforcement') {
             errors.steel_material_thickness = 'Steel material thickness is only applicable for reinforcement types';
         }
 

@@ -690,6 +690,23 @@ class EntryService(BaseService):
 
         return None
 
+    def _has_meaningful_value(self, value: Any) -> bool:
+        """Check if a field value is meaningful (not null, empty, or default false for booleans).
+        
+        Args:
+            value: Field value to check
+            
+        Returns:
+            bool: True if value is meaningful, False otherwise
+        """
+        if value is None or value == "":
+            return False
+        # For boolean fields, False is not considered meaningful in this context
+        # because unchecked checkboxes should not trigger validation errors
+        if isinstance(value, bool) and value is False:
+            return False
+        return True
+
     async def validate_business_rules(self, form_data: dict[str, Any]) -> dict[str, str]:
         """Validate business rules and return field-specific errors.
 
@@ -706,45 +723,49 @@ class EntryService(BaseService):
         # Validate business rule violations
         
         # Rule 1: Renovation should only have values for frames
-        if form_data.get("renovation") is not None and product_type != "frame":
+        if (self._has_meaningful_value(form_data.get("renovation")) and product_type != "frame"):
             errors["renovation"] = "Renovation is only applicable for frame types"
 
         # Rule 2: Builtin flyscreen track should only be set for sliding frames
-        if (form_data.get("builtin_flyscreen_track") is not None and 
+        if (self._has_meaningful_value(form_data.get("builtin_flyscreen_track")) and 
             not (product_type == "frame" and "sliding" in opening_system)):
             errors["builtin_flyscreen_track"] = "Builtin flyscreen track is only applicable for sliding frames"
 
         # Rule 3: Total width should only be set when builtin flyscreen is enabled
-        if (form_data.get("total_width") is not None and 
+        if (self._has_meaningful_value(form_data.get("total_width")) and 
             not (product_type == "frame" and form_data.get("builtin_flyscreen_track") is True)):
             errors["total_width"] = "Total width is only applicable when builtin flyscreen track is enabled"
 
         # Rule 4: Flyscreen track height should only be set when builtin flyscreen is enabled
-        if (form_data.get("flyscreen_track_height") is not None and 
+        if (self._has_meaningful_value(form_data.get("flyscreen_track_height")) and 
             not (product_type == "frame" and form_data.get("builtin_flyscreen_track") is True)):
             errors["flyscreen_track_height"] = "Flyscreen track height is only applicable when builtin flyscreen track is enabled"
 
         # Rule 5: Sash overlap should only have values for sash types
-        if form_data.get("sash_overlap") is not None and product_type != "sash":
+        if (self._has_meaningful_value(form_data.get("sash_overlap")) and product_type != "sash"):
             errors["sash_overlap"] = "Sash overlap is only applicable for sash types"
 
         # Rule 6: Flying mullion clearances should only have values for flying mullion types
-        if form_data.get("flying_mullion_horizontal_clearance") is not None and product_type != "flying mullion":
+        if (self._has_meaningful_value(form_data.get("flying_mullion_horizontal_clearance")) and 
+            product_type != "flying mullion"):
             errors["flying_mullion_horizontal_clearance"] = "Flying mullion horizontal clearance is only applicable for flying mullion types"
         
-        if form_data.get("flying_mullion_vertical_clearance") is not None and product_type != "flying mullion":
+        if (self._has_meaningful_value(form_data.get("flying_mullion_vertical_clearance")) and 
+            product_type != "flying mullion"):
             errors["flying_mullion_vertical_clearance"] = "Flying mullion vertical clearance is only applicable for flying mullion types"
 
         # Rule 7: Glazing undercut height should only have values for glazing bead types
-        if form_data.get("glazing_undercut_height") is not None and product_type != "glazing bead":
+        if (self._has_meaningful_value(form_data.get("glazing_undercut_height")) and 
+            product_type != "glazing bead"):
             errors["glazing_undercut_height"] = "Glazing undercut height is only applicable for glazing bead types"
 
         # Rule 8: Renovation height should only have values for frame types
-        if form_data.get("renovation_height") is not None and product_type != "frame":
+        if (self._has_meaningful_value(form_data.get("renovation_height")) and product_type != "frame"):
             errors["renovation_height"] = "Renovation height is only applicable for frame types"
 
         # Rule 9: Steel material thickness should only have values for reinforcement types
-        if form_data.get("steel_material_thickness") is not None and product_type != "reinforcement":
+        if (self._has_meaningful_value(form_data.get("steel_material_thickness")) and 
+            product_type != "reinforcement"):
             errors["steel_material_thickness"] = "Steel material thickness is only applicable for reinforcement types"
 
         return errors

@@ -499,6 +499,20 @@ function profileEntryApp(options = {}) {
             const businessRulesVisibility = BusinessRulesEngine.evaluateFieldAvailability(this.formData);
             Object.assign(this.fieldVisibility, businessRulesVisibility);
 
+            // Clear form data for fields that become invisible
+            for (const [fieldName, isVisible] of Object.entries(this.fieldVisibility)) {
+                if (isVisible === false && this.formData[fieldName] !== undefined && this.formData[fieldName] !== null && this.formData[fieldName] !== '') {
+                    console.log(`🧹 Clearing invisible field: ${fieldName} (was: ${this.formData[fieldName]})`);
+                    this.formData[fieldName] = null;
+                    // Also clear any field errors for the cleared field
+                    if (this.fieldErrors[fieldName]) {
+                        const updatedErrors = { ...this.fieldErrors };
+                        delete updatedErrors[fieldName];
+                        this.fieldErrors = updatedErrors;
+                    }
+                }
+            }
+
             // Update UI field visibility
             if (this.$el) {
                 BusinessRulesEngine.updateFieldVisibility(this.formData, this.$el);
@@ -506,9 +520,19 @@ function profileEntryApp(options = {}) {
         },
 
         isFieldVisible(fieldName) {
-            // If no conditional logic, check business rules
+            // Check business rules first
+            const businessRulesVisibility = BusinessRulesEngine.evaluateFieldAvailability(this.formData);
+            if (businessRulesVisibility.hasOwnProperty(fieldName)) {
+                const isBusinessRuleVisible = businessRulesVisibility[fieldName];
+                console.log(`🔍 Business rule for ${fieldName}: ${isBusinessRuleVisible} (type: ${this.formData.type})`);
+                if (!isBusinessRuleVisible) {
+                    return false;
+                }
+            }
+
+            // If no conditional logic, field is visible by default
             if (!this.schema || !this.schema.conditional_logic[fieldName]) {
-                return BusinessRulesEngine.isFieldValidForCurrentContext(fieldName, this.formData);
+                return true;
             }
 
             return this.fieldVisibility[fieldName] !== false;

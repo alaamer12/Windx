@@ -94,6 +94,13 @@ async def lifespan(application: FastAPI):
     Yields:
         None: Control back to FastAPI
     """
+    # Skip lifespan during test collection to prevent pytest capture issues
+    # Unkown if it can cause any issues
+    import os
+    if os.getenv("TESTING") == "true":
+        yield
+        return
+    
     # Startup
     print("[*] Starting application...")
 

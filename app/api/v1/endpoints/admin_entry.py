@@ -435,6 +435,62 @@ async def delete_configuration(
     await entry_service.delete_profile_configuration(configuration_id, current_superuser)
 
 
+@router.delete(
+    "/profile/configurations/bulk",
+    summary="Bulk Delete Configurations (Admin)",
+    description="Delete multiple profile configurations in bulk (admin interface)",
+    operation_id="bulkDeleteAdminConfigurations",
+    responses={
+        200: {
+            "description": "Bulk delete completed",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success_count": 3,
+                        "error_count": 1,
+                        "total_requested": 4,
+                        "errors": ["Configuration 999 not found"]
+                    }
+                }
+            }
+        },
+        400: {
+            "description": "Invalid request - no IDs provided",
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
+async def bulk_delete_configurations(
+    configuration_ids: list[PositiveInt],
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> dict[str, Any]:
+    """Bulk delete multiple configurations (admin interface).
+    
+    Args:
+        configuration_ids: List of configuration IDs to delete
+        current_superuser: Current authenticated superuser
+        db: Database session
+        
+    Returns:
+        dict: Result with success/error counts and details
+        
+    Example:
+        DELETE /api/v1/admin/entry/profile/configurations/bulk
+        [123, 124, 125]
+    """
+    from app.services.entry import EntryService
+
+    if not configuration_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="No configuration IDs provided"
+        )
+
+    entry_service = EntryService(db)
+    return await entry_service.bulk_delete_profile_configurations(configuration_ids, current_superuser)
+
+
 @router.post(
     "/upload-image",
     summary="Upload Image File (Admin)",

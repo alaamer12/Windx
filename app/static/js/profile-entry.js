@@ -35,6 +35,11 @@ function profileEntryApp(options = {}) {
         hasUnsavedEdits: false,
         committingChanges: false,
 
+        // Bulk Selection & Delete
+        selectedRows: new Set(), // Track selected row IDs
+        selectAll: false, // Track select all state
+        bulkDeleting: false, // Track bulk delete operation
+
         // Search and Filter functionality
         searchEngine: new SearchEngine(),
         searchQuery: '',
@@ -945,6 +950,121 @@ function profileEntryApp(options = {}) {
         updateConfigurationsData() {
             this.searchEngine.updateConfigurations(this.savedConfigurations);
             this.updateSearchState();
+        },
+
+        // Bulk Selection Methods
+        toggleRowSelection(rowId) {
+            if (this.selectedRows.has(rowId)) {
+                this.selectedRows.delete(rowId);
+            } else {
+                this.selectedRows.add(rowId);
+            }
+            
+            // Update select all state
+            this.selectAll = this.selectedRows.size === this.savedConfigurations.length && this.savedConfigurations.length > 0;
+            
+            console.log('🦆 [SELECTION] Row selection toggled:', rowId, 'Selected count:', this.selectedRows.size);
+        },
+
+        toggleSelectAll() {
+            if (this.selectAll) {
+                // Deselect all
+                this.selectedRows.clear();
+                this.selectAll = false;
+            } else {
+                // Select all visible configurations
+                this.selectedRows.clear();
+                this.filteredConfigurations.forEach(config => {
+                    this.selectedRows.add(config.id);
+                });
+                this.selectAll = true;
+            }
+            
+            console.log('🦆 [SELECTION] Select all toggled:', this.selectAll, 'Selected count:', this.selectedRows.size);
+        },
+
+        isRowSelected(rowId) {
+            return this.selectedRows.has(rowId);
+        },
+
+        get hasSelectedRows() {
+            return this.selectedRows.size > 0;
+        },
+
+        get selectedRowsCount() {
+            return this.selectedRows.size;
+        },
+
+        clearSelection() {
+            this.selectedRows.clear();
+            this.selectAll = false;
+        },
+
+        async bulkDeleteSelected() {
+            if (this.selectedRows.size === 0) {
+                showToast('No rows selected for deletion', 'warning');
+                return;
+            }
+
+            const selectedIds = Array.from(this.selectedRows);
+            const confirmMessage = `Are you sure you want to delete ${selectedIds.length} configuration${selectedIds.length > 1 ? 's' : ''}? This action cannot be undone.`;
+            
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            this.bulkDeleting = true;
+
+            try {
+                console.log('🦆 [BULK DELETE] Starting bulk delete for IDs:', selectedIds);
+                
+                const response = await fetch('/api/v1/admin/entry/profile/configurations/bulk', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`
+                    },
+                    body: JSON.stringify(selectedIds)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('🦆 [BULK DELETE] Result:', result);
+
+                // Update UI based on results
+                if (result.success_count > 0) {
+                    // Remove successfully deleted configurations from the list
+                    this.savedConfigurations = this.savedConfigurations.filter(config => 
+                        !selectedIds.includes(config.id) || result.errors.some(error => error.includes(config.id.toString()))
+                    );
+                    this.updateConfigurationsData();
+                }
+
+                // Clear selection
+                this.clearSelection();
+
+                // Show results
+                if (result.error_count === 0) {
+                    showToast(`Successfully deleted ${result.success_count} configuration${result.success_count > 1 ? 's' : ''}`, 'success');
+                } else if (result.success_count > 0) {
+                    showToast(`Deleted ${result.success_count} configurations, ${result.error_count} failed`, 'warning', 6000);
+                    if (result.errors.length > 0) {
+                        console.warn('🦆 [BULK DELETE] Errors:', result.errors);
+                    }
+                } else {
+                    showToast(`Failed to delete configurations: ${result.errors.join(', ')}`, 'error', 8000);
+                }
+
+            } catch (err) {
+                console.error('🦆 [BULK DELETE] Error:', err);
+                showToast(`Bulk delete failed: ${err.message}`, 'error', 6000);
+            } finally {
+                this.bulkDeleting = false;
+            }
         }
     };
 }

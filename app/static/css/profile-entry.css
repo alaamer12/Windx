@@ -1827,3 +1827,145 @@ button.clear-filters-button:hover {
     font-weight: 700 !important;
     box-shadow: 0 1px 3px rgba(251, 191, 36, 0.3) !important;
 }
+
+/* Bulk Selection Styles */
+.bulk-selection-header {
+    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    border-bottom: 1px solid #d1d5db;
+}
+
+.bulk-selection-row {
+    transition: all 0.2s ease;
+}
+
+.bulk-selection-row.selected {
+    background-color: #eff6ff !important;
+    border-color: #3b82f6 !important;
+}
+
+.bulk-selection-row.selected:hover {
+    background-color: #dbeafe !important;
+}
+
+/* Checkbox Styles */
+.bulk-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 2px solid #d1d5db;
+    transition: all 0.2s ease;
+}
+
+.bulk-checkbox:checked {
+    background-color: #3b82f6;
+    border-color: #3b82f6;
+}
+
+.bulk-checkbox:focus {
+    ring: 2px;
+    ring-color: #93c5fd;
+    ring-offset: 2px;
+}
+
+/* Bulk Action Buttons */
+.bulk-actions {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bulk-delete-btn {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bulk-delete-btn:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.bulk-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.clear-selection-btn {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.clear-selection-btn:hover {
+    background: #e5e7eb;
+    border-color: #9ca3af;
+}
+
+/* Selection Counter */
+.selection-counter {
+    color: #dc2626;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+/* Table Row Highlighting */
+tr.bg-blue-50 {
+    background-color: #eff6ff !important;
+}
+
+tr.bg-blue-50:hover {
+    background-color: #dbeafe !important;
+}
+
+tr.border-blue-200 {
+    border-color: #93c5fd !important;
+}
+
+/* Responsive adjustments for bulk selection */
+@media (max-width: 768px) {
+    .bulk-actions {
+        padding: 0.75rem;
+    }
+    
+    .bulk-actions .flex {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .bulk-delete-btn,
+    .clear-selection-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

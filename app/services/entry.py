@@ -70,6 +70,12 @@ ConfigurationEditor = Privilege(
     resource=ResourceOwnership("configuration"),
 )
 
+# Bulk delete privilege without ownership requirement (superadmins can delete any configuration)
+BulkConfigurationDeleter = Privilege(
+    roles=[Role.SUPERADMIN],
+    permission=Permission("configuration", "delete"),
+)
+
 ConfigurationDeleter = Privilege(
     roles=[Role.DATA_ENTRY, Role.SUPERADMIN],
     permission=Permission("configuration", "delete"),
@@ -1452,6 +1458,71 @@ class EntryService(BaseService):
 
         await self.db.delete(config)
         await self.commit()
+
+    @require(BulkConfigurationDeleter)
+    async def bulk_delete_profile_configurations(self, configuration_ids: list[int], user: User) -> dict[str, Any]:
+        """Bulk delete multiple profile configurations.
+
+        Args:
+            configuration_ids: List of configuration IDs to delete
+            user: Current user
+
+        Returns:
+            dict: Result with success/error counts and details
+        """
+        if not configuration_ids:
+            return {"success_count": 0, "error_count": 0, "errors": [], "total_requested": 0}
+
+        # Validate all configurations exist and user has permission to delete them
+        stmt = select(Configuration).where(Configuration.id.in_(configuration_ids))
+        result = await self.db.execute(stmt)
+        existing_configs = result.scalars().all()
+        
+        existing_ids = {config.id for config in existing_configs}
+        missing_ids = set(configuration_ids) - existing_ids
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        # Add errors for missing configurations
+        for missing_id in missing_ids:
+            errors.append(f"Configuration {missing_id} not found")
+            error_count += 1
+        
+        # Bulk delete existing configurations
+        if existing_configs:
+            try:
+                # Use bulk delete for efficiency
+                from sqlalchemy import delete
+                delete_stmt = delete(Configuration).where(Configuration.id.in_(existing_ids))
+                await self.db.execute(delete_stmt)
+                await self.commit()
+                success_count = len(existing_configs)
+                
+                print(f"🦆 [BULK DELETE] Successfully deleted {success_count} configurations")
+                
+            except Exception as e:
+                print(f"🦆 [BULK DELETE] Error during bulk delete: {e}")
+                # Rollback and try individual deletes as fallback
+                await self.db.rollback()
+                
+                for config in existing_configs:
+                    try:
+                        await self.db.delete(config)
+                        await self.commit()
+                        success_count += 1
+                    except Exception as individual_error:
+                        errors.append(f"Failed to delete configuration {config.id}: {str(individual_error)}")
+                        error_count += 1
+                        await self.db.rollback()
+        
+        return {
+            "success_count": success_count,
+            "error_count": error_count,
+            "errors": errors,
+            "total_requested": len(configuration_ids)
+        }
 
 
     # Customer management is now handled by RBACService

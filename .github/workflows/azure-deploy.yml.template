@@ -1,0 +1,110 @@
+# WindX Product Configurator - Azure App Service Deployment
+# This workflow builds and deploys the WindX application to Azure App Service
+# 
+# Application Metadata:
+# - Name: WindX Product Configurator
+# - Version: 1.0.0
+# - Author: alaamer12 <ahmedmuhmmed239@gmail.com>
+# - License: MIT
+# - Repository: https://github.com/alaamer12/Windx
+
+name: Deploy WindX to Azure App Service
+
+on:
+  push:
+    branches: [ "main", "production" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 🛒 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: 📦 Install UV package manager
+      run: |
+        pip install uv
+        
+    - name: 🔧 Install dependencies
+      run: |
+        uv sync --no-dev --frozen
+        
+    - name: 🧪 Run tests (optional)
+      run: |
+        # Uncomment if you want to run tests before deployment
+        # uv run pytest tests/ -v --tb=short
+        echo "Skipping tests for now"
+        
+    - name: 🏗️ Create deployment artifact
+      run: |
+        # Create a clean deployment package
+        mkdir -p deployment
+        
+        # Copy application files
+        cp -r app deployment/
+        cp -r scripts deployment/
+        cp -r alembic deployment/
+        cp main.py deployment/
+        cp manage.py deployment/
+        cp alembic.ini deployment/
+        cp pyproject.toml deployment/
+        cp uv.lock deployment/
+        cp web.config deployment/
+        cp requirements-azure.txt deployment/requirements.txt
+        
+        # Make startup script executable
+        chmod +x deployment/scripts/startup-azure.sh
+        
+        # Create deployment info
+        echo "WindX Product Configurator v1.0.0" > deployment/DEPLOYMENT_INFO.txt
+        echo "Built on: $(date)" >> deployment/DEPLOYMENT_INFO.txt
+        echo "Commit: ${{ github.sha }}" >> deployment/DEPLOYMENT_INFO.txt
+        echo "Branch: ${{ github.ref_name }}" >> deployment/DEPLOYMENT_INFO.txt
+        
+    - name: 📤 Upload artifact for deployment
+      uses: actions/upload-artifact@v3
+      with:
+        name: windx-app
+        path: deployment/
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+    steps:
+    - name: 📥 Download artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: windx-app
+        path: .
+
+    - name: 🚀 Deploy to Azure Web App
+      id: deploy-to-webapp
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: 'YOUR_APP_NAME'  # Replace with your Azure App Service name
+        slot-name: 'Production'
+        publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
+        package: .
+        
+    - name: ✅ Deployment Summary
+      run: |
+        echo "🎉 WindX Product Configurator deployed successfully!"
+        echo "📱 Application: WindX Product Configurator v1.0.0"
+        echo "🌐 URL: ${{ steps.deploy-to-webapp.outputs.webapp-url }}"
+        echo "📊 Health Check: ${{ steps.deploy-to-webapp.outputs.webapp-url }}/health"
+        echo "📚 API Docs: ${{ steps.deploy-to-webapp.outputs.webapp-url }}/redoc"
+        echo "🔧 Admin: ${{ steps.deploy-to-webapp.outputs.webapp-url }}/api/v1/admin"

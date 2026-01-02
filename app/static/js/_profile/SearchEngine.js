@@ -102,11 +102,9 @@ class SearchEngine {
             return Object.entries(this.columnFilters).every(([header, filterValue]) => {
                 if (!filterValue || !filterValue.trim()) return true;
 
-                // Get the field name for this header
-                const headerMapping = FormHelpers.getHeaderMapping();
-                const fieldName = headerMapping[header] || header.toLowerCase().replace(/\s+/g, '_');
-                
-                const configValue = config[fieldName];
+                // The backend creates row data using header names as keys,
+                // so we can directly use the header to access the config value
+                const configValue = config[header];
                 if (configValue === null || configValue === undefined) return false;
 
                 const configText = String(configValue).toLowerCase();
@@ -180,9 +178,9 @@ class SearchEngine {
         return Object.entries(this.columnFilters).some(([header, filterValue]) => {
             if (!filterValue || !filterValue.trim()) return false;
 
-            const headerMapping = FormHelpers.getHeaderMapping();
-            const fieldName = headerMapping[header] || header.toLowerCase().replace(/\s+/g, '_');
-            const configValue = row[fieldName];
+            // The backend creates row data using header names as keys,
+            // so we can directly use the header to access the row value
+            const configValue = row[header];
             
             if (configValue === null || configValue === undefined) return false;
             
@@ -262,8 +260,6 @@ class SearchEngine {
      * @returns {string} CSV content
      */
     generateCSV(configurations, headers) {
-        const headerMapping = FormHelpers.getHeaderMapping();
-        
         // Create CSV header row
         const csvHeaders = headers.map(header => `"${header.replace(/"/g, '""')}"`);
         const csvRows = [csvHeaders.join(',')];
@@ -271,8 +267,9 @@ class SearchEngine {
         // Create CSV data rows
         configurations.forEach(config => {
             const row = headers.map(header => {
-                const fieldName = headerMapping[header] || header.toLowerCase().replace(/\s+/g, '_');
-                let value = config[fieldName];
+                // The backend creates row data using header names as keys,
+                // so we can directly use the header to access the config value
+                let value = config[header];
                 
                 if (value === null || value === undefined) {
                     value = 'N/A';

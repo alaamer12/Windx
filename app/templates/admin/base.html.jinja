@@ -1,3 +1,5 @@
+{% import "components/navigation.html.jinja" as nav with context %}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,17 +20,26 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     {% if not hide_sidebar %}
-        {% include "admin/components/navbar.html.jinja" %}
-        {% include "admin/components/sidebar.html.jinja" %}
+        {# Use RBAC-aware navbar macro #}
+        {{ nav.rbac_navbar() }}
+        
+        {# Use RBAC-aware sidebar macro with conditional display #}
+        {% if has is defined and has.admin_access() %}
+            {{ nav.rbac_sidebar(active_page) }}
+        {% endif %}
     {% endif %}
 
-    <main class="main-content" {% if hide_sidebar %}style="margin-left: 0; padding: 0;"{% endif %}>
+    <main class="main-content {% if (has is not defined) or (not has.admin_access()) or hide_sidebar %}no-sidebar{% endif %}" {% if hide_sidebar %}style="margin-left: 0; padding: 0;"{% endif %}>
         {% include "admin/components/alerts.html.jinja" %}
         
         {% block content %}{% endblock %}
     </main>
 
     {% block scripts %}{% endblock %}
+    
+    <!-- Alpine.js for reactive UI components -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
     <script>
         // Check for error/success in URL parameters and show toast
         document.addEventListener('DOMContentLoaded', function() {
@@ -119,5 +130,7 @@
             }, 5000);
         }
     </script>
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

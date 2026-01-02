@@ -1,8 +1,12 @@
 """AttributeNode model for hierarchical product configuration system."""
+
 from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+
+# Avoid circular import - use TYPE_CHECKING for type hints
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     TIMESTAMP,
@@ -21,6 +25,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 from app.database.types import LTREE
+
+if TYPE_CHECKING:
+    from app.models.manufacturing_type import ManufacturingType
 
 
 class AttributeNode(Base):
@@ -66,6 +73,14 @@ class AttributeNode(Base):
         ForeignKey("attribute_nodes.id", ondelete="CASCADE"),
         index=True,
         nullable=True,
+    )
+
+    # Page type for multi-page architecture
+    page_type: Mapped[str] = mapped_column(
+        String(20),
+        default="profile",
+        nullable=False,
+        comment="Page type: profile, accessories, glazing",
     )
 
     # Basic information
@@ -213,7 +228,14 @@ class AttributeNode(Base):
             "ltree_path",
             postgresql_using="gist",
         ),
-        # Composite index for filtering by manufacturing type and node type
+        # Composite index for filtering by manufacturing type, page type, and node type
+        Index(
+            "idx_attribute_nodes_mfg_page_node_type",
+            "manufacturing_type_id",
+            "page_type", 
+            "node_type",
+        ),
+        # Composite index for filtering by manufacturing type and node type (backward compatibility)
         Index(
             "idx_attribute_nodes_mfg_type_node_type",
             "manufacturing_type_id",

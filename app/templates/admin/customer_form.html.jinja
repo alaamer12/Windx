@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group with context %}
 
 {% block title %}{{ action|title }} Customer - WindX Admin{% endblock %}
 
@@ -14,16 +15,18 @@
             {% endif %}
         </p>
     </div>
-    <a href="/api/v1/admin/customers" class="btn btn-outline">
-        <span>←</span> Back to List
-    </a>
+    {{ button(
+        text="← Back to List",
+        href="/api/v1/admin/customers",
+        variant="outline"
+    ) }}
 </div>
 
 <div class="card max-w-4xl">
     <form method="post" class="space-y-6">
         <!-- Basic Information -->
         <div>
-            <h3 class="text-lg font-semibold mb-4 border-b pb-2">Basic Information</h3>
+            <h3 class="text-lg font-semibold mb-4 border-b pb-2">👤 Basic Information</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="form-group">
                     <label class="form-label" for="company_name">Company Name</label>
@@ -53,7 +56,7 @@
 
         <!-- Classification -->
         <div>
-            <h3 class="text-lg font-semibold mb-4 border-b pb-2">Classification & Terms</h3>
+            <h3 class="text-lg font-semibold mb-4 border-b pb-2">🏷️ Classification & Terms</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="form-group">
                     <label class="form-label" for="customer_type">Customer Type</label>
@@ -86,7 +89,7 @@
 
         <!-- Address -->
         <div>
-            <h3 class="text-lg font-semibold mb-4 border-b pb-2">Address</h3>
+            <h3 class="text-lg font-semibold mb-4 border-b pb-2">📍 Address</h3>
             <div class="form-group">
                 <label class="form-label" for="street">Street Address</label>
                 <input type="text" id="street" name="street" class="form-control" 
@@ -122,7 +125,7 @@
 
         <!-- Notes & Settings -->
         <div>
-            <h3 class="text-lg font-semibold mb-4 border-b pb-2">Notes & Settings</h3>
+            <h3 class="text-lg font-semibold mb-4 border-b pb-2">📝 Notes & Settings</h3>
             <div class="form-group">
                 <label class="form-label" for="notes">Internal Notes</label>
                 <textarea id="notes" name="notes" class="form-control" rows="4">{{ form_data.notes if form_data else (customer.notes if customer else '') }}</textarea>
@@ -136,12 +139,18 @@
         </div>
 
         <!-- Actions -->
-        <div class="flex justify-end gap-4 pt-4 border-t">
-            <a href="/api/v1/admin/customers" class="btn btn-outline">Cancel</a>
-            <button type="submit" class="btn btn-primary">
-                {{ 'Create Customer' if action == 'create' else 'Update Customer' }}
-            </button>
-        </div>
+        {% call button_group(align="right", gap="md", class="pt-4 border-t") %}
+            {{ button(
+                text="Cancel",
+                href="/api/v1/admin/customers",
+                variant="outline"
+            ) }}
+            {{ button(
+                text="💾 " + ('Create Customer' if action == 'create' else 'Update Customer'),
+                type="submit",
+                variant="primary"
+            ) }}
+        {% endcall %}
     </form>
 </div>
 {% endblock %}

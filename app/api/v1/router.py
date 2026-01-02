@@ -14,10 +14,12 @@ Features:
 
 from fastapi import APIRouter
 
+from app.api.v1 import policy
 from app.api.v1.endpoints import (
     admin_auth,
     admin_customers,
     admin_documentation,
+    admin_entry,
     admin_hierarchy,
     admin_manufacturing,
     admin_orders,
@@ -27,6 +29,7 @@ from app.api.v1.endpoints import (
     configurations,
     customers,
     dashboard,
+    entry,
     export,
     manufacturing_types,
     metrics,
@@ -52,6 +55,9 @@ api_router.include_router(
 api_router.include_router(
     admin_documentation.router, prefix="/admin/documentation", tags=["Admin Documentation"]
 )
+api_router.include_router(
+    admin_entry.router, prefix="/admin/entry", tags=["Admin Entry"]
+)
 api_router.include_router(admin_settings.router, prefix="/admin", tags=["Admin Settings"])
 api_router.include_router(users.router, prefix="/users")
 api_router.include_router(export.router, prefix="/export")
@@ -67,3 +73,5 @@ api_router.include_router(orders.router, prefix="/orders")
 api_router.include_router(
     admin_hierarchy.router, prefix="/admin/hierarchy", tags=["Admin Hierarchy"]
 )
+api_router.include_router(policy.router, prefix="/admin")
+api_router.include_router(entry.router)

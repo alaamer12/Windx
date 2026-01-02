@@ -13,6 +13,7 @@ Features:
     - Automatic timestamp management
     - Relationships with attribute nodes and configurations
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -125,16 +126,16 @@ class ManufacturingType(Base):
     )
 
     # Relationships
-    attribute_nodes: Mapped[list["AttributeNode"]] = relationship(
+    attribute_nodes: Mapped[list[AttributeNode]] = relationship(
         "AttributeNode",
         back_populates="manufacturing_type",
         cascade="all, delete-orphan",
     )
-    configurations: Mapped[list["Configuration"]] = relationship(
+    configurations: Mapped[list[Configuration]] = relationship(
         "Configuration",
         back_populates="manufacturing_type",
     )
-    templates: Mapped[list["ConfigurationTemplate"]] = relationship(
+    templates: Mapped[list[ConfigurationTemplate]] = relationship(
         "ConfigurationTemplate",
         back_populates="manufacturing_type",
     )

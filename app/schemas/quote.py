@@ -17,6 +17,7 @@ Features:
     - Automatic ORM conversion support
     - Date validation for quote validity
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime

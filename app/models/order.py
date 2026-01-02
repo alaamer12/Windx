@@ -15,6 +15,7 @@ Features:
     - Relationships with quotes and order items
     - Automatic timestamp management
 """
+
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
@@ -152,12 +153,12 @@ class Order(Base):
     )
 
     # Relationships
-    quote: Mapped["Quote"] = relationship(
+    quote: Mapped[Quote] = relationship(
         "Quote",
         back_populates="orders",
         doc="Related quote",
     )
-    items: Mapped[list["OrderItem"]] = relationship(
+    items: Mapped[list[OrderItem]] = relationship(
         "OrderItem",
         back_populates="order",
         cascade="all, delete-orphan",

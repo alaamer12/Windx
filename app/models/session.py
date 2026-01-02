@@ -13,6 +13,7 @@ Features:
     - Active/inactive status control
     - Foreign key relationship with User model
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -100,7 +101,7 @@ class Session(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", back_populates="sessions")
+    user: Mapped[User] = relationship("User", back_populates="sessions")
 
     def __repr__(self) -> str:
         """String representation of Session.

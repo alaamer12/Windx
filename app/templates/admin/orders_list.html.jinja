@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group %}
 
 {% block title %}Orders - WindX Admin{% endblock %}
 
@@ -83,9 +84,7 @@
                         ${{ "%.2f"|format(order.quote.total_amount) }}
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <a href="/api/v1/admin/orders/{{ order.id }}" class="btn btn-outline py-1 px-3 text-xs">
-                            View
-                        </a>
+                        {{ button("👁️ View", href="/api/v1/admin/orders/" + order.id|string, variant="outline", size="xs") }}
                     </td>
                 </tr>
                 {% else %}
@@ -103,15 +102,13 @@
     {% if total_pages > 1 %}
     <div class="flex justify-center mt-6 gap-2">
         {% if page > 1 %}
-        <a href="?page={{ page - 1 }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
-           class="btn btn-outline py-1 px-3">Previous</a>
+            {{ button("← Previous", href="?page=" + (page - 1)|string + (("&search=" + search) if search else "") + (("&status=" + status_filter) if status_filter else ""), variant="outline", size="sm") }}
         {% endif %}
         
         <span class="py-1 px-3 text-gray-600">Page {{ page }} of {{ total_pages }}</span>
         
         {% if page < total_pages %}
-        <a href="?page={{ page + 1 }}{% if search %}&search={{ search }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
-           class="btn btn-outline py-1 px-3">Next</a>
+            {{ button("Next →", href="?page=" + (page + 1)|string + (("&search=" + search) if search else "") + (("&status=" + status_filter) if status_filter else ""), variant="outline", size="sm") }}
         {% endif %}
     </div>
     {% endif %}

@@ -1,711 +1,484 @@
-"""Custom exceptions and exception handlers.
+"""Enhanced exception classes for RBAC and customer relationship handling.
 
-This module defines custom exceptions for the application and provides
-global exception handlers for consistent error responses.
+This module provides specialized exception classes for better error handling
+and diagnostics in the RBAC system and customer relationship management.
 
 Public Classes:
-    AppException: Base exception for all application exceptions
-    DatabaseException: Database-related exceptions
-    AuthenticationException: Authentication-related exceptions
-    AuthorizationException: Authorization-related exceptions
-    ValidationException: Validation-related exceptions
-    NotFoundException: Resource not found exceptions
-    ConflictException: Resource conflict exceptions
-    RateLimitException: Rate limit exceeded exceptions
-    InvalidConfigurationException: Invalid configuration exceptions (Windx)
-    InvalidFormulaException: Invalid formula exceptions (Windx)
-    InvalidHierarchyException: Invalid hierarchy exceptions (Windx)
-
-Public Functions:
-    setup_exception_handlers: Setup global exception handlers
+    CasbinAuthorizationException: Casbin-specific authorization failures
+    PolicyEvaluationException: Policy evaluation errors
+    CustomerCreationException: Customer auto-creation failures
+    UserCustomerMappingException: User-Customer relationship errors
+    PrivilegeEvaluationException: Privilege object evaluation errors
 
 Features:
-    - Custom exception hierarchy
-    - Consistent error response format
-    - Automatic logging
+    - Clear error messages for RBAC failures
+    - Diagnostic information for troubleshooting
+    - Audit logging integration
     - HTTP status code mapping
-    - Request ID tracking
 """
 
-import logging
-import traceback
-from typing import Any
+from __future__ import annotations
 
-from fastapi import FastAPI, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field
-from sqlalchemy.exc import IntegrityError, OperationalError
+import logging
+from typing import Any, Optional
+
+from fastapi import HTTPException
 
 __all__ = [
-    "AppException",
-    "DatabaseException",
-    "AuthenticationException",
-    "UnauthorizedException",
-    "AuthorizationException",
-    "ValidationException",
+    # Base exceptions
     "NotFoundException",
+    "ValidationException",
     "ConflictException",
-    "RateLimitException",
-    "InvalidConfigurationException",
+    "AuthorizationException",
+    "AuthenticationException",
+    "DatabaseException",
     "InvalidFormulaException",
-    "InvalidHierarchyException",
+    # RBAC-specific exceptions
+    "CasbinAuthorizationException",
+    "PolicyEvaluationException",
+    "CustomerCreationException",
+    "UserCustomerMappingException",
+    "PrivilegeEvaluationException",
+    "DatabaseConstraintException",
     "FeatureDisabledException",
-    "setup_exception_handlers",
 ]
 
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
-# Error Response Models
-# ============================================================================
+# Base exceptions
+class NotFoundException(HTTPException):
+    """Raised when a requested resource is not found."""
+
+    def __init__(self, resource: str = "Resource", details: Optional[dict[str, Any]] = None):
+        self.resource = resource
+        self.details = details or {}
+        self.message = f"{resource} not found"  # Add message attribute
+        detail = f"{resource} not found"
+        super().__init__(status_code=404, detail=detail)
 
 
-class ErrorDetail(BaseModel):
-    """Error detail model.
+class ValidationException(HTTPException):
+    """Raised when input validation fails."""
 
-    Attributes:
-        type: Error type
-        message: Error message
-        field: Optional field name for validation errors
+    def __init__(self, message: str, details: Optional[dict[str, Any]] = None, field_errors: Optional[dict[str, str]] = None):
+        self.details = details or {}
+        self.field_errors = field_errors or {}  # Add field_errors attribute
+        self.message = message  # Add message attribute
+        super().__init__(status_code=422, detail=message)
+
+
+class ConflictException(HTTPException):
+    """Raised when a resource conflict occurs."""
+
+    def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
+        self.details = details or {}
+        self.message = message  # Add message attribute
+        super().__init__(status_code=409, detail=message)
+
+
+class AuthorizationException(HTTPException):
+    """Raised when authorization fails."""
+
+    def __init__(self, message: str = "Access denied", details: Optional[dict[str, Any]] = None):
+        self.details = details or {}
+        super().__init__(status_code=403, detail=message)
+
+
+class AuthenticationException(HTTPException):
+    """Raised when authentication fails."""
+
+    def __init__(
+        self, message: str = "Authentication failed", details: Optional[dict[str, Any]] = None
+    ):
+        self.details = details or {}
+        super().__init__(status_code=401, detail=message)
+
+
+class DatabaseException(Exception):
+    """Raised when database operations fail."""
+
+    def __init__(self, message: str, details: Optional[dict[str, Any]] = None):
+        self.details = details or {}
+        super().__init__(message)
+
+
+class InvalidFormulaException(Exception):
+    """Raised when formula evaluation fails."""
+
+    def __init__(self, message: str, formula: Optional[str] = None, details: Optional[dict[str, Any]] = None):
+        self.formula = formula
+        self.details = details or {}  # Add details attribute
+        self.message = message  # Add message attribute
+        super().__init__(message)
+
+
+class CasbinAuthorizationException(HTTPException):
+    """Raised when Casbin policy evaluation denies access.
+
+    Provides clear error messages and audit logging for authorization failures.
+    Includes user context and resource information for security monitoring.
     """
 
-    type: str = Field(description="Error type")
-    message: str = Field(description="Error message")
-    field: str | None = Field(default=None, description="Field name for validation errors")
+    def __init__(
+        self,
+        user_email: str,
+        resource: str,
+        action: str,
+        resource_id: Optional[int] = None,
+        context: Optional[dict[str, Any]] = None,
+    ):
+        """Initialize Casbin authorization exception.
+
+        Args:
+            user_email: Email of user who was denied access
+            resource: Resource type that was accessed
+            action: Action that was attempted
+            resource_id: Optional ID of specific resource
+            context: Optional additional context for debugging
+        """
+        self.user_email = user_email
+        self.resource = resource
+        self.action = action
+        self.resource_id = resource_id
+        self.context = context or {}
+
+        # Create detailed error message
+        if resource_id:
+            detail = (
+                f"User '{user_email}' not authorized for '{action}' on {resource} {resource_id}"
+            )
+        else:
+            detail = f"User '{user_email}' not authorized for '{action}' on {resource}"
+
+        super().__init__(status_code=403, detail=detail)
+
+        # Log security event for audit purposes
+        logger.warning(
+            f"Authorization denied: user={user_email}, resource={resource}, "
+            f"action={action}, resource_id={resource_id}, context={context}"
+        )
 
 
-class ErrorResponse(BaseModel):
-    """Standard error response model.
+class PolicyEvaluationException(Exception):
+    """Raised when Casbin policy evaluation fails due to system errors.
 
-    Attributes:
-        error: Error type
-        message: Human-readable error message
-        details: Optional list of error details
-        request_id: Optional request ID for tracking
+    Distinguishes between authorization denial (user lacks permission) and
+    system errors (policy engine failure, configuration issues, etc.).
     """
 
-    error: str = Field(description="Error type")
-    message: str = Field(description="Human-readable error message")
-    details: list[ErrorDetail] | None = Field(default=None, description="Error details")
-    request_id: str | None = Field(default=None, description="Request ID for tracking")
+    def __init__(self, error: str, policy_context: Optional[dict[str, Any]] = None):
+        """Initialize policy evaluation exception.
+
+        Args:
+            error: Description of the policy evaluation error
+            policy_context: Optional context about policy state
+        """
+        self.policy_context = policy_context or {}
+        self.message = f"Policy evaluation failed: {error}"  # Add message attribute
+        super().__init__(f"Policy evaluation failed: {error}")
+
+        # Log system error for diagnostics
+        logger.error(f"Policy evaluation error: {error}, context={policy_context}")
 
 
-# ============================================================================
-# Custom Exception Classes
-# ============================================================================
+class CustomerCreationException(Exception):
+    """Raised when customer auto-creation fails.
 
-
-class AppException(Exception):
-    """Base exception for all application exceptions.
-
-    Attributes:
-        message: Error message
-        status_code: HTTP status code
-        error_type: Error type identifier
-        details: Additional error details
+    Provides detailed information about customer creation failures including
+    user data, constraint violations, and suggested corrective actions.
     """
 
     def __init__(
         self,
         message: str,
-        status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
-        error_type: str = "app_error",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize application exception.
+        user_email: str,
+        user_data: Optional[dict[str, Any]] = None,
+        original_error: Optional[Exception] = None,
+    ):
+        """Initialize customer creation exception.
 
         Args:
-            message (str): Error message
-            status_code (int): HTTP status code
-            error_type (str): Error type identifier
-            details (dict | None): Additional error details
+            message: Human-readable error message
+            user_email: Email of user for whom customer creation failed
+            user_data: Optional user data that was used for creation
+            original_error: Optional original exception that caused the failure
         """
-        self.message = message
-        self.status_code = status_code
-        self.error_type = error_type
-        self.details = details or {}
-        super().__init__(self.message)
+        self.user_email = user_email
+        self.user_data = user_data or {}
+        self.original_error = original_error
+        self.message = message  # Add message attribute
 
+        super().__init__(message)
 
-class DatabaseException(AppException):
-    """Database-related exceptions.
-
-    Raised when database operations fail.
-    """
-
-    def __init__(
-        self,
-        message: str = "Database operation failed",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize database exception.
-
-        Args:
-            message (str): Error message
-            details (dict | None): Additional error details
-        """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            error_type="database_error",
-            details=details,
+        # Log customer creation failure for diagnostics
+        logger.error(
+            f"Customer creation failed for user {user_email}: {message}, "
+            f"user_data={user_data}, original_error={original_error}"
         )
 
 
-class AuthenticationException(AppException):
-    """Authentication-related exceptions.
+class UserCustomerMappingException(Exception):
+    """Raised when User-Customer relationship mapping fails.
 
-    Raised when authentication fails.
+    Handles errors in establishing or validating User-Customer relationships,
+    including email mismatches, missing customers, and constraint violations.
     """
 
     def __init__(
         self,
-        message: str = "Authentication failed",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize authentication exception.
+        message: str,
+        user_id: Optional[int] = None,
+        customer_id: Optional[int] = None,
+        mapping_context: Optional[dict[str, Any]] = None,
+    ):
+        """Initialize user-customer mapping exception.
 
         Args:
-            message (str): Error message
-            details (dict | None): Additional error details
+            message: Human-readable error message
+            user_id: Optional user ID involved in mapping failure
+            customer_id: Optional customer ID involved in mapping failure
+            mapping_context: Optional context about the mapping attempt
         """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error_type="authentication_error",
-            details=details,
+        self.user_id = user_id
+        self.customer_id = customer_id
+        self.mapping_context = mapping_context or {}
+
+        super().__init__(message)
+
+        # Log mapping failure for diagnostics
+        logger.error(
+            f"User-Customer mapping failed: {message}, user_id={user_id}, "
+            f"customer_id={customer_id}, context={mapping_context}"
         )
 
 
-class UnauthorizedException(AuthenticationException):
-    """Unauthorized access exceptions.
+class PrivilegeEvaluationException(Exception):
+    """Raised when Privilege object evaluation fails.
 
-    Alias for AuthenticationException for backward compatibility.
-    Raised when user is not authenticated.
+    Handles errors in evaluating Privilege objects including role validation,
+    permission checking, and resource ownership verification.
     """
 
     def __init__(
         self,
-        message: str = "Not authenticated",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize unauthorized exception.
+        message: str,
+        privilege_info: Optional[dict[str, Any]] = None,
+        evaluation_context: Optional[dict[str, Any]] = None,
+    ):
+        """Initialize privilege evaluation exception.
 
         Args:
-            message (str): Error message
-            details (dict | None): Additional error details
+            message: Human-readable error message
+            privilege_info: Optional information about the privilege being evaluated
+            evaluation_context: Optional context about the evaluation attempt
         """
-        super().__init__(message=message, details=details)
+        self.privilege_info = privilege_info or {}
+        self.evaluation_context = evaluation_context or {}
 
+        super().__init__(message)
 
-class AuthorizationException(AppException):
-    """Authorization-related exceptions.
-
-    Raised when user lacks required permissions.
-    """
-
-    def __init__(
-        self,
-        message: str = "Insufficient permissions",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize authorization exception.
-
-        Args:
-            message (str): Error message
-            details (dict | None): Additional error details
-        """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_403_FORBIDDEN,
-            error_type="authorization_error",
-            details=details,
+        # Log privilege evaluation failure for diagnostics
+        logger.error(
+            f"Privilege evaluation failed: {message}, "
+            f"privilege={privilege_info}, context={evaluation_context}"
         )
 
 
-class ValidationException(AppException):
-    """Validation-related exceptions.
+class DatabaseConstraintException(Exception):
+    """Raised when database constraint violations occur.
 
-    Raised when input validation fails.
+    Provides specific handling for foreign key constraints, unique constraints,
+    and other database integrity violations with suggested corrective actions.
     """
 
     def __init__(
         self,
-        message: str = "Validation failed",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize validation exception.
+        message: str,
+        constraint_type: str,
+        constraint_details: Optional[dict[str, Any]] = None,
+        suggested_action: Optional[str] = None,
+    ):
+        """Initialize database constraint exception.
 
         Args:
-            message (str): Error message
-            details (dict | None): Additional error details
+            message: Human-readable error message
+            constraint_type: Type of constraint violated (foreign_key, unique, etc.)
+            constraint_details: Optional details about the constraint violation
+            suggested_action: Optional suggested corrective action
         """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            error_type="validation_error",
-            details=details,
+        self.constraint_type = constraint_type
+        self.constraint_details = constraint_details or {}
+        self.suggested_action = suggested_action
+
+        super().__init__(message)
+
+        # Log constraint violation for diagnostics
+        logger.error(
+            f"Database constraint violation: {message}, type={constraint_type}, "
+            f"details={constraint_details}, suggested_action={suggested_action}"
         )
 
 
-class NotFoundException(AppException):
-    """Resource not found exceptions.
+class FeatureDisabledException(HTTPException):
+    """Raised when a feature is disabled or not available.
 
-    Raised when requested resource doesn't exist.
+    Used for feature flags and conditional functionality.
     """
 
-    def __init__(
-        self,
-        message: str = "Resource not found",
-        resource: str | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize not found exception.
-
-        Args:
-            message (str): Error message
-            resource (str | None): Resource type
-            details (dict | None): Additional error details
-        """
-        if resource:
-            message = f"{resource} not found"
-
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_404_NOT_FOUND,
-            error_type="not_found_error",
-            details=details,
-        )
-
-
-class ConflictException(AppException):
-    """Resource conflict exceptions.
-
-    Raised when resource already exists or conflicts with existing data.
-    """
-
-    def __init__(
-        self,
-        message: str = "Resource conflict",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize conflict exception.
-
-        Args:
-            message (str): Error message
-            details (dict | None): Additional error details
-        """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_409_CONFLICT,
-            error_type="conflict_error",
-            details=details,
-        )
-
-
-class RateLimitException(AppException):
-    """Rate limit exceeded exceptions.
-
-    Raised when rate limit is exceeded.
-    """
-
-    def __init__(
-        self,
-        message: str = "Rate limit exceeded",
-        retry_after: int | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize rate limit exception.
-
-        Args:
-            message (str): Error message
-            retry_after (int | None): Seconds until retry is allowed
-            details (dict | None): Additional error details
-        """
-        if retry_after:
-            details = details or {}
-            details["retry_after"] = retry_after
-
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            error_type="rate_limit_error",
-            details=details,
-        )
-
-
-# ============================================================================
-# Windx Domain Exceptions
-# ============================================================================
-
-
-class InvalidConfigurationException(AppException):
-    """Invalid configuration exceptions.
-
-    Raised when a configuration is invalid or incomplete.
-    """
-
-    def __init__(
-        self,
-        message: str = "Invalid configuration",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize invalid configuration exception.
-
-        Args:
-            message (str): Error message
-            details (dict | None): Additional error details
-        """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            error_type="invalid_configuration_error",
-            details=details,
-        )
-
-
-class InvalidFormulaException(AppException):
-    """Invalid formula exceptions.
-
-    Raised when formula evaluation fails or formula syntax is invalid.
-    """
-
-    def __init__(
-        self,
-        message: str = "Invalid formula",
-        formula: str | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize invalid formula exception.
-
-        Args:
-            message (str): Error message
-            formula (str | None): The invalid formula
-            details (dict | None): Additional error details
-        """
-        if formula:
-            details = details or {}
-            details["formula"] = formula
-
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            error_type="invalid_formula_error",
-            details=details,
-        )
-
-
-class InvalidHierarchyException(AppException):
-    """Invalid hierarchy exceptions.
-
-    Raised when hierarchical operations fail or create invalid structures.
-    """
-
-    def __init__(
-        self,
-        message: str = "Invalid hierarchy operation",
-        details: dict[str, Any] | None = None,
-    ) -> None:
-        """Initialize invalid hierarchy exception.
-
-        Args:
-            message (str): Error message
-            details (dict | None): Additional error details
-        """
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            error_type="invalid_hierarchy_error",
-            details=details,
-        )
-
-
-class FeatureDisabledException(AppException):
-    """Feature disabled exceptions.
-
-    Raised when attempting to access a disabled feature.
-    """
-
-    def __init__(
-        self,
-        message: str = "This feature is currently disabled",
-        feature_name: str | None = None,
-        details: dict[str, Any] | None = None,
-    ) -> None:
+    def __init__(self, feature_name: str, reason: Optional[str] = None):
         """Initialize feature disabled exception.
 
         Args:
-            message (str): Error message
-            feature_name (str | None): Name of the disabled feature
-            details (dict | None): Additional error details
+            feature_name: Name of the disabled feature
+            reason: Optional reason why the feature is disabled
         """
-        if feature_name:
-            details = details or {}
-            details["feature_name"] = feature_name
+        self.feature_name = feature_name
+        self.reason = reason
 
-        super().__init__(
-            message=message,
-            status_code=status.HTTP_403_FORBIDDEN,
-            error_type="feature_disabled_error",
-            details=details,
+        detail = f"Feature '{feature_name}' is disabled"
+        if reason:
+            detail += f": {reason}"
+
+        super().__init__(status_code=503, detail=detail)
+
+        # Log feature access attempt
+        logger.info(f"Access attempted to disabled feature: {feature_name}, reason: {reason}")
+
+
+def setup_exception_handlers(app):
+    """Setup exception handlers for the FastAPI application.
+
+    Args:
+        app: FastAPI application instance
+    """
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+
+    @app.exception_handler(ConflictException)
+    async def conflict_exception_handler(request: Request, exc: ConflictException):
+        """Handle ConflictException with standardized error response."""
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "conflict_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(AuthenticationException)
+    async def authentication_exception_handler(request: Request, exc: AuthenticationException):
+        """Handle AuthenticationException with standardized error response."""
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "authentication_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(AuthorizationException)
+    async def authorization_exception_handler(request: Request, exc: AuthorizationException):
+        """Handle AuthorizationException with standardized error response."""
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": "authorization_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(NotFoundException)
+    async def not_found_exception_handler(request: Request, exc: NotFoundException):
+        """Handle NotFoundException with standardized error response."""
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "not_found_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
+        )
+
+    @app.exception_handler(ValidationException)
+    async def validation_exception_handler(request: Request, exc: ValidationException):
+        """Handle ValidationException with standardized error response."""
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": "validation_error",
+                "message": exc.detail,
+                "details": getattr(exc, "details", {}),
+            },
         )
 
 
-# ============================================================================
-# Exception Handlers
-# ============================================================================
+# Exception mapping for HTTP responses
+EXCEPTION_STATUS_MAPPING = {
+    # Base exceptions
+    NotFoundException: 404,
+    ValidationException: 422,
+    ConflictException: 409,
+    AuthorizationException: 403,
+    AuthenticationException: 401,
+    DatabaseException: 500,
+    InvalidFormulaException: 400,
+    # RBAC-specific exceptions
+    CasbinAuthorizationException: 403,
+    PolicyEvaluationException: 500,
+    CustomerCreationException: 500,
+    UserCustomerMappingException: 500,
+    PrivilegeEvaluationException: 500,
+    DatabaseConstraintException: 400,
+    FeatureDisabledException: 503,
+}
 
 
-async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
-    """Handle custom application exceptions.
+def get_http_status_for_exception(exception: Exception) -> int:
+    """Get appropriate HTTP status code for exception.
 
     Args:
-        request (Request): FastAPI request
-        exc (AppException): Application exception
+        exception: Exception to get status code for
 
     Returns:
-        JSONResponse: Error response
+        HTTP status code (default: 500)
     """
-    # Log the error
-    logger.error(
-        f"Application error: {exc.error_type} - {exc.message}",
-        extra={
-            "error_type": exc.error_type,
-            "status_code": exc.status_code,
-            "details": exc.details,
-            "path": request.url.path,
-            "method": request.method,
-        },
-    )
-
-    # Special handling for FeatureDisabledException - always redirect to dashboard for HTML requests
-    if isinstance(exc, FeatureDisabledException):
-        from fastapi.responses import RedirectResponse
-
-        # Check if request accepts HTML (browser request)
-        accept = request.headers.get("accept", "")
-        if "text/html" in accept or request.url.path.startswith("/api/v1/admin"):
-            # Admin routes should always redirect even without explicit Accept header
-            return RedirectResponse(
-                url=f"/api/v1/admin/dashboard?error={exc.message}",
-                status_code=status.HTTP_303_SEE_OTHER,
-            )
-
-    # Check if request accepts HTML (browser) and error is 401/403
-    accept = request.headers.get("accept", "")
-    if "text/html" in accept and exc.status_code in [
-        status.HTTP_401_UNAUTHORIZED,
-        status.HTTP_403_FORBIDDEN,
-    ]:
-        from fastapi.responses import RedirectResponse
-
-        # For 401/403 errors, redirect to login
-        return RedirectResponse(
-            url=f"/api/v1/admin/login?next={request.url.path}",
-            status_code=status.HTTP_302_FOUND,
-        )
-
-    # Build error response
-    error_response = ErrorResponse(
-        error=exc.error_type,
-        message=exc.message,
-        details=[ErrorDetail(type=exc.error_type, message=exc.message)] if exc.details else None,
-        request_id=request.headers.get("X-Request-ID"),
-    )
-
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error_response.model_dump(exclude_none=True),
-    )
+    return EXCEPTION_STATUS_MAPPING.get(type(exception), 500)
 
 
-async def validation_exception_handler(
-    request: Request,
-    exc: RequestValidationError,
-) -> JSONResponse:
-    """Handle Pydantic validation errors.
+def create_error_response(exception: Exception) -> dict[str, Any]:
+    """Create standardized error response for exception.
 
     Args:
-        request (Request): FastAPI request
-        exc (RequestValidationError): Validation error
+        exception: Exception to create response for
 
     Returns:
-        JSONResponse: Error response
+        Dictionary containing error response data
     """
-    # Log validation error
-    logger.warning(
-        f"Validation error: {request.url.path}",
-        extra={
-            "errors": exc.errors(),
-            "body": exc.body,
-            "path": request.url.path,
-            "method": request.method,
-        },
-    )
+    response = {
+        "error": type(exception).__name__,
+        "message": str(exception),
+        "status_code": get_http_status_for_exception(exception),
+    }
 
-    # Build error details
-    details = [
-        ErrorDetail(
-            type=error["type"],
-            message=error["msg"],
-            field=".".join(str(loc) for loc in error["loc"]),
-        )
-        for error in exc.errors()
-    ]
+    # Add exception-specific details
+    if isinstance(exception, CasbinAuthorizationException):
+        response["details"] = {
+            "user_email": exception.user_email,
+            "resource": exception.resource,
+            "action": exception.action,
+            "resource_id": exception.resource_id,
+        }
+    elif isinstance(exception, CustomerCreationException):
+        response["details"] = {"user_email": exception.user_email, "user_data": exception.user_data}
+    elif isinstance(exception, DatabaseConstraintException):
+        response["details"] = {
+            "constraint_type": exception.constraint_type,
+            "constraint_details": exception.constraint_details,
+            "suggested_action": exception.suggested_action,
+        }
 
-    error_response = ErrorResponse(
-        error="validation_error",
-        message="Request validation failed",
-        details=details,
-        request_id=request.headers.get("X-Request-ID"),
-    )
-
-    return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-        content=error_response.model_dump(exclude_none=True),
-    )
-
-
-async def integrity_error_handler(
-    request: Request,
-    exc: IntegrityError,
-) -> JSONResponse:
-    """Handle SQLAlchemy integrity errors.
-
-    Args:
-        request (Request): FastAPI request
-        exc (IntegrityError): Integrity error
-
-    Returns:
-        JSONResponse: Error response
-    """
-    # Log integrity error
-    logger.error(
-        f"Database integrity error: {request.url.path}",
-        extra={
-            "error": str(exc),
-            "path": request.url.path,
-            "method": request.method,
-        },
-    )
-
-    # Determine if it's a unique constraint violation
-    error_message = "Resource already exists"
-    if "unique" in str(exc).lower() or "duplicate" in str(exc).lower():
-        error_message = "Resource with this identifier already exists"
-
-    error_response = ErrorResponse(
-        error="conflict_error",
-        message=error_message,
-        request_id=request.headers.get("X-Request-ID"),
-    )
-
-    return JSONResponse(
-        status_code=status.HTTP_409_CONFLICT,
-        content=error_response.model_dump(exclude_none=True),
-    )
-
-
-async def operational_error_handler(
-    request: Request,
-    exc: OperationalError,
-) -> JSONResponse:
-    """Handle SQLAlchemy operational errors.
-
-    Args:
-        request (Request): FastAPI request
-        exc (OperationalError): Operational error
-
-    Returns:
-        JSONResponse: Error response
-    """
-    # Log operational error
-    logger.error(
-        f"Database operational error: {request.url.path}",
-        extra={
-            "error": str(exc),
-            "path": request.url.path,
-            "method": request.method,
-        },
-    )
-
-    error_response = ErrorResponse(
-        error="database_error",
-        message="Database operation failed",
-        request_id=request.headers.get("X-Request-ID"),
-    )
-
-    return JSONResponse(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        content=error_response.model_dump(exclude_none=True),
-    )
-
-
-async def generic_exception_handler(
-    request: Request,
-    exc: Exception,
-) -> JSONResponse:
-    """Handle unexpected exceptions.
-
-    Args:
-        request (Request): FastAPI request
-        exc (Exception): Unexpected exception
-
-    Returns:
-        JSONResponse: Error response
-    """
-    # Log unexpected error with full traceback
-    logger.error(
-        f"Unexpected error: {request.url.path}",
-        extra={
-            "error": str(exc),
-            "error_type": type(exc).__name__,
-            "path": request.url.path,
-            "method": request.method,
-            "traceback": traceback.format_exc(),
-        },
-    )
-
-    error_response = ErrorResponse(
-        error="internal_server_error",
-        message="An unexpected error occurred",
-        request_id=request.headers.get("X-Request-ID"),
-    )
-
-    return JSONResponse(
-        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content=error_response.model_dump(exclude_none=True),
-    )
-
-
-# ============================================================================
-# Setup Function
-# ============================================================================
-
-
-def setup_exception_handlers(app: FastAPI) -> None:
-    """Setup global exception handlers for the application.
-
-    Args:
-        app (FastAPI): FastAPI application instance
-
-    Example:
-        app = FastAPI()
-        setup_exception_handlers(app)
-    """
-    # Custom application exceptions
-    app.add_exception_handler(AppException, app_exception_handler)
-
-    # Pydantic validation errors
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-
-    # SQLAlchemy errors
-    app.add_exception_handler(IntegrityError, integrity_error_handler)
-    app.add_exception_handler(OperationalError, operational_error_handler)
-
-    # Generic exception handler (catch-all)
-    app.add_exception_handler(Exception, generic_exception_handler)
-
-    logger.info("[OK] Exception handlers configured")
+    return response

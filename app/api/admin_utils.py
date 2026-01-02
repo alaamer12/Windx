@@ -72,8 +72,8 @@ def check_feature_flag(flag_name: str) -> None:
         # e.g., 'experimental_customers_page' -> 'Experimental Customers Page'
         readable_name = flag_name.replace("_", " ").title()
         raise FeatureDisabledException(
-            message=f"{readable_name} is currently disabled",
             feature_name=flag_name,
+            reason=f"{readable_name} is currently disabled",
         )
 
 

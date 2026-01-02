@@ -140,7 +140,7 @@ class AuthService(BaseService):
             token=access_token,
             expires_at=expires_at,
         )
-        await self.session_repo.create(session_data)
+        session = await self.session_repo.create(session_data)
 
         return access_token, user
 
@@ -189,7 +189,7 @@ class AuthService(BaseService):
                 details={"token": "invalid"},
             )
 
-        user_id = payload # already did payload.get("sub") in the inner function
+        user_id = payload  # already did payload.get("sub") in the inner function
         if not user_id:
             raise AuthenticationException(
                 message="Invalid token payload",

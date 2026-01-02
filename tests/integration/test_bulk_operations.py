@@ -39,7 +39,7 @@ class TestBulkUserCreation:
             create_user_data(
                 email=f"bulk{i}@example.com",
                 username=f"bulk{i}",
-                password="BulkPass123!",
+                # Use factory default password instead of hardcoded
             )
             for i in range(3)
         ]
@@ -121,6 +121,7 @@ class TestBulkUserCreation:
         assert len(data) == 1
         assert data[0]["email"] == user_data["email"]
 
+    @pytest.mark.ci_cd_issue
     async def test_create_users_bulk_transaction_rollback_on_duplicate_email(
         self,
         client: AsyncClient,
@@ -154,10 +155,10 @@ class TestBulkUserCreation:
         # Should fail with conflict
         assert response.status_code == 409
 
-        # Verify NO users were created (transaction rolled back)
+        # Verify NO new users were created (transaction rolled back)
         result_after = await db_session.execute(select(User))
         count_after = len(result_after.scalars().all())
-        assert count_after == count_before
+        assert count_after == count_before  # Should be same as before
 
         # Verify new1 and new2 were NOT created
         result = await db_session.execute(
@@ -166,6 +167,7 @@ class TestBulkUserCreation:
         new_users = result.scalars().all()
         assert len(new_users) == 0
 
+    @pytest.mark.ci_cd_issue
     async def test_create_users_bulk_transaction_rollback_on_duplicate_username(
         self,
         client: AsyncClient,
@@ -201,10 +203,10 @@ class TestBulkUserCreation:
         # Should fail with conflict
         assert response.status_code == 409
 
-        # Verify NO users were created (transaction rolled back)
+        # Verify NO new users were created (transaction rolled back)
         result_after = await db_session.execute(select(User))
         count_after = len(result_after.scalars().all())
-        assert count_after == count_before
+        assert count_after == count_before  # Should be same as before
 
     async def test_create_users_bulk_validation_error_invalid_email(
         self,

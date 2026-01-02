@@ -125,14 +125,15 @@ class TestHealthCheckEndpoint:
             assert "error" in db_check
             assert "Database connection failed" in db_check["error"]
 
+    @pytest.mark.redis
     async def test_health_check_cache_when_enabled(
         self,
         client: AsyncClient,
-        test_settings,
+        redis_test_settings,
     ):
         """Test health check includes cache check when cache is enabled."""
         # Only run if cache is enabled in test settings
-        if not test_settings.cache.enabled:
+        if not redis_test_settings.cache.enabled:
             pytest.skip("Cache not enabled in test settings")
 
         response = await client.get("/health")
@@ -149,14 +150,15 @@ class TestHealthCheckEndpoint:
         # In tests, cache uses in-memory backend, so should be healthy
         assert cache_check["status"] == "healthy"
 
+    @pytest.mark.redis
     async def test_health_check_rate_limiter_when_enabled(
         self,
         client: AsyncClient,
-        test_settings,
+        redis_test_settings,
     ):
         """Test health check includes rate limiter check when enabled."""
         # Only run if rate limiter is enabled in test settings
-        if not test_settings.limiter.enabled:
+        if not redis_test_settings.limiter.enabled:
             pytest.skip("Rate limiter not enabled in test settings")
 
         response = await client.get("/health")
@@ -171,14 +173,15 @@ class TestHealthCheckEndpoint:
         # Should have status
         assert "status" in limiter_check
 
+    @pytest.mark.redis
     async def test_health_check_redis_cache_failure(
         self,
         client: AsyncClient,
-        test_settings,
+        redis_test_settings,
     ):
         """Test health check when Redis cache connection fails."""
         # Only run if cache is enabled
-        if not test_settings.cache.enabled:
+        if not redis_test_settings.cache.enabled:
             pytest.skip("Cache not enabled in test settings")
 
         # Mock Redis ping to fail
@@ -199,14 +202,15 @@ class TestHealthCheckEndpoint:
                 assert cache_check["status"] == "unhealthy"
                 assert "error" in cache_check
 
+    @pytest.mark.redis
     async def test_health_check_redis_limiter_failure(
         self,
         client: AsyncClient,
-        test_settings,
+        redis_test_settings,
     ):
         """Test health check when Redis rate limiter connection fails."""
         # Only run if rate limiter is enabled
-        if not test_settings.limiter.enabled:
+        if not redis_test_settings.limiter.enabled:
             pytest.skip("Rate limiter not enabled in test settings")
 
         # Mock Redis ping to fail
@@ -284,14 +288,15 @@ class TestHealthCheckEndpoint:
             assert resp["app_name"] == test_settings.app_name
             assert "database" in resp["checks"]
 
+    @pytest.mark.redis
     async def test_health_check_redis_connection_cleanup(
         self,
         client: AsyncClient,
-        test_settings,
+        redis_test_settings,
     ):
         """Test that health check properly closes Redis connections."""
         # Only run if cache or limiter is enabled
-        if not (test_settings.cache.enabled or test_settings.limiter.enabled):
+        if not (redis_test_settings.cache.enabled or redis_test_settings.limiter.enabled):
             pytest.skip("Neither cache nor limiter enabled")
 
         # Mock Redis client to track close calls

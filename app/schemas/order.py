@@ -17,6 +17,7 @@ Features:
     - Automatic ORM conversion support
     - Date validation for required_date
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -332,7 +333,7 @@ class OrderWithItems(Order):
     """
 
     items: Annotated[
-        list["OrderItem"],
+        list[OrderItem],
         Field(
             default_factory=list,
             description="List of order items",

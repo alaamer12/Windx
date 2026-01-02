@@ -81,6 +81,7 @@ Usage Example:
 For more examples, see: examples/hierarchy_insertion.py
 For dashboard documentation, see: docs/HIERARCHY_ADMIN_DASHBOARD.md
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -1088,6 +1089,7 @@ class HierarchyBuilderService(BaseService):
 
         Creates a human-readable ASCII tree visualization using box-drawing
         characters (├──, └──, │) to show the hierarchical structure.
+        Includes a virtual root node showing the manufacturing type name.
 
         Args:
             manufacturing_type_id: Manufacturing type ID
@@ -1125,8 +1127,10 @@ class HierarchyBuilderService(BaseService):
         if not tree:
             return "(Empty tree)"
 
-        # Build ASCII representation
-        lines = []
+        # Add virtual root node showing manufacturing type name
+        lines = [mfg_type.name]  # Virtual root at the top
+
+        # Build ASCII representation for each root node
         for i, root_node in enumerate(tree):
             is_last_root = i == len(tree) - 1
             lines.append(
@@ -1317,14 +1321,14 @@ class HierarchyBuilderService(BaseService):
 
     @staticmethod
     def _plot_tree_with_networkx(
-            nodes: list[AttributeNode],
+        nodes: list[AttributeNode],
         children_map: dict[int | None, list[AttributeNode]],
         title: str,
     ):
-        """Plot tree using NetworkX for automatic layout.
+        """Plot tree using NetworkX with proper hierarchical tree layout.
 
-        Uses NetworkX's hierarchical layout algorithm for better positioning
-        of nodes in the tree visualization.
+        Creates a proper tree diagram with root at top and children arranged
+        in levels below, ensuring a tidy hierarchical structure.
 
         Args:
             nodes: List of all nodes to plot
@@ -1354,12 +1358,13 @@ class HierarchyBuilderService(BaseService):
 
         # Create a set of node IDs for quick lookup
         node_ids = {node.id for node in nodes}
+        node_map = {node.id: node for node in nodes}
 
         for node in nodes:
             G.add_node(node.id)
 
             # Format node label with name, type, and price
-            label = f"{node.name}\n[{node.node_type}]"
+            label = f"{node.name}\n({node.node_type})"
             if node.price_impact_value is not None and node.price_impact_value != 0:
                 label += f"\n[+${node.price_impact_value:.2f}]"
 
@@ -1367,29 +1372,80 @@ class HierarchyBuilderService(BaseService):
             node_colors_map[node.id] = node_type_colors.get(node.node_type, "#CCCCCC")
 
         # Add edges (parent → child relationships)
-        # Only add edges where both parent and child are in our node set
         for node in nodes:
             if node.parent_node_id is not None and node.parent_node_id in node_ids:
                 G.add_edge(node.parent_node_id, node.id)
 
-        # Use hierarchical layout
         # Find root nodes (nodes with no parent or parent not in graph)
         root_nodes = [n.id for n in nodes if n.parent_node_id is None or n.parent_node_id not in G]
 
-        # Create hierarchical layout
-        try:
-            # Try to use graphviz layout if available (best for trees)
-            pos = nx.nx_agraph.graphviz_layout(G, prog="dot")
-        except:
-            # Fall back to spring layout with hierarchical hints
-            try:
-                pos = nx.spring_layout(G, k=2, iterations=50)
-            except:
-                # Last resort: use shell layout
-                pos = nx.shell_layout(G)
+        # Add VIRTUAL ROOT NODE for visualization (Option A implementation)
+        # This shows the manufacturing type name at the top without changing database
+        # NOTE: For true database root, see option_b_future_implementation.md
+        virtual_root_id = -1  # Use negative ID to avoid conflicts
+        G.add_node(virtual_root_id)
+        node_labels[virtual_root_id] = f"{title}\\n(Manufacturing Type)"
+        node_colors_map[virtual_root_id] = "#FFD700"  # Gold color for root
 
-        # Create figure
-        fig, ax = plt.subplots(figsize=(16, 12))
+        # Connect all actual roots to virtual root
+        for root_id in root_nodes:
+            G.add_edge(virtual_root_id, root_id)
+
+        # Create PROPER hierarchical layout using custom algorithm
+        # This ensures root is at top and children are arranged level by level
+        pos = {}
+
+        # Define spacing first
+        y_spacing = 2.0  # Vertical spacing between levels
+
+        # Position virtual root at the very top
+        pos[virtual_root_id] = (0, 1 * y_spacing)  # Above all other nodes
+
+        # Group nodes by depth level
+        levels = {}
+        for node in nodes:
+            depth = node.depth
+            if depth not in levels:
+                levels[depth] = []
+            levels[depth].append(node.id)
+
+        # Calculate positions level by level
+        max_depth = max(levels.keys()) if levels else 0
+
+        for depth in sorted(levels.keys()):
+            level_nodes = levels[depth]
+            num_nodes = len(level_nodes)
+
+            # Calculate horizontal spacing to spread nodes evenly
+            if num_nodes == 1:
+                x_positions = [0]
+            else:
+                # Spread nodes across width based on number of nodes
+                total_width = max(10, num_nodes * 2)
+                x_positions = [
+                    i * (total_width / (num_nodes - 1)) - total_width / 2 for i in range(num_nodes)
+                ]
+
+            # Assign positions (y increases downward, so negate depth)
+            y = -depth * y_spacing
+            for i, node_id in enumerate(level_nodes):
+                pos[node_id] = (x_positions[i], y)
+
+        # Adjust positions to center children under parents
+        for depth in sorted(levels.keys(), reverse=True)[1:]:  # Skip deepest level
+            for node_id in levels[depth]:
+                # Get children of this node
+                children = children_map.get(node_id, [])
+                if children:
+                    # Calculate average x position of children
+                    child_x_positions = [pos[child.id][0] for child in children if child.id in pos]
+                    if child_x_positions:
+                        avg_x = sum(child_x_positions) / len(child_x_positions)
+                        # Update parent position to be centered above children
+                        pos[node_id] = (avg_x, pos[node_id][1])
+
+        # Create figure with more space for title
+        fig, ax = plt.subplots(figsize=(20, 14))
 
         # Draw edges
         nx.draw_networkx_edges(
@@ -1397,11 +1453,9 @@ class HierarchyBuilderService(BaseService):
             pos,
             ax=ax,
             edge_color="#666666",
-            arrows=True,
-            arrowsize=20,
-            arrowstyle="->",
+            arrows=False,  # Remove arrows for cleaner look
             width=2,
-            alpha=0.6,
+            alpha=0.5,
         )
 
         # Draw nodes - get colors in the same order as nodes in G
@@ -1411,11 +1465,11 @@ class HierarchyBuilderService(BaseService):
             pos,
             ax=ax,
             node_color=node_colors,
-            node_size=3000,
+            node_size=4000,
             node_shape="o",
             alpha=0.9,
             edgecolors="#333333",
-            linewidths=2,
+            linewidths=2.5,
         )
 
         # Draw labels
@@ -1424,23 +1478,25 @@ class HierarchyBuilderService(BaseService):
             pos,
             ax=ax,
             labels=node_labels,
-            font_size=8,
+            font_size=9,
             font_weight="bold",
             font_family="sans-serif",
         )
 
-        # Add title
-        ax.set_title(f"Attribute Hierarchy: {title}", fontsize=16, fontweight="bold", pad=20)
+        # Add title with extra padding to prevent cutoff
+        ax.set_title(f"Attribute Hierarchy: {title}", fontsize=18, fontweight="bold", pad=30)
 
         # Add legend
         legend_elements = [
             mpatches.Patch(facecolor=color, edgecolor="#333333", label=node_type.capitalize())
             for node_type, color in node_type_colors.items()
         ]
-        ax.legend(handles=legend_elements, loc="upper left", fontsize=10)
+        ax.legend(handles=legend_elements, loc="upper left", fontsize=11, framealpha=0.9)
 
         ax.axis("off")
-        plt.tight_layout()
+
+        # Use tight_layout with extra padding to prevent title cutoff
+        plt.tight_layout(pad=2.0)
 
         return fig
 
@@ -1450,10 +1506,10 @@ class HierarchyBuilderService(BaseService):
         children_map: dict[int | None, list[AttributeNode]],
         title: str,
     ):
-        """Plot tree using manual recursive layout.
+        """Plot tree using manual hierarchical layout.
 
-        Fallback method when NetworkX is not available. Uses a simple
-        recursive algorithm to position nodes in the tree.
+        Fallback method when NetworkX is not available. Uses a proper
+        hierarchical algorithm to position nodes level-by-level from top to bottom.
 
         Args:
             nodes: List of all nodes to plot
@@ -1475,7 +1531,7 @@ class HierarchyBuilderService(BaseService):
             "technical_spec": "#E5B4FF",  # Light purple
         }
 
-        # Calculate positions using recursive layout
+        # Calculate positions using hierarchical layout
         positions = {}
         node_info = {node.id: node for node in nodes}
 
@@ -1491,47 +1547,54 @@ class HierarchyBuilderService(BaseService):
             ax.axis("off")
             return fig
 
-        # Calculate tree width for each node (number of leaf descendants)
-        def calculate_width(node_id: int) -> int:
-            """Calculate the width (number of leaves) under a node."""
-            children = children_map.get(node_id, [])
-            if not children:
-                return 1
-            return sum(calculate_width(child.id) for child in children)
+        # Group nodes by depth level
+        levels = {}
+        for node in nodes:
+            depth = node.depth
+            if depth not in levels:
+                levels[depth] = []
+            levels[depth].append(node.id)
 
-        # Position nodes recursively
-        def position_node(node_id: int, x: float, y: float, width: float) -> float:
-            """Position a node and its children, return the next x position."""
-            positions[node_id] = (x, y)
+        # Calculate positions level by level
+        max_depth = max(levels.keys()) if levels else 0
+        y_spacing = 2.0  # Vertical spacing between levels
 
-            children = children_map.get(node_id, [])
-            if not children:
-                return x + 1
+        for depth in sorted(levels.keys()):
+            level_nodes = levels[depth]
+            num_nodes = len(level_nodes)
 
-            # Calculate widths for children
-            child_widths = [calculate_width(child.id) for child in children]
-            total_width = sum(child_widths)
+            # Calculate horizontal spacing to spread nodes evenly
+            if num_nodes == 1:
+                x_positions = [0]
+            else:
+                # Spread nodes across width based on number of nodes
+                total_width = max(10, num_nodes * 2)
+                x_positions = [
+                    i * (total_width / (num_nodes - 1)) - total_width / 2 for i in range(num_nodes)
+                ]
 
-            # Position children
-            child_x = x - (total_width - 1) / 2
-            for child, child_width in zip(children, child_widths):
-                child_center = child_x + (child_width - 1) / 2
-                child_x = position_node(child.id, child_center, y - 1, child_width)
+            # Assign positions (y increases downward, so negate depth)
+            y = -depth * y_spacing
+            for i, node_id in enumerate(level_nodes):
+                positions[node_id] = (x_positions[i], y)
 
-            return x + width
+        # Adjust positions to center children under parents
+        for depth in sorted(levels.keys(), reverse=True)[1:]:  # Skip deepest level
+            for node_id in levels[depth]:
+                # Get children of this node
+                children = children_map.get(node_id, [])
+                if children:
+                    # Calculate average x position of children
+                    child_x_positions = [
+                        positions[child.id][0] for child in children if child.id in positions
+                    ]
+                    if child_x_positions:
+                        avg_x = sum(child_x_positions) / len(child_x_positions)
+                        # Update parent position to be centered above children
+                        positions[node_id] = (avg_x, positions[node_id][1])
 
-        # Position root nodes
-        total_width = sum(calculate_width(root.id) for root in root_nodes)
-        x_pos = -(total_width - 1) / 2
-        max_depth = max(node.depth for node in nodes)
-
-        for root in root_nodes:
-            root_width = calculate_width(root.id)
-            root_center = x_pos + (root_width - 1) / 2
-            x_pos = position_node(root.id, root_center, max_depth, root_width)
-
-        # Create figure
-        fig, ax = plt.subplots(figsize=(16, 12))
+        # Create figure with more space for title
+        fig, ax = plt.subplots(figsize=(20, 14))
 
         # Draw edges
         for node in nodes:
@@ -1543,7 +1606,7 @@ class HierarchyBuilderService(BaseService):
                     [parent_pos[1], child_pos[1]],
                     "k-",
                     linewidth=2,
-                    alpha=0.6,
+                    alpha=0.5,
                     zorder=1,
                 )
 
@@ -1556,34 +1619,34 @@ class HierarchyBuilderService(BaseService):
                 # Draw node circle
                 circle = plt.Circle(
                     (x, y),
-                    0.3,
+                    0.4,
                     facecolor=color,
                     edgecolor="#333333",
-                    linewidth=2,
+                    linewidth=2.5,
                     alpha=0.9,
                     zorder=2,
                 )
                 ax.add_patch(circle)
 
                 # Format label
-                label = f"{node.name}\n[{node.node_type}]"
+                label = f"{node.name}\n({node.node_type})"
                 if node.price_impact_value is not None and node.price_impact_value != 0:
                     label += f"\n[+${node.price_impact_value:.2f}]"
 
                 # Draw label
                 ax.text(
-                    x, y, label, ha="center", va="center", fontsize=8, fontweight="bold", zorder=3
+                    x, y, label, ha="center", va="center", fontsize=9, fontweight="bold", zorder=3
                 )
 
-        # Add title
-        ax.set_title(f"Attribute Hierarchy: {title}", fontsize=16, fontweight="bold", pad=20)
+        # Add title with extra padding to prevent cutoff
+        ax.set_title(f"Attribute Hierarchy: {title}", fontsize=18, fontweight="bold", pad=30)
 
         # Add legend
         legend_elements = [
             mpatches.Patch(facecolor=color, edgecolor="#333333", label=node_type.capitalize())
             for node_type, color in node_type_colors.items()
         ]
-        ax.legend(handles=legend_elements, loc="upper left", fontsize=10)
+        ax.legend(handles=legend_elements, loc="upper left", fontsize=11, framealpha=0.9)
 
         # Set axis properties
         ax.set_aspect("equal")
@@ -1598,6 +1661,7 @@ class HierarchyBuilderService(BaseService):
             ax.set_xlim(min(x_coords) - x_margin, max(x_coords) + x_margin)
             ax.set_ylim(min(y_coords) - y_margin, max(y_coords) + y_margin)
 
-        plt.tight_layout()
+        # Use tight_layout with extra padding to prevent title cutoff
+        plt.tight_layout(pad=2.0)
 
         return fig

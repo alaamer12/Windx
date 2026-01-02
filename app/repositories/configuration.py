@@ -12,6 +12,7 @@ Features:
     - Get by status
     - Eager loading of selections
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select
@@ -25,6 +26,7 @@ from app.schemas.configuration import ConfigurationCreate, ConfigurationUpdate
 __all__ = ["ConfigurationRepository"]
 
 
+# noinspection PyTypeChecker
 class ConfigurationRepository(
     BaseRepository[Configuration, ConfigurationCreate, ConfigurationUpdate]
 ):

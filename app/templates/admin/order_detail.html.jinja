@@ -1,4 +1,5 @@
 {% extends "admin/base.html.jinja" %}
+{% from "components/buttons.html.jinja" import button, button_group %}
 
 {% block title %}Order {{ order.order_number }} - WindX Admin{% endblock %}
 
@@ -19,9 +20,7 @@
         </div>
         <p class="text-gray-500 mt-1">Placed on {{ order.order_date.strftime('%B %d, %Y at %I:%M %p') }}</p>
     </div>
-    <a href="/api/v1/admin/orders" class="btn btn-outline">
-        <span>←</span> Back to Orders
-    </a>
+    {{ button("← Back to Orders", href="/api/v1/admin/orders", variant="outline", size="md") }}
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -41,7 +40,7 @@
                         <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                     </select>
                 </div>
-                <button type="submit" class="btn btn-primary w-full">Update Status</button>
+                {{ button("🔄 Update Status", type="submit", variant="primary", size="md", class="w-full") }}
             </form>
         </div>
 

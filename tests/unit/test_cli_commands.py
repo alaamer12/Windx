@@ -5,7 +5,6 @@ path resolution without executing actual database operations.
 """
 
 import argparse
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -205,7 +204,7 @@ class TestAsyncCommandFunctions:
         # Create a proper async context manager mock
         mock_conn = AsyncMock()
         mock_engine = MagicMock()
-        
+
         # Mock the async context manager properly
         async_context = AsyncMock()
         async_context.__aenter__.return_value = mock_conn
@@ -232,7 +231,7 @@ class TestAsyncCommandFunctions:
         # Create a proper async context manager mock
         mock_conn = AsyncMock()
         mock_engine = MagicMock()
-        
+
         # Mock the async context manager properly
         async_context = AsyncMock()
         async_context.__aenter__.return_value = mock_conn
@@ -250,11 +249,11 @@ class TestAsyncCommandFunctions:
                 mock_db.provider = "postgresql"
                 mock_db.host = "localhost"
                 mock_db.name = "test_db"
-                
+
                 mock_sec = MagicMock()
                 mock_sec.secret_key.get_secret_value.return_value = "test_key"
                 mock_sec.algorithm = "HS256"
-                
+
                 mock_settings.return_value.database = mock_db
                 mock_settings.return_value.security = mock_sec
 

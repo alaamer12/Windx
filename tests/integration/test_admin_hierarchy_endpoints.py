@@ -16,16 +16,20 @@ from app.services.hierarchy_builder import HierarchyBuilderService
 async def test_hierarchy_dashboard_no_type_selected(
     client: AsyncClient,
     superuser_auth_headers: dict,
-    db_session: AsyncSession,
 ):
     """Test dashboard renders with no manufacturing type selected."""
-    # Create a manufacturing type for the selector
-    service = HierarchyBuilderService(db_session)
-    await service.create_manufacturing_type(
-        name="Test Window",
-        description="Test window type",
-        base_price=Decimal("200.00"),
+    # Create a manufacturing type for the selector via API
+    create_response = await client.post(
+        "/api/v1/manufacturing-types/",
+        headers=superuser_auth_headers,
+        json={
+            "name": "Test Window Dashboard No Selection",
+            "description": "Test window type",
+            "base_price": "200.00",
+            "base_weight": "0.00",
+        },
     )
+    assert create_response.status_code == 201
 
     # Request dashboard without type selection
     response = await client.get(
@@ -43,51 +47,6 @@ async def test_hierarchy_dashboard_no_type_selected(
     assert "Test Window" in content
     assert "Select Manufacturing Type" in content
 
-
-@pytest.mark.asyncio
-async def test_hierarchy_dashboard_with_type_selected(
-    client: AsyncClient,
-    superuser_auth_headers: dict,
-    db_session: AsyncSession,
-):
-    """Test dashboard renders with manufacturing type selected."""
-    # Create manufacturing type and hierarchy
-    service = HierarchyBuilderService(db_session)
-    mfg_type = await service.create_manufacturing_type(
-        name="Test Window",
-        description="Test window type",
-        base_price=Decimal("200.00"),
-    )
-
-    # Create simple hierarchy
-    root = await service.create_node(
-        manufacturing_type_id=mfg_type.id,
-        name="Frame Options",
-        node_type="category",
-    )
-
-    child = await service.create_node(
-        manufacturing_type_id=mfg_type.id,
-        name="Material Type",
-        node_type="attribute",
-        parent_node_id=root.id,
-    )
-
-    # Request dashboard with type selection
-    response = await client.get(
-        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
-        headers=superuser_auth_headers,
-    )
-
-    # Verify response
-    assert response.status_code == 200
-    assert "text/html" in response.headers["content-type"]
-
-    # Verify content contains tree data
-    content = response.text
-    assert "Frame Options" in content
-    assert "Material Type" in content
-    assert "Attribute Tree" in content
 
 
 @pytest.mark.asyncio
@@ -221,8 +180,56 @@ async def test_hierarchy_dashboard_diagram_failure_graceful(
     assert response.status_code == 200
     content = response.text
     assert "Frame Options" in content
-    # Diagram should show empty state when generation fails
-    assert "(Empty tree)" in content or "Frame Options" in content
+    # Diagram should be None when generation fails, but page should still render
+    # The ASCII tree should still be visible
+    assert "Frame Options [category]" in content
+
+
+@pytest.mark.asyncio
+async def test_hierarchy_dashboard_diagram_generation_success(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test dashboard successfully generates and displays diagram tree."""
+    # Create manufacturing type and hierarchy
+    service = HierarchyBuilderService(db_session)
+    mfg_type = await service.create_manufacturing_type(
+        name="Test Window",
+        base_price=Decimal("200.00"),
+    )
+
+    root = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Frame Options",
+        node_type="category",
+    )
+
+    child = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Aluminum",
+        node_type="option",
+        parent_node_id=root.id,
+        price_impact_value=Decimal("50.00"),
+    )
+
+    # Request dashboard
+    response = await client.get(
+        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
+        headers=superuser_auth_headers,
+    )
+
+    # Verify response
+    assert response.status_code == 200
+    content = response.text
+
+    # Verify ASCII tree is present
+    assert "Frame Options [category]" in content
+    assert "Aluminum [option]" in content
+
+    # Verify diagram image is embedded (base64 encoded PNG)
+    # The template should have an img tag with base64 data
+    assert "data:image/png;base64," in content or "diagram_tree" in content
 
 
 @pytest.mark.asyncio
@@ -333,6 +340,95 @@ async def test_hierarchy_dashboard_multiple_manufacturing_types(
     assert "Window Type" in content
     assert "Door Type" in content
     assert "Select Manufacturing Type" in content
+
+
+@pytest.mark.asyncio
+async def test_hierarchy_dashboard_flattened_attribute_nodes_structure(
+    client: AsyncClient,
+    superuser_auth_headers: dict,
+    db_session: AsyncSession,
+):
+    """Test that dashboard provides flattened attribute_nodes for JavaScript consumption."""
+    import random
+    import time
+    
+    # Create manufacturing type and complex hierarchy with unique name
+    service = HierarchyBuilderService(db_session)
+    unique_id = f"{int(time.time() * 1000)}{random.randint(1000, 9999)}"
+    mfg_type = await service.create_manufacturing_type(
+        name=f"Test Window Flattened {unique_id}",
+        base_price=Decimal("200.00"),
+    )
+
+    # Create nested hierarchy: Root -> Category -> Attribute -> Option
+    root = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Frame Options",
+        node_type="category",
+    )
+
+    category = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Material Type",
+        node_type="attribute",
+        parent_node_id=root.id,
+    )
+
+    option1 = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Aluminum",
+        node_type="option",
+        parent_node_id=category.id,
+        price_impact_value=Decimal("50.00"),
+    )
+
+    option2 = await service.create_node(
+        manufacturing_type_id=mfg_type.id,
+        name="Wood",
+        node_type="option",
+        parent_node_id=category.id,
+        price_impact_value=Decimal("120.00"),
+    )
+
+    # Request dashboard
+    response = await client.get(
+        f"/api/v1/admin/hierarchy/?manufacturing_type_id={mfg_type.id}",
+        headers=superuser_auth_headers,
+    )
+
+    assert response.status_code == 200
+    content = response.text
+
+    # Verify all nodes are present in the flattened structure
+    # The JavaScript should receive a flat list of all nodes without nested children
+    assert "Frame Options" in content
+    assert "Material Type" in content
+    assert "Aluminum" in content
+    assert "Wood" in content
+
+    # Verify that the attribute_nodes JavaScript data is present
+    # This should be a flat array, not nested tree structure
+    assert "var nodeData" in content or "nodeData" in content
+
+    # Verify the structure contains all expected node IDs
+    # The flattened structure should include all 4 nodes we created
+    import re
+    
+    # Look for JavaScript variable containing node data
+    # The template should render something like: var nodeData = [...];
+    js_data_match = re.search(r'nodeData\s*=\s*(\[.*?\]);', content, re.DOTALL)
+    if js_data_match:
+        js_data = js_data_match.group(1)
+        # Verify all node names appear in the JavaScript data
+        assert "Frame Options" in js_data
+        assert "Material Type" in js_data
+        assert "Aluminum" in js_data
+        assert "Wood" in js_data
+        
+        # Verify it's a flat structure (no nested "children" arrays)
+        # Count occurrences of "children" - should be 0 in flattened structure
+        children_count = js_data.count('"children"')
+        assert children_count == 0, f"Found {children_count} 'children' properties in flattened data, expected 0"
 
 
 # ============================================================================

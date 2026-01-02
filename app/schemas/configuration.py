@@ -17,6 +17,7 @@ Features:
     - Type-safe with Annotated types
     - Automatic ORM conversion support
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -220,7 +221,7 @@ class ConfigurationWithSelections(Configuration):
     """
 
     selections: Annotated[
-        list["ConfigurationSelection"],
+        list[ConfigurationSelection],
         Field(
             default_factory=list,
             description="Configuration selections",

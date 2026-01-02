@@ -32,16 +32,25 @@ __all__ = [
     "ConfigurationFactory",
 ]
 
-_counter = 0
+import uuid
 
 
-def _get_unique_id() -> int:
+def reset_counter() -> None:
+    """Reset the global counter for test isolation.
+
+    Note: This function is kept for compatibility but is no longer needed
+    since we use UUIDs for uniqueness.
+    """
+    pass  # No-op since we use UUIDs now
+
+
+def _get_unique_id() -> str:
     """Get unique ID for test data.
 
     Returns:
-        int: Unique counter value
+        str: Unique UUID-based identifier
     """
-    global _counter
+    return str(uuid.uuid4())[:8]  # Use first 8 chars of UUID for readability
     _counter += 1
     return _counter
 
@@ -94,7 +103,7 @@ def create_configuration_data(
         name = f"Test Configuration {unique_id}"
 
     if reference_code is None:
-        reference_code = f"CFG-TEST-{unique_id:04d}"
+        reference_code = f"CFG-TEST-{unique_id}"
 
     if base_price is None:
         base_price = Decimal("200.00")

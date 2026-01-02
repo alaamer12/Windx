@@ -13,6 +13,7 @@ Features:
     - Async SQLAlchemy operations
     - Pydantic schema integration
 """
+
 from __future__ import annotations
 
 from typing import Any, Generic, TypeVar
@@ -30,6 +31,7 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 __all__ = ["BaseRepository", "ModelType", "CreateSchemaType", "UpdateSchemaType"]
 
 
+# noinspection PyTypeChecker
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     """Base repository class with common CRUD operations.
 

@@ -104,14 +104,32 @@ async def list_quotes(
     """
     from app.core.pagination import paginate
     from app.services.quote import QuoteService
+    from app.services.rbac import RBACService
+    from sqlalchemy import select
 
     quote_service = QuoteService(db)
+    rbac_service = RBACService(db)
 
-    # Build filtered query with authorization
-    query = quote_service.get_user_quotes_query(
-        user=current_user,
-        status=status_filter,
-    )
+    # Build base query
+    query = select(Quote)
+
+    # Apply RBAC filtering
+    if current_user.role != "superadmin":
+        accessible_customers = await rbac_service.get_accessible_customers(current_user)
+        
+        if not accessible_customers:
+            # User has no accessible customers - return empty result
+            query = query.where(False)
+        else:
+            # Filter by accessible customers
+            query = query.where(Quote.customer_id.in_(accessible_customers))
+
+    # Apply status filter
+    if status_filter:
+        query = query.where(Quote.status == status_filter)
+
+    # Order by most recent first
+    query = query.order_by(Quote.created_at.desc())
 
     return await paginate(db, query, params)
 

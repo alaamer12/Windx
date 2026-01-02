@@ -49,6 +49,7 @@ async def create_test_order_with_dependencies(
     """
     # Create manufacturing type with unique name
     import uuid
+
     unique_suffix = str(uuid.uuid4())[:8]
     mfg_type = ManufacturingType(
         name=f"Test Type {unique_suffix}",

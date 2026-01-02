@@ -13,6 +13,7 @@ Features:
     - Order number generation
     - Authorization checks
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -25,12 +26,30 @@ from app.core.exceptions import (
     NotFoundException,
     ValidationException,
 )
+from app.core.rbac import Permission, Privilege, ResourceOwnership, Role, require
 from app.models.order import Order
 from app.repositories.order import OrderRepository
 from app.repositories.quote import QuoteRepository
 from app.services.base import BaseService
+from app.services.rbac import RBACService
 
 __all__ = ["OrderService"]
+
+
+# Define reusable Privilege objects for Order Service operations
+OrderManagement = Privilege(
+    roles=[Role.SALESMAN, Role.PARTNER],
+    permission=Permission("order", "create"),
+    resource=ResourceOwnership("customer"),
+)
+
+OrderReader = Privilege(
+    roles=[Role.CUSTOMER, Role.SALESMAN, Role.PARTNER],
+    permission=Permission("order", "read"),
+    resource=ResourceOwnership("order"),
+)
+
+AdminOrderAccess = Privilege(roles=Role.SUPERADMIN, permission=Permission("*", "*"))
 
 
 class OrderService(BaseService):
@@ -54,10 +73,13 @@ class OrderService(BaseService):
         super().__init__(db)
         self.order_repo = OrderRepository(db)
         self.quote_repo = QuoteRepository(db)
+        self.rbac_service = RBACService(db)
 
+    @require(Permission("order", "create"))
     async def create_order_from_quote(
         self,
         quote_id: int,
+        user: Any,
         order_date: date | None = None,
         required_date: date | None = None,
         special_instructions: str | None = None,
@@ -127,7 +149,9 @@ class OrderService(BaseService):
 
         return order
 
-    async def get_order(self, order_id: PositiveInt) -> Order:
+    @require(OrderReader)
+    @require(AdminOrderAccess)
+    async def get_order(self, order_id: PositiveInt, user: Any = None) -> Order:
         """Get order by ID.
 
         Args:

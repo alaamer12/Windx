@@ -716,6 +716,8 @@ async def setup_fresh_db_command(args: argparse.Namespace):
         console.print("  • Create all tables with LTREE extension")
         console.print("  • Seed initial data")
         console.print("  • Create minimal entry system data")
+        console.print("  • Setup profile hierarchy with comprehensive attribute structure")
+        console.print("  • Seed sample profile data")
         console.print("  • Create entry pages (accessories & glazing)")
         console.print("  • Verify complete setup")
         console.print()
@@ -786,7 +788,34 @@ async def setup_fresh_db_command(args: argparse.Namespace):
                 return 1
             progress.update(task, description="[green]✓ Minimal entry system data created")
             
-            # Step 6: Create entry pages
+            # Step 6: Setup profile hierarchy (CRITICAL for profile page)
+            progress.update(task, description="[cyan]Setting up profile hierarchy...")
+            result = subprocess.run(
+                [python_exe, "scripts/setup_profile_hierarchy.py"], 
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                console.print(f"\n[bold red]✗ Profile hierarchy setup failed:[/bold red]")
+                console.print(result.stderr)
+                console.print("[yellow]This is critical for the profile page to work correctly![/yellow]")
+                return 1
+            progress.update(task, description="[green]✓ Profile hierarchy setup completed")
+            
+            # Step 7: Seed profile data (optional but recommended)
+            progress.update(task, description="[cyan]Seeding profile data...")
+            result = subprocess.run(
+                [python_exe, "scripts/seed_profile_data.py"], 
+                capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                console.print(f"\n[bold yellow]⚠ Profile data seeding failed:[/bold yellow]")
+                console.print(result.stderr)
+                console.print("[dim]Profile page will work but won't have sample data[/dim]")
+                progress.update(task, description="[yellow]⚠ Profile data seeding failed (optional)")
+            else:
+                progress.update(task, description="[green]✓ Profile data seeded")
+            
+            # Step 8: Create entry pages
             progress.update(task, description="[cyan]Creating entry pages...")
             result = subprocess.run(
                 [python_exe, "_create_entry_pages.py"], 
@@ -798,7 +827,7 @@ async def setup_fresh_db_command(args: argparse.Namespace):
                 return 1
             progress.update(task, description="[green]✓ Entry pages created")
             
-            # Step 7: Verify setup
+            # Step 9: Verify setup
             progress.update(task, description="[cyan]Verifying setup...")
             verify_args = argparse.Namespace()
             verify_result = await verify_setup_command(verify_args)
@@ -818,8 +847,11 @@ async def setup_fresh_db_command(args: argparse.Namespace):
                 "[cyan]•[/cyan] Alembic migrations applied\n"
                 "[cyan]•[/cyan] Initial users and data seeded\n"
                 "[cyan]•[/cyan] Entry system configured\n"
+                "[cyan]•[/cyan] Profile hierarchy with comprehensive attribute structure created\n"
+                "[cyan]•[/cyan] Sample profile data seeded\n"
                 "[cyan]•[/cyan] Entry pages (profile, accessories, glazing) ready\n\n"
                 "[dim]You can now start the server and use the application![/dim]\n"
+                "[dim]Profile page: http://localhost:8000/api/v1/admin/entry/profile[/dim]\n"
                 "[dim]Start with: python manage.py start[/dim]",
                 title="[bold green]Setup Complete[/bold green]",
                 border_style="green",
@@ -929,6 +961,43 @@ async def verify_setup_command(args: argparse.Namespace):
             user_count = result.scalar()
             print(f"   ✅ Total users: {user_count}")
 
+        # 6. Check profile system setup (critical for profile page)
+        print("\n6. Checking profile system setup...")
+        session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        async with session_maker() as session:
+            from app.core.manufacturing_type_resolver import ManufacturingTypeResolver
+            
+            profile_status = await ManufacturingTypeResolver.verify_profile_setup(session)
+            
+            if profile_status["status"] == "ok":
+                print("   ✅ Profile system properly configured")
+                if profile_status["has_rich_structure"]:
+                    print("   ✅ Rich profile structure available")
+                else:
+                    print("   ⚠️  Basic profile structure only")
+            elif profile_status["status"] == "warning":
+                print("   ⚠️  Profile system has warnings:")
+                for warning in profile_status["warnings"]:
+                    print(f"      • {warning}")
+                all_ok = False
+            else:
+                print("   ❌ Profile system has errors:")
+                for error in profile_status["errors"]:
+                    print(f"      • {error}")
+                all_ok = False
+            
+            if profile_status["manufacturing_type"]:
+                mfg = profile_status["manufacturing_type"]
+                print(f"   Manufacturing Type: {mfg['name']} (ID: {mfg['id']})")
+                print(f"   Attribute Count: {profile_status['attribute_count']}")
+                
+                if "structure_details" in profile_status:
+                    details = profile_status["structure_details"]
+                    print(f"   Structure: {details['sections']} sections, {details['field_types']} field types, score {details['rich_score']}")
+            else:
+                print("   ❌ No manufacturing type found for profile page")
+                all_ok = False
+
         print("\n" + "=" * 60)
         if all_ok:
             print("✅ ALL CHECKS PASSED - SETUP COMPLETE!")
@@ -953,6 +1022,103 @@ async def verify_setup_command(args: argparse.Namespace):
         print(f"\n❌ Error during verification: {e}")
         import traceback
 
+        traceback.print_exc()
+        return 1
+    finally:
+        await engine.dispose()
+
+
+async def check_profile_command(args: argparse.Namespace):
+    """Check profile system setup and provide recommendations."""
+    console.print(Panel.fit("[bold cyan]Profile System Check[/bold cyan]", border_style="cyan"))
+    console.print()
+    
+    engine = get_engine()
+    session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    
+    try:
+        async with session_maker() as session:
+            from app.core.manufacturing_type_resolver import ManufacturingTypeResolver
+            
+            profile_status = await ManufacturingTypeResolver.verify_profile_setup(session)
+            
+            # Status summary
+            if profile_status["status"] == "ok":
+                console.print("✅ [green]Profile system is properly configured[/green]")
+            elif profile_status["status"] == "warning":
+                console.print("⚠️  [yellow]Profile system has warnings[/yellow]")
+            else:
+                console.print("❌ [red]Profile system has errors[/red]")
+            
+            console.print()
+            
+            # Details table
+            details_table = Table(show_header=False, box=box.SIMPLE)
+            
+            if profile_status["manufacturing_type"]:
+                mfg = profile_status["manufacturing_type"]
+                details_table.add_row("[cyan]Manufacturing Type:[/cyan]", f"[yellow]{mfg['name']}[/yellow] (ID: {mfg['id']})")
+                details_table.add_row("[cyan]Base Category:[/cyan]", f"[yellow]{mfg['base_category']}[/yellow]")
+            else:
+                details_table.add_row("[cyan]Manufacturing Type:[/cyan]", "[red]None found[/red]")
+            
+            details_table.add_row("[cyan]Attribute Count:[/cyan]", f"[yellow]{profile_status['attribute_count']}[/yellow]")
+            
+            if "structure_details" in profile_status:
+                details = profile_status["structure_details"]
+                details_table.add_row("[cyan]Logical Sections:[/cyan]", f"[yellow]{details['sections']}[/yellow]")
+                details_table.add_row("[cyan]Field Types:[/cyan]", f"[yellow]{details['field_types']}[/yellow]")
+                details_table.add_row("[cyan]UI Components:[/cyan]", f"[yellow]{details['ui_components']}[/yellow]")
+                details_table.add_row("[cyan]Rich Score:[/cyan]", f"[yellow]{details['rich_score']}[/yellow]")
+                
+                if details["section_names"]:
+                    details_table.add_row("[cyan]Sections:[/cyan]", f"[dim]{', '.join(details['section_names'])}[/dim]")
+            
+            details_table.add_row("[cyan]Rich Structure:[/cyan]", 
+                                "[green]Yes[/green]" if profile_status["has_rich_structure"] 
+                                else "[yellow]Basic[/yellow]")
+            
+            console.print(details_table)
+            console.print()
+            
+            # Warnings
+            if profile_status["warnings"]:
+                console.print("[bold yellow]Warnings:[/bold yellow]")
+                for warning in profile_status["warnings"]:
+                    console.print(f"  • {warning}")
+                console.print()
+            
+            # Errors
+            if profile_status["errors"]:
+                console.print("[bold red]Errors:[/bold red]")
+                for error in profile_status["errors"]:
+                    console.print(f"  • {error}")
+                console.print()
+            
+            # Recommendations
+            console.print("[bold cyan]Recommendations:[/bold cyan]")
+            if profile_status["status"] == "error":
+                console.print("  • Run: [yellow]python scripts/setup_profile_hierarchy.py[/yellow]")
+                console.print("  • Or run: [yellow]python manage.py setup_fresh_db[/yellow]")
+            elif profile_status["status"] == "warning":
+                if not profile_status["has_rich_structure"]:
+                    console.print("  • Consider adding more attributes to create richer product configuration")
+                    console.print("  • Run: [yellow]python scripts/setup_profile_hierarchy.py[/yellow] for a comprehensive example")
+                    console.print("  • Or create custom attributes through the admin interface")
+                console.print("  • Consider running: [yellow]python scripts/seed_profile_data.py[/yellow] for sample data")
+            else:
+                console.print("  • Profile system is ready!")
+                console.print("  • Visit: [yellow]http://localhost:8000/api/v1/admin/entry/profile[/yellow]")
+                if profile_status["has_rich_structure"]:
+                    console.print("  • Your profile system has a rich structure - great for complex products!")
+                else:
+                    console.print("  • Consider adding more attributes for richer product configuration")
+            
+            return 0 if profile_status["status"] != "error" else 1
+            
+    except Exception as e:
+        console.print(f"[bold red]Error checking profile system:[/bold red] {e}")
+        import traceback
         traceback.print_exc()
         return 1
     finally:
@@ -2593,6 +2759,7 @@ COMMAND_REGISTRY: dict[str, Callable[[argparse.Namespace], None]] = {
     "clean": lambda args: clean_command(args),
     "openapi": lambda args: openapi_command(args),
     "setup_fresh_db": lambda args: sys.exit(asyncio.run(setup_fresh_db_command(args))),
+    "check_profile": lambda args: sys.exit(asyncio.run(check_profile_command(args))),
 }
 
 

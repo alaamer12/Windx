@@ -560,7 +560,7 @@ async def seed_data_command(args: argparse.Namespace):
                     is_superuser=True,
                 )
                 session.add(admin_user)
-                print("✅ Created admin user: admin@example.com / Admin123!")
+                print(f"✅ Created admin user: admin@example.com / {test_settings.test_admin_password}")
             else:
                 print("✅ Admin user already exists: admin@example.com")
 
@@ -580,7 +580,7 @@ async def seed_data_command(args: argparse.Namespace):
                     is_superuser=False,
                 )
                 session.add(regular_user)
-                print("✅ Created regular user: user@example.com / User123!")
+                print(f"✅ Created regular user: user@example.com / {test_settings.test_user_password}")
             else:
                 print("✅ Regular user already exists: user@example.com")
 
@@ -841,6 +841,10 @@ async def verify_setup_command(args: argparse.Namespace):
     print("WINDX APPLICATION SETUP VERIFICATION")
     print("=" * 60)
 
+    # Import test settings for password display
+    from tests.config import get_test_settings
+    test_settings = get_test_settings()
+
     engine = get_engine()
     all_ok = True
 
@@ -935,7 +939,7 @@ async def verify_setup_command(args: argparse.Namespace):
             print("\n2. Login to admin panel:")
             print("   http://127.0.0.1:8000/api/v1/admin/login")
             print("   Username: admin")
-            print("   Password: Admin123!")
+            print(f"   Password: {test_settings.test_admin_password}")
             print("\n3. View API docs:")
             print("   http://127.0.0.1:8000/docs")
             return 0

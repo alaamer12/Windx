@@ -45,12 +45,12 @@ echo ""
 
 # Application Metadata
 echo "🏷️  Application Metadata:"
-APP_VERSION="1.0.0"
-SCRIPT_VERSION="v1.0.1"
+APP_VERSION="2.0.0"
+SCRIPT_VERSION="v2.0.1"
 
 # Try to read version from VERSION file
 if [ -f "VERSION" ]; then
-    APP_VERSION=$(cat VERSION 2>/dev/null || echo "1.0.0")
+    APP_VERSION=$(cat VERSION 2>/dev/null || echo "2.0.0")
     echo "   📄 Version read from VERSION file: ${APP_VERSION}"
 fi
 
@@ -143,9 +143,11 @@ echo ""
 
 # Install dependencies using UV
 echo "📦 Installing Dependencies..."
-cd /home/site/wwwroot
 
-# Check if pyproject.toml exists
+# We're already in the right directory (/tmp/8de4ae5505c8826)
+# Don't change to /home/site/wwwroot
+
+# Check if pyproject.toml exists in current directory
 if [ ! -f "pyproject.toml" ]; then
     echo "❌ pyproject.toml not found in $(pwd)"
     echo "📁 Contents of current directory:"

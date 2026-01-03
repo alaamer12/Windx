@@ -235,7 +235,8 @@ echo ""
 # Run database migrations
 echo "🔄 Running Database Migrations..."
 if [ -f "alembic.ini" ]; then
-    uv run alembic upgrade head
+    # Use the already installed alembic from requirements.txt instead of uv run
+    python -m alembic upgrade head
     echo "✅ Database migrations completed"
 else
     echo "⚠️  No alembic.ini found, skipping migrations"
@@ -262,7 +263,7 @@ echo "=========================================="
 echo ""
 
 # Start the FastAPI application with Gunicorn
-exec uv run gunicorn main:app \
+exec python -m gunicorn main:app \
     --workers 4 \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 0.0.0.0:8000 \

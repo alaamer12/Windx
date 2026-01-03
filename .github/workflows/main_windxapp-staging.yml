@@ -42,6 +42,14 @@ jobs:
             .
             !.venv/
             !antenv/
+            !.git/
+            !.github/
+            !tests/
+            !htmlcov/
+            !.hypothesis/
+            !__pycache__/
+            !*.pyc
+            !.pytest_cache/
 
       # 🚫 Opting Out of Oryx Build
       # If you prefer to disable the Oryx build process during deployment, follow these steps:

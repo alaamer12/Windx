@@ -10,6 +10,30 @@ echo "🪟 WindX Product Configurator - Azure Deployment"
 echo "=========================================="
 echo ""
 
+# Debug Information
+echo "🔍 Debug Information:"
+echo "   Script Location: ${BASH_SOURCE[0]}"
+echo "   Script Directory: $(dirname "${BASH_SOURCE[0]}")"
+echo "   Current Working Directory: $(pwd)"
+echo "   User: $(whoami)"
+echo "   Shell: $0"
+echo "   Timestamp: $(date)"
+echo ""
+
+echo "📁 Directory Structure Analysis:"
+echo "   Contents of current directory ($(pwd)):"
+ls -la
+echo ""
+echo "   Contents of /home/site/wwwroot:"
+ls -la /home/site/wwwroot 2>/dev/null || echo "   /home/site/wwwroot not accessible"
+echo ""
+echo "   Scripts directory contents:"
+ls -la scripts/ 2>/dev/null || echo "   scripts/ directory not found"
+echo ""
+echo "   Python files found:"
+find . -name "*.py" -type f | head -5 || echo "   No Python files found"
+echo ""
+
 # System Information
 echo "📋 System Information:"
 echo "   Hostname: $(hostname)"

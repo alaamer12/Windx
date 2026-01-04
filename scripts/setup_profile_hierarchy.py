@@ -35,7 +35,7 @@ async def create_manufacturing_type(session: AsyncSession) -> ManufacturingType:
     existing = result.scalar_one_or_none()
 
     if existing:
-        print(f"  ✅ Manufacturing type already exists (ID: {existing.id})")
+        print(f"  Manufacturing type already exists (ID: {existing.id})")
         return existing
 
     # Create new manufacturing type
@@ -52,7 +52,7 @@ async def create_manufacturing_type(session: AsyncSession) -> ManufacturingType:
     await session.commit()
     await session.refresh(manufacturing_type)
 
-    print(f"  ✅ Created manufacturing type (ID: {manufacturing_type.id})")
+    print(f"  Created manufacturing type (ID: {manufacturing_type.id})")
     return manufacturing_type
 
 
@@ -62,7 +62,9 @@ async def create_attribute_nodes(
     """Create all 29 CSV column attribute nodes."""
     print("Creating attribute nodes for all 29 CSV columns...")
 
-    # Define all attribute nodes based on CSV structure
+    # Create the hierarchical structure with proper parent-child relationships
+    
+    # First, create all attribute nodes (parents)
     attribute_definitions = [
         # Basic Information Section
         {
@@ -89,20 +91,7 @@ async def create_attribute_nodes(
             "sort_order": 2,
             "ui_component": "dropdown",
             "help_text": "Select the product type",
-            "validation_rules": {
-                "options": [
-                    "Frame",
-                    "Sash",
-                    "Mullion",
-                    "Flying mullion",
-                    "Glazing bead",
-                    "Interlock",
-                    "Track",
-                    "Auxiliary",
-                    "Coupling",
-                    "Tube",
-                ]
-            },
+            "validation_rules": {},
         },
         {
             "name": "company",
@@ -538,7 +527,7 @@ async def create_attribute_nodes(
     }
 
     if existing_nodes:
-        print(f"  ⚠️  Found {len(existing_nodes)} existing nodes, updating metadata and tooltips...")
+        print(f"  Found {len(existing_nodes)} existing nodes, updating metadata and tooltips...")
         existing_map = {n.name: n for n in existing_nodes}
         
         updated_count = 0
@@ -561,7 +550,7 @@ async def create_attribute_nodes(
                 updated_count += 1
         
         await session.commit()
-        print(f"  ✅ Updated {updated_count} attribute nodes with tooltips")
+        print(f"  Updated {updated_count} attribute nodes with tooltips")
         return
 
     # Create attribute nodes if not existing
@@ -596,7 +585,7 @@ async def create_attribute_nodes(
         created_count += 1
 
     await session.commit()
-    print(f"  ✅ Created {created_count} attribute nodes with comprehensive tooltips")
+    print(f"  Created {created_count} attribute nodes with comprehensive tooltips")
 
 
 async def main():
@@ -616,12 +605,12 @@ async def main():
             await create_attribute_nodes(session, manufacturing_type)
 
         print("\n" + "=" * 70)
-        print("✅ Setup completed successfully!")
+        print("Setup completed successfully!")
         print(f"Manufacturing Type ID: {manufacturing_type.id}")
         print("You can now use the Entry Page system with this manufacturing type.")
 
     except Exception as e:
-        print(f"\n❌ Error during setup: {e}")
+        print(f"\nError during setup: {e}")
         import traceback
 
         traceback.print_exc()

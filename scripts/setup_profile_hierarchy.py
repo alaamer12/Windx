@@ -3,10 +3,10 @@
 
 This script creates the "Window Profile Entry" manufacturing type and builds
 all 29 CSV column attribute nodes with proper data types, validation rules,
-and conditional display logic.
+conditional display logic, and option nodes for dropdown fields.
 
 Usage:
-    python setup_profile_hierarchy.py
+    python setup_profile_hierarchy_fixed.py
 """
 
 import asyncio
@@ -56,15 +56,53 @@ async def create_manufacturing_type(session: AsyncSession) -> ManufacturingType:
     return manufacturing_type
 
 
+async def create_option_nodes_for_field(session: AsyncSession, parent_node: AttributeNode, options: list[str]):
+    """Create option nodes for a dropdown field."""
+    print(f"  Creating {len(options)} option nodes for field: {parent_node.name}")
+    
+    # Get existing options to avoid duplicates
+    stmt = select(AttributeNode).where(
+        AttributeNode.parent_node_id == parent_node.id,
+        AttributeNode.node_type == "option"
+    )
+    result = await session.execute(stmt)
+    existing_options = {node.name for node in result.scalars().all()}
+    
+    created_count = 0
+    for i, option_value in enumerate(options):
+        if option_value not in existing_options:
+            option_node = AttributeNode(
+                manufacturing_type_id=parent_node.manufacturing_type_id,
+                parent_node_id=parent_node.id,
+                page_type=parent_node.page_type,
+                name=option_value,
+                node_type="option",
+                data_type="selection",
+                ltree_path=f"{parent_node.ltree_path}.{option_value.lower().replace(' ', '_').replace('-', '_')}",
+                depth=parent_node.depth + 1,
+                sort_order=i + 1,
+                price_impact_type="fixed",
+                price_impact_value=Decimal("0.00"),
+                weight_impact=Decimal("0.00"),
+            )
+            session.add(option_node)
+            created_count += 1
+    
+    if created_count > 0:
+        await session.commit()
+        print(f"    Created {created_count} new options")
+    else:
+        print(f"    All options already exist")
+
+
 async def create_attribute_nodes(
     session: AsyncSession, manufacturing_type: ManufacturingType
 ) -> None:
-    """Create all 29 CSV column attribute nodes."""
+    """Create all 29 CSV column attribute nodes with proper option hierarchy."""
     print("Creating attribute nodes for all 29 CSV columns...")
 
-    # Create the hierarchical structure with proper parent-child relationships
-    
-    # First, create all attribute nodes (parents)
+    # Define all attribute nodes based on CSV structure
+    # Note: No hardcoded validation_rules with options - these will be created as child nodes
     attribute_definitions = [
         # Basic Information Section
         {
@@ -91,7 +129,19 @@ async def create_attribute_nodes(
             "sort_order": 2,
             "ui_component": "dropdown",
             "help_text": "Select the product type",
-            "validation_rules": {},
+            "validation_rules": {},  # No hardcoded options
+            "options": [
+                "Frame",
+                "Sash", 
+                "Mullion",
+                "Flying mullion",
+                "Glazing bead",
+                "Interlock",
+                "Track",
+                "Auxiliary",
+                "Coupling",
+                "Tube",
+            ],
         },
         {
             "name": "company",
@@ -105,6 +155,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Company or manufacturer name",
             "validation_rules": {"max_length": 100},
+            "options": ["kompen"],  # From CSV data
         },
         {
             "name": "material",
@@ -117,7 +168,8 @@ async def create_attribute_nodes(
             "sort_order": 4,
             "ui_component": "dropdown",
             "help_text": "Select the material type",
-            "validation_rules": {"options": ["UPVC", "Aluminum", "Wood", "Steel", "Composite"]},
+            "validation_rules": {},  # No hardcoded options
+            "options": ["UPVC", "Aluminum", "Wood", "Steel", "Composite"],
         },
         {
             "name": "opening_system",
@@ -130,9 +182,8 @@ async def create_attribute_nodes(
             "sort_order": 5,
             "ui_component": "dropdown",
             "help_text": "Select the opening system type",
-            "validation_rules": {
-                "options": ["Casement", "Sliding", "Double-hung", "Tilt-turn", "Fixed", "All"]
-            },
+            "validation_rules": {},  # No hardcoded options
+            "options": ["Casement", "Sliding", "Double-hung", "Tilt-turn", "Fixed", "All"],
         },
         {
             "name": "system_series",
@@ -421,6 +472,8 @@ async def create_attribute_nodes(
             "sort_order": 25,
             "ui_component": "dropdown",
             "help_text": "Select reinforcement steel options",
+            "validation_rules": {},  # No hardcoded options
+            "options": ["Standard Steel", "High Strength Steel", "Galvanized Steel"],  # Common options
         },
         {
             "name": "colours",
@@ -433,6 +486,8 @@ async def create_attribute_nodes(
             "sort_order": 26,
             "ui_component": "dropdown",
             "help_text": "Select available colors",
+            "validation_rules": {},  # No hardcoded options
+            "options": ["White", "Brown", "Black", "Grey", "Wood Grain"],  # Common colors
         },
         # Pricing Section
         {
@@ -551,10 +606,20 @@ async def create_attribute_nodes(
         
         await session.commit()
         print(f"  Updated {updated_count} attribute nodes with tooltips")
+        
+        # Now create option nodes for dropdown fields
+        print("Creating option nodes for dropdown fields...")
+        for attr_def in attribute_definitions:
+            if "options" in attr_def and attr_def["name"] in existing_map:
+                parent_node = existing_map[attr_def["name"]]
+                await create_option_nodes_for_field(session, parent_node, attr_def["options"])
+        
         return
 
     # Create attribute nodes if not existing
     created_count = 0
+    created_nodes = {}
+    
     for attr_def in attribute_definitions:
         # Use rich tooltip content if available, otherwise use basic description
         if attr_def["name"] in tooltip_content:
@@ -582,10 +647,22 @@ async def create_attribute_nodes(
             page_type="profile",  # Set page_type for profile attributes
         )
         session.add(node)
+        created_nodes[attr_def["name"]] = node
         created_count += 1
 
     await session.commit()
     print(f"  Created {created_count} attribute nodes with comprehensive tooltips")
+    
+    # Refresh nodes to get their IDs
+    for node in created_nodes.values():
+        await session.refresh(node)
+    
+    # Now create option nodes for dropdown fields
+    print("Creating option nodes for dropdown fields...")
+    for attr_def in attribute_definitions:
+        if "options" in attr_def:
+            parent_node = created_nodes[attr_def["name"]]
+            await create_option_nodes_for_field(session, parent_node, attr_def["options"])
 
 
 async def main():
@@ -601,12 +678,14 @@ async def main():
             # Create manufacturing type
             manufacturing_type = await create_manufacturing_type(session)
 
-            # Create attribute nodes
+            # Create attribute nodes with proper option hierarchy
             await create_attribute_nodes(session, manufacturing_type)
 
         print("\n" + "=" * 70)
         print("Setup completed successfully!")
         print(f"Manufacturing Type ID: {manufacturing_type.id}")
+        print("All dropdown fields now have proper option nodes instead of hardcoded validation rules")
+        print("Hierarchy is properly structured for conditional field visibility")
         print("You can now use the Entry Page system with this manufacturing type.")
 
     except Exception as e:

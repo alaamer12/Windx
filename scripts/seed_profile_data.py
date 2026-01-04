@@ -20,10 +20,10 @@ from app.services.entry import EntryService
 
 async def seed_profile_data():
     """Seed dummy profile data for testing."""
-    print("🌱 Starting profile data seeding...")
+    print("[SEED] Starting profile data seeding...")
     
     settings = get_settings()
-    print(f"📊 Database: {settings.database.provider}")
+    print(f"[INFO] Database: {settings.database.provider}")
     
     async for session in get_db():
         try:
@@ -36,12 +36,12 @@ async def seed_profile_data():
             )
             
             if not manufacturing_type:
-                print("❌ No manufacturing types found for profile page.")
+                print("[ERROR] No manufacturing types found for profile page.")
                 print("   Please run the setup script first:")
                 print("   .venv\\scripts\\python scripts/setup_profile_hierarchy.py")
                 return
             
-            print(f"✅ Found manufacturing type: {manufacturing_type.name} (ID: {manufacturing_type.id})")
+            print(f"[OK] Found manufacturing type: {manufacturing_type.name} (ID: {manufacturing_type.id})")
             print(f"   Base category: {manufacturing_type.base_category}")
             print(f"   Base price: ${manufacturing_type.base_price}")
             
@@ -50,17 +50,17 @@ async def seed_profile_data():
             admin_user = result.scalar_one_or_none()
             
             if not admin_user:
-                print("❌ No admin user found. Please create one first.")
+                print("[ERROR] No admin user found. Please create one first.")
                 return
                 
-            print(f"✅ Found admin user: {admin_user.email}")
+            print(f"[OK] Found admin user: {admin_user.email}")
             
             # Create EntryService
             entry_service = EntryService(session)
             
             # Sample profile data - simplified and valid
             sample_profiles = [
-                # ✅ Simple Frame - Basic valid data
+                # Simple Frame - Basic valid data
                 {
                     "manufacturing_type_id": manufacturing_type.id,
                     "name": "Standard Frame",
@@ -82,7 +82,7 @@ async def seed_profile_data():
                     "upvc_profile_discount": Decimal("10.0"),
                 },
                 
-                # ✅ Sash Type - Valid sash data
+                # Sash Type - Valid sash data
                 {
                     "manufacturing_type_id": manufacturing_type.id,
                     "name": "Standard Sash",
@@ -105,7 +105,7 @@ async def seed_profile_data():
                     "upvc_profile_discount": Decimal("15.0"),
                 },
                 
-                # ✅ Sliding Frame - With flyscreen track
+                # Sliding Frame - With flyscreen track
                 {
                     "manufacturing_type_id": manufacturing_type.id,
                     "name": "Sliding Frame with Flyscreen",
@@ -129,7 +129,7 @@ async def seed_profile_data():
                     "upvc_profile_discount": Decimal("12.0"),
                 },
                 
-                # ✅ Mullion - Simple mullion
+                # Mullion - Simple mullion
                 {
                     "manufacturing_type_id": manufacturing_type.id,
                     "name": "Standard Mullion",
@@ -151,7 +151,7 @@ async def seed_profile_data():
                     "upvc_profile_discount": Decimal("20.0"),
                 },
                 
-                # ✅ Glazing Bead - Simple glazing bead
+                # Glazing Bead - Simple glazing bead
                 {
                     "manufacturing_type_id": manufacturing_type.id,
                     "name": "Standard Glazing Bead",
@@ -172,7 +172,7 @@ async def seed_profile_data():
                 },
             ]
             
-            print(f"📝 Creating {len(sample_profiles)} sample profiles...")
+            print(f"[INFO] Creating {len(sample_profiles)} sample profiles...")
             
             created_count = 0
             for i, profile_data in enumerate(sample_profiles, 1):
@@ -187,18 +187,18 @@ async def seed_profile_data():
                         profile_entry, admin_user, page_type="profile"
                     )
                     
-                    print(f"     ✅ Created configuration ID: {configuration.id}")
+                    print(f"     [OK] Created configuration ID: {configuration.id}")
                     created_count += 1
                     
                 except Exception as e:
-                    print(f"     ❌ Failed to create '{profile_data['name']}': {e}")
+                    print(f"     [ERROR] Failed to create '{profile_data['name']}': {e}")
                     print(f"         Error type: {type(e).__name__}")
                     if hasattr(e, 'field_errors'):
                         print(f"         Field errors: {e.field_errors}")
                     continue
             
             await session.commit()
-            print(f"\n🎉 Successfully created {created_count}/{len(sample_profiles)} profile configurations!")
+            print(f"\n[SUCCESS] Successfully created {created_count}/{len(sample_profiles)} profile configurations!")
             
             # Show summary
             from sqlalchemy import text
@@ -206,10 +206,10 @@ async def seed_profile_data():
                 text("SELECT COUNT(*) FROM configurations WHERE manufacturing_type_id = :mfg_id"),
                 {"mfg_id": manufacturing_type.id}
             )
-            print(f"📊 Total configurations for '{manufacturing_type.name}': {total_configs}")
+            print(f"[INFO] Total configurations for '{manufacturing_type.name}': {total_configs}")
             
             # Show what page types are available
-            print(f"\n📋 Available page types for this manufacturing type:")
+            print(f"\n[INFO] Available page types for this manufacturing type:")
             from app.models.attribute_node import AttributeNode
             stmt = select(AttributeNode.page_type).where(
                 AttributeNode.manufacturing_type_id == manufacturing_type.id
@@ -220,7 +220,7 @@ async def seed_profile_data():
                 print(f"   - {page_type}")
             
         except Exception as e:
-            print(f"❌ Error during seeding: {e}")
+            print(f"[ERROR] Error during seeding: {e}")
             await session.rollback()
             raise
         finally:
@@ -233,19 +233,19 @@ async def seed_profile_data():
 
 async def main():
     """Main entry point."""
-    print("🚀 Profile Data Seeding Script")
+    print("Profile Data Seeding Script")
     print("=" * 40)
     
     try:
         await seed_profile_data()
-        print("\n✅ Seeding completed successfully!")
+        print("\n[SUCCESS] Seeding completed successfully!")
         print("\nYou can now:")
         print("1. Visit the profile page: http://localhost:8000/api/v1/admin/entry/profile")
         print("2. Switch to Preview tab to see the seeded data")
         print("3. Test the search and filtering functionality")
         
     except Exception as e:
-        print(f"\n❌ Seeding failed: {e}")
+        print(f"\n[ERROR] Seeding failed: {e}")
         import traceback
         traceback.print_exc()
 

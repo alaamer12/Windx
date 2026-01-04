@@ -231,8 +231,8 @@ async def version_info() -> dict[str, str | dict[str, str]]:
     Example Response:
         {
             "app_name": "WindX Product Configurator",
-            "app_version": "1.0.1",
-            "script_version": "v1.0.1",
+            "app_version": "1.0.2",
+            "script_version": "v1.0.2",
             "deployment_info": {
                 "commit_hash": "abc123...",
                 "short_hash": "abc123",

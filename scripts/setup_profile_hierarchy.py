@@ -578,6 +578,82 @@ async def create_attribute_nodes(
             "description": "The weight of the profile per linear meter in kilograms.<br><br><strong>Purpose:</strong><br>• Shipping cost calculations<br>• Structural load analysis<br>• Hardware sizing<br>• Installation planning<br><br><strong>Typical Values:</strong><br>• Light profiles: 0.5-1.0 kg/m<br>• Standard profiles: 1.0-2.0 kg/m<br>• Heavy profiles: 2.0-4.0 kg/m",
             "help_text": "Heavier profiles generally indicate thicker walls and better structural performance but increase shipping costs."
         },
+        "code": {
+            "description": "A unique product code or SKU for inventory and ordering purposes.<br><br><strong>Format:</strong><br>• Use consistent naming convention<br>• Include manufacturer prefix if needed<br>• Examples: 'KOM700-FR', 'ALU-SASH-60'<br><br><strong>Purpose:</strong><br>• Inventory tracking<br>• Order processing<br>• Quality control<br>• Documentation",
+            "help_text": "This code should match your supplier's part number for easy ordering and inventory management."
+        },
+        "length_of_beam": {
+            "description": "The standard length of profile beams available from the supplier.<br><br><strong>Common Lengths:</strong><br>• Residential: 6m (20 feet)<br>• Commercial: 6-12m (20-40 feet)<br>• Custom: Variable lengths<br><br><strong>Considerations:</strong><br>• Transportation limits<br>• Waste minimization<br>• Installation efficiency",
+            "help_text": "Longer beams reduce joints but may be harder to transport and handle on site."
+        },
+        "renovation": {
+            "description": "Indicates if this profile is designed for renovation applications.<br><br><strong>Renovation Features:</strong><br>• Reduced depth for existing openings<br>• Special mounting systems<br>• Compatibility with existing frames<br>• Minimal disruption installation<br><br><strong>Benefits:</strong><br>• Faster installation<br>• Less structural work<br>• Cost-effective upgrades",
+            "help_text": "Renovation profiles are specifically designed to fit into existing window openings with minimal modification."
+        },
+        "builtin_flyscreen_track": {
+            "description": "Integrated track system for flyscreen installation.<br><br><strong>Features:</strong><br>• Built-in guide rails<br>• Smooth operation<br>• Weather sealing<br>• Easy maintenance<br><br><strong>Benefits:</strong><br>• Cleaner appearance<br>• Better performance<br>• Reduced installation time<br>• Improved durability",
+            "help_text": "Built-in tracks provide better integration and performance compared to add-on flyscreen systems."
+        },
+        "total_width": {
+            "description": "Total width including the built-in flyscreen track system.<br><br><strong>Measurement:</strong><br>• Frame width + track width<br>• Important for rough opening sizing<br>• Affects installation clearances<br><br><strong>Planning:</strong><br>• Check available space<br>• Consider wall thickness<br>• Plan for proper sealing",
+            "help_text": "This dimension is critical for ensuring proper fit in the wall opening when flyscreen tracks are included."
+        },
+        "flyscreen_track_height": {
+            "description": "Height of the integrated flyscreen track system.<br><br><strong>Specifications:</strong><br>• Track depth in millimeters<br>• Affects screen operation<br>• Impacts weather sealing<br><br><strong>Considerations:</strong><br>• Screen type compatibility<br>• Operating clearance<br>• Maintenance access",
+            "help_text": "Proper track height ensures smooth flyscreen operation and effective insect protection."
+        },
+        "front_height": {
+            "description": "Height of the profile's front face in millimeters.<br><br><strong>Measurement:</strong><br>• From bottom to top of visible face<br>• Affects appearance and proportions<br>• Important for glazing calculations<br><br><strong>Design Impact:</strong><br>• Visual weight of the frame<br>• Glass area maximization<br>• Structural requirements",
+            "help_text": "Front height affects both the aesthetic appearance and the amount of daylight entering through the window."
+        },
+        "rear_height": {
+            "description": "Height of the profile's rear face in millimeters.<br><br><strong>Purpose:</strong><br>• Structural support<br>• Installation clearance<br>• Insulation space<br>• Hardware mounting<br><br><strong>Considerations:</strong><br>• Wall cavity depth<br>• Insulation requirements<br>• Fixing methods",
+            "help_text": "Rear height must accommodate wall thickness and provide adequate space for proper installation and insulation."
+        },
+        "glazing_height": {
+            "description": "Height available for glazing installation in millimeters.<br><br><strong>Calculation:</strong><br>• Total height minus frame components<br>• Determines maximum glass size<br>• Affects glazing bead selection<br><br><strong>Optimization:</strong><br>• Maximize daylight<br>• Ensure structural integrity<br>• Meet thermal requirements",
+            "help_text": "This dimension determines the actual glass size that can be installed in the frame."
+        },
+        "renovation_height": {
+            "description": "Additional height required for renovation installations.<br><br><strong>Purpose:</strong><br>• Accommodate existing sill heights<br>• Provide proper drainage<br>• Ensure weather sealing<br>• Maintain structural integrity<br><br><strong>Typical Values:</strong><br>• Standard: 38-50mm<br>• High performance: 60-80mm",
+            "help_text": "This height ensures proper installation over existing sills while maintaining weather performance."
+        },
+        "glazing_undercut_height": {
+            "description": "Depth of the undercut in glazing beads for glass installation.<br><br><strong>Function:</strong><br>• Secure glass positioning<br>• Weather seal accommodation<br>• Thermal break continuity<br>• Easy glass replacement<br><br><strong>Standards:</strong><br>• Minimum 3mm for small glass<br>• 5-8mm for larger panes",
+            "help_text": "Proper undercut depth ensures secure glass installation and effective weather sealing."
+        },
+        "pic": {
+            "description": "Reference image or technical drawing for this profile.<br><br><strong>File Types:</strong><br>• Technical drawings (PDF, DWG)<br>• Product photos (JPG, PNG)<br>• Cross-section diagrams<br>• Installation guides<br><br><strong>Benefits:</strong><br>• Visual identification<br>• Installation reference<br>• Quality control<br>• Customer communication",
+            "help_text": "Visual references help ensure correct profile selection and proper installation procedures."
+        },
+        "sash_overlap": {
+            "description": "Overlap dimension between sash and frame components.<br><br><strong>Purpose:</strong><br>• Weather sealing<br>• Structural connection<br>• Thermal performance<br>• Security enhancement<br><br><strong>Typical Values:</strong><br>• Residential: 8-12mm<br>• Commercial: 12-20mm<br>• High performance: 15-25mm",
+            "help_text": "Adequate overlap is essential for weather resistance and thermal performance of the window system."
+        },
+        "flying_mullion_horizontal_clearance": {
+            "description": "Horizontal clearance required for flying mullion installation.<br><br><strong>Purpose:</strong><br>• Thermal expansion accommodation<br>• Installation tolerance<br>• Structural movement<br>• Weather sealing space<br><br><strong>Typical Range:</strong><br>• Standard: 6-10mm<br>• High movement: 12-15mm",
+            "help_text": "Proper clearance prevents binding and ensures long-term performance of the mullion system."
+        },
+        "flying_mullion_vertical_clearance": {
+            "description": "Vertical clearance required for flying mullion installation.<br><br><strong>Considerations:</strong><br>• Building settlement<br>• Thermal movement<br>• Installation accuracy<br>• Maintenance access<br><br><strong>Standards:</strong><br>• Minimum: 40mm<br>• Recommended: 50-60mm",
+            "help_text": "Vertical clearance must accommodate building movement and provide access for maintenance and adjustment."
+        },
+        "steel_material_thickness": {
+            "description": "Thickness of steel reinforcement used in the profile.<br><br><strong>Applications:</strong><br>• Large span windows<br>• High wind load areas<br>• Security requirements<br>• Structural glazing<br><br><strong>Common Thicknesses:</strong><br>• Light duty: 1.5-2.0mm<br>• Standard: 2.0-3.0mm<br>• Heavy duty: 3.0-5.0mm",
+            "help_text": "Steel reinforcement thickness must be selected based on structural requirements and local building codes."
+        },
+        "reinforcement_steel": {
+            "description": "Type and specification of steel reinforcement used.<br><br><strong>Options:</strong><br>• <strong>Standard Steel</strong> - Basic structural support<br>• <strong>High Strength Steel</strong> - Enhanced load capacity<br>• <strong>Galvanized Steel</strong> - Corrosion protection<br><br><strong>Selection Criteria:</strong><br>• Load requirements<br>• Environmental conditions<br>• Durability needs<br>• Cost considerations",
+            "help_text": "Choose reinforcement steel based on structural requirements and environmental exposure conditions."
+        },
+        "colours": {
+            "description": "Available color options for the profile finish.<br><br><strong>Common Options:</strong><br>• <strong>White</strong> - Classic, versatile choice<br>• <strong>Brown</strong> - Traditional, warm appearance<br>• <strong>Black</strong> - Modern, contemporary look<br>• <strong>Grey</strong> - Neutral, sophisticated<br>• <strong>Wood Grain</strong> - Natural appearance<br><br><strong>Considerations:</strong><br>• Architectural style<br>• Maintenance requirements<br>• Heat absorption<br>• Fade resistance",
+            "help_text": "Color selection affects both appearance and performance. Darker colors may require special consideration for thermal expansion."
+        },
+        "price_per_beam": {
+            "description": "Cost per standard length beam of this profile.<br><br><strong>Calculation:</strong><br>• Price per meter × beam length<br>• May include cutting/handling charges<br>• Volume discounts may apply<br><br><strong>Usage:</strong><br>• Project cost estimation<br>• Inventory valuation<br>• Supplier comparison<br>• Quote generation",
+            "help_text": "Beam pricing often provides better value than cut-to-length pricing for larger projects."
+        },
         # Add more tooltip content for other fields as needed
     }
 

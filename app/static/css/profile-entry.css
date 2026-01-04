@@ -1969,3 +1969,296 @@ tr.border-blue-200 {
         justify-content: center;
     }
 }
+
+/* Dynamic Select Options Styles */
+.dynamic-select-container {
+    width: 100%;
+}
+
+.add-option-input-container {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    margin-top: 8px !important;
+}
+
+.add-option-input {
+    flex: 1 !important;
+    padding: 8px 12px !important;
+    border: 2px solid #3b82f6 !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    outline: none !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.add-option-input:focus {
+    border-color: #1d4ed8 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+.btn-save-option {
+    padding: 8px 16px !important;
+    background: #10b981 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    min-width: 70px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.btn-save-option:hover:not(:disabled) {
+    background: #059669 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3) !important;
+}
+
+.btn-save-option:disabled {
+    background: #9ca3af !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-cancel-option {
+    padding: 8px 16px !important;
+    background: #ef4444 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 6px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s !important;
+    min-width: 70px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.btn-cancel-option:hover:not(:disabled) {
+    background: #dc2626 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn-cancel-option:disabled {
+    background: #9ca3af !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.existing-options-list {
+    margin-top: 8px !important;
+}
+
+.custom-option-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 10px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    margin-bottom: 4px !important;
+    font-size: 13px !important;
+    transition: all 0.2s ease !important;
+}
+
+.custom-option-item:hover {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.custom-option-item span {
+    flex: 1 !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+}
+
+.btn-remove-option {
+    padding: 4px 8px !important;
+    background: #ef4444 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 4px !important;
+    font-size: 11px !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    font-weight: bold !important;
+    transition: all 0.2s !important;
+}
+
+.btn-remove-option:hover {
+    background: #dc2626 !important;
+    transform: scale(1.05) !important;
+}
+
+/* Special styling for the "Add New Option" select option */
+select option[value="__ADD_NEW__"] {
+    background: #f0f9ff !important;
+    color: #0369a1 !important;
+    font-weight: 500 !important;
+}
+
+/* Responsive adjustments for dynamic options */
+@media (max-width: 768px) {
+    .add-option-input-container .flex {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    
+    .add-option-input {
+        width: 100% !important;
+    }
+    
+    .btn-save-option,
+    .btn-cancel-option {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    
+    .custom-option-item {
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* Ensure dynamic options don't break layout */
+.field-input-container {
+    width: 100%;
+    overflow: visible;
+}
+
+.dynamic-select-container {
+    width: 100%;
+    overflow: visible;
+}
+
+/* Enhanced Dynamic Option Styles */
+.add-new-option-item {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+    color: #0369a1 !important;
+    font-weight: 600 !important;
+    border-top: 1px solid #bae6fd !important;
+    padding: 8px 12px !important;
+    transition: all 0.2s ease !important;
+}
+
+.add-new-option-item:hover {
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
+    color: #0c4a6e !important;
+}
+
+.add-option-input-container {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.add-option-input:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    transform: scale(1.01);
+}
+
+.btn-save-option:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3) !important;
+}
+
+.btn-cancel-option:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn-save-option:disabled,
+.btn-cancel-option:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Enhanced animations for better UX */
+.dynamic-select-container {
+    position: relative;
+}
+
+.add-option-input-container {
+    position: relative;
+    z-index: 10;
+}
+
+/* Pulse animation for loading states */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.btn-save-option:disabled .animate-spin,
+.btn-cancel-option:disabled .animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Success feedback animation */
+@keyframes successPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+.option-added-success {
+    animation: successPulse 0.6s ease-out;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 640px) {
+    .add-option-input-container .flex {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .btn-save-option,
+    .btn-cancel-option {
+        width: 100%;
+        justify-content: center;
+    }
+}

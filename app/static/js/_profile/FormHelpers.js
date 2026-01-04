@@ -2,6 +2,7 @@ class FormHelpers {
     // Store dynamic headers and mappings
     static dynamicHeaders = null;
     static dynamicHeaderMapping = null;
+    static fieldOptionsCache = new Map(); // Cache for field options
 
     static setDynamicHeaders(headers) {
         console.log('🦆 [FORMHELPERS] Setting dynamic headers:', headers);
@@ -55,6 +56,7 @@ class FormHelpers {
         
         return mapping;
     }
+
     static getUIComponent(field) {
         // Determine UI component based on field name and data type
         if (field.data_type === 'boolean') return 'checkbox';
@@ -75,18 +77,163 @@ class FormHelpers {
         return 'text';  // DEFAULT: text input
     }
 
-    static getFieldOptions(fieldName) {
-        // Return options based on CSV data analysis
-        const optionsMap = {
-            'type': ['Frame', 'sash', 'Mullion', 'Flying mullion', 'glazing bead', 'Interlock', 'Track', 'auxilary', 'coupling', 'tube'],
-            'company': ['kompen', 'choose from database'],
-            'material': ['UPVC', 'Choose'],
-            'opening_system': ['Casement', 'All'],
-            'system_series': ['Kom700', 'Kom701', 'Kom800', 'All'],
-            'renovation': ['yes', 'no', 'n.a'],
-        };
+    static async getFieldOptions(fieldName, manufacturingTypeId, pageType = 'profile') {
+        // Check cache first
+        const cacheKey = `${manufacturingTypeId}_${pageType}_${fieldName}`;
+        if (this.fieldOptionsCache.has(cacheKey)) {
+            return this.fieldOptionsCache.get(cacheKey);
+        }
 
-        return optionsMap[fieldName] || [];
+        try {
+            // Try to get JWT token from localStorage/sessionStorage
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            
+            // Prepare headers
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add Authorization header only if token is available
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            // If no token, rely on cookie-based authentication
+
+            // Fetch schema from API to get field options
+            const response = await fetch(
+                `/api/v1/admin/entry/profile/schema/${manufacturingTypeId}?page_type=${pageType}`,
+                {
+                    headers: headers,
+                    credentials: 'include'  // Include cookies for authentication
+                }
+            );
+
+            if (!response.ok) {
+                console.warn(`🦆 [FORMHELPERS] Failed to fetch schema: ${response.status}`);
+                return [];
+            }
+
+            const schema = await response.json();
+            
+            // Find the field in the schema and extract its options
+            let fieldOptions = [];
+            for (const section of schema.sections || []) {
+                for (const field of section.fields || []) {
+                    if (field.name === fieldName && field.options) {
+                        fieldOptions = field.options;
+                        break;
+                    }
+                }
+                if (fieldOptions.length > 0) break;
+            }
+
+            // Cache the result
+            this.fieldOptionsCache.set(cacheKey, fieldOptions);
+            
+            console.log(`🦆 [FORMHELPERS] Fetched options for ${fieldName}:`, fieldOptions);
+            return fieldOptions;
+
+        } catch (error) {
+            console.error(`🦆 [FORMHELPERS] Error fetching options for ${fieldName}:`, error);
+            return [];
+        }
+    }
+
+    static async addFieldOption(fieldName, optionValue, manufacturingTypeId, pageType = 'profile') {
+        try {
+            // Try to get JWT token from localStorage/sessionStorage
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            
+            // Prepare headers
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add Authorization header only if token is available
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            // If no token, rely on cookie-based authentication (browser will send cookies automatically)
+
+            // Call API to add option
+            const response = await fetch(
+                `/api/v1/admin/entry/profile/add-option?manufacturing_type_id=${manufacturingTypeId}&field_name=${fieldName}&option_value=${encodeURIComponent(optionValue)}&page_type=${pageType}`,
+                {
+                    method: 'POST',
+                    headers: headers,
+                    credentials: 'include'  // Include cookies for authentication
+                }
+            );
+
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail?.message || result.message || 'Failed to add option');
+            }
+
+            if (result.success) {
+                // Clear cache for this field
+                const cacheKey = `${manufacturingTypeId}_${pageType}_${fieldName}`;
+                this.fieldOptionsCache.delete(cacheKey);
+                
+                console.log(`🦆 [FORMHELPERS] Successfully added option: ${optionValue}`);
+                return { success: true, message: result.message };
+            } else {
+                throw new Error(result.error || 'Failed to add option');
+            }
+
+        } catch (error) {
+            console.error(`🦆 [FORMHELPERS] Error adding option:`, error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    static async removeFieldOption(optionId) {
+        try {
+            // Try to get JWT token from localStorage/sessionStorage
+            const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+            
+            // Prepare headers
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add Authorization header only if token is available
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            // If no token, rely on cookie-based authentication (browser will send cookies automatically)
+
+            // Call API to remove option
+            const response = await fetch(
+                `/api/v1/admin/entry/profile/remove-option/${optionId}`,
+                {
+                    method: 'DELETE',
+                    headers: headers,
+                    credentials: 'include'  // Include cookies for authentication
+                }
+            );
+
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.detail?.message || result.message || 'Failed to remove option');
+            }
+
+            if (result.success) {
+                // Clear all cache since we don't know which field this option belonged to
+                this.fieldOptionsCache.clear();
+                
+                console.log(`🦆 [FORMHELPERS] Successfully removed option: ${result.option_value}`);
+                return { success: true, message: result.message };
+            } else {
+                throw new Error(result.error || 'Failed to remove option');
+            }
+
+        } catch (error) {
+            console.error(`🦆 [FORMHELPERS] Error removing option:`, error);
+            return { success: false, error: error.message };
+        }
     }
 
     static getFieldUnit(fieldName) {

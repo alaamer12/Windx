@@ -909,3 +909,359 @@ class TestAdminEntry:
             headers=superuser_auth_headers
         )
         assert response.status_code == 422  # Validation error for PositiveInt
+
+
+class TestAdminEntryFieldOptions:
+    """Test admin entry field option management endpoints."""
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_requires_auth(
+        self,
+        client: AsyncClient,
+    ):
+        """Test that add field option requires authentication."""
+        response = await client.post(
+            "/api/v1/admin/entry/profile/add-option",
+            params={
+                "manufacturing_type_id": 1,
+                "field_name": "material",
+                "option_value": "Steel"
+            }
+        )
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_requires_superuser(
+        self,
+        client: AsyncClient,
+        test_user_with_rbac: User,
+    ):
+        """Test that add field option requires superuser privileges."""
+        from tests.config import get_test_settings
+        test_settings = get_test_settings()
+        
+        # Login as regular user
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_user_with_rbac.username,
+                "password": test_settings.test_user_password,
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Try to add field option
+        response = await client.post(
+            "/api/v1/admin/entry/profile/add-option",
+            params={
+                "manufacturing_type_id": 1,
+                "field_name": "material",
+                "option_value": "Steel"
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_manufacturing_type_not_found(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+    ):
+        """Test add field option with non-existent manufacturing type."""
+        response = await client.post(
+            "/api/v1/admin/entry/profile/add-option",
+            params={
+                "manufacturing_type_id": 99999,
+                "field_name": "material",
+                "option_value": "Steel"
+            },
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 404
+        data = response.json()
+        assert "Manufacturing type 99999 not found" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_field_not_found(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+        simple_manufacturing_type: ManufacturingType,
+    ):
+        """Test add field option with non-existent field."""
+        response = await client.post(
+            "/api/v1/admin/entry/profile/add-option",
+            params={
+                "manufacturing_type_id": simple_manufacturing_type.id,
+                "field_name": "nonexistent_field",
+                "option_value": "Steel"
+            },
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 404
+        data = response.json()
+        assert "Field 'nonexistent_field' not found" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_success(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+        simple_manufacturing_type: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test successful field option addition."""
+        from app.models.attribute_node import AttributeNode
+        from decimal import Decimal
+        
+        # First create a parent field node for testing
+        parent_field = AttributeNode(
+            manufacturing_type_id=simple_manufacturing_type.id,
+            name="material",
+            node_type="attribute",
+            ltree_path=f"mfg_{simple_manufacturing_type.id}.material",
+            depth=1,
+            data_type="string",
+            is_required=False,
+            is_active=True
+        )
+        db_session.add(parent_field)
+        await db_session.commit()
+        await db_session.refresh(parent_field)
+        
+        # Add new option
+        response = await client.post(
+            "/api/v1/admin/entry/profile/add-option",
+            params={
+                "manufacturing_type_id": simple_manufacturing_type.id,
+                "field_name": "material",
+                "option_value": "Steel",
+                "page_type": "profile"
+            },
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "Steel" in data["message"]
+        assert data["field_name"] == "material"
+        assert data["option_value"] == "Steel"
+        assert "option_id" in data
+        assert data["manufacturing_type_id"] == simple_manufacturing_type.id
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_duplicate(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+        simple_manufacturing_type: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test adding duplicate field option."""
+        from app.models.attribute_node import AttributeNode
+        from decimal import Decimal
+        
+        # Create parent field and existing option
+        parent_field = AttributeNode(
+            manufacturing_type_id=simple_manufacturing_type.id,
+            name="material",
+            node_type="attribute",
+            ltree_path=f"mfg_{simple_manufacturing_type.id}.material",
+            depth=1,
+            data_type="string",
+            is_required=False,
+            is_active=True
+        )
+        db_session.add(parent_field)
+        await db_session.commit()
+        await db_session.refresh(parent_field)
+        
+        existing_option = AttributeNode(
+            manufacturing_type_id=simple_manufacturing_type.id,
+            parent_node_id=parent_field.id,
+            name="Steel",
+            node_type="option",
+            ltree_path=f"mfg_{simple_manufacturing_type.id}.material.steel",
+            depth=2,
+            data_type="string",
+            price_impact_type="fixed",
+            price_impact_value=Decimal("0.00"),
+            is_required=False,
+            is_active=True
+        )
+        db_session.add(existing_option)
+        await db_session.commit()
+        
+        # Try to add duplicate option
+        response = await client.post(
+            "/api/v1/admin/entry/profile/add-option",
+            params={
+                "manufacturing_type_id": simple_manufacturing_type.id,
+                "field_name": "material",
+                "option_value": "Steel"
+            },
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert "Option 'Steel' already exists" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_remove_field_option_requires_auth(
+        self,
+        client: AsyncClient,
+    ):
+        """Test that remove field option requires authentication."""
+        response = await client.delete("/api/v1/admin/entry/profile/remove-option/1")
+        assert response.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_remove_field_option_requires_superuser(
+        self,
+        client: AsyncClient,
+        test_user_with_rbac: User,
+    ):
+        """Test that remove field option requires superuser privileges."""
+        from tests.config import get_test_settings
+        test_settings = get_test_settings()
+        
+        # Login as regular user
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": test_user_with_rbac.username,
+                "password": test_settings.test_user_password,
+            },
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+        
+        # Try to remove field option
+        response = await client.delete(
+            "/api/v1/admin/entry/profile/remove-option/1",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_remove_field_option_not_found(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+    ):
+        """Test remove field option with non-existent option."""
+        response = await client.delete(
+            "/api/v1/admin/entry/profile/remove-option/99999",
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 404
+        data = response.json()
+        assert "Option 99999 not found" in data["detail"]
+
+    @pytest.mark.asyncio
+    async def test_remove_field_option_success(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+        simple_manufacturing_type: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test successful field option removal."""
+        from app.models.attribute_node import AttributeNode
+        from decimal import Decimal
+        
+        # Create parent field and option to remove
+        parent_field = AttributeNode(
+            manufacturing_type_id=simple_manufacturing_type.id,
+            name="material",
+            node_type="attribute",
+            ltree_path=f"mfg_{simple_manufacturing_type.id}.material",
+            depth=1,
+            data_type="string",
+            is_required=False,
+            is_active=True
+        )
+        db_session.add(parent_field)
+        await db_session.commit()
+        await db_session.refresh(parent_field)
+        
+        option_to_remove = AttributeNode(
+            manufacturing_type_id=simple_manufacturing_type.id,
+            parent_node_id=parent_field.id,
+            name="Steel",
+            node_type="option",
+            ltree_path=f"mfg_{simple_manufacturing_type.id}.material.steel",
+            depth=2,
+            data_type="string",
+            price_impact_type="fixed",
+            price_impact_value=Decimal("0.00"),
+            is_required=False,
+            is_active=True
+        )
+        db_session.add(option_to_remove)
+        await db_session.commit()
+        await db_session.refresh(option_to_remove)
+        
+        # Remove the option
+        response = await client.delete(
+            f"/api/v1/admin/entry/profile/remove-option/{option_to_remove.id}",
+            headers=superuser_auth_headers
+        )
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "Steel" in data["message"]
+        assert data["option_id"] == option_to_remove.id
+        assert data["option_name"] == "Steel"
+        assert data["field_name"] == "material"
+
+    @pytest.mark.asyncio
+    async def test_add_field_option_with_different_page_types(
+        self,
+        client: AsyncClient,
+        superuser_auth_headers: dict,
+        simple_manufacturing_type: ManufacturingType,
+        db_session: AsyncSession,
+    ):
+        """Test adding field options with different page types."""
+        from app.models.attribute_node import AttributeNode
+        
+        # Create parent fields for different page types
+        page_types = ["profile", "accessories", "glazing"]
+        
+        for i, page_type in enumerate(page_types):
+            # Create parent field
+            parent_field = AttributeNode(
+                manufacturing_type_id=simple_manufacturing_type.id,
+                name=f"test_field_{page_type}",
+                node_type="attribute",
+                ltree_path=f"mfg_{simple_manufacturing_type.id}.test_field_{page_type}",
+                depth=1,
+                data_type="string",
+                is_required=False,
+                is_active=True
+            )
+            db_session.add(parent_field)
+            await db_session.commit()
+            await db_session.refresh(parent_field)
+            
+            # Add option with specific page type
+            response = await client.post(
+                "/api/v1/admin/entry/profile/add-option",
+                params={
+                    "manufacturing_type_id": simple_manufacturing_type.id,
+                    "field_name": f"test_field_{page_type}",
+                    "option_value": f"Option_{page_type}",
+                    "page_type": page_type
+                },
+                headers=superuser_auth_headers
+            )
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert data["success"] is True
+            assert f"Option_{page_type}" in data["message"]

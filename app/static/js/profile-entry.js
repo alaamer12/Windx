@@ -48,6 +48,11 @@ function profileEntryApp(options = {}) {
         searchResults: { total: 0, filtered: 0 },
         filteredConfigurations: [],
 
+        // Dynamic options state
+        showAddInput: {},  // Track which fields have add input visible: { fieldName: boolean }
+        newOptionValue: {}, // Track new option values: { fieldName: string }
+        addingOption: {},   // Track which fields are currently adding: { fieldName: boolean }
+
         // Computed
         get isFormValid() {
             return FormValidator.isFormValid(this.schema, this.formData, this.fieldVisibility, this.fieldErrors);
@@ -125,6 +130,11 @@ function profileEntryApp(options = {}) {
         },
 
         async init() {
+            // Initialize dynamic options state
+            this.showAddInput = {};
+            this.newOptionValue = {};
+            this.addingOption = {};
+            
             console.log('🦆 [DUCK DEBUG] ========================================');
             console.log('🦆 [DUCK DEBUG] ProfileEntryApp Initialization Started');
             console.log('🦆 [DUCK DEBUG] ========================================');
@@ -542,7 +552,100 @@ function profileEntryApp(options = {}) {
         },
 
         getFieldOptions(fieldName) {
-            return FormHelpers.getFieldOptions(fieldName);
+            // This method is deprecated - options now come from schema
+            console.warn('🦆 [PROFILE-ENTRY] getFieldOptions is deprecated, options come from schema');
+            return [];
+        },
+
+        async getAllFieldOptions(fieldName) {
+            // Get options from database via API
+            if (!this.manufacturingTypeId) {
+                console.warn('🦆 [PROFILE-ENTRY] No manufacturing type ID available');
+                return [];
+            }
+            
+            return await FormHelpers.getFieldOptions(fieldName, this.manufacturingTypeId, this.pageType);
+        },
+
+        getCustomOptions(fieldName) {
+            // Custom options are now stored in database, not localStorage
+            // This method is kept for backward compatibility but returns empty array
+            return [];
+        },
+
+        async addNewOption(fieldName, optionValue) {
+            if (!optionValue || optionValue.trim() === '') {
+                showToast('Please enter a valid option value', 'warning');
+                return;
+            }
+
+            if (!this.manufacturingTypeId) {
+                showToast('No manufacturing type selected', 'error');
+                return;
+            }
+
+            const trimmedValue = optionValue.trim();
+            
+            try {
+                const result = await FormHelpers.addFieldOption(
+                    fieldName, 
+                    trimmedValue, 
+                    this.manufacturingTypeId, 
+                    this.pageType
+                );
+                
+                if (result.success) {
+                    showToast(result.message || `Added "${trimmedValue}" to ${fieldName} options`, 'success');
+                    
+                    // Reload the schema to get updated options
+                    await this.loadSchema();
+                    
+                    // Force Alpine.js to re-render
+                    this.$nextTick(() => {
+                        this.fieldErrors = { ...this.fieldErrors };
+                    });
+                } else {
+                    showToast(result.error || `Failed to add "${trimmedValue}"`, 'error');
+                }
+            } catch (error) {
+                console.error('🦆 [PROFILE-ENTRY] Error adding option:', error);
+                showToast(`Error adding option: ${error.message}`, 'error');
+            }
+        },
+
+        async removeCustomOption(fieldName, optionValue, optionId) {
+            if (!optionId) {
+                showToast('Cannot remove option: missing option ID', 'error');
+                return;
+            }
+
+            if (confirm(`Are you sure you want to remove "${optionValue}" from ${fieldName} options?`)) {
+                try {
+                    const result = await FormHelpers.removeFieldOption(optionId);
+                    
+                    if (result.success) {
+                        showToast(result.message || `Removed "${optionValue}" from ${fieldName} options`, 'success');
+                        
+                        // If the removed option was selected, clear the field value
+                        if (this.formData[fieldName] === optionValue) {
+                            this.updateField(fieldName, '');
+                        }
+                        
+                        // Reload the schema to get updated options
+                        await this.loadSchema();
+                        
+                        // Force Alpine.js to re-render
+                        this.$nextTick(() => {
+                            this.fieldErrors = { ...this.fieldErrors };
+                        });
+                    } else {
+                        showToast(result.error || `Failed to remove "${optionValue}"`, 'error');
+                    }
+                } catch (error) {
+                    console.error('🦆 [PROFILE-ENTRY] Error removing option:', error);
+                    showToast(`Error removing option: ${error.message}`, 'error');
+                }
+            }
         },
 
         getFieldUnit(fieldName) {
@@ -1018,12 +1121,23 @@ function profileEntryApp(options = {}) {
             try {
                 console.log('🦆 [BULK DELETE] Starting bulk delete for IDs:', selectedIds);
                 
+                // Try to get JWT token from localStorage/sessionStorage
+                const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+                
+                // Prepare headers
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                // Add Authorization header only if token is available
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
                 const response = await fetch('/api/v1/admin/entry/profile/configurations/bulk', {
                     method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('access_token') || sessionStorage.getItem('access_token')}`
-                    },
+                    headers: headers,
+                    credentials: 'include',  // Include cookies for authentication
                     body: JSON.stringify(selectedIds)
                 });
 

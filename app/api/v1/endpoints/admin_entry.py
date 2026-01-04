@@ -643,59 +643,111 @@ async def evaluate_display_conditions(
 
 
 @router.post(
-    "/profile/validate-business-rules",
-    response_model=dict[str, str],
-    summary="Validate Business Rules (Admin)",
-    description="Validate business rules for profile data and return field-specific errors",
-    response_description="Field errors from business rule violations",
-    operation_id="validateAdminBusinessRules",
+    "/profile/add-option",
+    response_model=dict[str, Any],
+    summary="Add New Option (Admin)",
+    description="Add a new option to an attribute field (admin interface)",
+    response_description="Result of adding the new option",
+    operation_id="addAdminFieldOption",
     responses={
         200: {
-            "description": "Business rules validation completed",
+            "description": "Option added successfully",
             "content": {
                 "application/json": {
                     "example": {
-                        "renovation": "Renovation is only applicable for frame types",
-                        "sash_overlap": "Sash overlap is only applicable for sash types"
+                        "success": True,
+                        "message": "Option 'New Material' added successfully",
+                        "option_id": 123,
+                        "field_name": "material",
+                        "option_value": "New Material"
                     }
                 }
             }
         },
-        422: {"description": "Validation Error"},
+        400: {
+            "description": "Invalid request or duplicate option",
+        },
+        **get_common_responses(401, 403, 500),
     },
 )
-async def validate_business_rules(
-    form_data: dict[str, Any],
+async def add_field_option(
+    manufacturing_type_id: PositiveInt,
+    field_name: str,
+    option_value: str,
     current_superuser: CurrentSuperuser,
     db: DBSession,
-) -> dict[str, str]:
-    """Validate business rules for profile data (admin interface).
+    page_type: Annotated[
+        str,
+        Query(description="Page type: profile, accessories, glazing"),
+    ] = "profile",
+) -> dict[str, Any]:
+    """Add a new option to an attribute field (admin interface).
 
-    Validates business rules for type-based field availability and returns
-    field-specific error messages for any violations.
+    Creates a new attribute node of type 'option' under the specified field.
 
     Args:
-        form_data (dict): Form data to validate
+        manufacturing_type_id (PositiveInt): Manufacturing type ID
+        field_name (str): Name of the field to add option to
+        option_value (str): Value of the new option
         current_superuser (User): Current authenticated superuser
         db (AsyncSession): Database session
+        page_type (str): Page type (profile, accessories, glazing)
 
     Returns:
-        dict[str, str]: Field errors from business rule violations
+        dict: Result with success status and details
 
     Example:
-        POST /api/v1/admin/entry/profile/validate-business-rules
-        {
-            "type": "sash",
-            "renovation": "yes",
-            "sash_overlap": "8"
-        }
-        
-        Response: {"renovation": "Renovation is only applicable for frame types"}
+        POST /api/v1/admin/entry/profile/add-option?manufacturing_type_id=1&field_name=material&option_value=Steel&page_type=profile
     """
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    return entry_service.validate_business_rules(form_data)
+    return await entry_service.add_field_option(
+        manufacturing_type_id, field_name, option_value, page_type
+    )
+
+
+@router.delete(
+    "/profile/remove-option/{option_id}",
+    response_model=dict[str, Any],
+    summary="Remove Option (Admin)",
+    description="Remove an option from an attribute field (admin interface)",
+    response_description="Result of removing the option",
+    operation_id="removeAdminFieldOption",
+    responses={
+        200: {
+            "description": "Option removed successfully",
+        },
+        404: {
+            "description": "Option not found",
+        },
+        **get_common_responses(401, 403, 500),
+    },
+)
+async def remove_field_option(
+    option_id: PositiveInt,
+    current_superuser: CurrentSuperuser,
+    db: DBSession,
+) -> dict[str, Any]:
+    """Remove an option from an attribute field (admin interface).
+
+    Deletes the attribute node of type 'option' with the specified ID.
+
+    Args:
+        option_id (PositiveInt): ID of the option to remove
+        current_superuser (User): Current authenticated superuser
+        db (AsyncSession): Database session
+
+    Returns:
+        dict: Result with success status and details
+
+    Example:
+        DELETE /api/v1/admin/entry/profile/remove-option/123
+    """
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.remove_field_option(option_id)
 
 
 # HTML Page Endpoints

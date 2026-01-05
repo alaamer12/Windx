@@ -74,13 +74,15 @@
                     Your changes are temporarily saved in this session. Click <strong>Record</strong> to save them permanently to the database.
                 </p>
             </div>
-            <button @click="hasUnsavedData = false" 
-                    type="button"
-                    class="action-btn close-btn"
-                    aria-label="Close notification"
-                    title="Close">
-                ✕
-            </button>
+            {{ button(
+                text="✕",
+                variant="ghost",
+                size="sm",
+                alpine_attrs='@click="hasUnsavedData = false"',
+                class="close-notification-btn",
+                title="Close",
+                aria_label="Close notification"
+            ) }}
         </div>
     </div>
 
@@ -725,12 +727,13 @@
                         <!-- Action Buttons -->
                         {% call button_group(align="right", gap="md", class="w-full mt-10 pt-8 border-t border-gray-200") %}
                             <div x-show="!saving">
-                                <button @click="recordConfiguration()" 
-                                        :disabled="!hasUnsavedData || saving"
-                                        type="button"
-                                        class="action-btn primary-btn large-btn">
-                                    💾 Record to Database
-                                </button>
+                                {{ button(
+                                    text="💾 Record to Database",
+                                    variant="primary",
+                                    size="lg",
+                                    alpine_attrs='@click="recordConfiguration()" :disabled="!hasUnsavedData || saving"',
+                                    class="record-database-btn"
+                                ) }}
                             </div>
                             <div x-show="saving">
                                 {{ button(
@@ -757,12 +760,12 @@
                             <span class="text-amber-800 font-medium">You have unsaved table edits</span>
                         </div>
                         <div x-show="!committingChanges">
-                            <button @click="commitTableChanges()" 
-                                    :disabled="committingChanges"
-                                    type="button"
-                                    class="action-btn primary-btn">
-                                💾 Commit Changes
-                            </button>
+                            {{ button(
+                                text="💾 Commit Changes",
+                                variant="primary",
+                                alpine_attrs='@click="commitTableChanges()" :disabled="committingChanges"',
+                                class="commit-changes-btn"
+                            ) }}
                         </div>
                         <div x-show="committingChanges">
                             {{ button(
@@ -784,18 +787,18 @@
                             <span class="text-red-800 font-medium" x-text="`${selectedRowsCount} configuration${selectedRowsCount > 1 ? 's' : ''} selected`"></span>
                         </div>
                         <div class="flex items-center space-x-2">
-                            <button @click="clearSelection()" 
-                                    type="button"
-                                    class="action-btn secondary-btn">
-                                Clear Selection
-                            </button>
+                            {{ button(
+                                text="Clear Selection",
+                                variant="outline",
+                                alpine_attrs='@click="clearSelection()"',
+                                class="clear-selection-btn"
+                            ) }}
                             <div x-show="!bulkDeleting">
-                                <button @click="bulkDeleteSelected()" 
-                                        :disabled="bulkDeleting"
-                                        type="button"
-                                        class="action-btn delete-btn">
-                                    🗑️ Delete Selected
-                                </button>
+                                {{ button(
+                                    text="🗑️ Delete Selected",
+                                    variant="danger",
+                                    alpine_attrs='@click="bulkDeleteSelected()" :disabled="bulkDeleting"'
+                                ) }}
                             </div>
                             <div x-show="bulkDeleting">
                                 {{ button(
@@ -1012,12 +1015,14 @@
                                     </td>
                                 </template>
                                 <td x-show="canDelete" class="px-4 py-3 text-right text-sm font-medium sticky right-0 bg-white group-hover:bg-gray-50/50 z-10">
-                                    <button @click="deleteRow(row.id)" 
-                                            type="button"
-                                            class="action-btn delete-btn"
-                                            title="Delete Record">
-                                        🗑️
-                                    </button>
+                                    {{ button(
+                                        text="🗑️",
+                                        variant="ghost",
+                                        size="sm",
+                                        alpine_attrs='@click="deleteRow(row.id)"',
+                                        class="delete-row-btn",
+                                        title="Delete Record"
+                                    ) }}
                                 </td>
                             </tr>
                         </template>

@@ -1918,6 +1918,7 @@ button.clear-filters-button:hover {
 .clear-selection-btn {
     background: #f3f4f6;
     color: #374151;
+    margin: 10px;
     border: 1px solid #d1d5db;
     padding: 0.5rem 1rem;
     border-radius: 6px;
@@ -2260,5 +2261,94 @@ select option[value="__ADD_NEW__"] {
     .btn-cancel-option {
         width: 100%;
         justify-content: center;
+    }
+}
+
+/* ========================================
+   CLEAR SELECTION BUTTON CUSTOM STYLING
+   ======================================== */
+
+/* Override for Clear Selection button to use proper button component styling */
+.clear-selection-btn {
+    background: rgba(255, 255, 255, 0.9) !important;
+    color: #374151 !important;
+    border: 2px solid #d1d5db !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px !important;
+    font-size: 0.875rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    text-decoration: none !important;
+    user-select: none !important;
+    position: relative !important;
+    overflow: hidden !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.clear-selection-btn:hover:not(:disabled) {
+    background: #f9fafb !important;
+    border-color: #9ca3af !important;
+    color: #1f2937 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.clear-selection-btn:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.clear-selection-btn:focus-visible {
+    outline: 2px solid #3b82f6 !important;
+    outline-offset: 2px !important;
+}
+
+.clear-selection-btn:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Ensure the button text is properly styled */
+.clear-selection-btn .btn-text {
+    position: relative !important;
+    z-index: 1 !important;
+    font-weight: 500 !important;
+    color: inherit !important;
+}
+
+/* Add subtle ripple effect */
+.clear-selection-btn::before {
+    content: "" !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 0 !important;
+    height: 0 !important;
+    border-radius: 50% !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+    transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 0 !important;
+}
+
+.clear-selection-btn:active::before {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Responsive adjustments for clear selection button */
+@media (max-width: 768px) {
+    .clear-selection-btn {
+        padding: 0.375rem 0.75rem !important;
+        font-size: 0.8rem !important;
     }
 }

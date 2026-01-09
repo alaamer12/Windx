@@ -9,8 +9,14 @@ const RelationsManager = {
     // API base URL
     API_BASE: '/api/v1/admin/relations',
     
-    // Image data storage (base64)
-    imageData: {},
+    // Image upload URL
+    IMAGE_UPLOAD_URL: '/api/v1/admin/entry/upload-image',
+    
+    // Store actual File objects for upload
+    imageFiles: {},
+    
+    // Store base64 for preview only
+    imagePreviews: {},
     
     /**
      * Initialize the Relations Manager
@@ -73,16 +79,20 @@ const RelationsManager = {
     },
     
     /**
-     * Process image file and show preview
+     * Process image file - store File object and show preview
      */
     processImageFile(file, entityType) {
+        // Store the actual File object for later upload
+        this.imageFiles[entityType] = file;
+        
+        // Create preview using FileReader
         const reader = new FileReader();
         
         reader.onload = (event) => {
             const base64 = event.target.result;
-            this.imageData[entityType] = base64;
+            this.imagePreviews[entityType] = base64;
             
-            // Update preview
+            // Update preview UI
             const preview = document.getElementById(`${entityType}_preview`);
             const placeholder = document.getElementById(`${entityType}_placeholder`);
             const overlay = document.getElementById(`${entityType}_overlay`);
@@ -99,10 +109,49 @@ const RelationsManager = {
     },
     
     /**
+     * Upload image file to server and get URL
+     * @param {string} entityType - The entity type (company, material, etc.)
+     * @returns {Promise<string|null>} - The uploaded image URL or null if failed
+     */
+    async uploadImage(entityType) {
+        const file = this.imageFiles[entityType];
+        if (!file) {
+            return null;
+        }
+        
+        console.log(`🔗 [RELATIONS] Uploading image for ${entityType}:`, file.name);
+        
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(this.IMAGE_UPLOAD_URL, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            
+            const result = await response.json();
+            console.log(`🔗 [RELATIONS] Image upload result for ${entityType}:`, result);
+            
+            if (result.success && result.url) {
+                return result.url;
+            } else {
+                console.warn(`🔗 [RELATIONS] Image upload failed for ${entityType}:`, result.error);
+                return null;
+            }
+        } catch (error) {
+            console.error(`🔗 [RELATIONS] Image upload error for ${entityType}:`, error);
+            return null;
+        }
+    },
+
+    /**
      * Record all entities - main save action
      * Creates entities AND the dependency path linking them
      */
     async recordAll() {
+        console.log('🔗 [RELATIONS] recordAll() called');
         const entityTypes = ['company', 'material', 'opening_system', 'system_series', 'color'];
         let savedEntities = {};  // Track saved entity IDs
         let errors = [];
@@ -116,8 +165,13 @@ const RelationsManager = {
             const name = nameInput?.value?.trim();
             
             // Skip if no name entered
-            if (!name) continue;
+            if (!name) {
+                console.log(`🔗 [RELATIONS] Skipping ${entityType} - no name`);
+                continue;
+            }
             
+            console.log(`🔗 [RELATIONS] Processing ${entityType}: "${name}"`);
+
             // Build data object
             const data = {
                 entity_type: entityType,
@@ -140,9 +194,14 @@ const RelationsManager = {
                 data.description = descInput.value;
             }
             
-            // Add image URL if available
-            if (this.imageData[entityType]) {
-                data.image_url = this.imageData[entityType];
+            // Upload image if one was selected and get the URL
+            if (this.imageFiles[entityType]) {
+                console.log(`🔗 [RELATIONS] Uploading image for ${entityType}...`);
+                const imageUrl = await this.uploadImage(entityType);
+                if (imageUrl) {
+                    data.image_url = imageUrl;
+                    console.log(`🔗 [RELATIONS] ✅ Image uploaded, URL: ${imageUrl}`);
+                }
             }
             
             // Add metadata fields
@@ -157,6 +216,8 @@ const RelationsManager = {
             
             try {
                 let response;
+                console.log(`🔗 [RELATIONS] Sending data for ${entityType}:`, data);
+                
                 if (entityId) {
                     // Update existing entity
                     response = await fetch(`${this.API_BASE}/entities/${entityId}`, {
@@ -174,16 +235,34 @@ const RelationsManager = {
                 }
                 
                 const result = await response.json();
+                console.log(`🔗 [RELATIONS] Response for ${entityType}:`, response.status, result);
                 
                 if (response.ok && result.entity) {
                     savedEntities[entityType] = result.entity.id;
+                    console.log(`🔗 [RELATIONS] ✅ Saved ${entityType} with ID: ${result.entity.id}`);
                     this.resetCardForm(entityType);
                 } else if (response.ok && entityId) {
                     // Update case - use existing ID
                     savedEntities[entityType] = parseInt(entityId);
+                    console.log(`🔗 [RELATIONS] ✅ Updated ${entityType} with ID: ${entityId}`);
                     this.resetCardForm(entityType);
                 } else {
-                    errors.push(`${entityType}: ${result.detail || 'Error'}`);
+                    // Handle error - detail might be string or object
+                    let errorMsg = 'Error';
+                    console.log(`🔗 [RELATIONS] ❌ Error for ${entityType}, result.detail:`, result.detail, typeof result.detail);
+                    if (result.detail) {
+                        if (typeof result.detail === 'string') {
+                            errorMsg = result.detail;
+                        } else if (result.detail.message) {
+                            errorMsg = result.detail.message;
+                        } else if (Array.isArray(result.detail)) {
+                            // Pydantic validation errors
+                            errorMsg = result.detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+                        } else {
+                            errorMsg = JSON.stringify(result.detail);
+                        }
+                    }
+                    errors.push(`${entityType}: ${errorMsg}`);
                 }
             } catch (error) {
                 console.error(`Error saving ${entityType}:`, error);
@@ -219,10 +298,21 @@ const RelationsManager = {
                     showToast(`Relation path created: ${pathResult.path?.description || 'Success'}`, 'success');
                 } else {
                     // Path might already exist, which is fine
-                    if (pathResult.detail?.includes('already exists')) {
+                    let pathErrorMsg = 'Error creating path';
+                    if (pathResult.detail) {
+                        if (typeof pathResult.detail === 'string') {
+                            pathErrorMsg = pathResult.detail;
+                        } else if (pathResult.detail.message) {
+                            pathErrorMsg = pathResult.detail.message;
+                        } else {
+                            pathErrorMsg = JSON.stringify(pathResult.detail);
+                        }
+                    }
+                    
+                    if (pathErrorMsg.includes('already exists')) {
                         showToast('Entities saved. Path already exists.', 'info');
                     } else {
-                        errors.push(`Path: ${pathResult.detail || 'Error creating path'}`);
+                        errors.push(`Path: ${pathErrorMsg}`);
                     }
                 }
             } catch (error) {
@@ -262,8 +352,15 @@ const RelationsManager = {
             }
         });
         
-        // Reset image
-        delete this.imageData[entityType];
+        // Reset file input
+        const fileInput = document.getElementById(`${entityType}_file`);
+        if (fileInput) {
+            fileInput.value = '';
+        }
+        
+        // Reset image storage
+        delete this.imageFiles[entityType];
+        delete this.imagePreviews[entityType];
         
         const preview = document.getElementById(`${entityType}_preview`);
         const placeholder = document.getElementById(`${entityType}_placeholder`);

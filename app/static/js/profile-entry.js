@@ -929,39 +929,62 @@ function profileEntryApp(options = {}) {
             
             // Only process if this is a cascading field
             if (fieldIndex === -1) {
+                console.log(`🔗 [CASCADE] Field ${fieldName} is not in cascade hierarchy, skipping`);
                 return;
             }
             
-            console.log(`🔗 [CASCADE] Field ${fieldName} changed to ${value}, updating child options...`);
+            console.log(`🔗 [CASCADE] ========================================`);
+            console.log(`🔗 [CASCADE] Field ${fieldName} changed to "${value}"`);
+            console.log(`🔗 [CASCADE] Field index in hierarchy: ${fieldIndex}`);
             
             // Clear all child field values and options when parent changes
             for (let i = fieldIndex + 1; i < cascadeHierarchy.length; i++) {
                 const childField = cascadeHierarchy[i];
                 this.formData[childField] = '';
+                
+                // Also clear the options in the schema
+                if (this.schema && this.schema.sections) {
+                    for (const section of this.schema.sections) {
+                        const field = section.fields.find(f => f.name === childField);
+                        if (field) {
+                            field.options = [];
+                        }
+                    }
+                }
                 console.log(`🔗 [CASCADE] Cleared child field: ${childField}`);
             }
             
-            // If value is empty, don't fetch options
+            // If value is empty, clear children and return
             if (!value) {
+                console.log(`🔗 [CASCADE] Value is empty, cleared children, done`);
+                this.schema = { ...this.schema }; // Force reactivity
                 return;
             }
             
-            // Build parent selections for API call
+            // Build parent selections for API call - get entity IDs for all selected parents
             const parentSelections = {};
+            
             for (let i = 0; i <= fieldIndex; i++) {
                 const schemaField = cascadeHierarchy[i];
                 const apiField = apiFieldMapping[schemaField];
-                const parentValue = this.formData[schemaField];
-                if (parentValue) {
-                    // We need to find the entity ID for this value
-                    const entityId = await this.getEntityIdByName(apiField, parentValue);
+                const fieldValue = this.formData[schemaField];
+                
+                console.log(`🔗 [CASCADE] Processing parent ${schemaField}: "${fieldValue}"`);
+                
+                if (fieldValue) {
+                    // Get entity ID by name
+                    const entityId = await this.getEntityIdByName(apiField, fieldValue);
+                    console.log(`🔗 [CASCADE] Got entity ID for ${apiField}="${fieldValue}": ${entityId}`);
+                    
                     if (entityId) {
                         parentSelections[`${apiField}_id`] = entityId;
+                    } else {
+                        console.warn(`🔗 [CASCADE] Could not find entity ID for ${apiField}="${fieldValue}"`);
                     }
                 }
             }
             
-            console.log(`🔗 [CASCADE] Parent selections:`, parentSelections);
+            console.log(`🔗 [CASCADE] Parent selections for API:`, parentSelections);
             
             // Fetch dependent options from Relations API
             try {
@@ -972,6 +995,8 @@ function profileEntryApp(options = {}) {
                     body: JSON.stringify(parentSelections)
                 });
                 
+                console.log(`🔗 [CASCADE] API response status: ${response.status}`);
+                
                 if (!response.ok) {
                     console.warn(`🔗 [CASCADE] Failed to fetch options: ${response.status}`);
                     return;
@@ -980,7 +1005,7 @@ function profileEntryApp(options = {}) {
                 const data = await response.json();
                 const options = data.options || {};
                 
-                console.log(`🔗 [CASCADE] Received options:`, options);
+                console.log(`🔗 [CASCADE] Received options from API:`, options);
                 
                 // Update schema options for child fields
                 if (this.schema && this.schema.sections) {
@@ -988,41 +1013,61 @@ function profileEntryApp(options = {}) {
                         for (const field of section.fields) {
                             // Map schema field name to API field name
                             const apiFieldName = apiFieldMapping[field.name] || field.name;
-                            if (options[apiFieldName]) {
+                            
+                            if (options[apiFieldName] && options[apiFieldName].length > 0) {
                                 // Update field options with names from the API
                                 field.options = options[apiFieldName].map(opt => opt.name);
-                                console.log(`🔗 [CASCADE] Updated ${field.name} options:`, field.options);
+                                console.log(`🔗 [CASCADE] ✅ Updated ${field.name} options:`, field.options);
                             }
                         }
                     }
                     
                     // Force Alpine.js reactivity
                     this.schema = { ...this.schema };
+                    console.log(`🔗 [CASCADE] Schema updated, reactivity triggered`);
                 }
                 
             } catch (error) {
                 console.error(`🔗 [CASCADE] Error fetching options:`, error);
             }
+            
+            console.log(`🔗 [CASCADE] ========================================`);
         },
         
         /**
          * Get entity ID by name from the Relations API
          */
         async getEntityIdByName(entityType, entityName) {
+            console.log(`🔗 [CASCADE] getEntityIdByName called: type=${entityType}, name="${entityName}"`);
             try {
-                const response = await fetch(`/api/v1/admin/relations/entities/${entityType}`, {
+                const url = `/api/v1/admin/relations/entities/${entityType}`;
+                console.log(`🔗 [CASCADE] Fetching: ${url}`);
+                
+                const response = await fetch(url, {
                     credentials: 'include'
                 });
                 
+                console.log(`🔗 [CASCADE] Response status: ${response.status}`);
+                
                 if (!response.ok) {
+                    console.warn(`🔗 [CASCADE] Failed to get entities: ${response.status}`);
                     return null;
                 }
                 
                 const data = await response.json();
                 const entities = data.entities || [];
                 
+                console.log(`🔗 [CASCADE] Found ${entities.length} entities:`, entities.map(e => e.name));
+                
                 const entity = entities.find(e => e.name === entityName);
-                return entity ? entity.id : null;
+                
+                if (entity) {
+                    console.log(`🔗 [CASCADE] ✅ Found entity: id=${entity.id}, name="${entity.name}"`);
+                    return entity.id;
+                } else {
+                    console.warn(`🔗 [CASCADE] ❌ Entity not found: "${entityName}"`);
+                    return null;
+                }
                 
             } catch (error) {
                 console.error(`🔗 [CASCADE] Error getting entity ID:`, error);
@@ -1032,13 +1077,22 @@ function profileEntryApp(options = {}) {
 
         /**
          * Initialize cascading options on page load
-         * Loads initial options for the company field from Relations API
+         * Loads initial options AND restores cascading state for draft values
          */
         async initializeCascadingOptions() {
             console.log('🔗 [CASCADE] Initializing cascading options...');
             
+            const cascadeHierarchy = ['company', 'material', 'opening_system', 'system_series', 'colours'];
+            const apiFieldMapping = {
+                'company': 'company',
+                'material': 'material',
+                'opening_system': 'opening_system',
+                'system_series': 'system_series',
+                'colours': 'color'
+            };
+            
             try {
-                // Fetch initial options (companies) from Relations API
+                // First, load initial company options
                 const response = await fetch('/api/v1/admin/relations/options', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1066,10 +1120,73 @@ function profileEntryApp(options = {}) {
                             }
                         }
                     }
-                    
-                    // Force Alpine.js reactivity
-                    this.schema = { ...this.schema };
                 }
+                
+                // Now restore cascading options for any pre-selected draft values
+                // Go through each level of the hierarchy and load dependent options
+                console.log('🔗 [CASCADE] Checking for draft values to restore...');
+                console.log('🔗 [CASCADE] Current formData:', this.formData);
+                
+                const parentSelections = {};
+                
+                for (let i = 0; i < cascadeHierarchy.length; i++) {
+                    const fieldName = cascadeHierarchy[i];
+                    const fieldValue = this.formData[fieldName];
+                    
+                    if (!fieldValue) {
+                        console.log(`🔗 [CASCADE] No draft value for ${fieldName}, stopping cascade restore`);
+                        break;
+                    }
+                    
+                    console.log(`🔗 [CASCADE] Restoring cascade for ${fieldName}="${fieldValue}"`);
+                    
+                    // Get entity ID for this value
+                    const apiField = apiFieldMapping[fieldName];
+                    const entityId = await this.getEntityIdByName(apiField, fieldValue);
+                    
+                    if (!entityId) {
+                        console.warn(`🔗 [CASCADE] Could not find entity ID for ${fieldName}="${fieldValue}", stopping`);
+                        break;
+                    }
+                    
+                    parentSelections[`${apiField}_id`] = entityId;
+                    
+                    // Fetch options for the next level
+                    if (i < cascadeHierarchy.length - 1) {
+                        console.log(`🔗 [CASCADE] Fetching options with selections:`, parentSelections);
+                        
+                        const cascadeResponse = await fetch('/api/v1/admin/relations/options', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify(parentSelections)
+                        });
+                        
+                        if (cascadeResponse.ok) {
+                            const cascadeData = await cascadeResponse.json();
+                            const cascadeOptions = cascadeData.options || {};
+                            
+                            console.log(`🔗 [CASCADE] Received options for level ${i}:`, cascadeOptions);
+                            
+                            // Update schema options for child fields
+                            if (this.schema && this.schema.sections) {
+                                for (const section of this.schema.sections) {
+                                    for (const field of section.fields) {
+                                        const fieldApiName = apiFieldMapping[field.name] || field.name;
+                                        if (cascadeOptions[fieldApiName] && cascadeOptions[fieldApiName].length > 0) {
+                                            field.options = cascadeOptions[fieldApiName].map(opt => opt.name);
+                                            console.log(`🔗 [CASCADE] ✅ Restored ${field.name} options:`, field.options);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Force Alpine.js reactivity
+                this.schema = { ...this.schema };
+                console.log('🔗 [CASCADE] Cascade initialization complete');
                 
             } catch (error) {
                 console.error('🔗 [CASCADE] Error initializing cascading options:', error);

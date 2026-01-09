@@ -100,10 +100,11 @@ const RelationsManager = {
     
     /**
      * Record all entities - main save action
+     * Creates entities AND the dependency path linking them
      */
     async recordAll() {
-        const entityTypes = ['company', 'material', 'opening_system', 'system_series', 'color', 'unit_type'];
-        let savedCount = 0;
+        const entityTypes = ['company', 'material', 'opening_system', 'system_series', 'color'];
+        let savedEntities = {};  // Track saved entity IDs
         let errors = [];
         
         for (const entityType of entityTypes) {
@@ -174,8 +175,12 @@ const RelationsManager = {
                 
                 const result = await response.json();
                 
-                if (response.ok) {
-                    savedCount++;
+                if (response.ok && result.entity) {
+                    savedEntities[entityType] = result.entity.id;
+                    this.resetCardForm(entityType);
+                } else if (response.ok && entityId) {
+                    // Update case - use existing ID
+                    savedEntities[entityType] = parseInt(entityId);
                     this.resetCardForm(entityType);
                 } else {
                     errors.push(`${entityType}: ${result.detail || 'Error'}`);
@@ -186,14 +191,57 @@ const RelationsManager = {
             }
         }
         
-        // Show result
-        if (savedCount > 0) {
+        // Create dependency path if we have all required entities
+        const requiredTypes = ['company', 'material', 'opening_system', 'system_series', 'color'];
+        const hasAllRequired = requiredTypes.every(type => savedEntities[type]);
+        
+        if (hasAllRequired) {
+            try {
+                const pathData = {
+                    company_id: savedEntities.company,
+                    material_id: savedEntities.material,
+                    opening_system_id: savedEntities.opening_system,
+                    system_series_id: savedEntities.system_series,
+                    color_id: savedEntities.color
+                };
+                
+                console.log('Creating dependency path:', pathData);
+                
+                const pathResponse = await fetch(`${this.API_BASE}/paths`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pathData)
+                });
+                
+                const pathResult = await pathResponse.json();
+                
+                if (pathResponse.ok) {
+                    showToast(`Relation path created: ${pathResult.path?.description || 'Success'}`, 'success');
+                } else {
+                    // Path might already exist, which is fine
+                    if (pathResult.detail?.includes('already exists')) {
+                        showToast('Entities saved. Path already exists.', 'info');
+                    } else {
+                        errors.push(`Path: ${pathResult.detail || 'Error creating path'}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error creating path:', error);
+                errors.push('Path: Network error');
+            }
+        } else if (Object.keys(savedEntities).length > 0) {
+            // Some entities saved but not all - warn user
+            const missing = requiredTypes.filter(type => !savedEntities[type]);
+            showToast(`Entities saved. Missing for path: ${missing.join(', ')}`, 'warning');
+        }
+        
+        // Show final result
+        const savedCount = Object.keys(savedEntities).length;
+        if (savedCount > 0 && errors.length === 0) {
             showToast(`${savedCount} entity(s) saved successfully`, 'success');
-        }
-        if (errors.length > 0) {
+        } else if (errors.length > 0) {
             showToast(`Errors: ${errors.join(', ')}`, 'error');
-        }
-        if (savedCount === 0 && errors.length === 0) {
+        } else if (savedCount === 0) {
             showToast('No data to save. Please fill in at least one entity.', 'info');
         }
     },

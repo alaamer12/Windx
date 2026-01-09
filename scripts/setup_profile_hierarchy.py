@@ -188,15 +188,15 @@ async def create_attribute_nodes(
         },
         {
             "name": "system_series",
-            "description": "System Series (select multiple)",
+            "description": "System Series",
             "node_type": "attribute",
             "data_type": "string",
             "required": True,
             "ltree_path": "basic_information.system_series",
             "depth": 1,
             "sort_order": 6,
-            "ui_component": "multiselect",
-            "help_text": "Select one or more system series (e.g., Kom700, Kom800)",
+            "ui_component": "dropdown",
+            "help_text": "Select a system series (e.g., K700, K800)",
             "validation_rules": {"max_length": 200},
             # No hardcoded options - options come from the relations system (system_series entity type)
         },

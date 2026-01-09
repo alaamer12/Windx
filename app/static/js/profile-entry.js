@@ -1,6 +1,8 @@
 // Profile Entry Application JavaScript
 // This file uses modular classes loaded from separate files
 
+console.log('%c🚀 profile-entry.js v28 LOADED', 'background: #00ff00; color: black; font-size: 16px; font-weight: bold; padding: 8px;');
+
 function profileEntryApp(options = {}) {
     return {
         // State
@@ -213,6 +215,9 @@ function profileEntryApp(options = {}) {
                     this.schema = this.processSchema(schema);
                     // previews are already loaded by this.loadPreviews()
                     console.log('🦆 [STEP 2] Data loading completed');
+                    
+                    // Initialize cascading options for relation fields
+                    await this.initializeCascadingOptions();
                 } catch (err) {
                     console.error('🦆 [ERROR] Failed to load data:', err);
                     this.error = err.message;
@@ -753,9 +758,126 @@ function profileEntryApp(options = {}) {
             return ImageHandler.debugImageField(header, rowValue);
         },
 
+        /**
+         * Auto-calculate price fields based on length_of_beam
+         * Formula: price_per_beam = price_per_meter * length_of_beam
+         * 
+         * Uses proper decimal arithmetic to avoid floating point precision issues
+         */
+        autoCalculatePriceFields(fieldName, value) {
+            console.log('%c🧮 [PRICE CALC] autoCalculatePriceFields called', 'background: #ff6600; color: white; font-size: 14px; padding: 4px;');
+            console.log('%c Field: ' + fieldName + ', Value: ' + value, 'background: #ff6600; color: white; font-size: 12px; padding: 2px;');
+            
+            // Only process relevant fields
+            const priceFields = ['price_per_meter', 'price_per_beam', 'length_of_beam'];
+            if (!priceFields.includes(fieldName)) {
+                console.log(`🧮 [PRICE CALC] Field ${fieldName} is not a price field, skipping`);
+                return;
+            }
+
+            // Get current values
+            const lengthOfBeam = this.parseDecimal(this.formData.length_of_beam);
+            const pricePerMeter = this.parseDecimal(this.formData.price_per_meter);
+            const pricePerBeam = this.parseDecimal(this.formData.price_per_beam);
+
+            console.log('%c🧮 [PRICE CALC] Current values', 'background: #0066ff; color: white; font-size: 12px; padding: 2px;');
+            console.log('  lengthOfBeam:', lengthOfBeam);
+            console.log('  pricePerMeter:', pricePerMeter);
+            console.log('  pricePerBeam:', pricePerBeam);
+
+            // Skip if length_of_beam is not set or is zero
+            if (lengthOfBeam === null || lengthOfBeam === 0) {
+                console.log(`🧮 [PRICE CALC] length_of_beam is null or 0, skipping calculation`);
+                return;
+            }
+
+            let targetField = null;
+            let calculatedValue = null;
+
+            // Calculate based on which field was changed
+            if (fieldName === 'price_per_meter' && pricePerMeter !== null) {
+                // Calculate price_per_beam from price_per_meter
+                calculatedValue = this.roundToDecimals(pricePerMeter * lengthOfBeam, 2);
+                targetField = 'price_per_beam';
+                this.formData.price_per_beam = calculatedValue;
+                console.log(`🧮 [PRICE CALC] price_per_beam = ${pricePerMeter} × ${lengthOfBeam} = ${calculatedValue}`);
+            } else if (fieldName === 'price_per_beam' && pricePerBeam !== null) {
+                // Calculate price_per_meter from price_per_beam
+                calculatedValue = this.roundToDecimals(pricePerBeam / lengthOfBeam, 2);
+                targetField = 'price_per_meter';
+                this.formData.price_per_meter = calculatedValue;
+                console.log(`🧮 [PRICE CALC] price_per_meter = ${pricePerBeam} ÷ ${lengthOfBeam} = ${calculatedValue}`);
+            } else if (fieldName === 'length_of_beam' && pricePerMeter !== null) {
+                // Recalculate price_per_beam when length changes (if price_per_meter is set)
+                calculatedValue = this.roundToDecimals(pricePerMeter * lengthOfBeam, 2);
+                targetField = 'price_per_beam';
+                this.formData.price_per_beam = calculatedValue;
+                console.log(`🧮 [PRICE CALC] length changed: price_per_beam = ${pricePerMeter} × ${lengthOfBeam} = ${calculatedValue}`);
+            } else {
+                console.log(`🧮 [PRICE CALC] No calculation performed - conditions not met`);
+                return;
+            }
+
+            // Update the DOM input element directly since :value is one-way binding
+            if (targetField && calculatedValue !== null && this.$el) {
+                const inputElement = this.$el.querySelector(`#${targetField}, [name="${targetField}"], input[id="${targetField}"]`);
+                if (inputElement) {
+                    inputElement.value = calculatedValue;
+                    console.log(`🧮 [PRICE CALC] Updated DOM input #${targetField} to ${calculatedValue}`);
+                } else {
+                    console.log(`🧮 [PRICE CALC] Could not find input element for ${targetField}`);
+                }
+            }
+        },
+
+        /**
+         * Parse a value to a decimal number, handling various input formats
+         * Returns null if the value is empty, null, undefined, or not a valid number
+         */
+        parseDecimal(value) {
+            if (value === null || value === undefined || value === '') {
+                return null;
+            }
+            
+            // Handle string values
+            if (typeof value === 'string') {
+                value = value.trim();
+                if (value === '') {
+                    return null;
+                }
+            }
+            
+            const num = parseFloat(value);
+            return isNaN(num) ? null : num;
+        },
+
+        /**
+         * Round a number to specified decimal places using proper decimal arithmetic
+         * This avoids floating point precision issues like 0.1 + 0.2 = 0.30000000000000004
+         */
+        roundToDecimals(value, decimals) {
+            if (value === null || value === undefined || isNaN(value)) {
+                return null;
+            }
+            
+            // Use the "multiply, round, divide" technique to avoid floating point issues
+            // Adding Number.EPSILON helps with edge cases like 1.005 rounding to 1.00 instead of 1.01
+            const multiplier = Math.pow(10, decimals);
+            return Math.round((value + Number.EPSILON) * multiplier) / multiplier;
+        },
+
         updateField(fieldName, value) {
+            console.log('%c🔄 [UPDATE FIELD] updateField called', 'background: #222; color: #bada55; font-size: 14px; padding: 4px;');
+            console.log('%c Field: ' + fieldName + ', Value: ' + value, 'background: #222; color: #00ff00; font-size: 12px; padding: 2px;');
+            
             // Update form data
             this.formData[fieldName] = value;
+
+            // Auto-calculate price fields
+            this.autoCalculatePriceFields(fieldName, value);
+
+            // Handle cascading dropdowns for relation fields
+            this.handleCascadingOptions(fieldName, value);
 
             // Save to session storage
             SessionManager.saveToSession(this.formData);
@@ -783,6 +905,175 @@ function profileEntryApp(options = {}) {
 
             // Validate field
             this.validateField(fieldName, value);
+        },
+
+        /**
+         * Handle cascading dropdown options for relation fields
+         * When a parent field changes, fetch and update child field options
+         * 
+         * Hierarchy: company → material → opening_system → system_series → colours
+         */
+        async handleCascadingOptions(fieldName, value) {
+            // Define the cascading hierarchy
+            // Note: Schema uses 'colours' but Relations API uses 'color'
+            const cascadeHierarchy = ['company', 'material', 'opening_system', 'system_series', 'colours'];
+            const apiFieldMapping = {
+                'company': 'company',
+                'material': 'material',
+                'opening_system': 'opening_system',
+                'system_series': 'system_series',
+                'colours': 'color'  // Map schema field to API field
+            };
+            
+            const fieldIndex = cascadeHierarchy.indexOf(fieldName);
+            
+            // Only process if this is a cascading field
+            if (fieldIndex === -1) {
+                return;
+            }
+            
+            console.log(`🔗 [CASCADE] Field ${fieldName} changed to ${value}, updating child options...`);
+            
+            // Clear all child field values and options when parent changes
+            for (let i = fieldIndex + 1; i < cascadeHierarchy.length; i++) {
+                const childField = cascadeHierarchy[i];
+                this.formData[childField] = '';
+                console.log(`🔗 [CASCADE] Cleared child field: ${childField}`);
+            }
+            
+            // If value is empty, don't fetch options
+            if (!value) {
+                return;
+            }
+            
+            // Build parent selections for API call
+            const parentSelections = {};
+            for (let i = 0; i <= fieldIndex; i++) {
+                const schemaField = cascadeHierarchy[i];
+                const apiField = apiFieldMapping[schemaField];
+                const parentValue = this.formData[schemaField];
+                if (parentValue) {
+                    // We need to find the entity ID for this value
+                    const entityId = await this.getEntityIdByName(apiField, parentValue);
+                    if (entityId) {
+                        parentSelections[`${apiField}_id`] = entityId;
+                    }
+                }
+            }
+            
+            console.log(`🔗 [CASCADE] Parent selections:`, parentSelections);
+            
+            // Fetch dependent options from Relations API
+            try {
+                const response = await fetch('/api/v1/admin/relations/options', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(parentSelections)
+                });
+                
+                if (!response.ok) {
+                    console.warn(`🔗 [CASCADE] Failed to fetch options: ${response.status}`);
+                    return;
+                }
+                
+                const data = await response.json();
+                const options = data.options || {};
+                
+                console.log(`🔗 [CASCADE] Received options:`, options);
+                
+                // Update schema options for child fields
+                if (this.schema && this.schema.sections) {
+                    for (const section of this.schema.sections) {
+                        for (const field of section.fields) {
+                            // Map schema field name to API field name
+                            const apiFieldName = apiFieldMapping[field.name] || field.name;
+                            if (options[apiFieldName]) {
+                                // Update field options with names from the API
+                                field.options = options[apiFieldName].map(opt => opt.name);
+                                console.log(`🔗 [CASCADE] Updated ${field.name} options:`, field.options);
+                            }
+                        }
+                    }
+                    
+                    // Force Alpine.js reactivity
+                    this.schema = { ...this.schema };
+                }
+                
+            } catch (error) {
+                console.error(`🔗 [CASCADE] Error fetching options:`, error);
+            }
+        },
+        
+        /**
+         * Get entity ID by name from the Relations API
+         */
+        async getEntityIdByName(entityType, entityName) {
+            try {
+                const response = await fetch(`/api/v1/admin/relations/entities/${entityType}`, {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    return null;
+                }
+                
+                const data = await response.json();
+                const entities = data.entities || [];
+                
+                const entity = entities.find(e => e.name === entityName);
+                return entity ? entity.id : null;
+                
+            } catch (error) {
+                console.error(`🔗 [CASCADE] Error getting entity ID:`, error);
+                return null;
+            }
+        },
+
+        /**
+         * Initialize cascading options on page load
+         * Loads initial options for the company field from Relations API
+         */
+        async initializeCascadingOptions() {
+            console.log('🔗 [CASCADE] Initializing cascading options...');
+            
+            try {
+                // Fetch initial options (companies) from Relations API
+                const response = await fetch('/api/v1/admin/relations/options', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({})
+                });
+                
+                if (!response.ok) {
+                    console.warn('🔗 [CASCADE] Failed to fetch initial options, using schema defaults');
+                    return;
+                }
+                
+                const data = await response.json();
+                const options = data.options || {};
+                
+                console.log('🔗 [CASCADE] Initial options loaded:', options);
+                
+                // Update schema options for company field
+                if (this.schema && this.schema.sections && options.company) {
+                    for (const section of this.schema.sections) {
+                        for (const field of section.fields) {
+                            if (field.name === 'company') {
+                                field.options = options.company.map(opt => opt.name);
+                                console.log('🔗 [CASCADE] Updated company options:', field.options);
+                            }
+                        }
+                    }
+                    
+                    // Force Alpine.js reactivity
+                    this.schema = { ...this.schema };
+                }
+                
+            } catch (error) {
+                console.error('🔗 [CASCADE] Error initializing cascading options:', error);
+            }
         },
 
         validateField(fieldName, value) {

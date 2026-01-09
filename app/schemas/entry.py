@@ -304,10 +304,10 @@ class ProfileEntryData(BaseModel):
         ),
     ]
     system_series: Annotated[
-        str,
+        str | list[str],
         Field(
-            description="System series",
-            examples=["Kom800", "Series100"],
+            description="System series (single value or multiple selections)",
+            examples=["Kom800", ["Kom700", "Kom800"]],
         ),
     ]
     code: Annotated[

@@ -156,7 +156,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Company or manufacturer name",
             "validation_rules": {"max_length": 100},
-            "options": ["kompen"],  # From CSV data
+            # No hardcoded options - options come from the relations system (company entity type)
         },
         {
             "name": "material",
@@ -169,8 +169,8 @@ async def create_attribute_nodes(
             "sort_order": 4,
             "ui_component": "dropdown",
             "help_text": "Select the material type",
-            "validation_rules": {},  # No hardcoded options
-            "options": ["UPVC", "Aluminum", "Wood", "Steel", "Composite"],
+            "validation_rules": {},
+            # No hardcoded options - options come from the relations system (material entity type)
         },
         {
             "name": "opening_system",
@@ -183,21 +183,22 @@ async def create_attribute_nodes(
             "sort_order": 5,
             "ui_component": "dropdown",
             "help_text": "Select the opening system type",
-            "validation_rules": {},  # No hardcoded options
-            "options": ["Casement", "Sliding", "Double-hung", "Tilt-turn", "Fixed", "All"],
+            "validation_rules": {},
+            # No hardcoded options - options come from the relations system (opening_system entity type)
         },
         {
             "name": "system_series",
-            "description": "System Series",
+            "description": "System Series (select multiple)",
             "node_type": "attribute",
             "data_type": "string",
             "required": True,
             "ltree_path": "basic_information.system_series",
             "depth": 1,
             "sort_order": 6,
-            "ui_component": "input",
-            "help_text": "Enter the system series (e.g., Kom700, Kom800)",
-            "validation_rules": {"max_length": 50},
+            "ui_component": "multiselect",
+            "help_text": "Select one or more system series (e.g., Kom700, Kom800)",
+            "validation_rules": {"max_length": 200},
+            # No hardcoded options - options come from the relations system (system_series entity type)
         },
         {
             "name": "code",
@@ -473,12 +474,8 @@ async def create_attribute_nodes(
             "sort_order": 25,
             "ui_component": "dropdown",
             "help_text": "Select reinforcement steel options",
-            "validation_rules": {},  # No hardcoded options
-            "options": [
-                "Standard Steel",
-                "High Strength Steel",
-                "Galvanized Steel",
-            ],  # Common options
+            "validation_rules": {},
+            # No hardcoded options - options come from the relations system (reinforcement_steel entity type)
         },
         {
             "name": "colours",
@@ -491,8 +488,8 @@ async def create_attribute_nodes(
             "sort_order": 26,
             "ui_component": "dropdown",
             "help_text": "Select available colors",
-            "validation_rules": {},  # No hardcoded options
-            "options": ["White", "Brown", "Black", "Grey", "Wood Grain"],  # Common colors
+            "validation_rules": {},
+            # No hardcoded options - options come from the relations system (colours entity type)
         },
         # Pricing Section
         {

@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<!--
+================================================================================
+                        RELATIONS MANAGER - MOCKUP (Option A)
+================================================================================
+
+OVERVIEW:
+---------
+This is a mockup/prototype for the Relations Manager feature in Windx.
+It demonstrates the "Single Step" approach where entities are created and 
+linked in one unified interface.
+
+PURPOSE:
+--------
+- Allow data entry staff to create product configuration entities
+- Establish relationships between entities to form valid product paths
+- Paths define what combinations of options are available to customers
+
+================================================================================
+                              ENTITY TYPES
+================================================================================
+
+1. MATERIAL (Independent)
+   - Examples: UPVC, Aluminum, Wood
+   - No links required - standalone entity
+   - Used by: Company (links to it), System Series (via Company)
+
+2. OPENING SYSTEM (Independent)  
+   - Examples: Casement, Sliding, Tilt & Turn
+   - No links required - standalone entity
+   - Used by: System Series (links to it)
+
+3. COLOR (Independent)
+   - Examples: White, Red, Blue, Green, Black
+   - No links required - standalone entity
+   - Used by: System Series (multi-select, links to multiple colors)
+
+4. COMPANY (Links to Material)
+   - Examples: Komben, Schuco, Rehau
+   - MUST link to exactly ONE Material when created
+   - One company can have multiple entries (one per material)
+   - Example: "Komben → UPVC" and "Komben → Aluminum" are two separate entries
+
+5. SYSTEM SERIES (Links to create Paths)
+   - Examples: K700, K600, K800
+   - MUST link to:
+     * Company → Material (combined dropdown showing "Komben → UPVC")
+     * Opening System (single select)
+     * Colors (multi-select with chips)
+   - Creates PATHS automatically when recorded
+
+================================================================================
+                              HOW PATHS WORK
+================================================================================
+
+A PATH represents a valid product configuration combination:
+  Company → Material → Opening System → System Series → Color
+
+Example Paths:
+  - Komben → UPVC → Casement → K700 → White
+  - Komben → UPVC → Casement → K700 → Red
+  - Komben → Aluminum → Sliding → K800 → Blue
+
+INTERNAL vs DISPLAY:
+  - Internally: Each color creates a separate path record
+  - Display: Grouped by series, colors shown as chips in one row
+  - Example: If K700 has 3 colors, internally = 3 paths, display = 1 row
+
+================================================================================
+                              USER WORKFLOW
+================================================================================
+
+STEP 1: Create Independent Entities First
+  - Add Materials (UPVC, Aluminum, etc.)
+  - Add Opening Systems (Casement, Sliding, etc.)
+  - Add Colors (White, Red, Blue, etc.)
+
+STEP 2: Create Companies (with Material links)
+  - Select "Company" from dropdown
+  - Enter company name
+  - Select which Material this company works with
+  - Record → Creates Company-Material link
+
+STEP 3: Create System Series (creates Paths)
+  - Select "System Series" from dropdown
+  - Enter series name (e.g., K700)
+  - Select Company → Material from combined dropdown
+  - Select Opening System
+  - Select multiple Colors (chips appear)
+  - Record → Creates paths for each color
+
+================================================================================
+                              DATA STRUCTURE
+================================================================================
+
+store = {
+  entities: {
+    material: [],        // { id, name, price, description }
+    opening_system: [],  // { id, name, price, description }
+    color: [],           // { id, name, price, description }
+    company: [],         // { id, name, price, description }
+    system_series: []    // { id, name, price, description }
+  },
+  companyMaterialLinks: [],  // { companyId, materialId }
+  paths: []                  // { id, company, material, opening_system, system_series, color }
+}
+
+================================================================================
+                              VIEW ALL TAB
+================================================================================
+
+Shows:
+1. Summary Cards - Count of each entity type
+2. Company → Material Links - Visual pills showing relationships
+3. Paths Table - Grouped by series, colors as chips
+
+================================================================================
+                              NOTES FOR IMPLEMENTATION
+================================================================================
+
+- This is a MOCKUP with in-memory data only
+- Real implementation will use API calls to backend
+- Backend stores paths in database (one row per color)
+- Frontend groups paths for display
+- All entity types share common fields: name, price, description
+
+================================================================================
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relations Manager - Single Step</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { background: #fff; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 16px;
+            font-size: 13px;
+            margin: 3px;
+        }
+        .chip .remove {
+            cursor: pointer;
+            color: #64748b;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .chip .remove:hover { color: #ef4444; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: #10b981; }
+        .toast.error { background: #ef4444; }
+        .toast.info { background: #3b82f6; }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .link-section {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div id="app" class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Relations Manager</h1>
+            <p class="text-gray-600">Create entities and link them together in one step.</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="flex gap-8">
+                <button onclick="showTab('entities')" id="tab-entities" class="pb-3 px-1 tab-active font-medium">
+                    <i class="fa-solid fa-plus-circle mr-1"></i> Add Entities
+                </button>
+                <button onclick="showTab('view')" id="tab-view" class="pb-3 px-1 text-gray-500 font-medium hover:text-gray-700">
+                    <i class="fa-solid fa-list mr-1"></i> View All
+                </button>
+            </nav>
+        </div>
+
+        <!-- Tab: Add Entities -->
+        <div id="content-entities">
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Add New Entity</h3>
+                
+                <!-- Entity Type Selector -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Entity Type</label>
+                    <select id="entityType" onchange="updateEntityForm()" class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Select Type --</option>
+                        <option value="material"><i class="fa-solid fa-cubes"></i> Material</option>
+                        <option value="opening_system">Opening System</option>
+                        <option value="color">Color</option>
+                        <option value="company">Company</option>
+                        <option value="system_series">System Series</option>
+                    </select>
+                </div>
+
+                <!-- Dynamic Form Container -->
+                <div id="entityForm" class="hidden">
+                    <!-- Basic Fields (shown for all) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Name <span class="text-red-500">*</span></label>
+                            <input type="text" id="entityName" placeholder="Enter name..." class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Price From</label>
+                            <input type="number" id="entityPrice" placeholder="0.00" step="0.01" class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <textarea id="entityDescription" rows="2" placeholder="Optional description..." class="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Company Links (shown only for Company) -->
+                    <div id="companyLinks" class="hidden link-section">
+                        <h4 class="font-medium text-gray-700 mb-3"><i class="fa-solid fa-link text-gray-500 mr-1"></i> Link to Material</h4>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-2">Material</label>
+                            <select id="companyMaterial" class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                <option value="">Select material...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- System Series Links (shown only for System Series) -->
+                    <div id="seriesLinks" class="hidden link-section">
+                        <h4 class="font-medium text-gray-700 mb-3"><i class="fa-solid fa-link text-gray-500 mr-1"></i> Link to Create Path</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-2">Company → Material</label>
+                                <select id="seriesCompanyMaterial" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                    <option value="">Select...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-2">Opening System</label>
+                                <select id="seriesOpening" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                    <option value="">Select...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-2">Colors <span class="text-blue-500 text-xs">(multi-select)</span></label>
+                                <select id="seriesColors" onchange="addColorChip()" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                                    <option value="">Select colors...</option>
+                                </select>
+                                <div id="colorChips" class="mt-2 min-h-[32px]">
+                                    <!-- Chips will appear here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="mt-6">
+                        <button onclick="recordEntity()" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">
+                            <i class="fa-solid fa-save mr-1"></i> Record
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: View All -->
+        <div id="content-view" class="hidden">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div class="bg-cyan-50 border border-cyan-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl mb-1 text-cyan-600"><i class="fa-solid fa-cubes"></i></div>
+                    <div class="text-2xl font-bold text-cyan-700" id="countMaterial">0</div>
+                    <div class="text-xs text-cyan-600">Materials</div>
+                </div>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl mb-1 text-blue-600"><i class="fa-solid fa-door-open"></i></div>
+                    <div class="text-2xl font-bold text-blue-700" id="countOpening">0</div>
+                    <div class="text-xs text-blue-600">Opening Systems</div>
+                </div>
+                <div class="bg-pink-50 border border-pink-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl mb-1 text-pink-600"><i class="fa-solid fa-palette"></i></div>
+                    <div class="text-2xl font-bold text-pink-700" id="countColor">0</div>
+                    <div class="text-xs text-pink-600">Colors</div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl mb-1 text-emerald-600"><i class="fa-solid fa-building"></i></div>
+                    <div class="text-2xl font-bold text-emerald-700" id="countCompany">0</div>
+                    <div class="text-xs text-emerald-600">Companies</div>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
+                    <div class="text-2xl mb-1 text-amber-600"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="text-2xl font-bold text-amber-700" id="countSeries">0</div>
+                    <div class="text-xs text-amber-600">System Series</div>
+                </div>
+            </div>
+
+            <!-- Company → Material Links -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="font-semibold text-gray-800 mb-4"><i class="fa-solid fa-building text-emerald-600 mr-2"></i>Company → Material Links</h3>
+                <div id="companyMaterialLinksView" class="flex flex-wrap gap-3">
+                    <div class="text-gray-400 text-sm italic">No company-material links yet.</div>
+                </div>
+            </div>
+
+            <!-- Paths Section -->
+            <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-gray-100 bg-gray-50">
+                    <h3 class="font-semibold text-gray-800"><i class="fa-solid fa-route text-blue-600 mr-2"></i>All Paths (<span id="totalPaths">0</span>)</h3>
+                </div>
+                <div id="pathsTable" class="overflow-x-auto hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 text-left text-sm text-gray-600">
+                            <tr>
+                                <th class="px-4 py-3">Company</th>
+                                <th class="px-4 py-3">Material</th>
+                                <th class="px-4 py-3">Opening</th>
+                                <th class="px-4 py-3">Series</th>
+                                <th class="px-4 py-3">Color</th>
+                                <th class="px-4 py-3 w-20">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pathsTableBody" class="text-sm"></tbody>
+                    </table>
+                </div>
+                <div id="noPathsYet" class="p-8 text-center text-gray-500">
+                    No paths created yet. Add a System Series to create paths.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <script>
+        // ============================================
+        // DATA STORE
+        // ============================================
+        const store = {
+            entities: {
+                material: [],
+                opening_system: [],
+                color: [],
+                company: [],          // company has link to material
+                system_series: []     // system_series has links to company, material, opening, colors
+            },
+            companyMaterialLinks: [],  // { companyId, materialId }
+            paths: []                  // full paths created from system_series
+        };
+
+        // Selected colors for system_series (multi-select)
+        let selectedColors = [];
+
+        const entityConfig = {
+            material: { icon: 'fa-cubes', label: 'Materials', color: 'cyan' },
+            opening_system: { icon: 'fa-door-open', label: 'Opening Systems', color: 'blue' },
+            color: { icon: 'fa-palette', label: 'Colors', color: 'pink' },
+            company: { icon: 'fa-building', label: 'Companies', color: 'emerald' },
+            system_series: { icon: 'fa-layer-group', label: 'System Series', color: 'amber' }
+        };
+
+        // ============================================
+        // TAB NAVIGATION
+        // ============================================
+        function showTab(tab) {
+            document.querySelectorAll('[id^="content-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="tab-"]').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('text-gray-500');
+            });
+            document.getElementById('content-' + tab).classList.remove('hidden');
+            const activeTab = document.getElementById('tab-' + tab);
+            activeTab.classList.add('tab-active');
+            activeTab.classList.remove('text-gray-500');
+            
+            if (tab === 'view') refreshViewTab();
+        }
+
+        // ============================================
+        // FORM MANAGEMENT
+        // ============================================
+        function updateEntityForm() {
+            const type = document.getElementById('entityType').value;
+            const form = document.getElementById('entityForm');
+            const companyLinks = document.getElementById('companyLinks');
+            const seriesLinks = document.getElementById('seriesLinks');
+            
+            // Reset
+            companyLinks.classList.add('hidden');
+            seriesLinks.classList.add('hidden');
+            selectedColors = [];
+            document.getElementById('colorChips').innerHTML = '';
+            
+            if (!type) {
+                form.classList.add('hidden');
+                return;
+            }
+            
+            form.classList.remove('hidden');
+            clearForm();
+            
+            // Show relevant link sections
+            if (type === 'company') {
+                companyLinks.classList.remove('hidden');
+                populateMaterialDropdown('companyMaterial');
+            } else if (type === 'system_series') {
+                seriesLinks.classList.remove('hidden');
+                populateCompanyMaterialDropdown();
+                populateOpeningDropdown();
+                populateColorDropdown();
+            }
+            
+            document.getElementById('entityName').focus();
+        }
+
+        function clearForm() {
+            document.getElementById('entityName').value = '';
+            document.getElementById('entityPrice').value = '';
+            document.getElementById('entityDescription').value = '';
+        }
+
+        // ============================================
+        // DROPDOWN POPULATION
+        // ============================================
+        function populateMaterialDropdown(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = '<option value="">Select material...</option>';
+            store.entities.material.forEach(m => {
+                select.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+            });
+        }
+
+        function populateCompanyMaterialDropdown() {
+            // Populate combined "Company → Material" dropdown for System Series
+            const select = document.getElementById('seriesCompanyMaterial');
+            select.innerHTML = '<option value="">Select company → material...</option>';
+            
+            // Build options from companyMaterialLinks
+            store.companyMaterialLinks.forEach(link => {
+                const company = store.entities.company.find(c => c.id === link.companyId);
+                const material = store.entities.material.find(m => m.id === link.materialId);
+                if (company && material) {
+                    // Value format: "companyId:materialId"
+                    select.innerHTML += `<option value="${link.companyId}:${link.materialId}">${company.name} → ${material.name}</option>`;
+                }
+            });
+            
+            if (store.companyMaterialLinks.length === 0) {
+                select.innerHTML = '<option value="">No company-material links yet</option>';
+            }
+        }
+
+        function populateOpeningDropdown() {
+            const select = document.getElementById('seriesOpening');
+            select.innerHTML = '<option value="">Select opening system...</option>';
+            store.entities.opening_system.forEach(o => {
+                select.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+            });
+        }
+
+        function populateColorDropdown() {
+            const select = document.getElementById('seriesColors');
+            select.innerHTML = '<option value="">Select colors...</option>';
+            store.entities.color.forEach(c => {
+                if (!selectedColors.includes(c.id)) {
+                    select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                }
+            });
+        }
+
+        // ============================================
+        // COLOR CHIPS (Multi-select)
+        // ============================================
+        function addColorChip() {
+            const select = document.getElementById('seriesColors');
+            const colorId = parseInt(select.value);
+            if (!colorId) return;
+            
+            const color = store.entities.color.find(c => c.id === colorId);
+            if (!color || selectedColors.includes(colorId)) return;
+            
+            selectedColors.push(colorId);
+            renderColorChips();
+            populateColorDropdown();
+            select.value = '';
+        }
+
+        function removeColorChip(colorId) {
+            selectedColors = selectedColors.filter(id => id !== colorId);
+            renderColorChips();
+            populateColorDropdown();
+        }
+
+        function renderColorChips() {
+            const container = document.getElementById('colorChips');
+            container.innerHTML = selectedColors.map(id => {
+                const color = store.entities.color.find(c => c.id === id);
+                return `<span class="chip">
+                    <i class="fa-solid fa-palette text-pink-500"></i> ${color.name}
+                    <span class="remove" onclick="removeColorChip(${id})">×</span>
+                </span>`;
+            }).join('');
+        }
+
+        // ============================================
+        // RECORD ENTITY
+        // ============================================
+        function recordEntity() {
+            const type = document.getElementById('entityType').value;
+            const name = document.getElementById('entityName').value.trim();
+            const price = document.getElementById('entityPrice').value;
+            const description = document.getElementById('entityDescription').value.trim();
+
+            if (!type || !name) {
+                showToast('Please select a type and enter a name', 'error');
+                return;
+            }
+
+            // Check for duplicates
+            if (store.entities[type].some(e => e.name.toLowerCase() === name.toLowerCase())) {
+                showToast(`${name} already exists`, 'error');
+                return;
+            }
+
+            const entity = {
+                id: Date.now(),
+                name: name,
+                price: price ? parseFloat(price) : null,
+                description: description || null
+            };
+
+            // Handle Company - link to material
+            if (type === 'company') {
+                const materialId = document.getElementById('companyMaterial').value;
+                if (!materialId) {
+                    showToast('Please select a material to link', 'error');
+                    return;
+                }
+                store.entities.company.push(entity);
+                store.companyMaterialLinks.push({
+                    companyId: entity.id,
+                    materialId: parseInt(materialId)
+                });
+                const material = store.entities.material.find(m => m.id == materialId);
+                showToast(`${name} created and linked to ${material.name}`, 'success');
+            }
+            // Handle System Series - create paths
+            else if (type === 'system_series') {
+                const companyMaterialValue = document.getElementById('seriesCompanyMaterial').value;
+                const openingId = document.getElementById('seriesOpening').value;
+                
+                if (!companyMaterialValue || !openingId || selectedColors.length === 0) {
+                    showToast('Please fill all link fields and select at least one color', 'error');
+                    return;
+                }
+                
+                // Parse "companyId:materialId" format
+                const [companyId, materialId] = companyMaterialValue.split(':').map(Number);
+                
+                store.entities.system_series.push(entity);
+                
+                // Create paths for each selected color
+                const company = store.entities.company.find(c => c.id == companyId);
+                const material = store.entities.material.find(m => m.id == materialId);
+                const opening = store.entities.opening_system.find(o => o.id == openingId);
+                
+                selectedColors.forEach(colorId => {
+                    const color = store.entities.color.find(c => c.id === colorId);
+                    store.paths.push({
+                        id: Date.now() + Math.random(),
+                        company: company.name,
+                        material: material.name,
+                        opening_system: opening.name,
+                        system_series: entity.name,
+                        color: color.name
+                    });
+                });
+                
+                showToast(`${name} created with ${selectedColors.length} path(s)`, 'success');
+                selectedColors = [];
+            }
+            // Handle independent entities (material, opening_system, color)
+            else {
+                store.entities[type].push(entity);
+                showToast(`${name} added`, 'success');
+            }
+            
+            // Reset form
+            clearForm();
+            document.getElementById('entityName').focus();
+            
+            // Refresh dropdowns if needed
+            if (type === 'company') {
+                document.getElementById('companyMaterial').value = '';
+            } else if (type === 'system_series') {
+                document.getElementById('seriesCompanyMaterial').value = '';
+                document.getElementById('seriesOpening').value = '';
+                document.getElementById('colorChips').innerHTML = '';
+                populateColorDropdown();
+            }
+        }
+
+        // ============================================
+        // VIEW TAB
+        // ============================================
+        function refreshViewTab() {
+            // Update counts
+            document.getElementById('countMaterial').textContent = store.entities.material.length;
+            document.getElementById('countOpening').textContent = store.entities.opening_system.length;
+            document.getElementById('countColor').textContent = store.entities.color.length;
+            document.getElementById('countCompany').textContent = store.entities.company.length;
+            document.getElementById('countSeries').textContent = store.entities.system_series.length;
+            
+            // Company → Material Links
+            const linksView = document.getElementById('companyMaterialLinksView');
+            if (store.companyMaterialLinks.length === 0) {
+                linksView.innerHTML = '<div class="text-gray-400 text-sm italic">No company-material links yet.</div>';
+            } else {
+                linksView.innerHTML = store.companyMaterialLinks.map(link => {
+                    const company = store.entities.company.find(c => c.id === link.companyId);
+                    const material = store.entities.material.find(m => m.id === link.materialId);
+                    if (!company || !material) return '';
+                    return `
+                        <div class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-cyan-50 border border-emerald-200 rounded-full px-4 py-2">
+                            <span class="text-emerald-700 font-medium"><i class="fa-solid fa-building mr-1"></i>${company.name}</span>
+                            <span class="text-gray-400"><i class="fa-solid fa-arrow-right"></i></span>
+                            <span class="text-cyan-700 font-medium"><i class="fa-solid fa-cubes mr-1"></i>${material.name}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            // Paths - group by system_series
+            const tbody = document.getElementById('pathsTableBody');
+            const totalPaths = document.getElementById('totalPaths');
+            const noPathsYet = document.getElementById('noPathsYet');
+            const table = document.getElementById('pathsTable');
+            
+            // Group paths by series (company+material+opening+series)
+            const groupedPaths = {};
+            store.paths.forEach(p => {
+                const key = `${p.company}|${p.material}|${p.opening_system}|${p.system_series}`;
+                if (!groupedPaths[key]) {
+                    groupedPaths[key] = {
+                        company: p.company,
+                        material: p.material,
+                        opening_system: p.opening_system,
+                        system_series: p.system_series,
+                        colors: [],
+                        ids: []
+                    };
+                }
+                groupedPaths[key].colors.push(p.color);
+                groupedPaths[key].ids.push(p.id);
+            });
+            
+            const groupedList = Object.values(groupedPaths);
+            totalPaths.textContent = groupedList.length;
+            
+            if (groupedList.length === 0) {
+                noPathsYet.classList.remove('hidden');
+                table.classList.add('hidden');
+            } else {
+                noPathsYet.classList.add('hidden');
+                table.classList.remove('hidden');
+                tbody.innerHTML = groupedList.map(p => `
+                    <tr class="border-t border-gray-100 hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-medium">
+                                <i class="fa-solid fa-building"></i> ${p.company}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 bg-cyan-50 text-cyan-700 px-2 py-1 rounded text-xs font-medium">
+                                <i class="fa-solid fa-cubes"></i> ${p.material}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">
+                                <i class="fa-solid fa-door-open"></i> ${p.opening_system}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs font-medium">
+                                <i class="fa-solid fa-layer-group"></i> ${p.system_series}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="flex flex-wrap gap-1">
+                                ${p.colors.map(c => `
+                                    <span class="inline-flex items-center gap-1 bg-pink-50 text-pink-700 px-2 py-1 rounded text-xs font-medium">
+                                        <i class="fa-solid fa-palette"></i> ${c}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </td>
+                        <td class="px-4 py-3">
+                            <button onclick="deletePathGroup('${p.ids.join(',')}')" class="text-red-500 hover:text-red-700 text-lg"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function deletePathGroup(idsString) {
+            const ids = idsString.split(',');
+            store.paths = store.paths.filter(p => !ids.includes(String(p.id)));
+            showToast('Path deleted', 'info');
+            refreshViewTab();
+        }
+
+        function deletePath(id) {
+            store.paths = store.paths.filter(p => p.id != id);
+            showToast('Path deleted', 'info');
+            refreshViewTab();
+        }
+
+        // ============================================
+        // TOAST
+        // ============================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============================================
+        // INIT (empty - all data in memory)
+        // ============================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // No pre-populated data - start fresh
+        });
+
+        // Handle Enter key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && document.activeElement.closest('#entityForm')) {
+                e.preventDefault();
+                recordEntity();
+            }
+        });
+    </script>
+</body>
+</html>

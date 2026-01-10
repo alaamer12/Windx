@@ -23,8 +23,8 @@ Implement hierarchical option dependencies (Company → Material → Opening Sys
 - [x] Created CSS styles (`app/static/css/relations.css`)
 - [x] Created JavaScript (`app/static/js/relations.js`)
 
-### ⏳ Phase 4: Profile Entry Integration - PENDING
-- [ ] Remove add/remove option UI from profile template
+### ⏳ Phase 4: Profile Entry Integration - IN PROGRESS
+- [x] Remove add/remove option UI from profile template
 - [ ] Implement cascading dropdowns in profile entry
 
 ## Access the Relations Page

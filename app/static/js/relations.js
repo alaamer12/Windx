@@ -1,129 +1,379 @@
 /**
- * Relations Manager
+ * Relations Manager - Single Step Approach
  * 
- * JavaScript module for managing hierarchical option dependencies.
- * Handles entity CRUD and image uploads.
+ * Manages hierarchical option dependencies:
+ * - Material, Opening System, Color: Independent entities
+ * - Company: Links to Material
+ * - System Series: Links to Company→Material, Opening System, Colors (creates paths)
  */
 
 const RelationsManager = {
-    // API base URL
+    // API endpoints
     API_BASE: '/api/v1/admin/relations',
-    
-    // Image upload URL
     IMAGE_UPLOAD_URL: '/api/v1/admin/entry/upload-image',
     
-    // Store actual File objects for upload
-    imageFiles: {},
+    // Local cache of entities (loaded from server)
+    entities: {
+        material: [],
+        opening_system: [],
+        color: [],
+        company: [],
+        system_series: []
+    },
     
-    // Store base64 for preview only
-    imagePreviews: {},
+    // Company-Material links (derived from paths)
+    companyMaterialLinks: [],
     
+    // All paths from server
+    paths: [],
+    
+    // Selected colors for system_series (multi-select)
+    selectedColors: [],
+    
+    // Image file for upload
+    imageFile: null,
+
     /**
      * Initialize the Relations Manager
      */
-    init() {
+    async init() {
+        console.log('🔗 [RELATIONS] Initializing...');
+        await this.loadAllData();
         this.setupDragAndDrop();
-        console.log('RelationsManager initialized');
+        console.log('🔗 [RELATIONS] Initialized');
     },
-    
+
     /**
-     * Setup drag and drop for image containers
+     * Load all entities and paths from server
      */
-    setupDragAndDrop() {
-        document.querySelectorAll('.image-upload-box').forEach(container => {
-            container.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                container.style.borderColor = 'var(--primary)';
-                container.style.backgroundColor = '#eff6ff';
-            });
-            
-            container.addEventListener('dragleave', (e) => {
-                e.preventDefault();
-                container.style.borderColor = '';
-                container.style.backgroundColor = '';
-            });
-            
-            container.addEventListener('drop', (e) => {
-                e.preventDefault();
-                container.style.borderColor = '';
-                container.style.backgroundColor = '';
-                
-                const entityType = container.closest('.entity-card').dataset.entityType;
-                const file = e.dataTransfer.files[0];
-                
-                if (file && file.type.startsWith('image/')) {
-                    this.processImageFile(file, entityType);
+    async loadAllData() {
+        try {
+            // Load entities for each type
+            for (const type of Object.keys(this.entities)) {
+                const response = await fetch(`${this.API_BASE}/entities/${type}`);
+                const data = await response.json();
+                if (data.success) {
+                    this.entities[type] = data.entities;
                 }
-            });
-        });
-    },
-    
-    /**
-     * Trigger image upload input
-     */
-    triggerImageUpload(entityType) {
-        const input = document.getElementById(`${entityType}_file`);
-        if (input) {
-            input.click();
+            }
+            
+            // Load paths
+            const pathsResponse = await fetch(`${this.API_BASE}/paths`);
+            const pathsData = await pathsResponse.json();
+            if (pathsData.success) {
+                this.paths = pathsData.paths;
+                this.deriveCompanyMaterialLinks();
+            }
+            
+            console.log('🔗 [RELATIONS] Data loaded:', this.entities, this.paths);
+        } catch (error) {
+            console.error('🔗 [RELATIONS] Error loading data:', error);
         }
     },
-    
+
+    /**
+     * Derive company-material links from paths AND company metadata
+     */
+    deriveCompanyMaterialLinks() {
+        const linkSet = new Set();
+        this.companyMaterialLinks = [];
+        
+        // From paths
+        for (const path of this.paths) {
+            const key = `${path.company_id}:${path.material_id}`;
+            if (!linkSet.has(key)) {
+                linkSet.add(key);
+                this.companyMaterialLinks.push({
+                    companyId: path.company_id,
+                    materialId: path.material_id
+                });
+            }
+        }
+        
+        // From company metadata (for companies not yet in paths)
+        for (const company of this.entities.company) {
+            const rules = company.validation_rules || {};
+            if (rules.linked_material_id) {
+                const key = `${company.id}:${rules.linked_material_id}`;
+                if (!linkSet.has(key)) {
+                    linkSet.add(key);
+                    this.companyMaterialLinks.push({
+                        companyId: company.id,
+                        materialId: rules.linked_material_id
+                    });
+                }
+            }
+        }
+    },
+
+    /**
+     * Show tab
+     */
+    showTab(tab) {
+        // Hide all tab contents
+        document.querySelectorAll('[id^="tab-content-"]').forEach(el => el.classList.add('hidden'));
+        // Deactivate all tab buttons
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        // Show selected tab
+        document.getElementById(`tab-content-${tab}`).classList.remove('hidden');
+        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+        
+        if (tab === 'view') {
+            this.refreshViewTab();
+        }
+    },
+
+    /**
+     * Update entity form based on selected type
+     */
+    updateEntityForm() {
+        const type = document.getElementById('entityType').value;
+        const form = document.getElementById('entityForm');
+        
+        // Hide all extra field sections
+        document.getElementById('materialFields').classList.add('hidden');
+        document.getElementById('seriesFields').classList.add('hidden');
+        document.getElementById('colorFields').classList.add('hidden');
+        document.getElementById('companyLinks').classList.add('hidden');
+        document.getElementById('seriesLinks').classList.add('hidden');
+        
+        // Reset
+        this.selectedColors = [];
+        document.getElementById('colorChips').innerHTML = '';
+        this.imageFile = null;
+        this.resetImagePreview();
+        
+        if (!type) {
+            form.classList.add('hidden');
+            return;
+        }
+        
+        form.classList.remove('hidden');
+        this.clearForm();
+        
+        // Show type-specific fields
+        if (type === 'material') {
+            document.getElementById('materialFields').classList.remove('hidden');
+        } else if (type === 'system_series') {
+            document.getElementById('seriesFields').classList.remove('hidden');
+            document.getElementById('seriesLinks').classList.remove('hidden');
+            this.populateCompanyMaterialDropdown();
+            this.populateOpeningDropdown();
+            this.populateColorDropdown();
+        } else if (type === 'color') {
+            document.getElementById('colorFields').classList.remove('hidden');
+        } else if (type === 'company') {
+            document.getElementById('companyLinks').classList.remove('hidden');
+            this.populateMaterialDropdown();
+        }
+        
+        document.getElementById('entityName').focus();
+    },
+
+    /**
+     * Clear form fields
+     */
+    clearForm() {
+        document.getElementById('entityName').value = '';
+        document.getElementById('entityPrice').value = '';
+        document.getElementById('entityDescription').value = '';
+        document.getElementById('materialDensity').value = '';
+        document.getElementById('seriesWidth').value = '';
+        document.getElementById('seriesChambers').value = '';
+        document.getElementById('seriesUValue').value = '';
+        document.getElementById('seriesSeals').value = '';
+        document.getElementById('seriesCharacteristics').value = '';
+        document.getElementById('colorCode').value = '';
+        document.getElementById('colorLamination').value = 'false';
+    },
+
+    /**
+     * Populate material dropdown for company linking
+     */
+    populateMaterialDropdown() {
+        const select = document.getElementById('companyMaterial');
+        select.innerHTML = '<option value="">Select material...</option>';
+        this.entities.material.forEach(m => {
+            select.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+        });
+    },
+
+    /**
+     * Populate combined Company → Material dropdown for System Series
+     */
+    populateCompanyMaterialDropdown() {
+        const select = document.getElementById('seriesCompanyMaterial');
+        select.innerHTML = '<option value="">Select company → material...</option>';
+        
+        if (this.companyMaterialLinks.length === 0) {
+            select.innerHTML = '<option value="">No company-material links yet</option>';
+            return;
+        }
+        
+        this.companyMaterialLinks.forEach(link => {
+            const company = this.entities.company.find(c => c.id === link.companyId);
+            const material = this.entities.material.find(m => m.id === link.materialId);
+            if (company && material) {
+                select.innerHTML += `<option value="${link.companyId}:${link.materialId}">${company.name} → ${material.name}</option>`;
+            }
+        });
+    },
+
+    /**
+     * Populate opening system dropdown
+     */
+    populateOpeningDropdown() {
+        const select = document.getElementById('seriesOpening');
+        select.innerHTML = '<option value="">Select opening system...</option>';
+        this.entities.opening_system.forEach(o => {
+            select.innerHTML += `<option value="${o.id}">${o.name}</option>`;
+        });
+    },
+
+    /**
+     * Populate color dropdown (excluding already selected)
+     */
+    populateColorDropdown() {
+        const select = document.getElementById('seriesColors');
+        select.innerHTML = '<option value="">Select colors...</option>';
+        this.entities.color.forEach(c => {
+            if (!this.selectedColors.includes(c.id)) {
+                select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+            }
+        });
+    },
+
+    /**
+     * Add color chip (multi-select)
+     */
+    addColorChip() {
+        const select = document.getElementById('seriesColors');
+        const colorId = parseInt(select.value);
+        if (!colorId) return;
+        
+        const color = this.entities.color.find(c => c.id === colorId);
+        if (!color || this.selectedColors.includes(colorId)) return;
+        
+        this.selectedColors.push(colorId);
+        this.renderColorChips();
+        this.populateColorDropdown();
+        select.value = '';
+    },
+
+    /**
+     * Remove color chip
+     */
+    removeColorChip(colorId) {
+        this.selectedColors = this.selectedColors.filter(id => id !== colorId);
+        this.renderColorChips();
+        this.populateColorDropdown();
+    },
+
+    /**
+     * Render color chips
+     */
+    renderColorChips() {
+        const container = document.getElementById('colorChips');
+        container.innerHTML = this.selectedColors.map(id => {
+            const color = this.entities.color.find(c => c.id === id);
+            return `<span class="chip">
+                <i class="fa-solid fa-palette" style="color: #db2777;"></i> ${color.name}
+                <span class="remove" onclick="RelationsManager.removeColorChip(${id})">×</span>
+            </span>`;
+        }).join('');
+    },
+
+
+    /**
+     * Setup drag and drop for image upload
+     */
+    setupDragAndDrop() {
+        const box = document.querySelector('.image-upload-box');
+        if (!box) return;
+        
+        box.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            box.style.borderColor = '#3b82f6';
+            box.style.backgroundColor = '#eff6ff';
+        });
+        
+        box.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            box.style.borderColor = '';
+            box.style.backgroundColor = '';
+        });
+        
+        box.addEventListener('drop', (e) => {
+            e.preventDefault();
+            box.style.borderColor = '';
+            box.style.backgroundColor = '';
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                this.processImageFile(file);
+            }
+        });
+    },
+
     /**
      * Handle image file selection
      */
-    handleImageSelect(event, entityType) {
+    handleImageSelect(event) {
         const file = event.target.files[0];
         if (file && file.type.startsWith('image/')) {
-            this.processImageFile(file, entityType);
+            this.processImageFile(file);
         }
     },
-    
+
     /**
-     * Process image file - store File object and show preview
+     * Process image file
      */
-    processImageFile(file, entityType) {
-        // Store the actual File object for later upload
-        this.imageFiles[entityType] = file;
+    processImageFile(file) {
+        this.imageFile = file;
         
-        // Create preview using FileReader
         const reader = new FileReader();
-        
         reader.onload = (event) => {
-            const base64 = event.target.result;
-            this.imagePreviews[entityType] = base64;
+            const preview = document.getElementById('imagePreview');
+            const placeholder = document.getElementById('imagePlaceholder');
+            const overlay = document.getElementById('imageOverlay');
             
-            // Update preview UI
-            const preview = document.getElementById(`${entityType}_preview`);
-            const placeholder = document.getElementById(`${entityType}_placeholder`);
-            const overlay = document.getElementById(`${entityType}_overlay`);
-            
-            if (preview && placeholder && overlay) {
-                preview.src = base64;
-                preview.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-                overlay.classList.remove('hidden');
-            }
+            preview.src = event.target.result;
+            preview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            overlay.classList.remove('hidden');
         };
-        
         reader.readAsDataURL(file);
     },
-    
+
     /**
-     * Upload image file to server and get URL
-     * @param {string} entityType - The entity type (company, material, etc.)
-     * @returns {Promise<string|null>} - The uploaded image URL or null if failed
+     * Reset image preview
      */
-    async uploadImage(entityType) {
-        const file = this.imageFiles[entityType];
-        if (!file) {
-            return null;
-        }
+    resetImagePreview() {
+        const preview = document.getElementById('imagePreview');
+        const placeholder = document.getElementById('imagePlaceholder');
+        const overlay = document.getElementById('imageOverlay');
+        const input = document.getElementById('entityImage');
         
-        console.log(`🔗 [RELATIONS] Uploading image for ${entityType}:`, file.name);
+        if (preview) {
+            preview.src = '';
+            preview.classList.add('hidden');
+        }
+        if (placeholder) placeholder.classList.remove('hidden');
+        if (overlay) overlay.classList.add('hidden');
+        if (input) input.value = '';
+        this.imageFile = null;
+    },
+
+    /**
+     * Upload image and get URL
+     */
+    async uploadImage() {
+        if (!this.imageFile) return null;
         
         try {
             const formData = new FormData();
-            formData.append('file', file);
+            formData.append('file', this.imageFile);
             
             const response = await fetch(this.IMAGE_UPLOAD_URL, {
                 method: 'POST',
@@ -132,246 +382,353 @@ const RelationsManager = {
             });
             
             const result = await response.json();
-            console.log(`🔗 [RELATIONS] Image upload result for ${entityType}:`, result);
-            
             if (result.success && result.url) {
                 return result.url;
-            } else {
-                console.warn(`🔗 [RELATIONS] Image upload failed for ${entityType}:`, result.error);
-                return null;
             }
+            return null;
         } catch (error) {
-            console.error(`🔗 [RELATIONS] Image upload error for ${entityType}:`, error);
+            console.error('🔗 [RELATIONS] Image upload error:', error);
             return null;
         }
     },
 
     /**
-     * Record all entities - main save action
-     * Creates entities AND the dependency path linking them
+     * Record entity - main save action
      */
-    async recordAll() {
-        console.log('🔗 [RELATIONS] recordAll() called');
-        const entityTypes = ['company', 'material', 'opening_system', 'system_series', 'color'];
-        let savedEntities = {};  // Track saved entity IDs
-        let errors = [];
-        
-        for (const entityType of entityTypes) {
-            const card = document.querySelector(`.entity-card[data-entity-type="${entityType}"]`);
-            if (!card) continue;
-            
-            // Get form data
-            const nameInput = card.querySelector(`[name="${entityType}_name"]`);
-            const name = nameInput?.value?.trim();
-            
-            // Skip if no name entered
-            if (!name) {
-                console.log(`🔗 [RELATIONS] Skipping ${entityType} - no name`);
-                continue;
-            }
-            
-            console.log(`🔗 [RELATIONS] Processing ${entityType}: "${name}"`);
+    async recordEntity() {
+        const type = document.getElementById('entityType').value;
+        const name = document.getElementById('entityName').value.trim();
+        const price = document.getElementById('entityPrice').value;
+        const description = document.getElementById('entityDescription').value.trim();
 
-            // Build data object
-            const data = {
-                entity_type: entityType,
-                name: name,
-                metadata: {}
-            };
-            
-            // Get entity ID if editing
-            const entityIdInput = card.querySelector(`[name="${entityType}_entity_id"]`);
-            const entityId = entityIdInput?.value;
-            
-            // Add optional fields
-            const priceInput = card.querySelector(`[name="${entityType}_price_from"]`);
-            if (priceInput?.value) {
-                data.price_from = parseFloat(priceInput.value);
-            }
-            
-            const descInput = card.querySelector(`[name="${entityType}_description"]`);
-            if (descInput?.value) {
-                data.description = descInput.value;
-            }
-            
-            // Upload image if one was selected and get the URL
-            if (this.imageFiles[entityType]) {
-                console.log(`🔗 [RELATIONS] Uploading image for ${entityType}...`);
-                const imageUrl = await this.uploadImage(entityType);
-                if (imageUrl) {
-                    data.image_url = imageUrl;
-                    console.log(`🔗 [RELATIONS] ✅ Image uploaded, URL: ${imageUrl}`);
-                }
-            }
-            
-            // Add metadata fields
-            card.querySelectorAll('[name^="' + entityType + '_metadata."]').forEach(input => {
-                const key = input.name.replace(`${entityType}_metadata.`, '');
-                if (input.type === 'checkbox') {
-                    data.metadata[key] = input.checked;
-                } else if (input.value !== '') {
-                    data.metadata[key] = isNaN(parseFloat(input.value)) ? input.value : parseFloat(input.value);
-                }
-            });
-            
-            try {
-                let response;
-                console.log(`🔗 [RELATIONS] Sending data for ${entityType}:`, data);
-                
-                if (entityId) {
-                    // Update existing entity
-                    response = await fetch(`${this.API_BASE}/entities/${entityId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                } else {
-                    // Create new entity
-                    response = await fetch(`${this.API_BASE}/entities`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
-                }
-                
-                const result = await response.json();
-                console.log(`🔗 [RELATIONS] Response for ${entityType}:`, response.status, result);
-                
-                if (response.ok && result.entity) {
-                    savedEntities[entityType] = result.entity.id;
-                    console.log(`🔗 [RELATIONS] ✅ Saved ${entityType} with ID: ${result.entity.id}`);
-                    this.resetCardForm(entityType);
-                } else if (response.ok && entityId) {
-                    // Update case - use existing ID
-                    savedEntities[entityType] = parseInt(entityId);
-                    console.log(`🔗 [RELATIONS] ✅ Updated ${entityType} with ID: ${entityId}`);
-                    this.resetCardForm(entityType);
-                } else {
-                    // Handle error - detail might be string or object
-                    let errorMsg = 'Error';
-                    console.log(`🔗 [RELATIONS] ❌ Error for ${entityType}, result.detail:`, result.detail, typeof result.detail);
-                    if (result.detail) {
-                        if (typeof result.detail === 'string') {
-                            errorMsg = result.detail;
-                        } else if (result.detail.message) {
-                            errorMsg = result.detail.message;
-                        } else if (Array.isArray(result.detail)) {
-                            // Pydantic validation errors
-                            errorMsg = result.detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
-                        } else {
-                            errorMsg = JSON.stringify(result.detail);
-                        }
-                    }
-                    errors.push(`${entityType}: ${errorMsg}`);
-                }
-            } catch (error) {
-                console.error(`Error saving ${entityType}:`, error);
-                errors.push(`${entityType}: Network error`);
+        if (!type || !name) {
+            this.showToast('Please select a type and enter a name', 'error');
+            return;
+        }
+
+        // Build entity data
+        const data = {
+            entity_type: type,
+            name: name,
+            price_from: price ? parseFloat(price) : null,
+            description: description || null,
+            metadata: {}
+        };
+
+        // Upload image if selected
+        if (this.imageFile) {
+            const imageUrl = await this.uploadImage();
+            if (imageUrl) {
+                data.image_url = imageUrl;
             }
         }
-        
-        // Create dependency path if we have all required entities
-        const requiredTypes = ['company', 'material', 'opening_system', 'system_series', 'color'];
-        const hasAllRequired = requiredTypes.every(type => savedEntities[type]);
-        
-        if (hasAllRequired) {
-            try {
-                const pathData = {
-                    company_id: savedEntities.company,
-                    material_id: savedEntities.material,
-                    opening_system_id: savedEntities.opening_system,
-                    system_series_id: savedEntities.system_series,
-                    color_id: savedEntities.color
-                };
+
+        // Add type-specific metadata
+        if (type === 'material') {
+            const density = document.getElementById('materialDensity').value;
+            if (density) data.metadata.density = parseFloat(density);
+        } else if (type === 'system_series') {
+            const width = document.getElementById('seriesWidth').value;
+            const chambers = document.getElementById('seriesChambers').value;
+            const uValue = document.getElementById('seriesUValue').value;
+            const seals = document.getElementById('seriesSeals').value;
+            const chars = document.getElementById('seriesCharacteristics').value;
+            
+            if (width) data.metadata.width = parseFloat(width);
+            if (chambers) data.metadata.number_of_chambers = parseInt(chambers);
+            if (uValue) data.metadata.u_value = parseFloat(uValue);
+            if (seals) data.metadata.number_of_seals = parseInt(seals);
+            if (chars) data.metadata.characteristics = chars;
+        } else if (type === 'color') {
+            const code = document.getElementById('colorCode').value;
+            const lamination = document.getElementById('colorLamination').value;
+            if (code) data.metadata.code = code;
+            data.metadata.has_lamination = lamination === 'true';
+        }
+
+        try {
+            // Handle Company - must link to material
+            if (type === 'company') {
+                const materialId = document.getElementById('companyMaterial').value;
+                if (!materialId) {
+                    this.showToast('Please select a material to link', 'error');
+                    return;
+                }
                 
-                console.log('Creating dependency path:', pathData);
+                // Store linked material in metadata
+                data.metadata.linked_material_id = parseInt(materialId);
                 
-                const pathResponse = await fetch(`${this.API_BASE}/paths`, {
+                // Create company entity
+                const response = await fetch(`${this.API_BASE}/entities`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(pathData)
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    this.showToast(this.extractError(result), 'error');
+                    return;
+                }
+                
+                const companyId = result.entity.id;
+                // Add to local cache with validation_rules containing linked_material_id
+                const newCompany = {
+                    ...result.entity,
+                    validation_rules: { ...result.entity.validation_rules, linked_material_id: parseInt(materialId) }
+                };
+                this.entities.company.push(newCompany);
+                
+                // Update company-material links
+                this.companyMaterialLinks.push({
+                    companyId: companyId,
+                    materialId: parseInt(materialId)
                 });
                 
-                const pathResult = await pathResponse.json();
+                const material = this.entities.material.find(m => m.id == materialId);
+                this.showToast(`${name} created and linked to ${material.name}`, 'success');
+            }
+            // Handle System Series - creates paths
+            else if (type === 'system_series') {
+                const companyMaterialValue = document.getElementById('seriesCompanyMaterial').value;
+                const openingId = document.getElementById('seriesOpening').value;
                 
-                if (pathResponse.ok) {
-                    showToast(`Relation path created: ${pathResult.path?.description || 'Success'}`, 'success');
-                } else {
-                    // Path might already exist, which is fine
-                    let pathErrorMsg = 'Error creating path';
-                    if (pathResult.detail) {
-                        if (typeof pathResult.detail === 'string') {
-                            pathErrorMsg = pathResult.detail;
-                        } else if (pathResult.detail.message) {
-                            pathErrorMsg = pathResult.detail.message;
-                        } else {
-                            pathErrorMsg = JSON.stringify(pathResult.detail);
+                if (!companyMaterialValue || !openingId || this.selectedColors.length === 0) {
+                    this.showToast('Please fill all link fields and select at least one color', 'error');
+                    return;
+                }
+                
+                // Parse "companyId:materialId" format
+                const [companyId, materialId] = companyMaterialValue.split(':').map(Number);
+                
+                // Create system series entity
+                const response = await fetch(`${this.API_BASE}/entities`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    this.showToast(this.extractError(result), 'error');
+                    return;
+                }
+                
+                const seriesId = result.entity.id;
+                this.entities.system_series.push(result.entity);
+                
+                // Create paths for each selected color
+                let pathsCreated = 0;
+                for (const colorId of this.selectedColors) {
+                    try {
+                        const pathResponse = await fetch(`${this.API_BASE}/paths`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                company_id: companyId,
+                                material_id: materialId,
+                                opening_system_id: parseInt(openingId),
+                                system_series_id: seriesId,
+                                color_id: colorId
+                            })
+                        });
+                        
+                        if (pathResponse.ok) {
+                            const pathResult = await pathResponse.json();
+                            this.paths.push(pathResult.path);
+                            pathsCreated++;
                         }
-                    }
-                    
-                    if (pathErrorMsg.includes('already exists')) {
-                        showToast('Entities saved. Path already exists.', 'info');
-                    } else {
-                        errors.push(`Path: ${pathErrorMsg}`);
+                    } catch (e) {
+                        console.error('Error creating path:', e);
                     }
                 }
-            } catch (error) {
-                console.error('Error creating path:', error);
-                errors.push('Path: Network error');
+                
+                this.deriveCompanyMaterialLinks();
+                this.showToast(`${name} created with ${pathsCreated} path(s)`, 'success');
+                this.selectedColors = [];
             }
-        } else if (Object.keys(savedEntities).length > 0) {
-            // Some entities saved but not all - warn user
-            const missing = requiredTypes.filter(type => !savedEntities[type]);
-            showToast(`Entities saved. Missing for path: ${missing.join(', ')}`, 'warning');
-        }
-        
-        // Show final result
-        const savedCount = Object.keys(savedEntities).length;
-        if (savedCount > 0 && errors.length === 0) {
-            showToast(`${savedCount} entity(s) saved successfully`, 'success');
-        } else if (errors.length > 0) {
-            showToast(`Errors: ${errors.join(', ')}`, 'error');
-        } else if (savedCount === 0) {
-            showToast('No data to save. Please fill in at least one entity.', 'info');
+            // Handle independent entities (material, opening_system, color)
+            else {
+                const response = await fetch(`${this.API_BASE}/entities`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    this.showToast(this.extractError(result), 'error');
+                    return;
+                }
+                
+                this.entities[type].push(result.entity);
+                this.showToast(`${name} added`, 'success');
+            }
+            
+            // Reset form
+            this.clearForm();
+            this.resetImagePreview();
+            document.getElementById('entityName').focus();
+            
+            // Refresh dropdowns
+            if (type === 'company') {
+                document.getElementById('companyMaterial').value = '';
+            } else if (type === 'system_series') {
+                document.getElementById('seriesCompanyMaterial').value = '';
+                document.getElementById('seriesOpening').value = '';
+                document.getElementById('colorChips').innerHTML = '';
+                this.populateColorDropdown();
+            }
+            
+        } catch (error) {
+            console.error('🔗 [RELATIONS] Error:', error);
+            this.showToast('Network error', 'error');
         }
     },
-    
+
     /**
-     * Reset a single card form
+     * Extract error message from API response
      */
-    resetCardForm(entityType) {
-        const card = document.querySelector(`.entity-card[data-entity-type="${entityType}"]`);
-        if (!card) return;
-        
-        // Reset all inputs
-        card.querySelectorAll('input:not([type="file"]), textarea').forEach(input => {
-            if (input.type === 'checkbox') {
-                input.checked = false;
+    extractError(result) {
+        if (result.detail) {
+            if (typeof result.detail === 'string') {
+                return result.detail;
+            } else if (result.detail.message) {
+                return result.detail.message;
+            } else if (Array.isArray(result.detail)) {
+                return result.detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
             } else {
-                input.value = '';
+                return JSON.stringify(result.detail);
             }
+        }
+        return 'Unknown error';
+    },
+
+    /**
+     * Refresh View All tab
+     */
+    async refreshViewTab() {
+        // Reload data from server
+        await this.loadAllData();
+        
+        // Update counts
+        document.getElementById('countMaterial').textContent = this.entities.material.length;
+        document.getElementById('countOpening').textContent = this.entities.opening_system.length;
+        document.getElementById('countColor').textContent = this.entities.color.length;
+        document.getElementById('countCompany').textContent = this.entities.company.length;
+        document.getElementById('countSeries').textContent = this.entities.system_series.length;
+        
+        // Company → Material Links
+        const linksView = document.getElementById('companyMaterialLinksView');
+        if (this.companyMaterialLinks.length === 0) {
+            linksView.innerHTML = '<div class="empty-state" style="padding: 24px;">No company-material links yet.</div>';
+        } else {
+            linksView.innerHTML = this.companyMaterialLinks.map(link => {
+                const company = this.entities.company.find(c => c.id === link.companyId);
+                const material = this.entities.material.find(m => m.id === link.materialId);
+                if (!company || !material) return '';
+                return `
+                    <div class="link-pill">
+                        <span class="company"><i class="fa-solid fa-building"></i> ${company.name}</span>
+                        <span class="arrow"><i class="fa-solid fa-arrow-right"></i></span>
+                        <span class="material"><i class="fa-solid fa-cubes"></i> ${material.name}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Paths - group by series
+        const groupedPaths = {};
+        this.paths.forEach(p => {
+            const key = `${p.company_id}|${p.material_id}|${p.opening_system_id}|${p.system_series_id}`;
+            if (!groupedPaths[key]) {
+                groupedPaths[key] = {
+                    company_id: p.company_id,
+                    material_id: p.material_id,
+                    opening_system_id: p.opening_system_id,
+                    system_series_id: p.system_series_id,
+                    color_ids: [],
+                    ltree_paths: []
+                };
+            }
+            groupedPaths[key].color_ids.push(p.color_id);
+            groupedPaths[key].ltree_paths.push(p.ltree_path);
         });
         
-        // Reset file input
-        const fileInput = document.getElementById(`${entityType}_file`);
-        if (fileInput) {
-            fileInput.value = '';
+        const groupedList = Object.values(groupedPaths);
+        document.getElementById('totalPaths').textContent = groupedList.length;
+        
+        const tbody = document.getElementById('pathsTableBody');
+        const table = document.getElementById('pathsTable');
+        const noPathsYet = document.getElementById('noPathsYet');
+        
+        if (groupedList.length === 0) {
+            noPathsYet.classList.remove('hidden');
+            table.classList.add('hidden');
+        } else {
+            noPathsYet.classList.add('hidden');
+            table.classList.remove('hidden');
+            
+            tbody.innerHTML = groupedList.map(p => {
+                const company = this.entities.company.find(c => c.id === p.company_id);
+                const material = this.entities.material.find(m => m.id === p.material_id);
+                const opening = this.entities.opening_system.find(o => o.id === p.opening_system_id);
+                const series = this.entities.system_series.find(s => s.id === p.system_series_id);
+                
+                const colorBadges = p.color_ids.map(cid => {
+                    const color = this.entities.color.find(c => c.id === cid);
+                    return color ? `<span class="entity-badge color"><i class="fa-solid fa-palette"></i> ${color.name}</span>` : '';
+                }).join(' ');
+                
+                return `
+                    <tr>
+                        <td><span class="entity-badge company"><i class="fa-solid fa-building"></i> ${company?.name || 'Unknown'}</span></td>
+                        <td><span class="entity-badge material"><i class="fa-solid fa-cubes"></i> ${material?.name || 'Unknown'}</span></td>
+                        <td><span class="entity-badge opening"><i class="fa-solid fa-door-open"></i> ${opening?.name || 'Unknown'}</span></td>
+                        <td><span class="entity-badge series"><i class="fa-solid fa-layer-group"></i> ${series?.name || 'Unknown'}</span></td>
+                        <td>${colorBadges}</td>
+                        <td><button class="btn-danger" onclick="RelationsManager.deletePathGroup('${p.ltree_paths.join(',')}')"><i class="fa-solid fa-trash"></i></button></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    },
+
+    /**
+     * Delete a group of paths
+     */
+    async deletePathGroup(ltreePathsStr) {
+        const ltreePaths = ltreePathsStr.split(',');
+        
+        for (const ltreePath of ltreePaths) {
+            try {
+                await fetch(`${this.API_BASE}/paths`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ltree_path: ltreePath })
+                });
+            } catch (e) {
+                console.error('Error deleting path:', e);
+            }
         }
         
-        // Reset image storage
-        delete this.imageFiles[entityType];
-        delete this.imagePreviews[entityType];
-        
-        const preview = document.getElementById(`${entityType}_preview`);
-        const placeholder = document.getElementById(`${entityType}_placeholder`);
-        const overlay = document.getElementById(`${entityType}_overlay`);
-        
-        if (preview) {
-            preview.src = '';
-            preview.classList.add('hidden');
-        }
-        if (placeholder) placeholder.classList.remove('hidden');
-        if (overlay) overlay.classList.add('hidden');
+        this.showToast('Path deleted', 'info');
+        this.refreshViewTab();
+    },
+
+    /**
+     * Show toast notification
+     */
+    showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 };
 

@@ -24,7 +24,35 @@ class FormHelpers {
                 .replace(/^_|_$/g, '');
             
             // Handle special cases for consistency with existing field names
+            // Maps the auto-generated fieldName to the actual schema field name
             const specialMappings = {
+                // Product Type is special - schema uses 'type' not 'product_type'
+                'product_type': 'type',
+                
+                // Fields with (mm) suffix - strip the _mm
+                'glazing_undercut_height_mm': 'glazing_undercut_height',
+                'sash_overlap_mm': 'sash_overlap',
+                'flying_mullion_horizontal_clearance_mm': 'flying_mullion_horizontal_clearance',
+                'flying_mullion_vertical_clearance_mm': 'flying_mullion_vertical_clearance',
+                'steel_material_thickness_mm': 'steel_material_thickness',
+                'width_mm': 'width',
+                'total_width_mm': 'total_width',
+                'flyscreen_track_height_mm': 'flyscreen_track_height',
+                'front_height_mm': 'front_height',
+                'rear_height_mm': 'rear_height',
+                'glazing_height_mm': 'glazing_height',
+                'renovation_height_mm': 'renovation_height',
+                
+                // Fields with (kg) suffix
+                'weightm_kg': 'weight_per_meter',
+                
+                // Fields with special characters
+                'pricem': 'price_per_meter',
+                
+                // Fields with (m) suffix
+                'length_of_beam_m': 'length_of_beam',
+                
+                // Standard mappings (no change needed but explicit)
                 'opening_system': 'opening_system',
                 'system_series': 'system_series',
                 'length_of_beam': 'length_of_beam',

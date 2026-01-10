@@ -363,9 +363,18 @@ function profileEntryApp(options = {}) {
             console.log('🦆 [EDITING DEBUG] ========================================');
             console.log('🦆 [EDITING DEBUG] startEditing called');
             console.log('🦆 [EDITING DEBUG] rowId:', rowId);
-            console.log('🦆 [EDITING DEBUG] field:', field);
+            console.log('🦆 [EDITING DEBUG] field (header):', field);
             console.log('🦆 [EDITING DEBUG] value:', value);
             console.log('🦆 [EDITING DEBUG] isImageField(field):', this.isImageField(field));
+            
+            // Debug field type detection
+            const fieldInfo = this.getFieldInfoByHeader(field);
+            console.log('🦆 [EDITING DEBUG] getFieldInfoByHeader result:', fieldInfo);
+            console.log('🦆 [EDITING DEBUG] getFieldComponentType:', this.getFieldComponentType(field));
+            console.log('🦆 [EDITING DEBUG] isDropdownField:', this.isDropdownField(field));
+            console.log('🦆 [EDITING DEBUG] isNumberField:', this.isNumberField(field));
+            console.log('🦆 [EDITING DEBUG] isCheckboxField:', this.isCheckboxField(field));
+            console.log('🦆 [EDITING DEBUG] getFieldOptionsForHeader:', this.getFieldOptionsForHeader(field));
             
             this.editingCell = {
                 rowId: rowId,
@@ -739,6 +748,86 @@ function profileEntryApp(options = {}) {
         // Image handling methods
         isImageField(fieldName) {
             return ImageHandler.isImageField(fieldName);
+        },
+
+        // Field type helpers for inline editing
+        getFieldInfoByHeader(header) {
+            console.log('🔍 [FIELD INFO] getFieldInfoByHeader called with header:', header);
+            
+            // Get field name from header mapping
+            const mapping = FormHelpers.getHeaderMapping();
+            console.log('🔍 [FIELD INFO] Header mapping:', mapping);
+            
+            const fieldName = mapping[header];
+            console.log('🔍 [FIELD INFO] Mapped fieldName:', fieldName);
+            
+            if (!fieldName) {
+                console.log('🔍 [FIELD INFO] ❌ No fieldName found for header:', header);
+                return null;
+            }
+            
+            // Find field in schema
+            if (!this.schema?.sections) {
+                console.log('🔍 [FIELD INFO] ❌ No schema sections available');
+                return null;
+            }
+            
+            console.log('🔍 [FIELD INFO] Searching schema sections for field:', fieldName);
+            for (const section of this.schema.sections) {
+                for (const field of section.fields) {
+                    if (field.name === fieldName) {
+                        const result = {
+                            fieldName: field.name,
+                            componentType: field.componentType || 'text',
+                            options: field.options || [],
+                            validation_rules: field.validation_rules || {},
+                            data_type: field.data_type
+                        };
+                        console.log('🔍 [FIELD INFO] ✅ Found field:', result);
+                        return result;
+                    }
+                }
+            }
+            console.log('🔍 [FIELD INFO] ❌ Field not found in schema:', fieldName);
+            return null;
+        },
+
+        getFieldOptionsForHeader(header) {
+            const fieldInfo = this.getFieldInfoByHeader(header);
+            const options = fieldInfo?.options || [];
+            console.log('🔍 [FIELD OPTIONS] Options for', header, ':', options);
+            return options;
+        },
+
+        getFieldComponentType(header) {
+            const fieldInfo = this.getFieldInfoByHeader(header);
+            const componentType = fieldInfo?.componentType || 'text';
+            console.log('🔍 [COMPONENT TYPE]', header, '→', componentType);
+            return componentType;
+        },
+
+        getFieldValidationRules(header) {
+            const fieldInfo = this.getFieldInfoByHeader(header);
+            return fieldInfo?.validation_rules || {};
+        },
+
+        isDropdownField(header) {
+            const componentType = this.getFieldComponentType(header);
+            const result = componentType === 'dropdown';
+            console.log('🔍 [IS DROPDOWN]', header, ':', result, '(componentType:', componentType, ')');
+            return result;
+        },
+
+        isNumberField(header) {
+            const componentType = this.getFieldComponentType(header);
+            const result = ['number', 'percentage', 'currency'].includes(componentType);
+            console.log('🔍 [IS NUMBER]', header, ':', result, '(componentType:', componentType, ')');
+            return result;
+        },
+
+        isCheckboxField(header) {
+            const componentType = this.getFieldComponentType(header);
+            return componentType === 'checkbox';
         },
 
         openImageModal(imageSrc) {

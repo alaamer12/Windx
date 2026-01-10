@@ -7,7 +7,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="/static/css/profile-entry.css?v=21">
+<link rel="stylesheet" href="/static/css/profile-entry.css?v=22">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css">
 {% endblock %}
 
@@ -717,8 +717,48 @@
                                                 </div>
                                             </template>
                                             
-                                            <!-- Default text input for non-image fields -->
-                                            <template x-if="!isImageField(header)">
+                                            <!-- Dropdown fields -->
+                                            <template x-if="!isImageField(header) && isDropdownField(header)">
+                                                <select x-model="editingCell.value"
+                                                        @change="saveInlineEdit(row.id, header)"
+                                                        class="inline-edit-select"
+                                                        x-init="setTimeout(() => $el.focus(), 10)">
+                                                    <option value="">Select...</option>
+                                                    <template x-for="opt in getFieldOptionsForHeader(header)" :key="opt">
+                                                        <option :value="opt" x-text="opt" :selected="editingCell.value === opt"></option>
+                                                    </template>
+                                                </select>
+                                            </template>
+                                            
+                                            <!-- Number fields (number, percentage, currency) -->
+                                            <template x-if="!isImageField(header) && isNumberField(header)">
+                                                <input type="number" 
+                                                       x-model="editingCell.value"
+                                                       @keydown.enter="saveInlineEdit(row.id, header)"
+                                                       @blur="saveInlineEdit(row.id, header)"
+                                                       :min="getFieldValidationRules(header).min"
+                                                       :max="getFieldValidationRules(header).max"
+                                                       :step="getFieldValidationRules(header).step || 0.01"
+                                                       class="inline-edit-input inline-edit-number"
+                                                       placeholder="0"
+                                                       x-init="setTimeout(() => $el.focus(), 10)">
+                                            </template>
+                                            
+                                            <!-- Checkbox fields -->
+                                            <template x-if="!isImageField(header) && isCheckboxField(header)">
+                                                <div class="inline-edit-checkbox-wrapper">
+                                                    <label class="inline-edit-checkbox-label">
+                                                        <input type="checkbox" 
+                                                               :checked="editingCell.value === true || editingCell.value === 'yes' || editingCell.value === 'Yes'"
+                                                               @change="editingCell.value = $event.target.checked ? 'yes' : 'no'; saveInlineEdit(row.id, header)"
+                                                               class="inline-edit-checkbox">
+                                                        <span x-text="editingCell.value === true || editingCell.value === 'yes' || editingCell.value === 'Yes' ? 'Yes' : 'No'"></span>
+                                                    </label>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- Default text input for other fields -->
+                                            <template x-if="!isImageField(header) && !isDropdownField(header) && !isNumberField(header) && !isCheckboxField(header)">
                                                 <input type="text" 
                                                        x-model="editingCell.value"
                                                        @keydown.enter="saveInlineEdit(row.id, header)"
@@ -859,10 +899,10 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/static/js/_profile/FormValidator.js?v=4"></script>
 <script src="/static/js/_profile/ImageHandler.js?v=4"></script>
 <script src="/static/js/_profile/TableEditor.js?v=4"></script>
-<script src="/static/js/_profile/FormHelpers.js?v=5"></script>
+<script src="/static/js/_profile/FormHelpers.js?v=6"></script>
 <script src="/static/js/_profile/ConfigurationSaver.js?v=5"></script>
 <script src="/static/js/_profile/SearchEngine.js?v=5"></script>
 
 <!-- Load main application file last -->
-<script src="/static/js/profile-entry.js?v=30"></script>
+<script src="/static/js/profile-entry.js?v=32"></script>
 {% endblock %}

@@ -37,10 +37,10 @@ export class ConditionEvaluator {
         all_of: (a, b) => b.every((item: any) => (Array.isArray(a) ? a : [a]).includes(item)),
 
         // Existence operators
-        exists: (a, b) => a !== null && a !== undefined && a !== '',
-        not_exists: (a, b) => a === null || a === undefined || a === '',
-        is_empty: (a, b) => !Boolean(a),
-        is_not_empty: (a, b) => Boolean(a),
+        exists: (a: any) => a !== null && a !== undefined && a !== '',
+        not_exists: (a: any) => a === null || a === undefined || a === '',
+        is_empty: (a: any) => !Boolean(a),
+        is_not_empty: (a: any) => Boolean(a),
     }
 
     static evaluateCondition(condition: Condition | null | undefined, formData: Record<string, any>): boolean {

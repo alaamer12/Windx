@@ -126,8 +126,10 @@ export function prepareSaveData(
 
     // Convert empty strings to null
     Object.keys(saveData).forEach(key => {
-        if (saveData[key] === '') {
-            saveData[key] = null
+        // Cast to ensure TS knows we can index by string
+        const data = saveData as Record<string, any>
+        if (data[key] === '') {
+            data[key] = null
         }
     })
 

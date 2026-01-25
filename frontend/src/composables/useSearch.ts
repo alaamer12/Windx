@@ -58,14 +58,14 @@ export function useSearch<T extends Record<string, any>>() {
                 .join(' ')
 
             // Check if all search terms are found
-            return searchTerms.every(term => searchableText.includes(term))
+            return searchTerms.every((term: string) => searchableText.includes(term))
         })
     }
 
     function applyColumnFilters(configurations: T[]): T[] {
         return configurations.filter(config => {
             return Object.entries(columnFilters.value).every(([header, filterValue]) => {
-                if (!filterValue || !filterValue.trim()) return true
+                if (typeof filterValue !== 'string' || !filterValue.trim()) return true
 
                 const configValue = config[header]
                 if (configValue === null || configValue === undefined) return false
@@ -94,14 +94,14 @@ export function useSearch<T extends Record<string, any>>() {
         // Check global search
         if (searchQuery.value && searchQuery.value.trim()) {
             const searchTerms = searchQuery.value.toLowerCase().split(/\s+/).filter(term => term.length > 0)
-            if (searchTerms.some(term => searchableText.includes(term))) {
+            if (searchTerms.some((term: string) => searchableText.includes(term))) {
                 return true
             }
         }
 
         // Check column filters
         return Object.entries(columnFilters.value).some(([header, filterValue]) => {
-            if (!filterValue || !filterValue.trim()) return false
+            if (typeof filterValue !== 'string' || !filterValue.trim()) return false
 
             const configValue = row[header]
             if (configValue === null || configValue === undefined) return false
@@ -138,19 +138,25 @@ export function useSearch<T extends Record<string, any>>() {
     }
 
     function isSearchActive(): boolean {
-        return !!(searchQuery.value && searchQuery.value.trim()) ||
-            Object.values(columnFilters.value).some(filter => filter && filter.trim())
+        // Check global search
+        if (searchQuery.value && searchQuery.value.trim()) return true
+
+        // Check column filters
+        return Object.values(columnFilters.value).some((filter: string) => filter && filter.trim())
     }
 
     function getSearchStats() {
+        // Count active filters safely
+        const activeFiltersCount = Object.values(columnFilters.value).filter((filter: string) => filter && filter.trim()).length
+
         return {
             totalRecords: searchResults.value.total,
             filteredRecords: searchResults.value.filtered,
             hiddenRecords: searchResults.value.total - searchResults.value.filtered,
             searchActive: isSearchActive(),
             globalSearchActive: !!(searchQuery.value && searchQuery.value.trim()),
-            columnFiltersActive: Object.values(columnFilters.value).some(filter => filter && filter.trim()),
-            activeFiltersCount: Object.values(columnFilters.value).filter(filter => filter && filter.trim()).length
+            columnFiltersActive: activeFiltersCount > 0,
+            activeFiltersCount
         }
     }
 

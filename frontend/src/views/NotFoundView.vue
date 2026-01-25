@@ -1,34 +1,16 @@
 <template>
-  <div class="not-found">
-    <h1>404</h1>
-    <p>Page not found</p>
-    <router-link to="/dashboard" class="btn btn-primary">
-      Go to Dashboard
+  <div class="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-center p-8">
+    <div class="mb-4 text-blue-600">
+      <i class="pi pi-exclamation-triangle text-8xl animate-bounce"></i>
+    </div>
+    <h1 class="text-6xl font-bold text-slate-800 mb-4">404</h1>
+    <p class="text-xl text-slate-600 mb-8">Oops! The page you're looking for doesn't exist.</p>
+    <router-link to="/dashboard" class="no-underline">
+      <Button label="Go to Dashboard" icon="pi pi-home" size="large" />
     </router-link>
   </div>
 </template>
 
-<style scoped>
-.not-found {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  text-align: center;
-  padding: 2rem;
-}
-
-h1 {
-  font-size: 6rem;
-  font-weight: 700;
-  color: var(--primary);
-  margin-bottom: 1rem;
-}
-
-p {
-  font-size: 1.5rem;
-  color: var(--text-light);
-  margin-bottom: 2rem;
-}
-</style>
+<script setup lang="ts">
+import Button from 'primevue/button'
+</script>

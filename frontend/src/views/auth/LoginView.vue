@@ -1,45 +1,55 @@
 <template>
-  <div class="login-page">
-    <div class="login-card">
-      <div class="login-header">
-        <h1 class="login-title">Windx Configurator</h1>
-        <p class="login-subtitle">Sign in to your account</p>
-      </div>
+  <div class="flex items-center justify-center min-h-screen bg-slate-100">
+    <Card class="w-full max-w-md p-4 shadow-xl rounded-xl">
+      <template #title>
+        <div class="text-center mb-6">
+          <h1 class="text-2xl font-bold text-slate-800">Windx Configurator</h1>
+          <p class="text-slate-500 mt-2">Sign in to your account</p>
+        </div>
+      </template>
+      <template #content>
+        <form @submit.prevent="handleLogin" class="flex flex-col gap-5">
+          <div class="flex flex-col gap-2">
+            <label for="username" class="font-medium text-slate-700">Username</label>
+            <InputText
+              id="username"
+              v-model="username"
+              class="w-full"
+              required
+              autocomplete="username"
+              placeholder="Enter your username"
+            />
+          </div>
 
-      <form @submit.prevent="handleLogin" class="login-form">
-        <div class="form-group">
-          <label for="username" class="form-label">Username</label>
-          <input
-            id="username"
-            v-model="username"
-            type="text"
-            class="form-control"
-            required
-            autocomplete="username"
+          <div class="flex flex-col gap-2">
+            <label for="password" class="font-medium text-slate-700">Password</label>
+            <Password
+              id="password"
+              v-model="password"
+              :feedback="false"
+              toggleMask
+              class="w-full"
+              inputClass="w-full"
+              required
+              autocomplete="current-password"
+              placeholder="Enter your password"
+            />
+          </div>
+
+          <Message v-if="error" severity="error" :closable="false">
+            {{ error }}
+          </Message>
+
+          <Button 
+            type="submit" 
+            label="Sign in" 
+            icon="pi pi-sign-in" 
+            :loading="isLoading" 
+            class="w-full mt-2"
           />
-        </div>
-
-        <div class="form-group">
-          <label for="password" class="form-label">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            class="form-control"
-            required
-            autocomplete="current-password"
-          />
-        </div>
-
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block" :disabled="isLoading">
-          {{ isLoading ? 'Signing in...' : 'Sign in' }}
-        </button>
-      </form>
-    </div>
+        </form>
+      </template>
+    </Card>
   </div>
 </template>
 
@@ -47,6 +57,11 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import Card from 'primevue/card'
+import InputText from 'primevue/inputtext'
+import Password from 'primevue/password'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 
 const router = useRouter()
 const route = useRoute()
@@ -77,85 +92,3 @@ async function handleLogin() {
   }
 }
 </script>
-
-<style scoped>
-.login-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background-color: #f1f5f9;
-}
-
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  background: white;
-  padding: 2rem;
-  border-radius: 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.login-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.login-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 0.5rem;
-}
-
-.login-subtitle {
-  color: var(--text-light);
-  font-size: 0.875rem;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-label {
-  font-weight: 500;
-  color: var(--text);
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.625rem;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  font-size: 0.95rem;
-  transition: border-color 0.2s;
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.error-message {
-  padding: 0.75rem;
-  background-color: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.btn-block {
-  width: 100%;
-  margin-top: 0.5rem;
-}
-</style>

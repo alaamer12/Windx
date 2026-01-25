@@ -2,29 +2,31 @@
   <PrimeSidebar 
     v-model:visible="isVisible"
     :showCloseIcon="false"
-    class="windx-sidebar"
+    class="w-[260px] !border-none"
   >
     <template #header>
-      <div class="sidebar-header">
-        <i class="pi pi-th-large text-2xl text-primary"></i>
-        <span class="font-bold text-xl ml-2">Windx</span>
+      <div class="flex items-center p-4">
+        <i class="pi pi-th-large text-2xl text-blue-600"></i>
+        <span class="font-bold text-xl ml-2 text-slate-800">Windx</span>
       </div>
     </template>
 
     <PanelMenu :model="menuItems" class="w-full border-none" />
 
     <template #footer>
-      <div class="sidebar-footer">
-        <div class="user-info" v-if="authStore.user">
-          <i class="pi pi-user"></i>
-          <span class="ml-2">{{ authStore.user.username }}</span>
+      <div class="p-4 border-t border-slate-200">
+        <div class="flex items-center p-3 mb-2 bg-slate-50 rounded-lg">
+          <i class="pi pi-user text-slate-600"></i>
+          <span class="ml-2 text-sm font-medium text-slate-700 truncate">
+            {{ authStore.user?.username }}
+          </span>
         </div>
         <Button 
           label="Logout" 
           icon="pi pi-sign-out" 
           @click="handleLogout"
           text
-          class="w-full"
+          class="w-full justify-start text-slate-600 hover:text-red-600"
         />
       </div>
     </template>
@@ -76,29 +78,3 @@ function handleLogout() {
   router.push('/login')
 }
 </script>
-
-<style scoped>
-.windx-sidebar {
-  width: 260px;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  padding: 1rem;
-}
-
-.sidebar-footer {
-  padding: 1rem;
-  border-top: 1px solid #e2e8f0;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-}
-</style>

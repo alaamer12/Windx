@@ -4,6 +4,7 @@ export interface User {
     email: string
     username: string
     full_name: string | null
+    role: string
     is_active: boolean
     is_superuser: boolean
     created_at: string
@@ -15,28 +16,33 @@ export interface ManufacturingType {
     id: number
     name: string
     description: string | null
-    base_category: string
+    base_category: string | null
+    image_url: string | null
     base_price: number
     base_weight: number
     is_active: boolean
+    created_at?: string
+    updated_at?: string
 }
 
 // Attribute Node
 export interface AttributeNode {
     id: number
-    manufacturing_type_id: number
+    manufacturing_type_id: number | null
     parent_node_id: number | null
     name: string
-    label: string
+    label?: string // Python schema uses name as display name, but legacy might use label
     description: string | null
-    node_type: 'category' | 'attribute' | 'option'
+    node_type: 'category' | 'attribute' | 'option' | 'component' | 'technical_spec'
     data_type: string | null
     ui_component: string | null
     required: boolean
     sort_order: number
+    ltree_path?: string
+    depth?: number
     options?: string[]
-    validation_rules?: Record<string, any>
-    display_condition?: Record<string, any>
+    validation_rules?: Record<string, any> | null
+    display_condition?: Record<string, any> | null
 }
 
 // Configuration
@@ -46,6 +52,7 @@ export interface Configuration {
     customer_id: number | null
     name: string
     status: string
+    reference_code: string | null
     base_price: number
     total_price: number
     calculated_weight: number | null

@@ -1,60 +1,66 @@
 <template>
   <AppLayout>
-    <div class="dashboard">
-      <div class="mb-4">
-        <h1 class="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p class="text-gray-600 mt-1">Welcome to Windx Configurator</p>
+    <div class="max-w-7xl mx-auto">
+      <div class="mb-6">
+        <h1 class="text-3xl font-bold text-slate-800">Dashboard</h1>
+        <p class="text-slate-600 mt-1">Welcome to Windx Configurator</p>
       </div>
 
-      <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Skeleton height="150px" v-for="i in 3" :key="i" />
+      <div v-if="isLoading" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Skeleton height="150px" v-for="i in 3" :key="i" class="rounded-xl" />
       </div>
 
-      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card class="stat-card">
+      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card class="transform transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border border-slate-100">
           <template #title>
-            <div class="flex items-center justify-between">
-              <span>Total Configurations</span>
-              <i class="pi pi-file text-2xl text-blue-500"></i>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-slate-600 font-medium h4">Total Configurations</span>
+              <div class="p-2 bg-blue-50 rounded-lg">
+                <i class="pi pi-file text-xl text-blue-500"></i>
+              </div>
             </div>
           </template>
           <template #content>
-            <div class="text-4xl font-bold text-blue-600">
+            <div class="text-4xl font-bold text-slate-800">
               {{ stats.total_configurations || 0 }}
             </div>
           </template>
         </Card>
 
-        <Card class="stat-card">
+        <Card class="transform transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border border-slate-100">
           <template #title>
-            <div class="flex items-center justify-between">
-              <span>Active Quotes</span>
-              <i class="pi pi-file-edit text-2xl text-green-500"></i>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-slate-600 font-medium h4">Active Quotes</span>
+              <div class="p-2 bg-green-50 rounded-lg">
+                <i class="pi pi-file-edit text-xl text-green-500"></i>
+              </div>
             </div>
           </template>
           <template #content>
-            <div class="text-4xl font-bold text-green-600">
+            <div class="text-4xl font-bold text-slate-800">
               {{ stats.active_quotes || 0 }}
             </div>
           </template>
         </Card>
 
-        <Card class="stat-card">
+        <Card class="transform transition-all duration-200 hover:-translate-y-1 hover:shadow-lg border border-slate-100">
           <template #title>
-            <div class="flex items-center justify-between">
-              <span>Pending Orders</span>
-              <i class="pi pi-shopping-cart text-2xl text-orange-500"></i>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-slate-600 font-medium h4">Pending Orders</span>
+              <div class="p-2 bg-orange-50 rounded-lg">
+                <i class="pi pi-shopping-cart text-xl text-orange-500"></i>
+              </div>
             </div>
           </template>
           <template #content>
-            <div class="text-4xl font-bold text-orange-600">
+            <div class="text-4xl font-bold text-slate-800">
               {{ stats.pending_orders || 0 }}
             </div>
           </template>
         </Card>
       </div>
 
-      <Message v-if="error" severity="error" class="mt-4">
+      <Message v-if="error" severity="error" class="mt-6">
         {{ error }}
       </Message>
     </div>
@@ -98,18 +104,3 @@ onMounted(async () => {
   }
 })
 </script>
-
-<style scoped>
-.dashboard {
-  max-width: 1200px;
-}
-
-.stat-card {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-</style>

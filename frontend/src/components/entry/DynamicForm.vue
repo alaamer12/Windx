@@ -7,7 +7,7 @@
       </div>
 
       <div v-else-if="schema" class="space-y-6">
-        <div v-for="section in schema.sections" :key="section.name" class="form-section">
+        <div v-for="section in schema.sections" :key="section.name" class="p-4 bg-slate-50 rounded-lg">
           <h3 class="text-lg font-semibold mb-3">{{ section.label }}</h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -15,7 +15,7 @@
               v-for="field in section.fields" 
               :key="field.name"
               v-show="fieldVisibility[field.name] !== false"
-              class="field-item"
+              class="mb-0"
             >
               <label :for="field.name" class="block font-medium mb-2">
                 {{ field.label }}
@@ -42,7 +42,7 @@
               />
 
               <!-- Dropdown -->
-              <Dropdown
+              <Select
                 v-else-if="field.ui_component === 'dropdown'"
                 :id="field.name"
                 v-model="model[field.name]"
@@ -96,7 +96,7 @@ import type { PropType } from 'vue'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
@@ -145,14 +145,4 @@ function handleClear() {
 }
 </script>
 
-<style scoped>
-.form-section {
-  padding: 1rem;
-  background: #f8fafc;
-  border-radius: 0.5rem;
-}
 
-.field-item {
-  margin-bottom: 0;
-}
-</style>

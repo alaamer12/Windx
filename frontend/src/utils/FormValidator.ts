@@ -15,13 +15,10 @@ export interface ValidationRule {
     message?: string
 }
 
-export interface Field {
-    name: string
-    label: string
-    required: boolean
-    data_type: string
-    validation_rules?: ValidationRule
-}
+import type { AttributeNode } from '@/types'
+
+// Re-export or alias for local usage
+export type Field = AttributeNode
 
 export interface FieldErrors {
     [fieldName: string]: string
@@ -52,7 +49,7 @@ export class FormValidator {
 
         // Validation rules
         if (field.validation_rules) {
-            const rules = field.validation_rules
+            const rules = field.validation_rules as any
 
             // Range validation for numbers
             if ((rules.min !== undefined || rules.max !== undefined) && !isNaN(value)) {

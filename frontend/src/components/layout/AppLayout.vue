@@ -1,14 +1,17 @@
 <template>
-  <div class="app-layout">
+  <div class="flex min-h-screen bg-slate-50">
     <Toast />
     <ConfirmDialog />
     
     <Sidebar :visible="sidebarVisible" @update:visible="sidebarVisible = $event" />
     
-    <div class="main-content" :class="{ 'sidebar-open': sidebarVisible }">
+    <div 
+      class="flex flex-1 flex-col transition-[margin] duration-300 ease-in-out pl-0 md:pl-0" 
+      :class="{ 'md:ml-0': !sidebarVisible }"
+    >
       <Header @toggle-sidebar="sidebarVisible = !sidebarVisible" />
       
-      <main class="content-area">
+      <main class="flex-1 p-6">
         <slot />
       </main>
     </div>
@@ -24,29 +27,3 @@ import Header from './Header.vue'
 
 const sidebarVisible = ref(true)
 </script>
-
-<style scoped>
-.app-layout {
-  display: flex;
-  min-height: 100vh;
-  background-color: #f8fafc;
-}
-
-.main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  transition: margin-left 0.3s ease;
-}
-
-.content-area {
-  flex: 1;
-  padding: 1.5rem;
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    margin-left: 0 !important;
-  }
-}
-</style>

@@ -1,11 +1,11 @@
 <template>
   <AppLayout>
-    <div class="generic-entry">
+    <div class="max-w-[1400px]">
       <!-- Manufacturing Type Selector -->
       <Card class="mb-4">
         <template #title>Select {{ pageTitle }} Type</template>
         <template #content>
-          <Dropdown
+          <Select
             v-model="selectedTypeId"
             :options="manufacturingStore.activeTypes"
             optionLabel="name"
@@ -50,7 +50,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import Card from 'primevue/card'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DynamicForm from '@/components/entry/DynamicForm.vue'
 import EditableTable from '@/components/entry/EditableTable.vue'
@@ -180,8 +180,4 @@ function confirmDelete(data: any) {
 }
 </script>
 
-<style scoped>
-.generic-entry {
-  max-width: 1400px;
-}
-</style>
+

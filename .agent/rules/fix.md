@@ -1,9 +1,8 @@
 ---
-trigger: always_on
+inclusion: always
 ---
-ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
 
-ALWAYS READ .agent/WINDX_API_DOCUEMNTATION.md
+ALAWAY RUN FROM `.venv` -> `.venv\scripts\python` not `python`
 
 # Repository Pattern: Type-Safe Model Creation
 

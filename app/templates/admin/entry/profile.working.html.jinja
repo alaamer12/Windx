@@ -7,64 +7,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="stylesheet" href="/static/css/profile-entry.css?v=25">
+<link rel="stylesheet" href="/static/css/profile-entry.css?v=23">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.css">
-<style>
-/* Color chips styling to match relations page */
-.chips-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 8px;
-    min-height: 32px;
-    padding: 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #f9fafb;
-}
-
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    background: #db2777;
-    color: white;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.chip .remove {
-    cursor: pointer;
-    margin-left: 4px;
-    font-weight: bold;
-    opacity: 0.8;
-    transition: opacity 0.2s;
-}
-
-.chip .remove:hover {
-    opacity: 1;
-}
-
-/* Loading indicator for cascading fields */
-.cascade-loading {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    animation: fadeIn 0.2s ease-in;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Field container positioning for loading indicator */
-.field-item {
-    position: relative;
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -229,85 +173,51 @@
                                         <!-- MULTI-SELECT -->
                                         <template x-if="field.componentType === 'multi-select'">
                                             <div class="dynamic-select-container">
-                                                <!-- Color Chips Display (for colours field) -->
-                                                <template x-if="field.name === 'colours'">
-                                                    <div class="color-chips-container" style="margin-bottom: 12px;">
-                                                        <div class="chips-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 32px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; background: #f9fafb;">
-                                                            <template x-for="selectedColor in (formData[field.name] || [])" :key="selectedColor">
-                                                                <span class="chip" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #db2777; color: white; border-radius: 4px; font-size: 12px; font-weight: 500;">
-                                                                    <i class="fa-solid fa-palette"></i>
-                                                                    <span x-text="selectedColor"></span>
-                                                                    <span class="remove" @click="removeColor(selectedColor)" style="cursor: pointer; margin-left: 4px; font-weight: bold; opacity: 0.8; hover:opacity: 1;">×</span>
-                                                                </span>
-                                                            </template>
-                                                            <template x-if="!formData[field.name] || formData[field.name].length === 0">
-                                                                <span style="color: #6b7280; font-style: italic; font-size: 12px;">No colors selected</span>
-                                                            </template>
-                                                        </div>
-                                                        
-                                                        <!-- Color Selection Dropdown -->
-                                                        <select :id="field.name + '_selector'" 
-                                                                class="input-field" 
-                                                                style="width: 100%;"
-                                                                @change="addColorFromDropdown(field.name, $event.target)">
-                                                            <option value="">Select colors to add...</option>
-                                                            <template x-for="opt in getAvailableColors(field.name)" :key="opt">
-                                                                <option :value="opt" x-text="opt"></option>
-                                                            </template>
-                                                        </select>
-                                                    </div>
-                                                </template>
+                                                <select :id="field.name" 
+                                                        class="input-field" 
+                                                        :class="{ 'invalid': fieldErrors[field.name] }"
+                                                        multiple 
+                                                        @change="updateMultiSelectField(field.name, $event.target)">
+                                                    <template x-for="opt in getAllFieldOptions(field.name)" :key="opt">
+                                                        <option :value="opt" x-text="opt" :selected="(formData[field.name] || []).includes(opt)"></option>
+                                                    </template>
+                                                </select>
                                                 
-                                                <!-- Standard Multi-Select (for other fields) -->
-                                                <template x-if="field.name !== 'colours'">
-                                                    <div>
-                                                        <select :id="field.name" 
-                                                                class="input-field" 
-                                                                :class="{ 'invalid': fieldErrors[field.name] }"
-                                                                multiple 
-                                                                @change="updateMultiSelectField(field.name, $event.target)">
-                                                            <template x-for="opt in getAllFieldOptions(field.name)" :key="opt">
-                                                                <option :value="opt" x-text="opt" :selected="(formData[field.name] || []).includes(opt)"></option>
-                                                            </template>
-                                                        </select>
-                                                        
-                                                        <!-- Dynamic Options Management (only for non-color fields) -->
-                                                        <div class="dynamic-options-controls" style="margin-top: 8px;">
-                                                            <!-- Add New Option -->
-                                                            <div class="add-option-container" style="display: flex; gap: 8px; margin-bottom: 8px;">
-                                                                <input type="text" 
-                                                                       :id="field.name + '_new_option'"
-                                                                       placeholder="Add new option..."
-                                                                       class="input-field"
-                                                                       style="flex: 1; font-size: 12px; padding: 4px 8px;"
-                                                                       @keydown.enter="addNewOption(field.name, $event.target.value); $event.target.value = ''">
+                                                <!-- Dynamic Options Management -->
+                                                <div class="dynamic-options-controls" style="margin-top: 8px;">
+                                                    <!-- Add New Option -->
+                                                    <div class="add-option-container" style="display: flex; gap: 8px; margin-bottom: 8px;">
+                                                        <input type="text" 
+                                                               :id="field.name + '_new_option'"
+                                                               placeholder="Add new option..."
+                                                               class="input-field"
+                                                               style="flex: 1; font-size: 12px; padding: 4px 8px;"
+                                                               @keydown.enter="addNewOption(field.name, $event.target.value); $event.target.value = ''">
+                                                        <button type="button"
+                                                                @click="addNewOption(field.name, document.getElementById(field.name + '_new_option').value); document.getElementById(field.name + '_new_option').value = ''"
+                                                                class="btn-add-option"
+                                                                style="padding: 4px 8px; background: #10b981 !important; color: white !important; border: none !important; border-radius: 4px !important; font-size: 12px !important; cursor: pointer !important;">
+                                                            + Add
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <!-- Custom Options List with Delete Buttons -->
+                                                    <div class="custom-options-list">
+                                                        <template x-for="customOpt in getCustomOptions(field.name)" :key="customOpt">
+                                                            <div class="custom-option-item" 
+                                                                 style="display: flex !important; align-items: center !important; gap: 8px !important; padding: 4px 8px !important; background: #f3f4f6 !important; border-radius: 4px !important; margin-bottom: 4px !important; font-size: 12px !important;">
+                                                                <span x-text="customOpt" style="flex: 1 !important; color: #374151 !important;"></span>
                                                                 <button type="button"
-                                                                        @click="addNewOption(field.name, document.getElementById(field.name + '_new_option').value); document.getElementById(field.name + '_new_option').value = ''"
-                                                                        class="btn-add-option"
-                                                                        style="padding: 4px 8px; background: #10b981 !important; color: white !important; border: none !important; border-radius: 4px !important; font-size: 12px !important; cursor: pointer !important;">
-                                                                    + Add
+                                                                        @click="removeCustomOption(field.name, customOpt)"
+                                                                        class="btn-remove-option"
+                                                                        style="padding: 2px 6px !important; background: #ef4444 !important; color: white !important; border: none !important; border-radius: 3px !important; font-size: 10px !important; cursor: pointer !important; line-height: 1 !important;"
+                                                                        title="Remove this option">
+                                                                    ✕
                                                                 </button>
                                                             </div>
-                                                            
-                                                            <!-- Custom Options List with Delete Buttons -->
-                                                            <div class="custom-options-list">
-                                                                <template x-for="customOpt in getCustomOptions(field.name)" :key="customOpt">
-                                                                    <div class="custom-option-item" 
-                                                                         style="display: flex !important; align-items: center !important; gap: 8px !important; padding: 4px 8px !important; background: #f3f4f6 !important; border-radius: 4px !important; margin-bottom: 4px !important; font-size: 12px !important;">
-                                                                        <span x-text="customOpt" style="flex: 1 !important; color: #374151 !important;"></span>
-                                                                        <button type="button"
-                                                                                @click="removeCustomOption(field.name, customOpt)"
-                                                                                class="btn-remove-option"
-                                                                                style="padding: 2px 6px !important; background: #ef4444 !important; color: white !important; border: none !important; border-radius: 3px !important; font-size: 10px !important; cursor: pointer !important; line-height: 1 !important;"
-                                                                                title="Remove this option">
-                                                                            ✕
-                                                                        </button>
-                                                                    </div>
-                                                                </template>
-                                                            </div>
-                                                        </div>
+                                                        </template>
                                                     </div>
-                                                </template>
+                                                </div>
                                             </div>
                                         </template>
 
@@ -994,5 +904,5 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="/static/js/_profile/SearchEngine.js?v=5"></script>
 
 <!-- Load main application file last -->
-<script src="/static/js/profile-entry.js?v=44"></script>
+<script src="/static/js/profile-entry.js?v=36"></script>
 {% endblock %}

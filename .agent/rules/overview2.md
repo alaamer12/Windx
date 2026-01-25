@@ -2,6 +2,9 @@
 trigger: always_on
 ---
 
+
+---
+
 ## Template System
 
 ### Purpose
@@ -500,3 +503,5 @@ The Windx configurator system provides a powerful, flexible platform for product
 ✅ **Preserves pricing** with snapshot system
 ✅ **Accelerates sales** with template system
 ✅ **Tracks everything** with comprehensive audit trail
+
+The hybrid database architecture (Relational + LTREE + JSONB) provides t

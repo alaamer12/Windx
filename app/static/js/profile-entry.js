@@ -1199,19 +1199,24 @@ function profileEntryApp(options = {}) {
             console.log('%c🔄 [UPDATE FIELD] updateField called', 'background: #222; color: #bada55; font-size: 14px; padding: 4px;');
             console.log('%c Field: ' + fieldName + ', Value: ' + value, 'background: #222; color: #00ff00; font-size: 12px; padding: 2px;');
             
+            // Store previous value to check if it actually changed
+            const previousValue = this.formData[fieldName];
+            
             // Update form data
             this.formData[fieldName] = value;
 
-            // Handle System Series auto-population
-            if (fieldName === 'system_series') {
+            // Handle System Series auto-population (only if value actually changed)
+            // System series is special - it auto-populates other fields but doesn't cascade
+            if (fieldName === 'system_series' && value !== previousValue) {
                 this.handleSystemSeriesChange(value);
+                // Don't run cascading logic for system_series
+            } else if (value !== previousValue && !this.isAutoPopulated(fieldName)) {
+                // Handle cascading dropdowns for relation fields (only if value actually changed and not auto-populated)
+                this.handleCascadingOptions(fieldName, value);
             }
 
             // Auto-calculate price fields
             this.autoCalculatePriceFields(fieldName, value);
-
-            // Handle cascading dropdowns for relation fields
-            this.handleCascadingOptions(fieldName, value);
 
             // Save to session storage
             SessionManager.saveToSession(this.formData);
@@ -1239,6 +1244,83 @@ function profileEntryApp(options = {}) {
 
             // Validate field
             this.validateField(fieldName, value);
+        },
+
+        /**
+         * Add a color from dropdown to the colors array
+         */
+        addColorFromDropdown(fieldName, selectElement) {
+            const selectedColor = selectElement.value;
+            if (!selectedColor) return;
+            
+            // Initialize array if needed
+            if (!this.formData[fieldName]) {
+                this.formData[fieldName] = [];
+            }
+            
+            // Add color if not already selected
+            if (!this.formData[fieldName].includes(selectedColor)) {
+                this.formData[fieldName].push(selectedColor);
+                this.updateField(fieldName, this.formData[fieldName]);
+                console.log('🎨 [COLORS] Added color:', selectedColor, 'Current colors:', this.formData[fieldName]);
+            }
+            
+            // Reset dropdown
+            selectElement.value = '';
+        },
+
+        /**
+         * Remove a color from the colors array
+         */
+        removeColor(fieldName, colorName) {
+            if (this.formData[fieldName] && Array.isArray(this.formData[fieldName])) {
+                this.formData[fieldName] = this.formData[fieldName].filter(c => c !== colorName);
+                this.updateField(fieldName, this.formData[fieldName]);
+                console.log('🎨 [COLORS] Removed color:', colorName, 'Current colors:', this.formData[fieldName]);
+            }
+        },
+
+        /**
+         * Get available colors (excluding already selected ones)
+         */
+        getAvailableColors(fieldName) {
+            const allOptions = this.getAllFieldOptions(fieldName);
+            const selectedColors = this.formData[fieldName] || [];
+            
+            // Ensure allOptions is an array
+            if (!Array.isArray(allOptions)) {
+                console.warn('🎨 [COLORS] allOptions is not an array:', allOptions, 'type:', typeof allOptions);
+                return [];
+            }
+            
+            return allOptions.filter(color => !selectedColors.includes(color));
+        },
+
+        /**
+         * Get all field options - synchronous version that reads from schema
+         */
+        getAllFieldOptions(fieldName) {
+            // Find field in schema
+            if (!this.schema || !this.schema.sections) {
+                console.warn('🎨 [COLORS] No schema available');
+                return [];
+            }
+            
+            for (const section of this.schema.sections) {
+                const field = section.fields.find(f => f.name === fieldName);
+                if (field) {
+                    if (field.options && Array.isArray(field.options)) {
+                        console.log('🎨 [COLORS] Found options for', fieldName, ':', field.options);
+                        return field.options;
+                    } else {
+                        console.warn('🎨 [COLORS] Field found but options is not an array:', field.options);
+                        return [];
+                    }
+                }
+            }
+            
+            console.warn('🎨 [COLORS] Field not found in schema:', fieldName);
+            return [];
         },
 
         /**
@@ -1271,57 +1353,60 @@ function profileEntryApp(options = {}) {
             console.log(`🔗 [CASCADE] Field ${fieldName} changed to "${value}"`);
             console.log(`🔗 [CASCADE] Field index in hierarchy: ${fieldIndex}`);
             
-            // Clear all child field values and options when parent changes
-            for (let i = fieldIndex + 1; i < cascadeHierarchy.length; i++) {
-                const childField = cascadeHierarchy[i];
-                this.formData[childField] = '';
+            // Show loading indicator for cascading updates
+            this.showCascadeLoading(fieldName, true);
+            
+            try {
+                // Clear all child field values and options when parent changes
+                for (let i = fieldIndex + 1; i < cascadeHierarchy.length; i++) {
+                    const childField = cascadeHierarchy[i];
+                    this.formData[childField] = childField === 'colours' ? [] : ''; // colours is array, others are strings
+                    
+                    // Also clear the options in the schema
+                    if (this.schema && this.schema.sections) {
+                        for (const section of this.schema.sections) {
+                            const field = section.fields.find(f => f.name === childField);
+                            if (field) {
+                                field.options = [];
+                            }
+                        }
+                    }
+                    console.log(`🔗 [CASCADE] Cleared child field: ${childField}`);
+                }
                 
-                // Also clear the options in the schema
-                if (this.schema && this.schema.sections) {
-                    for (const section of this.schema.sections) {
-                        const field = section.fields.find(f => f.name === childField);
-                        if (field) {
-                            field.options = [];
+                // If value is empty, clear children and return
+                if (!value) {
+                    console.log(`🔗 [CASCADE] Value is empty, cleared children, done`);
+                    this.schema = { ...this.schema }; // Force reactivity
+                    return;
+                }
+                
+                // Build parent selections for API call - get entity IDs for all selected parents
+                const parentSelections = {};
+                
+                for (let i = 0; i <= fieldIndex; i++) {
+                    const schemaField = cascadeHierarchy[i];
+                    const apiField = apiFieldMapping[schemaField];
+                    const fieldValue = this.formData[schemaField];
+                    
+                    console.log(`🔗 [CASCADE] Processing parent ${schemaField}: "${fieldValue}"`);
+                    
+                    if (fieldValue) {
+                        // Get entity ID by name
+                        const entityId = await this.getEntityIdByName(apiField, fieldValue);
+                        console.log(`🔗 [CASCADE] Got entity ID for ${apiField}="${fieldValue}": ${entityId}`);
+                        
+                        if (entityId) {
+                            parentSelections[`${apiField}_id`] = entityId;
+                        } else {
+                            console.warn(`🔗 [CASCADE] Could not find entity ID for ${apiField}="${fieldValue}"`);
                         }
                     }
                 }
-                console.log(`🔗 [CASCADE] Cleared child field: ${childField}`);
-            }
-            
-            // If value is empty, clear children and return
-            if (!value) {
-                console.log(`🔗 [CASCADE] Value is empty, cleared children, done`);
-                this.schema = { ...this.schema }; // Force reactivity
-                return;
-            }
-            
-            // Build parent selections for API call - get entity IDs for all selected parents
-            const parentSelections = {};
-            
-            for (let i = 0; i <= fieldIndex; i++) {
-                const schemaField = cascadeHierarchy[i];
-                const apiField = apiFieldMapping[schemaField];
-                const fieldValue = this.formData[schemaField];
                 
-                console.log(`🔗 [CASCADE] Processing parent ${schemaField}: "${fieldValue}"`);
+                console.log(`🔗 [CASCADE] Parent selections for API:`, parentSelections);
                 
-                if (fieldValue) {
-                    // Get entity ID by name
-                    const entityId = await this.getEntityIdByName(apiField, fieldValue);
-                    console.log(`🔗 [CASCADE] Got entity ID for ${apiField}="${fieldValue}": ${entityId}`);
-                    
-                    if (entityId) {
-                        parentSelections[`${apiField}_id`] = entityId;
-                    } else {
-                        console.warn(`🔗 [CASCADE] Could not find entity ID for ${apiField}="${fieldValue}"`);
-                    }
-                }
-            }
-            
-            console.log(`🔗 [CASCADE] Parent selections for API:`, parentSelections);
-            
-            // Fetch dependent options from Relations API
-            try {
+                // Fetch dependent options from Relations API
                 const response = await fetch('/api/v1/admin/relations/options', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1363,9 +1448,56 @@ function profileEntryApp(options = {}) {
                 
             } catch (error) {
                 console.error(`🔗 [CASCADE] Error fetching options:`, error);
+                showToast(`Failed to load dependent options: ${error.message}`, 'error');
+            } finally {
+                // Hide loading indicator
+                this.showCascadeLoading(fieldName, false);
             }
             
             console.log(`🔗 [CASCADE] ========================================`);
+        },
+
+        /**
+         * Show/hide loading indicator for cascading field updates
+         */
+        showCascadeLoading(fieldName, isLoading) {
+            if (!this.$el) return;
+            
+            // Find the field container
+            const fieldElement = this.$el.querySelector(`#${fieldName}, [name="${fieldName}"]`);
+            if (!fieldElement) return;
+            
+            const fieldContainer = fieldElement.closest('.field-item, .form-field');
+            if (!fieldContainer) return;
+            
+            // Remove existing loading indicator
+            const existingLoader = fieldContainer.querySelector('.cascade-loading');
+            if (existingLoader) {
+                existingLoader.remove();
+            }
+            
+            if (isLoading) {
+                // Add loading indicator
+                const loader = document.createElement('div');
+                loader.className = 'cascade-loading';
+                loader.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    padding: 4px 8px;
+                    background: rgba(59, 130, 246, 0.1);
+                    border: 1px solid #3b82f6;
+                    border-radius: 4px;
+                    font-size: 11px;
+                    color: #3b82f6;
+                    z-index: 10;
+                `;
+                loader.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                
+                // Make field container relative for positioning
+                fieldContainer.style.position = 'relative';
+                fieldContainer.appendChild(loader);
+            }
         },
         
         /**
@@ -1553,6 +1685,7 @@ function profileEntryApp(options = {}) {
                 
                 if (!systemSeriesId) {
                     console.warn('🎯 [SYSTEM SERIES] Could not find system series ID for:', systemSeriesName);
+                    this.loadingSystemSeriesData = false;
                     return;
                 }
                 
@@ -1577,6 +1710,9 @@ function profileEntryApp(options = {}) {
                 
                 // Auto-populate dependent fields
                 this.autoPopulateFromSystemSeries(options);
+                
+                // Also update the schema options for these fields
+                await this.updateSchemaOptionsFromSystemSeries(options);
                 
                 // Store the system series data for reference
                 this.systemSeriesData = options;
@@ -1604,23 +1740,29 @@ function profileEntryApp(options = {}) {
                 'company': 'company',
                 'material': 'material', 
                 'opening_system': 'opening_system',
-                'color': 'colours' // Note: API uses 'color', form uses 'colours'
+                'colors': 'colours' // Note: API uses 'colors' (plural), form uses 'colours'
             };
             
-            // Auto-populate single-select fields
+            // Mark fields as auto-populated BEFORE setting values to prevent cascade
+            for (const [apiField, formField] of Object.entries(fieldMapping)) {
+                if (options[apiField] && options[apiField].length > 0) {
+                    this.autoPopulatedFields.add(formField);
+                    console.log(`🎯 [AUTO-POPULATE] Marked ${formField} as auto-populated`);
+                }
+            }
+            
+            // Now set the values
             for (const [apiField, formField] of Object.entries(fieldMapping)) {
                 if (options[apiField] && options[apiField].length > 0) {
                     if (formField === 'colours') {
                         // Handle colors as multi-select (take all colors)
                         const colorNames = options[apiField].map(opt => opt.name);
                         this.formData[formField] = colorNames;
-                        this.autoPopulatedFields.add(formField);
                         console.log(`🎯 [AUTO-POPULATE] Set ${formField} to:`, colorNames);
                     } else {
                         // Handle single-select fields (take first option)
                         const selectedValue = options[apiField][0].name;
                         this.formData[formField] = selectedValue;
-                        this.autoPopulatedFields.add(formField);
                         console.log(`🎯 [AUTO-POPULATE] Set ${formField} to:`, selectedValue);
                     }
                 }
@@ -1630,6 +1772,40 @@ function profileEntryApp(options = {}) {
             this.formData = { ...this.formData };
             
             console.log('🎯 [AUTO-POPULATE] Auto-populated fields:', Array.from(this.autoPopulatedFields));
+            console.log('🎯 [AUTO-POPULATE] Final formData.colours:', this.formData.colours);
+        },
+        
+        /**
+         * Update schema options based on system series selection
+         */
+        async updateSchemaOptionsFromSystemSeries(options) {
+            console.log('🎯 [SCHEMA UPDATE] Updating schema options from system series');
+            console.log('🎯 [SCHEMA UPDATE] Received options:', options);
+            
+            const fieldMapping = {
+                'company': 'company',
+                'material': 'material',
+                'opening_system': 'opening_system',
+                'colors': 'colours'  // API uses 'colors' (plural), schema uses 'colours'
+            };
+            
+            if (this.schema && this.schema.sections) {
+                for (const section of this.schema.sections) {
+                    for (const field of section.fields) {
+                        // Find matching API field
+                        for (const [apiField, formField] of Object.entries(fieldMapping)) {
+                            if (field.name === formField && options[apiField] && options[apiField].length > 0) {
+                                field.options = options[apiField].map(opt => opt.name);
+                                console.log(`🎯 [SCHEMA UPDATE] Updated ${field.name} options:`, field.options);
+                            }
+                        }
+                    }
+                }
+                
+                // Force Alpine.js reactivity
+                this.schema = { ...this.schema };
+                console.log('🎯 [SCHEMA UPDATE] Schema reactivity triggered');
+            }
         },
         
         /**
@@ -1639,7 +1815,7 @@ function profileEntryApp(options = {}) {
             console.log('🎯 [CLEAR] Clearing auto-populated fields:', Array.from(this.autoPopulatedFields));
             
             for (const fieldName of this.autoPopulatedFields) {
-                this.formData[fieldName] = '';
+                this.formData[fieldName] = fieldName === 'colours' ? [] : '';
             }
             
             this.autoPopulatedFields.clear();
@@ -1684,144 +1860,6 @@ function profileEntryApp(options = {}) {
                 this.formData = { ...this.formData }; // Force reactivity
                 console.log('🎨 [COLORS] Removed color:', colorName, 'Current colors:', this.formData.colours);
             }
-        },
-
-        /**
-         * Handle System Series selection change and auto-populate related fields
-         */
-        async handleSystemSeriesChange(systemSeriesValue) {
-            console.log('🎯 [SYSTEM SERIES] ========================================');
-            console.log('🎯 [SYSTEM SERIES] System Series changed to:', systemSeriesValue);
-            
-            // Update the form data first
-            this.updateField('system_series', systemSeriesValue);
-            
-            // Clear auto-populated fields if no system series selected
-            if (!systemSeriesValue) {
-                console.log('🎯 [SYSTEM SERIES] No system series selected, clearing auto-populated fields');
-                this.clearAutoPopulatedFields();
-                return;
-            }
-            
-            this.loadingSystemSeriesData = true;
-            
-            try {
-                // Get the system series entity ID
-                const systemSeriesId = await this.getEntityIdByName('system_series', systemSeriesValue);
-                
-                if (!systemSeriesId) {
-                    console.warn('🎯 [SYSTEM SERIES] Could not find system series ID for:', systemSeriesValue);
-                    return;
-                }
-                
-                console.log('🎯 [SYSTEM SERIES] Found system series ID:', systemSeriesId);
-                
-                // Call the relations API to get dependent options
-                const response = await fetch('/api/v1/admin/relations/options', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ system_series_id: systemSeriesId })
-                });
-                
-                if (!response.ok) {
-                    console.error('🎯 [SYSTEM SERIES] API call failed:', response.status);
-                    return;
-                }
-                
-                const data = await response.json();
-                const options = data.options || {};
-                
-                console.log('🎯 [SYSTEM SERIES] Received auto-population data:', options);
-                
-                // Auto-populate the dependent fields
-                this.autoPopulateFields(options);
-                
-            } catch (error) {
-                console.error('🎯 [SYSTEM SERIES] Error during auto-population:', error);
-            } finally {
-                this.loadingSystemSeriesData = false;
-            }
-            
-            console.log('🎯 [SYSTEM SERIES] ========================================');
-        },
-
-        /**
-         * Auto-populate dependent fields from System Series selection
-         */
-        autoPopulateFields(options) {
-            console.log('🎯 [AUTO-POPULATE] Starting auto-population with options:', options);
-            
-            // Clear previous auto-populated fields
-            this.autoPopulatedFields.clear();
-            
-            // Map API field names to form field names
-            const fieldMapping = {
-                'company': 'company',
-                'material': 'material', 
-                'opening_system': 'opening_system',
-                'color': 'colours'  // Note: API uses 'color', form uses 'colours'
-            };
-            
-            // Auto-populate each field that has data
-            for (const [apiField, formField] of Object.entries(fieldMapping)) {
-                if (options[apiField] && options[apiField].length > 0) {
-                    const firstOption = options[apiField][0];
-                    const value = firstOption.name;
-                    
-                    console.log(`🎯 [AUTO-POPULATE] Setting ${formField} = "${value}"`);
-                    
-                    // Update form data
-                    this.updateField(formField, value);
-                    
-                    // Mark as auto-populated
-                    this.autoPopulatedFields.add(formField);
-                    
-                    // Update field options in schema to include the auto-populated value
-                    this.updateFieldOptions(formField, options[apiField].map(opt => opt.name));
-                }
-            }
-            
-            console.log('🎯 [AUTO-POPULATE] Auto-populated fields:', Array.from(this.autoPopulatedFields));
-        },
-
-        /**
-         * Update field options in the schema
-         */
-        updateFieldOptions(fieldName, newOptions) {
-            if (!this.schema || !this.schema.sections) return;
-            
-            for (const section of this.schema.sections) {
-                const field = section.fields.find(f => f.name === fieldName);
-                if (field) {
-                    field.options = newOptions;
-                    console.log(`🎯 [AUTO-POPULATE] Updated ${fieldName} options:`, newOptions);
-                    break;
-                }
-            }
-            
-            // Force Alpine.js reactivity
-            this.schema = { ...this.schema };
-        },
-
-        /**
-         * Clear auto-populated fields when System Series is deselected
-         */
-        clearAutoPopulatedFields() {
-            console.log('🎯 [AUTO-POPULATE] Clearing auto-populated fields:', Array.from(this.autoPopulatedFields));
-            
-            for (const fieldName of this.autoPopulatedFields) {
-                this.updateField(fieldName, '');
-            }
-            
-            this.autoPopulatedFields.clear();
-        },
-
-        /**
-         * Check if a field is auto-populated by System Series
-         */
-        isAutoPopulated(fieldName) {
-            return this.autoPopulatedFields.has(fieldName);
         },
 
         validateField(fieldName, value) {

@@ -75,9 +75,9 @@ These files were tightly coupled to DOM manipulation and Alpine.js patterns. In 
 ### When Internet is Available
 ```bash
 cd frontend
-npm install
+bun install
 cp .env.example .env
-npm run dev
+bun run dev
 ```
 
 ### Implementation Priority
@@ -113,4 +113,4 @@ npm run dev
 
 ---
 
-**Status**: ✅ Project structure complete, ready for `npm install`
+**Status**: ✅ Project structure complete, ready for `bun install`

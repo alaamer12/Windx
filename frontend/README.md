@@ -16,13 +16,13 @@ Vue 3 + TypeScript + Vite frontend for the Windx Configurator System.
 ### Install Dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ### Development Server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 The app will be available at `http://localhost:5173`
@@ -30,19 +30,19 @@ The app will be available at `http://localhost:5173`
 ### Type-Check
 
 ```bash
-npm run type-check
+bun run type-check
 ```
 
 ### Build for Production
 
 ```bash
-npm run build
+bun run build
 ```
 
 ### Preview Production Build
 
 ```bash
-npm run preview
+bun run preview
 ```
 
 ## Project Structure
@@ -91,9 +91,9 @@ The app uses JWT token authentication:
 
 ## Next Steps
 
-1. Install dependencies: `npm install`
+1. Install dependencies: `bun install`
 2. Copy environment file: `cp .env.example .env`
-3. Start dev server: `npm run dev`
+3. Start dev server: `bun run dev`
 4. Start building components in `src/components/`
 5. Add more views in `src/views/`
 6. Create Pinia stores for state management in `src/stores/`

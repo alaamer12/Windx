@@ -40,6 +40,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresAuth: true },
         props: { pageType: 'hardware', pageTitle: 'Hardware' }
     },
+    // Admin Routes
+    {
+        path: '/admin/definitions',
+        redirect: '/admin/definitions/profile'
+    },
+    {
+        path: '/admin/definitions/profile',
+        name: 'ProfileDefinitions',
+        component: () => import('@/views/admin/GenericDefinitionView.vue'),
+        meta: { requiresAuth: true },
+        props: { pageType: 'profile' }
+    },
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',

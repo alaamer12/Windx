@@ -69,6 +69,11 @@ const menuItems = ref([
     label: 'Profile Entry',
     icon: 'pi pi-file-edit',
     command: () => router.push('/profile-entry')
+  },
+  {
+    label: 'Product Definition',
+    icon: 'pi pi-sitemap',
+    command: () => router.push('/admin/definitions/profile')
   }
 ])
 

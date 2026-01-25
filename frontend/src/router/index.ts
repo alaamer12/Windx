@@ -22,8 +22,23 @@ const routes: RouteRecordRaw[] = [
     {
         path: '/profile-entry',
         name: 'ProfileEntry',
-        component: () => import('@/views/entry/ProfileEntryView.vue'),
-        meta: { requiresAuth: true }
+        component: () => import('@/views/entry/GenericEntryView.vue'),
+        meta: { requiresAuth: true },
+        props: { pageType: 'profile', pageTitle: 'Profile' }
+    },
+    {
+        path: '/glazing-entry',
+        name: 'GlazingEntry',
+        component: () => import('@/views/entry/GenericEntryView.vue'),
+        meta: { requiresAuth: true },
+        props: { pageType: 'glazing', pageTitle: 'Glazing' }
+    },
+    {
+        path: '/hardware-entry',
+        name: 'HardwareEntry',
+        component: () => import('@/views/entry/GenericEntryView.vue'),
+        meta: { requiresAuth: true },
+        props: { pageType: 'hardware', pageTitle: 'Hardware' }
     },
     {
         path: '/:pathMatch(.*)*',

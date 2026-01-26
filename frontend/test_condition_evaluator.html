@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Condition Evaluator Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .pass { background-color: #d4edda; border-color: #c3e6cb; }
+        .fail { background-color: #f8d7da; border-color: #f5c6cb; }
+        h2 { margin-top: 0; }
+        .result { font-weight: bold; }
+        .form-control {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 150px;
+        }
+        select, input {
+            padding: 5px;
+            margin-left: 10px;
+        }
+        .field-visibility {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .visible { color: green; font-weight: bold; }
+        .hidden { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Schema-Driven Condition Evaluator Test</h1>
+    
+    <div class="test-section">
+        <h2>Unit Tests</h2>
+        <div id="unit-tests"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Interactive Test - Profile Entry Form</h2>
+        <p>Simulates the actual form behavior with backend conditions</p>
+        
+        <div class="form-control">
+            <label>Type:</label>
+            <select id="type-select">
+                <option value="">-- Select --</option>
+                <option value="Frame">Frame</option>
+                <option value="Sash">Sash</option>
+                <option value="Flying mullion">Flying mullion</option>
+                <option value="Glazing bead">Glazing bead</option>
+            </select>
+        </div>
+
+        <div class="form-control">
+            <label>Opening System:</label>
+            <select id="opening-select">
+                <option value="">-- Select --</option>
+                <option value="Casement">Casement</option>
+                <option value="Sliding">Sliding</option>
+                <option value="Tilt & Turn">Tilt & Turn</option>
+            </select>
+        </div>
+
+        <div class="form-control">
+            <label>Builtin Flyscreen:</label>
+            <input type="checkbox" id="flyscreen-check">
+        </div>
+
+        <div class="field-visibility" id="field-visibility"></div>
+    </div>
+
+    <script type="module">
+        // Inline ConditionEvaluator (copied from frontend)
+        class ConditionEvaluator {
+            static OPERATORS = {
+                equals: (a, b) => a == b,
+                not_equals: (a, b) => a != b,
+                greater_than: (a, b) => (a || 0) > (b || 0),
+                less_than: (a, b) => (a || 0) < (b || 0),
+                contains: (a, b) => String(a || '').toLowerCase().includes(String(b).toLowerCase()),
+                in: (a, b) => (Array.isArray(b) ? b : [b]).includes(a),
+                exists: (a) => a !== null && a !== undefined && a !== '',
+                not_exists: (a) => a === null || a === undefined || a === '',
+                is_empty: (a) => !Boolean(a),
+                is_not_empty: (a) => Boolean(a),
+            }
+
+            static evaluateCondition(condition, formData) {
+                if (!condition) return true
+                
+                const operator = condition.operator
+                if (!operator) return true
+
+                // Handle logical operators
+                if (operator === 'and') {
+                    return (condition.conditions || []).every(c =>
+                        ConditionEvaluator.evaluateCondition(c, formData)
+                    )
+                } else if (operator === 'or') {
+                    return (condition.conditions || []).some(c =>
+                        ConditionEvaluator.evaluateCondition(c, formData)
+                    )
+                } else if (operator === 'not') {
+                    return !ConditionEvaluator.evaluateCondition(condition.condition, formData)
+                }
+
+                // Handle field-based operators
+                const field = condition.field
+                if (!field) return true
+
+                const fieldValue = formData[field]
+                const expectedValue = condition.value
+
+                const operatorFn = ConditionEvaluator.OPERATORS[operator]
+                if (!operatorFn) {
+                    throw new Error(`Unknown operator: ${operator}`)
+                }
+
+                return operatorFn(fieldValue, expectedValue)
+            }
+        }
+
+        // Mock backend schema with display_condition
+        const backendSchema = {
+            fields: [
+                {
+                    name: "renovation",
+                    label: "Renovation",
+                    display_condition: {"operator": "equals", "field": "type", "value": "Frame"}
+                },
+                {
+                    name: "builtin_flyscreen_track",
+                    label: "Builtin Flyscreen Track",
+                    display_condition: {
+                        "operator": "and",
+                        "conditions": [
+                            {"operator": "equals", "field": "type", "value": "Frame"},
+                            {"operator": "contains", "field": "opening_system", "value": "Sliding"}
+                        ]
+                    }
+                },
+                {
+                    name: "total_width",
+                    label: "Total Width",
+                    display_condition: {"operator": "equals", "field": "builtin_flyscreen_track", "value": true}
+                },
+                {
+                    name: "sash_overlap",
+                    label: "Sash Overlap",
+                    display_condition: {"operator": "equals", "field": "type", "value": "Sash"}
+                },
+                {
+                    name: "flying_mullion_horizontal_clearance",
+                    label: "Flying Mullion Horizontal Clearance",
+                    display_condition: {"operator": "equals", "field": "type", "value": "Flying mullion"}
+                },
+                {
+                    name: "glazing_undercut_height",
+                    label: "Glazing Undercut Height",
+                    display_condition: {"operator": "equals", "field": "type", "value": "Glazing bead"}
+                }
+            ]
+        }
+
+        // Unit Tests
+        function runUnitTests() {
+            const tests = [
+                {
+                    name: "Simple equals - Frame shows Renovation",
+                    condition: {"operator": "equals", "field": "type", "value": "Frame"},
+                    formData: {type: "Frame"},
+                    expected: true
+                },
+                {
+                    name: "Simple equals - Sash hides Renovation",
+                    condition: {"operator": "equals", "field": "type", "value": "Frame"},
+                    formData: {type: "Sash"},
+                    expected: false
+                },
+                {
+                    name: "AND condition - Frame + Sliding shows Flyscreen",
+                    condition: {
+                        "operator": "and",
+                        "conditions": [
+                            {"operator": "equals", "field": "type", "value": "Frame"},
+                            {"operator": "contains", "field": "opening_system", "value": "Sliding"}
+                        ]
+                    },
+                    formData: {type: "Frame", opening_system: "Sliding"},
+                    expected: true
+                },
+                {
+                    name: "AND condition - Frame + Casement hides Flyscreen",
+                    condition: {
+                        "operator": "and",
+                        "conditions": [
+                            {"operator": "equals", "field": "type", "value": "Frame"},
+                            {"operator": "contains", "field": "opening_system", "value": "Sliding"}
+                        ]
+                    },
+                    formData: {type: "Frame", opening_system: "Casement"},
+                    expected: false
+                },
+                {
+                    name: "Boolean condition - Checked flyscreen shows Total Width",
+                    condition: {"operator": "equals", "field": "builtin_flyscreen_track", "value": true},
+                    formData: {builtin_flyscreen_track: true},
+                    expected: true
+                },
+                {
+                    name: "Null condition - Always visible",
+                    condition: null,
+                    formData: {type: "Frame"},
+                    expected: true
+                }
+            ]
+
+            const resultsDiv = document.getElementById('unit-tests')
+            let passed = 0
+            let failed = 0
+
+            tests.forEach(test => {
+                const result = ConditionEvaluator.evaluateCondition(test.condition, test.formData)
+                const success = result === test.expected
+                
+                if (success) passed++
+                else failed++
+
+                resultsDiv.innerHTML += `
+                    <div style="margin: 10px 0; padding: 5px; background: ${success ? '#d4edda' : '#f8d7da'}">
+                        ${success ? '✅' : '❌'} ${test.name}
+                        <br><small>Expected: ${test.expected}, Got: ${result}</small>
+                    </div>
+                `
+            })
+
+            resultsDiv.innerHTML += `
+                <div style="margin-top: 15px; font-weight: bold;">
+                    Results: ${passed} passed, ${failed} failed
+                </div>
+            `
+        }
+
+        // Interactive form test
+        function updateFieldVisibility() {
+            const formData = {
+                type: document.getElementById('type-select').value,
+                opening_system: document.getElementById('opening-select').value,
+                builtin_flyscreen_track: document.getElementById('flyscreen-check').checked
+            }
+
+            const visibilityDiv = document.getElementById('field-visibility')
+            visibilityDiv.innerHTML = '<h3>Field Visibility (Based on Backend Conditions):</h3>'
+
+            backendSchema.fields.forEach(field => {
+                const isVisible = ConditionEvaluator.evaluateCondition(field.display_condition, formData)
+                visibilityDiv.innerHTML += `
+                    <div style="margin: 5px 0;">
+                        <span class="${isVisible ? 'visible' : 'hidden'}">
+                            ${isVisible ? '👁️ VISIBLE' : '🚫 HIDDEN'}
+                        </span>
+                        - ${field.label}
+                    </div>
+                `
+            })
+        }
+
+        // Initialize
+        runUnitTests()
+        updateFieldVisibility()
+
+        // Add event listeners
+        document.getElementById('type-select').addEventListener('change', updateFieldVisibility)
+        document.getElementById('opening-select').addEventListener('change', updateFieldVisibility)
+        document.getElementById('flyscreen-check').addEventListener('change', updateFieldVisibility)
+    </script>
+</body>
+</html>

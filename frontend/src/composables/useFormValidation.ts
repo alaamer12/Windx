@@ -7,7 +7,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Ref } from 'vue'
 import { FormValidator } from '@/utils/FormValidator'
-import { BusinessRulesEngine } from '@/utils/BusinessRulesEngine'
+import { ConditionEvaluator } from '@/utils/ConditionEvaluator'
 import { useDebugLogger } from './useDebugLogger'
 
 export function useFormValidation(
@@ -17,10 +17,24 @@ export function useFormValidation(
     const logger = useDebugLogger('useFormValidation')
     const fieldErrors = ref<Record<string, string>>({})
 
-    // Calculate field visibility based on business rules
+    // Calculate field visibility based on display_condition from backend schema
     const fieldVisibility = computed(() => {
         if (!schema.value) return {}
-        return BusinessRulesEngine.evaluateFieldAvailability(formData.value)
+
+        const visibility: Record<string, boolean> = {}
+
+        // Evaluate display_condition from backend for each field
+        for (const section of schema.value.sections) {
+            for (const field of section.fields) {
+                // Use ConditionEvaluator to check display_condition from backend
+                visibility[field.name] = ConditionEvaluator.evaluateCondition(
+                    field.display_condition,
+                    formData.value
+                )
+            }
+        }
+
+        return visibility
     })
 
     // Check if form is valid
@@ -74,18 +88,15 @@ export function useFormValidation(
 
         logger.info('Validating all fields')
 
-        // Standard validation
+        // Standard validation using validation_rules from backend
         const standardErrors = FormValidator.validateAllFields(
             schema.value,
             formData.value,
             fieldVisibility.value
         )
 
-        // Business rules validation
-        const businessErrors = BusinessRulesEngine.validateBusinessRules(formData.value)
-
-        // Merge errors
-        fieldErrors.value = { ...standardErrors, ...businessErrors }
+        // No separate business validation needed - FormValidator uses validation_rules from backend
+        fieldErrors.value = standardErrors
 
         const hasErrors = Object.keys(fieldErrors.value).length > 0
         if (hasErrors) {

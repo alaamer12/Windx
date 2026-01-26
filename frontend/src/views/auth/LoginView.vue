@@ -8,9 +8,24 @@
         </div>
       </template>
       <template #content>
+        <!-- Development Credentials Info -->
+        <Message v-if="isDevelopment" severity="info" :closable="false" class="mb-5 shadow-sm border-blue-200">
+          <div class="text-xs">
+            <div class="font-bold mb-1 uppercase tracking-wider text-blue-700">Dev Mode</div>
+            <div class="flex justify-between">
+              <span class="text-slate-600">Username:</span>
+              <code class="font-bold text-blue-600 ml-2">admin</code>
+            </div>
+            <div class="flex justify-between mt-1">
+              <span class="text-slate-600">Password:</span>
+              <code class="font-bold text-blue-600 ml-2">AdminPassword123!</code>
+            </div>
+          </div>
+        </Message>
+
         <form @submit.prevent="handleLogin" class="flex flex-col gap-5">
           <div class="flex flex-col gap-2">
-            <label for="username" class="font-medium text-slate-700">Username</label>
+            <label for="username" class="font-medium text-slate-700 text-sm">Username</label>
             <InputText
               id="username"
               v-model="username"
@@ -66,6 +81,8 @@ import Message from 'primevue/message'
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+
+const isDevelopment = import.meta.env.DEV
 
 const username = ref('')
 const password = ref('')

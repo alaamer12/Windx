@@ -580,7 +580,7 @@ def setup_middleware(app: FastAPI, settings: Settings | None = None) -> None:
         logger.info(f"Adding CORS for origins: {settings.backend_cors_origins}")
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=[str(origin) for origin in settings.backend_cors_origins],
+            allow_origins=[str(origin).rstrip("/") for origin in settings.backend_cors_origins],
             allow_credentials=True,
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             allow_headers=["*"],

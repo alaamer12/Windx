@@ -57,7 +57,14 @@ class PolicyManager(BaseService):
             db: Database session for operations
         """
         super().__init__(db)
-        self.enforcer = casbin.Enforcer("config/rbac_model.conf", "config/rbac_policy.csv")
+        from pathlib import Path
+
+        # Resolve paths relative to this file's location (backend/app/services/policy_manager.py)
+        base_path = Path(__file__).resolve().parent.parent.parent
+        model_path = str(base_path / "config" / "rbac_model.conf")
+        policy_path = str(base_path / "config" / "rbac_policy.csv")
+
+        self.enforcer = casbin.Enforcer(model_path, policy_path)
 
         # Enable auto-save for policy changes
         self.enforcer.enable_auto_save(True)

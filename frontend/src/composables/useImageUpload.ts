@@ -51,7 +51,7 @@ export function useImageUpload() {
 
             logger.info('Uploading to server...')
 
-            const response = await apiClient.post('/api/v1/entry/upload-image', formData, {
+            const response = await apiClient.post('/api/v1/admin/entry/upload-image', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (progressEvent) => {
                     if (progressEvent.total) {

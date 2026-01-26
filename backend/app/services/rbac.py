@@ -51,12 +51,38 @@ def get_shared_enforcer():
     global _shared_enforcer
     if _shared_enforcer is None:
         try:
-            _shared_enforcer = casbin.Enforcer("config/rbac_model.conf", "config/rbac_policy.csv")
+            import os
+            from pathlib import Path
+
+            # Resolve paths relative to this file's location (backend/app/services/rbac.py)
+            # Service -> backend/app/services
+            # Parent -> backend/app
+            # Parent.Parent -> backend
+            # Config -> backend/config
+            base_path = Path(__file__).resolve().parent.parent.parent
+            model_path = str(base_path / "config" / "rbac_model.conf")
+            policy_path = str(base_path / "config" / "rbac_policy.csv")
+
+            logger.info(f"Initializing Casbin enforcer with paths: {model_path}, {policy_path}")
+
+            if not os.path.exists(model_path):
+                raise FileNotFoundError(f"RBAC model file not found at: {model_path}")
+            if not os.path.exists(policy_path):
+                # Create empty policy file if it doesn't exist
+                logger.warning(f"RBAC policy file not found at {policy_path}, creating empty one")
+                os.makedirs(os.path.dirname(policy_path), exist_ok=True)
+                with open(policy_path, "w") as f:
+                    pass
+
+            _shared_enforcer = casbin.Enforcer(model_path, policy_path)
             # Enable auto-save for policy changes
             _shared_enforcer.enable_auto_save(True)
-            logger.info("Initialized shared Casbin enforcer")
+            logger.info("Successfully initialized shared Casbin enforcer")
         except Exception as e:
             logger.error(f"Failed to initialize shared Casbin enforcer: {e}")
+            import traceback
+
+            logger.error(f"Traceback: {traceback.format_exc()}")
             raise PolicyEvaluationException("Failed to initialize RBAC system", {"error": str(e)})
     else:
         # Reload policies to pick up any changes

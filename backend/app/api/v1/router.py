@@ -52,4 +52,4 @@ api_router.include_router(
     admin_relations.router, prefix="/admin", tags=["Admin Relations"]
 )
 api_router.include_router(policy.router, prefix="/admin")
-api_router.include_router(entry.router)
+api_router.include_router(entry.router, prefix="/admin")

@@ -241,7 +241,18 @@ class RBACService:
 
     def __init__(self):
         """Initialize RBAC service with Casbin enforcer."""
-        self.enforcer = casbin.Enforcer("config/rbac_model.conf", "config/rbac_policy.csv")
+        from pathlib import Path
+
+        # Resolve paths relative to this file's location (backend/app/core/rbac.py)
+        # Core -> backend/app/core
+        # Parent -> backend/app
+        # Parent.Parent -> backend
+        # Config -> backend/config
+        base_path = Path(__file__).resolve().parent.parent.parent
+        model_path = str(base_path / "config" / "rbac_model.conf")
+        policy_path = str(base_path / "config" / "rbac_policy.csv")
+
+        self.enforcer = casbin.Enforcer(model_path, policy_path)
         self._permission_cache: dict[str, bool] = {}
         self._customer_cache: dict[int, list[int]] = {}
 

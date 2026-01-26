@@ -18,7 +18,7 @@ export const configurationService = {
     },
 
     async create(data: Record<string, any>) {
-        const response = await apiClient.post('/api/v1/configurations/', data)
+        const response = await apiClient.post('/api/v1/admin/entry/profile/save', data)
         return response.data
     },
 

@@ -19,13 +19,19 @@ Features:
 from __future__ import annotations
 
 from typing import Annotated, Any
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, File as FastAPIFile, HTTPException, UploadFile, status
 from pydantic import PositiveInt
 
 from app.api.types import CurrentUser, DBSession
 from app.core.exceptions import ValidationException
 from app.schemas.configuration import Configuration
-from app.schemas.entry import ProfileEntryData, ProfilePreviewData, ProfileSchema
+from app.schemas.entry import (
+    InlineEditRequest,
+    PreviewTable,
+    ProfileEntryData,
+    ProfilePreviewData,
+    ProfileSchema,
+)
 from app.schemas.responses import get_common_responses
 
 __all__ = ["router"]
@@ -354,6 +360,107 @@ async def evaluate_display_conditions(
     entry_service = EntryService(db)
     schema = await entry_service.get_profile_schema(manufacturing_type_id)
     return await entry_service.evaluate_display_conditions(form_data, schema)
+
+
+@router.get(
+    "/profile/headers/{manufacturing_type_id}",
+    response_model=list[str],
+    summary="Get Profile Preview Headers",
+    description="Get ordered list of headers for profile preview table",
+    operation_id="getProfileHeaders",
+)
+async def get_profile_headers(
+    manufacturing_type_id: PositiveInt,
+    current_user: CurrentUser,
+    db: DBSession,
+    page_type: str = "profile",
+) -> list[str]:
+    """Get dynamic preview headers for a manufacturing type."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.generate_preview_headers(manufacturing_type_id, page_type)
+
+
+@router.get(
+    "/profile/header-mapping/{manufacturing_type_id}",
+    response_model=dict[str, str],
+    summary="Get Profile Header Mapping",
+    description="Get mapping from preview headers to internal field names",
+    operation_id="getProfileHeaderMapping",
+)
+async def get_profile_header_mapping(
+    manufacturing_type_id: PositiveInt,
+    current_user: CurrentUser,
+    db: DBSession,
+    page_type: str = "profile",
+) -> dict[str, str]:
+    """Get dynamic header-to-field mapping for a manufacturing type."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.generate_header_mapping(manufacturing_type_id)
+
+
+@router.get(
+    "/profile/previews/{manufacturing_type_id}",
+    response_model=PreviewTable,
+    summary="List Profile Previews",
+    description="Get all profile configuration previews for a manufacturing type",
+    operation_id="listProfilePreviews",
+)
+async def list_profile_previews(
+    manufacturing_type_id: PositiveInt,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> PreviewTable:
+    """List all profile configuration previews."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.list_previews(manufacturing_type_id, current_user)
+
+
+
+@router.patch(
+    "/profile/preview/{configuration_id}/update-cell",
+    response_model=Configuration,
+    summary="Update Preview Cell",
+    description="Update a specific field in a configuration from table preview",
+    operation_id="updateProfileCell",
+)
+async def update_profile_cell(
+    configuration_id: PositiveInt,
+    edit_request: InlineEditRequest,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> Configuration:
+    """Update a specific field in a configuration."""
+    from app.services.entry import EntryService
+
+    entry_service = EntryService(db)
+    return await entry_service.update_preview_value(
+        configuration_id, edit_request.field, edit_request.value, current_user
+    )
+
+
+@router.post(
+    "/upload-image",
+    summary="Upload Image",
+    description="Upload an image file for a configuration or entity",
+    operation_id="uploadImage",
+)
+async def upload_image(
+    file: UploadFile = FastAPIFile(...),
+    current_user: CurrentUser = None,
+    db: DBSession = None,
+):
+    """Placeholder for image upload logic.
+
+    IMPORTANT: This requires file storage logic.
+    For now, return a placeholder URL to prevent 404s.
+    """
+    return {"url": f"/images/{file.filename}", "filename": file.filename, "success": True}
 
 
 

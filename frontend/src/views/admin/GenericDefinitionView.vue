@@ -236,14 +236,15 @@
                             >
                               <template #chip="slotProps">
                                 <div 
-                                  class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border shadow-sm"
-                                  :style="{
-                                    backgroundColor: getColorForChip(slotProps.value.name),
-                                    color: getContrastTextColor(getColorForChip(slotProps.value.name)),
-                                    borderColor: getBorderColor(getColorForChip(slotProps.value.name))
-                                  }"
+                                  v-if="entities.color"
+                                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border shadow-sm transition-all hover:brightness-95"
+                                  :style="colorChipStyles[slotProps.value] || {}"
                                 >
-                                  {{ slotProps.value.name }}
+                                  <span>{{ entities.color.find(c => c.id === slotProps.value)?.name || slotProps.value }}</span>
+                                  <i 
+                                    class="pi pi-times text-xs cursor-pointer opacity-70 hover:opacity-100"
+                                    @click.stop="(e) => slotProps.removeCallback(e, slotProps.value)"
+                                  ></i>
                                 </div>
                               </template>
                             </MultiSelect>
@@ -377,6 +378,24 @@ const currentSchema = computed(() => definitionSchemas[props.pageType] || defini
 const selectedEntityDef = computed(() => 
   currentSchema.value.entityTypes.find(t => t.value === selectedEntityType.value)
 )
+
+// Memoized color chip styles to prevent re-render issues
+const colorChipStyles = computed(() => {
+  const styles: Record<number, { backgroundColor: string; color: string; borderColor: string }> = {}
+  
+  if (entities.value.color) {
+    for (const color of entities.value.color) {
+      const bgColor = getColorForChip(color.name)
+      styles[color.id] = {
+        backgroundColor: bgColor,
+        color: getContrastTextColor(bgColor),
+        borderColor: getBorderColor(bgColor)
+      }
+    }
+  }
+  
+  return styles
+})
 
 const companyMaterialOptions = computed(() => {
   if (!entities.value.company || !entities.value.material) return []

@@ -168,70 +168,89 @@
                     <div class="space-y-4">
                       <!-- Common Fields -->
                       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="flex flex-col gap-2">
-                          <label class="text-sm font-medium text-slate-700">Name <span class="text-red-500">*</span></label>
-                          <InputText 
-                            v-model="formData.name" 
-                            :placeholder="(selectedEntityType ? typeMetadata[selectedEntityType]?.namePlaceholder : undefined) || 'Enter name'"
-                          />
-                        </div>
-                        <div class="flex flex-col gap-2">
-                          <label class="text-sm font-medium text-slate-700">Base Price</label>
-                          <InputNumber v-model="formData.price_from" mode="currency" currency="USD" locale="en-US" placeholder="0.00" />
-                        </div>
-                      </div>
-
-                      <div class="flex flex-col gap-2">
-                        <label class="text-sm font-medium text-slate-700">Description</label>
-                        <Textarea 
-                          v-model="formData.description" 
-                          rows="2" 
-                          :placeholder="(selectedEntityType ? typeMetadata[selectedEntityType]?.descriptionPlaceholder : undefined) || 'Optional description...'" 
-                          class="w-full" 
+                        <FormFieldRenderer 
+                          :field="{ 
+                            name: 'name', 
+                            label: 'Name', 
+                            type: 'text', 
+                            required: true, 
+                            placeholder: (selectedEntityType ? typeMetadata[selectedEntityType]?.namePlaceholder : undefined) || 'Enter name' 
+                          }"
+                          v-model="formData.name"
+                        />
+                        <FormFieldRenderer 
+                          :field="{ 
+                            name: 'price_from', 
+                            label: 'Base Price', 
+                            ui_component: 'currency', 
+                            required: false 
+                          }"
+                          v-model="formData.price_from"
                         />
                       </div>
 
+                      <FormFieldRenderer 
+                        :field="{ 
+                          name: 'description', 
+                          label: 'Description', 
+                          type: 'textarea', 
+                          required: false,
+                          placeholder: (selectedEntityType ? typeMetadata[selectedEntityType]?.descriptionPlaceholder : undefined) || 'Optional description...' 
+                        }"
+                        v-model="formData.description"
+                      />
+
                       <!-- Type-Specific Fields from Schema -->
-                      <div v-if="selectedEntityDef.fields.length > 0" class="border-t border-slate-200 pt-4 mt-4">
-                        <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wide mb-4">Properties</h3>
+                      <FormSection 
+                        v-if="selectedEntityDef.fields.length > 0" 
+                        title="Properties" 
+                        variant="inline"
+                      >
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div v-for="field in selectedEntityDef.fields" :key="field.name" class="flex flex-col gap-2">
-                            <label class="text-sm font-medium text-slate-700">{{ field.label }}</label>
-                            
-                            <InputText v-if="field.type === 'text'" v-model="formData.metadata[field.name]" />
-                            <InputNumber v-else-if="field.type === 'number'" v-model="formData.metadata[field.name]" :maxFractionDigits="2" />
-                            <Checkbox v-else-if="field.type === 'boolean'" v-model="formData.metadata[field.name]" :binary="true" />
-                            <Textarea v-else-if="field.type === 'textarea'" v-model="formData.metadata[field.name]" rows="3" />
+                          <div v-for="field in selectedEntityDef.fields" :key="field.name" class="flex flex-col">
+                            <FormFieldRenderer 
+                              :field="field"
+                              v-model="formData.metadata[field.name]"
+                            />
                           </div>
                         </div>
-                      </div>
+                      </FormSection>
 
 
                       <!-- Dynamic Special UI (e.g., Relation Selectors) -->
-                      <div v-if="selectedEntityDef.specialUi?.type === 'relation_selector'" class="border-t border-slate-200 pt-4 mt-4 bg-blue-50/50 -mx-6 px-6 py-4">
-                        <h3 class="text-sm font-bold text-blue-600 uppercase tracking-wide mb-4">Required Link</h3>
-                        <div class="flex flex-col gap-2">
-                          <label class="text-sm font-medium text-slate-700">
-                            {{ selectedEntityDef.specialUi.config.label }} 
-                            <span v-if="selectedEntityDef.specialUi.config.required" class="text-red-500">*</span>
-                          </label>
-                          <Select 
-                            v-model="formData[selectedEntityDef.specialUi.config.field_name]"
-                            :options="entities[selectedEntityDef.specialUi.config.target_entity] || []"
-                            optionLabel="name"
-                            optionValue="id"
-                            :placeholder="`Select ${selectedEntityDef.specialUi.config.label.toLowerCase()}...`"
-                            class="w-full"
-                          />
-                          <small v-if="selectedEntityDef.specialUi.config.help_text" class="text-slate-500">
-                            {{ selectedEntityDef.specialUi.config.help_text }}
-                          </small>
-                        </div>
-                      </div>
+                      <FormSection 
+                        v-if="selectedEntityDef.specialUi?.type === 'relation_selector'"
+                        title="Required Link"
+                        variant="inline"
+                        class="bg-blue-50/50 -mx-6 px-6 py-4"
+                      >
+                        <template #default>
+                          <div class="flex flex-col gap-2">
+                            <label class="text-sm font-medium text-slate-700">
+                              {{ selectedEntityDef.specialUi.config.label }} 
+                              <span v-if="selectedEntityDef.specialUi.config.required" class="text-red-500">*</span>
+                            </label>
+                            <Select 
+                              v-model="formData[selectedEntityDef.specialUi.config.field_name]"
+                              :options="entities?.[selectedEntityDef.specialUi.config.target_entity] || []"
+                              optionLabel="name"
+                              optionValue="id"
+                              :placeholder="`Select ${selectedEntityDef.specialUi.config.label.toLowerCase()}...`"
+                              class="w-full"
+                            />
+                            <small v-if="selectedEntityDef.specialUi.config.help_text" class="text-slate-500">
+                              {{ selectedEntityDef.specialUi.config.help_text }}
+                            </small>
+                          </div>
+                        </template>
+                      </FormSection>
 
-                      <div v-if="selectedEntityDef.isLinker" class="border-t border-slate-200 pt-4 mt-4 bg-orange-50/50 -mx-6 px-6 py-4">
-                        <h3 class="text-sm font-bold text-orange-600 uppercase tracking-wide mb-4">System Dependencies</h3>
-                        
+                      <FormSection 
+                        v-if="selectedEntityDef.isLinker"
+                        title="System Dependencies"
+                        variant="inline"
+                        class="bg-orange-50/50 -mx-6 px-6 py-4"
+                      >
                         <div class="grid grid-cols-1 gap-4">
                           <div class="flex flex-col gap-2">
                             <label class="text-sm font-medium text-slate-700">Company & Material <span class="text-red-500">*</span></label>
@@ -249,7 +268,7 @@
                             <label class="text-sm font-medium text-slate-700">Opening System <span class="text-red-500">*</span></label>
                             <Select 
                               v-model="formData.opening_system_id"
-                              :options="entities.opening_system || []"
+                              :options="entities?.opening_system || []"
                               optionLabel="name"
                               optionValue="id"
                               placeholder="Select Opening System..."
@@ -261,14 +280,14 @@
                             <label class="text-sm font-medium text-slate-700">Available Colors <span class="text-red-500">*</span></label>
                             <ColorChipMultiSelect 
                               v-model="formData.color_ids"
-                              :options="entities.color || []"
+                              :options="entities?.color || []"
                               optionLabel="name"
                               optionValue="id"
                               placeholder="Select Colors..."
                             />
                           </div>
                         </div>
-                      </div>
+                      </FormSection>
 
                       <!-- Action Buttons -->
                       <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-slate-200">
@@ -287,34 +306,11 @@
                 <!-- Right: Image Upload (Contextual) -->
                 <div class="lg:col-1">
                   <div v-if="selectedEntityDef?.hasImage" class="sticky top-6">
-                    <Card class="shadow-sm border border-slate-100">
-                      <template #title>
-                        <span class="text-sm font-bold uppercase text-slate-500">Representation</span>
-                      </template>
-                      <template #content>
-                        <div 
-                          class="w-full aspect-square border-2 border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors relative overflow-hidden group"
-                          @click="triggerImageUpload"
-                          @dragover.prevent
-                          @drop.prevent="handleDrop"
-                        >
-                          <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileSelect" />
-                          
-                          <div v-if="imagePreview" class="absolute inset-0">
-                            <img :src="imagePreview" class="w-full h-full object-cover" />
-                            <div class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <span class="text-white text-sm font-medium">Change Image</span>
-                            </div>
-                          </div>
-                          
-                          <div v-else class="text-center p-4">
-                            <i class="pi pi-image text-3xl text-slate-300 mb-2"></i>
-                            <p class="text-xs text-slate-500">Drag image here or click to upload</p>
-                          </div>
-                        </div>
-                        <Button v-if="imagePreview" label="Remove Image" severity="danger" text size="small" class="w-full mt-2" @click="clearImage" />
-                      </template>
-                    </Card>
+                    <ImageUploadCard
+                      v-model="imageFile"
+                      v-model:previewUrl="imagePreview"
+                      title="Representation"
+                    />
                   </div>
                 </div>
               </div>
@@ -343,16 +339,14 @@ import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
-import Button from 'primevue/button'
 import Select from 'primevue/select'
-import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea'
-import Checkbox from 'primevue/checkbox'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Skeleton from 'primevue/skeleton'
-import Card from 'primevue/card'
+import Button from 'primevue/button'
+import ImageUploadCard from '@/components/common/ImageUploadCard.vue'
+import FormFieldRenderer from '@/components/common/FormFieldRenderer.vue'
+import FormSection from '@/components/common/FormSection.vue'
 import Tag from 'primevue/tag'
 
 const props = defineProps<{
@@ -391,7 +385,6 @@ const formData = ref<Record<string, any>>({
 })
 const imageFile = ref<File | null>(null)
 const imagePreview = ref<string | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 
 // Computed
 const currentSchema = computed(() => {
@@ -592,36 +585,15 @@ function resetForm() {
   clearImage()
 }
 
+// Debug
+watch(typeMetadata, (newVal) => {
+  logger.info('Type Metadata Updated:', newVal)
+}, { deep: true })
+
 // Image Actions
-function triggerImageUpload() {
-  fileInput.value?.click()
-}
-
-function handleFileSelect(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (file) processFile(file)
-}
-
-function handleDrop(event: DragEvent) {
-  const file = event.dataTransfer?.files[0]
-  if (file) processFile(file)
-}
-
-function processFile(file: File) {
-  if (!file.type.startsWith('image/')) {
-    toast.add({ severity: 'warn', summary: 'Invalid File', detail: 'Please upload an image', life: 3000 })
-    return
-  }
-  imageFile.value = file
-  const reader = new FileReader()
-  reader.onload = (e) => imagePreview.value = e.target?.result as string
-  reader.readAsDataURL(file)
-}
-
 function clearImage() {
   imageFile.value = null
   imagePreview.value = null
-  if (fileInput.value) fileInput.value.value = ''
 }
 
 // Save Logic

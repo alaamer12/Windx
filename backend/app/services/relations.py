@@ -49,6 +49,8 @@ class RelationsService(BaseService):
                 "material": {
                     "label": "Material",
                     "icon": "pi pi-box",
+                    "name_placeholder": "Enter material name (e.g., Aluminum, PVC)",
+                    "description_placeholder": "Describe the material properties...",
                     "metadata_fields": [
                         {"name": "density", "type": "number", "label": "Density (kg/m³)"}
                     ]
@@ -56,11 +58,15 @@ class RelationsService(BaseService):
                 "opening_system": {
                     "label": "Opening System",
                     "icon": "pi pi-cog",
+                    "name_placeholder": "Enter opening system name (e.g., Tilt & Turn, Sliding)",
+                    "description_placeholder": "Describe how this opening system works...",
                     "metadata_fields": []
                 },
                 "color": {
                     "label": "Color",
                     "icon": "pi pi-palette",
+                    "name_placeholder": "Enter color name (e.g., White, Anthracite Grey)",
+                    "description_placeholder": "Describe the color finish...",
                     "metadata_fields": [
                         {"name": "code", "type": "text", "label": "Color Code"},
                         {"name": "has_lamination", "type": "boolean", "label": "Has Lamination"}
@@ -69,6 +75,8 @@ class RelationsService(BaseService):
                 "company": {
                     "label": "Company",
                     "icon": "pi pi-building",
+                    "name_placeholder": "Enter company name (e.g., Schüco, Reynaers)",
+                    "description_placeholder": "Describe the company and their products...",
                     "metadata_fields": [
                         {"name": "linked_material_id", "type": "number", "hidden": True}
                     ],
@@ -86,6 +94,8 @@ class RelationsService(BaseService):
                 "system_series": {
                     "label": "System Series",
                     "icon": "pi pi-sitemap",
+                    "name_placeholder": "Enter series name (e.g., AWS 75, CW 50)",
+                    "description_placeholder": "Describe the system series specifications...",
                     "metadata_fields": [
                         {"name": "width", "type": "number", "label": "Width (mm)"},
                         {"name": "number_of_chambers", "type": "number", "label": "Chambers"},
@@ -103,6 +113,8 @@ class RelationsService(BaseService):
                 "glass_unit": {
                     "label": "Glass Unit",
                     "icon": "pi pi-stop",
+                    "name_placeholder": "Enter glass unit name (e.g., Double Glazed, Triple Glazed)",
+                    "description_placeholder": "Describe the glass unit specifications...",
                     "metadata_fields": [
                         {"name": "u_value", "type": "number", "label": "U-Value (W/m²K)"},
                         {"name": "thickness", "type": "number", "label": "Total Thickness (mm)"},
@@ -112,6 +124,8 @@ class RelationsService(BaseService):
                 "spacer": {
                     "label": "Spacer",
                     "icon": "pi pi-minus",
+                    "name_placeholder": "Enter spacer name (e.g., Warm Edge, Aluminum)",
+                    "description_placeholder": "Describe the spacer type...",
                     "metadata_fields": [
                         {"name": "material", "type": "text", "label": "Material"},
                         {"name": "psi_value", "type": "number", "label": "Psi Value"}
@@ -120,6 +134,8 @@ class RelationsService(BaseService):
                 "gas": {
                     "label": "Gas Filling",
                     "icon": "pi pi-cloud",
+                    "name_placeholder": "Enter gas type (e.g., Argon, Krypton, Air)",
+                    "description_placeholder": "Describe the gas filling properties...",
                     "metadata_fields": [
                         {"name": "density", "type": "number", "label": "Density"},
                         {"name": "thermal_conductivity", "type": "number", "label": "Thermal Conductivity"}

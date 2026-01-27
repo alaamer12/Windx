@@ -15,7 +15,7 @@ from decimal import Decimal
 from pathlib import Path
 
 # Add project root to path (backend directory)
-sys.path.append(str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

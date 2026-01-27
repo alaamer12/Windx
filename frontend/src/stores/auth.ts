@@ -53,12 +53,31 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('access_token')
     }
 
+    // Timeout wrapper to prevent infinite loading
+    function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+        return Promise.race([
+            promise,
+            new Promise<T>((_, reject) =>
+                setTimeout(() => reject(new Error('Request timeout')), timeoutMs)
+            )
+        ])
+    }
+
     function initialize() {
         if (initPromise) return initPromise
 
         if (token.value) {
-            initPromise = fetchCurrentUser()
-                .catch(() => logout())
+            // Add 10 second timeout to prevent infinite loading if backend is down
+            initPromise = withTimeout(fetchCurrentUser(), 10000)
+                .catch((error) => {
+                    console.error('[Auth] Initialization failed:', error.message || error)
+                    logout()
+
+                    // Show user-friendly error if backend is unreachable
+                    if (error.message === 'Request timeout' || error.code === 'ERR_NETWORK') {
+                        console.error('[Auth] Backend appears to be down or unreachable')
+                    }
+                })
                 .finally(() => {
                     isInitialized.value = true
                 })

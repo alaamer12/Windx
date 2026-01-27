@@ -264,6 +264,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'submit', 'clear'])
 
 const localForm = ref<Record<string, any>>({})
+const isCalculating = ref(false) // Prevent infinite loops during auto-calculation
 
 // Sync local form with props
 // Sync local form with props
@@ -349,27 +350,35 @@ function handleClear() {
  * Reads calculated_field metadata and executes calculations generically
  */
 function autoCalculateFields(fieldName: string) {
+  // Prevent infinite loops - don't calculate if we're already calculating
+  if (isCalculating.value) return
   if (!props.schema?.sections) return
 
-  // Find all fields that should recalculate when this field changes
-  const fieldsToCalculate: Array<{field: any, calc: any}> = []
-  
-  props.schema.sections.forEach((section: any) => {
-    section.fields.forEach((field: any) => {
-      const calc = field.calculated_field
-      if (calc && calc.trigger_on?.includes(fieldName)) {
-        fieldsToCalculate.push({ field, calc })
+  isCalculating.value = true
+  try {
+    // Find all fields that should recalculate when this field changes
+    const fieldsToCalculate: Array<{field: any, calc: any}> = []
+    
+    props.schema.sections.forEach((section: any) => {
+      section.fields.forEach((field: any) => {
+        const calc = field.calculated_field
+        if (calc && calc.trigger_on?.includes(fieldName)) {
+          fieldsToCalculate.push({ field, calc })
+        }
+      })
+    })
+
+    // Execute calculations
+    fieldsToCalculate.forEach(({ field, calc }) => {
+      const result = executeCalculation(calc, localForm.value)
+      if (result !== null) {
+        localForm.value[field.name] = result
       }
     })
-  })
-
-  // Execute calculations
-  fieldsToCalculate.forEach(({ field, calc }) => {
-    const result = executeCalculation(calc, localForm.value)
-    if (result !== null) {
-      localForm.value[field.name] = result
-    }
-  })
+  } finally {
+    // Always reset the flag, even if there's an error
+    isCalculating.value = false
+  }
 }
 
 function executeCalculation(calc: any, formData: Record<string, any>): number | null {

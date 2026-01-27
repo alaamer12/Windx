@@ -7,8 +7,13 @@ ManufacturingTypeResolver approach instead of hardcoded IDs.
 """
 
 import asyncio
+import sys
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
+
+# Add project root to path (backend directory)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.core.config import get_settings
 from app.database import get_db

@@ -5,8 +5,9 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from decimal import Decimal
-from typing import Annotated, Any, Literal, TypedDict
+from typing import Annotated, Any, Literal
 
+from typing_extensions import TypedDict
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 

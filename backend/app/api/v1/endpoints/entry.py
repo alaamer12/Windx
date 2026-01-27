@@ -455,12 +455,47 @@ async def upload_image(
     current_user: CurrentUser = None,
     db: DBSession = None,
 ):
-    """Placeholder for image upload logic.
+    """Upload an image file for a configuration or entity."""
+    import os
+    import shutil
+    import uuid
+    from pathlib import Path
 
-    IMPORTANT: This requires file storage logic.
-    For now, return a placeholder URL to prevent 404s.
-    """
-    return {"url": f"/images/{file.filename}", "filename": file.filename, "success": True}
+    # Define upload directory relative to this file
+    # File is in backend/app/api/v1/endpoints/entry.py
+    # Parent (endpoints) -> Parent (v1) -> Parent (api) -> Parent (app) -> static
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
+    upload_dir = base_dir / "static" / "uploads"
+
+    # Ensure directory exists
+    os.makedirs(upload_dir, exist_ok=True)
+
+    # Generate unique filename to prevent collisions
+    ext = os.path.splitext(file.filename)[1]
+    new_filename = f"{uuid.uuid4()}{ext}"
+    file_path = upload_dir / new_filename
+
+    # Save file
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # Return relative URL from static mount point
+        return {
+            "url": f"static/uploads/{new_filename}",
+            "filename": file.filename,
+            "id": new_filename,
+            "success": True,
+        }
+    except Exception as e:
+        import logging
+
+        logger = logging.getLogger("uvicorn.error")
+        logger.error(f"Upload Image Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save uploaded file",
+        )
 
 
 

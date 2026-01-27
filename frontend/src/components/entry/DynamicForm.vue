@@ -143,29 +143,43 @@
 
               <!-- Picture Input -->
               <div v-else-if="['picture-input', 'file', 'image', 'pic'].includes(field.ui_component)" class="flex flex-col gap-2">
-                <div v-if="localForm[field.name]" class="relative w-32 h-32 rounded border border-slate-200 overflow-hidden bg-white group">
-                  <img :src="getImagePath(localForm[field.name])" class="w-full h-full object-contain" />
-                  <button 
-                    type="button"
-                    @click="localForm[field.name] = null" 
-                    class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <i class="pi pi-trash text-xs"></i>
-                  </button>
+                <div v-if="localForm[field.name]" class="relative w-48 h-48 rounded-lg border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 group flex items-center justify-center">
+                  <img 
+                    :src="getImagePath(localForm[field.name])" 
+                    class="w-full h-full object-contain"
+                    @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/200x200?text=Invalid+Image'" 
+                  />
+                  <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <Button 
+                      icon="pi pi-trash" 
+                      severity="danger" 
+                      rounded 
+                      @click="localForm[field.name] = null" 
+                      v-tooltip.bottom="'Remove Image'"
+                    />
+                    <a :href="getImagePath(localForm[field.name])" target="_blank" class="p-button p-button-icon-only p-button-info p-button-rounded">
+                      <i class="pi pi-external-link"></i>
+                    </a>
+                  </div>
                 </div>
-                <FileUpload
-                  v-show="!isUploading"
-                  mode="basic"
-                  name="demo[]"
-                  url="/api/v1/admin/entry/upload-image"
-                  accept="image/*"
-                  :maxFileSize="5000000"
-                  customUpload
-                  @uploader="(e) => onFileUpload(e, field.name)"
-                  :auto="true"
-                  :chooseLabel="localForm[field.name] ? 'Change Image' : 'Upload Image'"
-                  class="p-button-sm"
-                />
+                
+                <div class="flex items-center gap-2">
+                  <FileUpload
+                    v-show="!isUploading"
+                    mode="basic"
+                    name="file"
+                    accept="image/*"
+                    :maxFileSize="5000000"
+                    customUpload
+                    @uploader="(e: any) => onFileUpload(e, field.name)"
+                    :auto="true"
+                    :chooseLabel="localForm[field.name] ? 'Change Image' : 'Upload Image'"
+                    class="p-button-sm"
+                  />
+                  <small v-if="localForm[field.name]" class="text-slate-400 text-xs truncate max-w-[150px]">
+                    {{ localForm[field.name] }}
+                  </small>
+                </div>
                 <ProgressBar v-if="isUploading" mode="indeterminate" style="height: 6px" />
               </div>
 
@@ -249,7 +263,12 @@ const emit = defineEmits(['update:modelValue', 'submit', 'clear'])
 const localForm = ref<Record<string, any>>({})
 
 // Sync local form with props
+// Sync local form with props
 watch(() => props.modelValue, (newVal) => {
+  // Only sync if the value is actually different to avoid infinite loops or resetting local state
+  if (JSON.stringify(newVal) === JSON.stringify(localForm.value)) return
+
+  console.log('[DynamicForm] Syncing from props.modelValue')
   const processed = { ...newVal }
   if (props.schema) {
     props.schema.sections.forEach((section: any) => {
@@ -289,13 +308,25 @@ function getImagePath(path: string) {
 const { uploadImage, isUploading } = useImageUpload()
 
 async function onFileUpload(event: any, fieldName: string) {
+  console.log('[DynamicForm] Starting upload for field:', fieldName)
   const file = event.files[0]
-  if (!file) return
+  if (!file) {
+    console.warn('[DynamicForm] No file selected')
+    return
+  }
 
   const result = await uploadImage(file)
+  console.log('[DynamicForm] Upload result:', result)
+  
   if (result.success) {
-    localForm.value[fieldName] = result.url || result.filename
+    const finalPath = result.url || result.filename
+    console.log('[DynamicForm] Setting field', fieldName, 'to path:', finalPath)
+    localForm.value[fieldName] = finalPath
     validateField(fieldName)
+    // Force reactivity for the property addition
+    localForm.value = { ...localForm.value }
+  } else {
+    console.error('[DynamicForm] Upload failed:', result.error)
   }
 }
 

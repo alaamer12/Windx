@@ -361,14 +361,18 @@ class EntryService(BaseService):
         ui_component = (node.ui_component or "").lower()
         if ui_component in ["input", "text", "string", "textinput"]:
             ui_component = "text"
-        elif ui_component == "multiselect":
+        elif ui_component in ["multiselect", "multi_select"]:
             ui_component = "multi-select"
+        elif ui_component in ["file", "image", "picture", "pic"]:
+            ui_component = "picture-input"
         elif not ui_component:
             # Fallback based on data_type
             if node.data_type == "boolean":
                 ui_component = "checkbox"
             elif node.data_type in ["number", "float"]:
                 ui_component = "number"
+            elif node.data_type == "selection":
+                ui_component = "dropdown"
             else:
                 ui_component = "text"
 

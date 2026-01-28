@@ -1,28 +1,4 @@
-read the file      
-
-and     
-
-
-
-as you see in relations html page we input "Material" Then Opening-System, Then Colors Then Company [which uses "Material"] Then System_Series [Which uses "Company ->Material", Opening_Sytem, Color(s)]
-
-
-
-now i want you to update the ordering of the  page
-
-the new order will be [
-
-Name (1)
-
-Type (2)
-
-System_Series (3) <New>]
-
-and on choosing system Series the material, company, colors should be choosen automatically
-
-
 الازازين مش لازم يكونوا من نفس النوع
-
 
 -----------
 Please listen carefully, this is a serious requirement.
@@ -60,3 +36,26 @@ This page is a **full, structured edit view**, not a dynamic form.
 - now we need to refactor our application to depend on setup scripts, and instead of hardcoded relations inside the backend they should be a setup script
 - second thing we need to update the name "relations" in backend to be a ProductDefinition as the frontend to ensure consistency
 - third thing we may need to refactor the full file because it violates Repository pattern
+
+---------
+
+- i noitced that each setup file is having same pattern but with different data, i think we can do this
+make the setup files read from .json file [or maybe more flexible file if needing to] and then having a single setup script
+this will allow us in future when we need to add a configurator page to do it easily
+but i still dont know about the seeding scripts, are they necassry, and what about _entry_setup why it is necassry
+
+----------
+
+a lot of different attributes we may need to migrate them from being an attribute into a field in JSONB, which would be more appreciated
+because it allows us to add new things specially for UI easily
+
+also we need to handle this case about glasses, that if the user choose more than one glass each glass can get different configuration
+but the spacer is not like that
+
+
+we have discovered that the script _create_entry_pages.py is used, we need to handle this creation steps professionally, 
+
+------
+
+low priority:
+the placeholders at profile page are not yet good enoguh, but this is good for now 

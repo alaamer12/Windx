@@ -264,11 +264,18 @@ class EntryService(BaseService):
         result = await self.db.execute(stmt)
         attribute_nodes = result.scalars().all()
 
+        # Get dependencies from relations system for this page type
+        from app.services.relations import RelationsService
+        relations_service = RelationsService(self.db)
+        scope_def = relations_service.DEFINITION_SCOPES.get(page_type)
+        dependencies = scope_def.get("dependencies") if scope_def else None
+
         # Generate form schema
-        return await self.generate_form_schema(manufacturing_type_id, attribute_nodes)
+        return await self.generate_form_schema(manufacturing_type_id, attribute_nodes, dependencies)
 
     async def generate_form_schema(
-        self, manufacturing_type_id: int, attribute_nodes: list[AttributeNode]
+        self, manufacturing_type_id: int, attribute_nodes: list[AttributeNode], 
+        dependencies: list[dict[str, Any]] | None = None
     ) -> ProfileSchema:
         """Generate form schema from attribute nodes.
 
@@ -321,6 +328,7 @@ class EntryService(BaseService):
             manufacturing_type_id=manufacturing_type_id,
             sections=sections,
             conditional_logic=conditional_logic,
+            dependencies=dependencies,
         )
 
     @staticmethod
@@ -458,6 +466,7 @@ class EntryService(BaseService):
                 if node.price_impact_value
                 else None,
                 "sort_order": node.sort_order,
+                "metadata_": node.metadata_,
             }
             for node in option_nodes
         ]
@@ -524,6 +533,7 @@ class EntryService(BaseService):
                     else None,
                     "sort_order": 0,  # Relations entities don't have sort_order
                     "image_url": entity.image_url,
+                    "metadata_": entity.metadata_,
                 }
                 for entity in unique_entities  # Use unique_entities, not entities
                 if entity.name  # Only include entities with names

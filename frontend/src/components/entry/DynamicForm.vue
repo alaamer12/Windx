@@ -92,17 +92,15 @@ const localForm = ref<Record<string, any>>({})
 const isCalculating = ref(false) // Prevent infinite loops during auto-calculation
 
 // Sync local form with props
-// Sync local form with props
 watch(() => props.modelValue, (newVal) => {
   // Only sync if the value is actually different to avoid infinite loops or resetting local state
   if (JSON.stringify(newVal) === JSON.stringify(localForm.value)) return
 
-  console.log('[DynamicForm] Syncing from props.modelValue')
   const processed = { ...newVal }
   if (props.schema) {
     props.schema.sections.forEach((section: any) => {
       section.fields.forEach((field: any) => {
-        if (['multi-select', 'multiselect'].includes(field.ui_component)) {
+        if (['multi-select', 'multiselect', 'color-multi-select'].includes(field.ui_component)) {
           if (!Array.isArray(processed[field.name])) {
             processed[field.name] = processed[field.name] ? [processed[field.name]] : []
           }
@@ -112,6 +110,21 @@ watch(() => props.modelValue, (newVal) => {
   }
   localForm.value = processed
 }, { deep: true, immediate: true })
+
+// Initialize form when schema loads (important for multi-select defaults)
+watch(() => props.schema, (newSchema) => {
+  if (!newSchema) return
+  
+  newSchema.sections.forEach((section: any) => {
+    section.fields.forEach((field: any) => {
+      if (['multi-select', 'multiselect', 'color-multi-select'].includes(field.ui_component)) {
+        if (!Array.isArray(localForm.value[field.name])) {
+          localForm.value[field.name] = []
+        }
+      }
+    })
+  })
+}, { immediate: true })
 
 // Sync prop with local form
 watch(localForm, (newVal) => {

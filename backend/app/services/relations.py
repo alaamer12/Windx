@@ -113,8 +113,8 @@ class RelationsService(BaseService):
                     "actions": [
                         {
                             "type": "autofill",
-                            "source_property": "metadata_.opening_system_id",
                             "target_field": "opening_system",
+                            "source_property": "metadata_.opening_system_id",
                             "disable_target": True,
                             "lookup_source": None,
                             "lookup_key": None,
@@ -122,21 +122,21 @@ class RelationsService(BaseService):
                         },
                         {
                             "type": "autofill",
-                            "source_property": "metadata_.linked_company_material",
                             "target_field": "company",
+                            "source_property": "metadata_.linked_company_material",
                             "disable_target": True,
                             "lookup_source": None,
                             "lookup_key": None,
-                            "chain": {
-                                "type": "autofill",
-                                "target_field": "material",
-                                "lookup_source": "company",
-                                "lookup_key": "id",
-                                "source_property": "metadata_.linked_material_id",
-                                "disable_target": True,
-                                "chain": None,
-                                "source_property": None # Must satisfy all TypedDict keys if strict? No TypedDict optional keys allowed
-                            }
+                            "chain": None
+                        },
+                        {
+                            "type": "autofill",
+                            "target_field": "material",
+                            "source_property": "metadata_.linked_material_id",
+                            "disable_target": True,
+                            "lookup_source": None,
+                            "lookup_key": None,
+                            "chain": None
                         }
                     ]
                 }
@@ -573,6 +573,33 @@ class RelationsService(BaseService):
         )
         
         self.db.add(path_node)
+        
+        # NEW: Synchronize metadata to the standalone system_series entity to support auto-fill
+        # Find the standalone system_series entity
+        series_entity = entities["system_series"]
+        series_metadata = series_entity.metadata_ or {}
+        
+        # Inject parent NAMES for frontend auto-fill logic
+        series_updated = False
+        company_name = entities["company"].name
+        opening_name = entities["opening_system"].name
+        material_name = entities["material"].name
+        
+        if series_metadata.get("linked_company_material") != company_name:
+            series_metadata["linked_company_material"] = company_name
+            series_updated = True
+        
+        if series_metadata.get("opening_system_id") != opening_name:
+            series_metadata["opening_system_id"] = opening_name
+            series_updated = True
+
+        if series_metadata.get("linked_material_id") != material_name:
+            series_metadata["linked_material_id"] = material_name
+            series_updated = True
+            
+        if series_updated:
+            series_entity.metadata_ = series_metadata
+        
         await self.commit()
         await self.refresh(path_node)
         return path_node

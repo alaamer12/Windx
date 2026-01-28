@@ -36,6 +36,8 @@ __all__ = [
     "ProfileEntryData",
     "PreviewTable",
     "ProfilePreviewData",
+    "DependencyAction",
+    "DependencyRule",
 ]
 
 
@@ -208,6 +210,25 @@ class FormSection(BaseModel):
     ] = 0
 
 
+class DependencyAction(BaseModel):
+    """Dependency action definition."""
+
+    type: str  # "autofill", "disable"
+    source_property: str | None = None
+    target_field: str
+    disable_target: bool | None = None
+    lookup_source: str | None = None
+    lookup_key: str | None = None
+    chain: DependencyAction | None = None
+
+
+class DependencyRule(BaseModel):
+    """Dependency rule definition."""
+
+    trigger_field: str
+    actions: list[DependencyAction]
+
+
 class ProfileSchema(BaseModel):
     """Complete profile form schema.
 
@@ -236,6 +257,13 @@ class ProfileSchema(BaseModel):
             description="Conditional display logic",
         ),
     ]
+    dependencies: Annotated[
+        list[DependencyRule] | None,
+        Field(
+            default=None,
+            description="Field dependency rules for auto-fill and auto-disable",
+        ),
+    ] = None
 
 
 class ProfileEntryData(BaseModel):

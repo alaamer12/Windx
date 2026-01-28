@@ -24,9 +24,39 @@ and on choosing system Series the material, company, colors should be choosen au
 الازازين مش لازم يكونوا من نفس النوع
 
 
-now here it out because we have got serious requirement besid the trash icon in Actions colomn, i want you to add new button to edit, on clicking on this button
-it will open totoally a new page [call it PageDefinitionEdit]
-with the row data, now
-in normal Product Definition page it have inputs fields dynamic by Select-input
- 
-but in this edit page, all inputs will be spreaded out with Section titles and they are filled with respecting to their field type 
+-----------
+Please listen carefully, this is a serious requirement.
+
+In the **Actions** column, next to the **trash (delete) icon**, add a **new Edit button**.
+
+When the user clicks the **Edit button**:
+
+-   Open a **new page** called **`PageDefinitionEdit`**
+    
+-   Pass the **selected row data** to this page
+    
+
+About the **Edit page behavior**:
+
+-   In the normal **Product Definition** page, input fields are shown **dynamically** based on a **Select input**
+    
+-   In **`PageDefinitionEdit`**, this should be different:
+    
+    -   **All input fields must be visible**
+        
+    -   Inputs should be **grouped into clear sections**, each with a **section title**
+        
+    -   Each field must be **pre-filled** with its existing value
+        
+    -   Each input must respect its **correct field type** (text, number, select, etc.)
+        
+
+Goal:  
+This page is a **full, structured edit view**, not a dynamic form.
+
+
+------
+
+- now we need to refactor our application to depend on setup scripts, and instead of hardcoded relations inside the backend they should be a setup script
+- second thing we need to update the name "relations" in backend to be a ProductDefinition as the frontend to ensure consistency
+- third thing we may need to refactor the full file because it violates Repository pattern

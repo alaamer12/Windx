@@ -165,6 +165,7 @@ async def create_minimal_entry_data():
                     "sort_order": 1,
                     "ui_component": "text",
                     "description": "Product name",
+                    "metadata_": {"placeholder": "e.g. Standard Casement Window"},
                 },
                 {
                     "name": "product_type",
@@ -177,6 +178,7 @@ async def create_minimal_entry_data():
                     "sort_order": 2,
                     "ui_component": "dropdown",
                     "description": "Product type selection",
+                    "metadata_": {"placeholder": "Select Profile Type"},
                 },
                 {
                     "name": "width_mm",
@@ -189,6 +191,7 @@ async def create_minimal_entry_data():
                     "sort_order": 3,
                     "ui_component": "number",
                     "description": "Width in millimeters",
+                    "metadata_": {"placeholder": "e.g. 1500"},
                 },
                 {
                     "name": "height_mm",
@@ -201,6 +204,7 @@ async def create_minimal_entry_data():
                     "sort_order": 4,
                     "ui_component": "number",
                     "description": "Height in millimeters",
+                    "metadata_": {"placeholder": "e.g. 650"},
                 },
                 {
                     "name": "material_type",
@@ -213,6 +217,7 @@ async def create_minimal_entry_data():
                     "sort_order": 5,
                     "ui_component": "dropdown",
                     "description": "Material selection",
+                    "metadata_": {"placeholder": "Select Material"},
                 },
                 {
                     "name": "color_finish",
@@ -225,6 +230,7 @@ async def create_minimal_entry_data():
                     "sort_order": 6,
                     "ui_component": "dropdown",
                     "description": "Color and finish options",
+                    "metadata_": {"placeholder": "Select Colors"},
                 },
             ]
 

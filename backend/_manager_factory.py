@@ -118,6 +118,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Select the frame material",
             "help_text": "Different materials offer different benefits",
+            "metadata": {"placeholder": "Select Material"},
         },
         {
             "name": "Frame Color",
@@ -126,6 +127,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Choose frame color",
             "help_text": "Custom colors may extend lead time",
+            "metadata": {"placeholder": "Select Color"},
         },
         {
             "name": "Frame Finish",
@@ -134,6 +136,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Select surface finish",
             "help_text": "Finish affects durability and appearance",
+            "metadata": {"placeholder": "Select Finish"},
         },
         {
             "name": "Frame Thickness",
@@ -142,6 +145,7 @@ ATTRIBUTES = {
             "ui_component": "slider",
             "description": "Frame thickness in inches",
             "help_text": "Thicker frames provide better insulation",
+            "metadata": {"placeholder": "e.g. 0.75"},
         },
     ],
     "Glass Options": [
@@ -152,6 +156,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Number of glass panes",
             "help_text": "More panes provide better insulation",
+            "metadata": {"placeholder": "Select Configuration"},
         },
         {
             "name": "Glass Type",
@@ -160,6 +165,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Type of glass",
             "help_text": "Different glass types for different needs",
+            "metadata": {"placeholder": "Select Glass Type"},
         },
         {
             "name": "Glass Coating",
@@ -168,6 +174,7 @@ ATTRIBUTES = {
             "ui_component": "checkbox",
             "description": "Optional glass coatings",
             "help_text": "Coatings improve energy efficiency",
+            "metadata": {"placeholder": "Select Coating"},
         },
         {
             "name": "Tint Level",
@@ -176,6 +183,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Glass tint darkness",
             "help_text": "Tinting reduces glare and heat",
+            "metadata": {"placeholder": "Select Tint"},
         },
     ],
     "Hardware Options": [
@@ -186,6 +194,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Locking mechanism",
             "help_text": "Security level varies by lock type",
+            "metadata": {"placeholder": "Select Lock"},
         },
         {
             "name": "Handle Style",
@@ -194,6 +203,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Handle design",
             "help_text": "Choose style to match decor",
+            "metadata": {"placeholder": "Select Handle"},
         },
         {
             "name": "Hinge Type",
@@ -202,6 +212,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Hinge mechanism",
             "help_text": "Affects opening direction and durability",
+            "metadata": {"placeholder": "Select Hinge"},
         },
         {
             "name": "Hardware Finish",
@@ -210,6 +221,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Hardware finish color",
             "help_text": "Match or contrast with frame",
+            "metadata": {"placeholder": "Select Finish"},
         },
     ],
     "Dimensions": [
@@ -220,6 +232,7 @@ ATTRIBUTES = {
             "ui_component": "input",
             "description": "Width in inches",
             "help_text": "Measure the rough opening",
+            "metadata": {"placeholder": "e.g. 36.5"},
         },
         {
             "name": "Height",
@@ -228,6 +241,7 @@ ATTRIBUTES = {
             "ui_component": "input",
             "description": "Height in inches",
             "help_text": "Measure from sill to header",
+            "metadata": {"placeholder": "e.g. 48.0"},
         },
         {
             "name": "Depth",
@@ -236,6 +250,7 @@ ATTRIBUTES = {
             "ui_component": "input",
             "description": "Depth in inches",
             "help_text": "Wall thickness for installation",
+            "metadata": {"placeholder": "e.g. 3.25"},
         },
     ],
     "Energy Features": [
@@ -246,6 +261,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Insulation rating",
             "help_text": "Higher rating = better energy efficiency",
+            "metadata": {"placeholder": "Select Level"},
         },
         {
             "name": "Weather Stripping",
@@ -254,6 +270,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Weather seal type",
             "help_text": "Prevents air infiltration",
+            "metadata": {"placeholder": "Select Type"},
         },
         {
             "name": "Energy Star Certified",
@@ -262,6 +279,7 @@ ATTRIBUTES = {
             "ui_component": "checkbox",
             "description": "Energy Star certification",
             "help_text": "May qualify for tax credits",
+            "metadata": {"placeholder": "Certified?"},
         },
     ],
     "Security Features": [
@@ -272,6 +290,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Security level",
             "help_text": "Higher rating = better protection",
+            "metadata": {"placeholder": "Select Rating"},
         },
         {
             "name": "Reinforced Frame",
@@ -280,6 +299,7 @@ ATTRIBUTES = {
             "ui_component": "checkbox",
             "description": "Steel-reinforced frame",
             "help_text": "Increases break-in resistance",
+            "metadata": {"placeholder": "Reinforced?"},
         },
         {
             "name": "Impact Resistant",
@@ -288,6 +308,7 @@ ATTRIBUTES = {
             "ui_component": "checkbox",
             "description": "Impact-resistant glass",
             "help_text": "Required in hurricane zones",
+            "metadata": {"placeholder": "Resistant?"},
         },
     ],
     "Aesthetic Options": [
@@ -298,6 +319,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Decorative grid pattern",
             "help_text": "Colonial, prairie, or custom",
+            "metadata": {"placeholder": "Select Pattern"},
         },
         {
             "name": "Trim Style",
@@ -306,6 +328,7 @@ ATTRIBUTES = {
             "ui_component": "dropdown",
             "description": "Interior trim style",
             "help_text": "Matches interior decor",
+            "metadata": {"placeholder": "Select Style"},
         },
     ],
     "Installation Options": [
@@ -316,6 +339,7 @@ ATTRIBUTES = {
             "ui_component": "radio",
             "description": "Installation type",
             "help_text": "New construction vs retrofit",
+            "metadata": {"placeholder": "Select Method"},
         },
         {
             "name": "Professional Installation",
@@ -324,6 +348,7 @@ ATTRIBUTES = {
             "ui_component": "checkbox",
             "description": "Include professional installation",
             "help_text": "Recommended for warranty coverage",
+            "metadata": {"placeholder": "Scale?"},
         },
     ],
 }

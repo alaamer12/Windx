@@ -50,6 +50,7 @@ async def create_entry_pages():
                     "sort_order": 1,
                     "ui_component": "radio",
                     "description": "Window screen options",
+                    "metadata_": {"placeholder": "Select Screen Type"},
                 },
                 {
                     "name": "Full Screen",
@@ -103,6 +104,7 @@ async def create_entry_pages():
                     "sort_order": 1,
                     "ui_component": "radio",
                     "description": "Type of glass",
+                    "metadata_": {"placeholder": "Select Glass Type"},
                 },
                 {
                     "name": "Single Pane",

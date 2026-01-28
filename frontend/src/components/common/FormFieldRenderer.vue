@@ -251,12 +251,8 @@ const optionLabel = computed(() => props.field.optionLabel || (props.field.optio
 const optionValue = computed(() => props.field.optionValue || (props.field.options_data ? 'name' : undefined))
 
 const placeholder = computed(() => {
-  // Explicitly check if placeholder exists in field (even if empty string)
-  if (props.field.placeholder !== undefined && props.field.placeholder !== null) {
-    return props.field.placeholder
-  }
-  if (props.field.required) return `Enter ${props.field.label}`
-  return 'Optional'
+  const meta = props.field.metadata_ || {}
+  return meta.placeholder || meta.name_placeholder || (props.field.required ? `Enter ${props.field.label}` : 'Optional')
 })
 
 // Helper for Radio keys

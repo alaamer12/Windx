@@ -14,7 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +88,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "input",
             "help_text": "Enter the accessory name (e.g., '7.5\" Hinge', 'Standard Handle')",
             "validation_rules": {"min_length": 1, "max_length": 200},
+            "metadata": {"placeholder": "e.g. Standard Handle"},
         },
         {
             "name": "accessory_type",
@@ -114,6 +115,7 @@ async def create_accessories_attribute_nodes(
                     "Other",
                 ]
             },
+            "metadata": {"placeholder": "Select Category"},
         },
         {
             "name": "size_specification",
@@ -127,6 +129,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "input",
             "help_text": "Size specification (e.g., '7.5\"', '10cm', '80cm')",
             "validation_rules": {"max_length": 50},
+            "metadata": {"placeholder": "e.g. 7.5\" or 10cm"},
         },
         {
             "name": "material_finish",
@@ -151,6 +154,7 @@ async def create_accessories_attribute_nodes(
                     "Other",
                 ]
             },
+            "metadata": {"placeholder": "Select Finish"},
         },
         # Technical Specifications
         {
@@ -165,6 +169,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "number",
             "help_text": "Maximum load capacity in kg (for hinges, wheel sets)",
             "validation_rules": {"min": 0, "max": 200},
+            "metadata": {"placeholder": "e.g. 50"},
             "display_condition": {
                 "operator": "in",
                 "field": "accessory_type",
@@ -183,6 +188,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "number",
             "help_text": "Maximum opening angle in degrees (for hinges)",
             "validation_rules": {"min": 0, "max": 180},
+            "metadata": {"placeholder": "e.g. 90"},
             "display_condition": {
                 "operator": "equals",
                 "field": "accessory_type",
@@ -201,6 +207,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "number",
             "help_text": "Number of locking points (for espagnolettes, locks)",
             "validation_rules": {"min": 1, "max": 10},
+            "metadata": {"placeholder": "e.g. 3"},
             "display_condition": {
                 "operator": "in",
                 "field": "accessory_type",
@@ -229,6 +236,7 @@ async def create_accessories_attribute_nodes(
                     "Other",
                 ]
             },
+            "metadata": {"placeholder": "Select Operation Type"},
         },
         # Compatibility
         {
@@ -243,6 +251,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "text",
             "help_text": "List compatible window systems (e.g., 'Kom700, Kom800')",
             "validation_rules": {"max_length": 200},
+            "metadata": {"placeholder": "e.g. Kom700, Kom800"},
         },
         {
             "name": "installation_position",
@@ -268,6 +277,7 @@ async def create_accessories_attribute_nodes(
                     "Other",
                 ]
             },
+            "metadata": {"placeholder": "Select Position"},
         },
         # Pricing
         {
@@ -282,6 +292,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "currency",
             "help_text": "Price per unit in local currency",
             "validation_rules": {"min": 0, "max": 1000},
+            "metadata": {"placeholder": "e.g. 5.50"},
         },
         {
             "name": "quantity_per_window",
@@ -295,6 +306,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "number",
             "help_text": "Typical quantity needed per window",
             "validation_rules": {"min": 1, "max": 20},
+            "metadata": {"placeholder": "e.g. 2"},
         },
         # Additional Properties
         {
@@ -309,6 +321,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "text",
             "help_text": "Available color options (e.g., 'White, Brown, Black')",
             "validation_rules": {"max_length": 200},
+            "metadata": {"placeholder": "e.g. White, Brown, Black"},
         },
         {
             "name": "warranty_period",
@@ -322,6 +335,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "number",
             "help_text": "Warranty period in years",
             "validation_rules": {"min": 0, "max": 25},
+            "metadata": {"placeholder": "e.g. 5"},
         },
         {
             "name": "supplier_code",
@@ -335,6 +349,7 @@ async def create_accessories_attribute_nodes(
             "ui_component": "input",
             "help_text": "Supplier's part number or code",
             "validation_rules": {"max_length": 100},
+            "metadata": {"placeholder": "e.g. HNG-75SS"},
         },
     ]
 
@@ -356,6 +371,7 @@ async def create_accessories_attribute_nodes(
             help_text=attr_def["help_text"],
             validation_rules=attr_def.get("validation_rules"),
             display_condition=attr_def.get("display_condition"),
+            metadata_=attr_def.get("metadata"),
             page_type="accessories",  # Set page_type for accessories attributes
         )
         session.add(node)

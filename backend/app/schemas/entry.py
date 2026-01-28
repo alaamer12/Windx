@@ -24,6 +24,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
+from typing_extensions import TypedDict, NotRequired
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 
@@ -39,6 +40,19 @@ __all__ = [
     "DependencyAction",
     "DependencyRule",
 ]
+
+
+class FieldMetadata(TypedDict):
+    """Metadata for field display hints."""
+    placeholder: NotRequired[str | None]
+    name_placeholder: NotRequired[str | None]
+    icon: NotRequired[str | None]
+    label: NotRequired[str | None]
+    help_text: NotRequired[str | None]
+    # Dependency-related keys
+    linked_company_material: NotRequired[str | None]
+    opening_system_id: NotRequired[str | None]
+    linked_material_id: NotRequired[str | None]
 
 
 class FieldDefinition(BaseModel):
@@ -127,6 +141,13 @@ class FieldDefinition(BaseModel):
             default=None,
             description="Additional help text",
             examples=["Frame type affects available options"],
+        ),
+    ] = None
+    metadata_: Annotated[
+        FieldMetadata | None,
+        Field(
+            default=None,
+            description="UI hints and metadata (placeholders, icons, etc.)",
         ),
     ] = None
     options: Annotated[

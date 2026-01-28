@@ -162,6 +162,7 @@ async def create_factory_manufacturing_data(
                     ui_component=attr_template["ui_component"],
                     description=attr_template["description"],
                     help_text=attr_template.get("help_text"),
+                    metadata_=attr_template.get("metadata"),
                 )
                 db.add(attribute_node)
                 await db.flush()

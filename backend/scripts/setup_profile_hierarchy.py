@@ -119,6 +119,7 @@ async def create_attribute_nodes(
             "ui_component": "input",
             "help_text": "Enter a descriptive name for this profile",
             "validation_rules": {"min_length": 1, "max_length": 200},
+            "metadata": {"placeholder": "e.g. Standard Casement Window"},
         },
         {
             "name": "type",
@@ -133,6 +134,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Select the product type",
             "validation_rules": {},  # No hardcoded options
+            "metadata": {"placeholder": "Select Profile Type"},
             "options": [
                 "Frame",
                 "Sash",
@@ -159,6 +161,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Company or manufacturer name",
             "validation_rules": {"max_length": 100},
+            "metadata": {"placeholder": "Select Company"},
             # No hardcoded options - options come from the relations system (company entity type)
         },
         {
@@ -174,6 +177,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Select the material type",
             "validation_rules": {},
+            "metadata": {"placeholder": "Select Material"},
             # No hardcoded options - options come from the relations system (material entity type)
         },
         {
@@ -189,6 +193,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Select the opening system type",
             "validation_rules": {},
+            "metadata": {"placeholder": "Select Opening System"},
             # No hardcoded options - options come from the relations system (opening_system entity type)
         },
         {
@@ -204,6 +209,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Select a system series (e.g., K700, K800)",
             "validation_rules": {"max_length": 200},
+            "metadata": {"placeholder": "Select System Series"},
             # No hardcoded options - options come from the relations system (system_series entity type)
         },
         {
@@ -219,6 +225,7 @@ async def create_attribute_nodes(
             "ui_component": "input",
             "help_text": "Product code or SKU",
             "validation_rules": {"max_length": 50},
+            "metadata": {"placeholder": "e.g. WIN-700-FR"},
         },
         {
             "name": "length_of_beam",
@@ -233,6 +240,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Length of beam in meters",
             "validation_rules": {"min": 0, "max": 20},
+            "metadata": {"placeholder": "e.g. 6.0"},
         },
         # Conditional Fields Section
         {
@@ -283,6 +291,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Width dimension in mm",
             "validation_rules": {"min": 0, "max": 5000},
+            "metadata": {"placeholder": "e.g. 1500"},
         },
         {
             "name": "total_width",
@@ -315,6 +324,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Height of flyscreen track in mm",
             "validation_rules": {"min": 0, "max": 200},
+            "metadata": {"placeholder": "e.g. 25"},
             "display_condition": {
                 "operator": "equals",
                 "field": "builtin_flyscreen_track",
@@ -333,6 +343,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Front height in mm",
             "validation_rules": {"min": 0, "max": 5000},
+            "metadata": {"placeholder": "e.g. 65"},
         },
         {
             "name": "rear_height",
@@ -346,6 +357,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Rear height in mm",
             "validation_rules": {"min": 0, "max": 5000},
+            "metadata": {"placeholder": "e.g. 65"},
         },
         {
             "name": "glazing_height",
@@ -359,6 +371,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Glazing height in mm",
             "validation_rules": {"min": 0, "max": 5000},
+            "metadata": {"placeholder": "e.g. 45"},
         },
         {
             "name": "renovation_height",
@@ -372,6 +385,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Renovation height in mm",
             "validation_rules": {"min": 0, "max": 5000},
+            "metadata": {"placeholder": "e.g. 38"},
             "display_condition": {"operator": "equals", "field": "type", "value": "Frame"},
         },
         {
@@ -386,6 +400,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Glazing undercut height in mm",
             "validation_rules": {"min": 0, "max": 100},
+            "metadata": {"placeholder": "e.g. 5"},
             "display_condition": {"operator": "equals", "field": "type", "value": "Glazing bead"},
         },
         # Technical Specifications Section
@@ -401,6 +416,7 @@ async def create_attribute_nodes(
             "ui_component": "file",
             "help_text": "Image filename or reference",
             "validation_rules": {"max_length": 200},
+            "metadata": {"placeholder": "Upload or enter image path"},
         },
         {
             "name": "sash_overlap",
@@ -414,6 +430,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Sash overlap in mm",
             "validation_rules": {"min": 0, "max": 50},
+            "metadata": {"placeholder": "e.g. 8"},
             "display_condition": {"operator": "equals", "field": "type", "value": "Sash"},
         },
         {
@@ -428,6 +445,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Horizontal clearance for flying mullion in mm",
             "validation_rules": {"min": 0, "max": 100},
+            "metadata": {"placeholder": "e.g. 10"},
             "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"},
         },
         {
@@ -442,6 +460,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Vertical clearance for flying mullion in mm",
             "validation_rules": {"min": 0, "max": 100},
+            "metadata": {"placeholder": "e.g. 50"},
             "display_condition": {"operator": "equals", "field": "type", "value": "Flying mullion"},
         },
         {
@@ -456,6 +475,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Steel thickness in mm",
             "validation_rules": {"min": 0, "max": 10},
+            "metadata": {"placeholder": "e.g. 2.0"},
             "display_condition": {
                 "operator": "is_not_empty",
                 "field": "reinforcement_steel",
@@ -474,6 +494,7 @@ async def create_attribute_nodes(
             "ui_component": "number",
             "help_text": "Weight per meter in kg",
             "validation_rules": {"min": 0, "max": 2000},
+            "metadata": {"placeholder": "e.g. 1.25"},
         },
         {
             "name": "reinforcement_steel",
@@ -487,6 +508,7 @@ async def create_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Select reinforcement steel options",
             "validation_rules": {},
+            "metadata": {"placeholder": "Select Reinforcement"},
             # No hardcoded options - options come from the relations system (reinforcement_steel entity type)
         },
         {
@@ -501,6 +523,7 @@ async def create_attribute_nodes(
             "ui_component": "multi-select",  # Changed to multi-select
             "help_text": "Select available colors (multiple selection)",
             "validation_rules": {},
+            "metadata": {"placeholder": "Select Colors"},
             # No hardcoded options - options come from the relations system (colours entity type)
         },
         # Pricing Section
@@ -517,6 +540,7 @@ async def create_attribute_nodes(
             "ui_component": "currency",
             "help_text": "Price per meter in currency units",
             "validation_rules": {"min": 0, "max": 10000},
+            "metadata": {"placeholder": "e.g. 15.50"},
             "calculated_field": {
                 "type": "divide",
                 "operands": ["price_per_beam", "length_of_beam"],
@@ -537,6 +561,7 @@ async def create_attribute_nodes(
             "ui_component": "currency",
             "help_text": "Price per beam in currency units",
             "validation_rules": {"min": 0, "max": 50000},
+            "metadata": {"placeholder": "e.g. 93.00"},
             "calculated_field": {
                 "type": "multiply",
                 "operands": ["price_per_meter", "length_of_beam"],
@@ -557,6 +582,7 @@ async def create_attribute_nodes(
             "ui_component": "percentage",
             "help_text": "Discount percentage for UPVC profiles",
             "validation_rules": {"min": 0, "max": 100},
+            "metadata": {"placeholder": "e.g. 20"},
         },
     ]
 
@@ -698,6 +724,7 @@ async def create_attribute_nodes(
                 node.ui_component = attr_def["ui_component"]
                 node.validation_rules = attr_def.get("validation_rules")
                 node.display_condition = attr_def.get("display_condition")
+                node.metadata_ = attr_def.get("metadata")
                 
                 # Update display_name if provided in definition
                 if "display_name" in attr_def:
@@ -754,6 +781,7 @@ async def create_attribute_nodes(
             help_text=help_text,
             validation_rules=attr_def.get("validation_rules"),
             display_condition=attr_def.get("display_condition"),
+            metadata_=attr_def.get("metadata"),
             page_type="profile",  # Set page_type for profile attributes
         )
         session.add(node)

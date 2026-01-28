@@ -43,6 +43,7 @@ from app.schemas.entry import (
     ProfileEntryData,
     ProfilePreviewData,
     ProfileSchema,
+    FieldMetadata,
 )
 from app.services.base import BaseService
 from app.services.rbac import RBACService
@@ -399,6 +400,14 @@ class EntryService(BaseService):
                 options = await self._extract_options_from_children(node)
                 options_data = await self._extract_options_with_metadata(node)
 
+        # Extract short help text
+        help_text = node.help_text
+
+        # Prepare metadata_ and ensure a placeholder exists
+        field_metadata: FieldMetadata = (node.metadata_ or {}).copy()
+        if "placeholder" not in field_metadata and "name_placeholder" not in field_metadata:
+            field_metadata["placeholder"] = f"Enter {label}"
+
         return FieldDefinition(
             name=node.name,
             label=label,
@@ -408,7 +417,8 @@ class EntryService(BaseService):
             display_condition=node.display_condition,
             ui_component=ui_component,
             description=node.description,  # Contains HTML for tooltips
-            help_text=node.help_text,  # Short subtitle below field
+            help_text=help_text,  # Short subtitle below field
+            metadata_=field_metadata,
             options=options,
             options_data=options_data,
             calculated_field=node.calculated_field,  # NEW: Pass through calculation metadata

@@ -14,7 +14,7 @@ from decimal import Decimal
 from pathlib import Path
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -101,6 +101,7 @@ async def create_glazing_attribute_nodes(
                     "Other",
                 ]
             },
+            "metadata": {"placeholder": "Select Glass Type"},
         },
         {
             "name": "glass_thickness",
@@ -114,6 +115,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "dropdown",
             "help_text": "Select glass thickness in millimeters",
             "validation_rules": {"options": ["4", "5", "6", "8", "10", "12", "15", "19", "25"]},
+            "metadata": {"placeholder": "Select Thickness"},
         },
         {
             "name": "pane_configuration",
@@ -129,6 +131,7 @@ async def create_glazing_attribute_nodes(
             "validation_rules": {
                 "options": ["Single Pane", "Double Pane", "Triple Pane", "Quadruple Pane"]
             },
+            "metadata": {"placeholder": "Select Configuration"},
         },
         {
             "name": "air_gap",
@@ -142,6 +145,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "Air gap between glass panes in mm",
             "validation_rules": {"min": 6, "max": 20},
+            "metadata": {"placeholder": "e.g. 12"},
             "display_condition": {
                 "operator": "not_equals",
                 "field": "pane_configuration",
@@ -180,6 +184,7 @@ async def create_glazing_attribute_nodes(
                     "Surface 4 (Inside)",
                 ]
             },
+            "metadata": {"placeholder": "Select Position"},
             "display_condition": {"operator": "equals", "field": "low_e_coating", "value": True},
         },
         {
@@ -196,6 +201,7 @@ async def create_glazing_attribute_nodes(
             "validation_rules": {
                 "options": ["None", "Bronze", "Gray", "Green", "Blue", "Silver", "Gold", "Other"]
             },
+            "metadata": {"placeholder": "Select Tint Color"},
         },
         {
             "name": "uv_protection",
@@ -209,6 +215,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "UV protection percentage (0-100%)",
             "validation_rules": {"min": 0, "max": 100},
+            "metadata": {"placeholder": "e.g. 99"},
         },
         # Performance Specifications
         {
@@ -223,6 +230,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "Thermal transmittance (lower is better for insulation)",
             "validation_rules": {"min": 0.1, "max": 6.0},
+            "metadata": {"placeholder": "e.g. 1.1"},
         },
         {
             "name": "shgc",
@@ -236,6 +244,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "Solar heat gain coefficient (0-1, lower blocks more heat)",
             "validation_rules": {"min": 0.0, "max": 1.0},
+            "metadata": {"placeholder": "e.g. 0.45"},
         },
         {
             "name": "visible_transmittance",
@@ -249,6 +258,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "Percentage of visible light transmitted (0-100%)",
             "validation_rules": {"min": 0, "max": 100},
+            "metadata": {"placeholder": "e.g. 80"},
         },
         {
             "name": "sound_reduction",
@@ -262,6 +272,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "Sound reduction in decibels",
             "validation_rules": {"min": 20, "max": 60},
+            "metadata": {"placeholder": "e.g. 35"},
         },
         # Safety and Security
         {
@@ -285,6 +296,7 @@ async def create_glazing_attribute_nodes(
                     "Fire Rated",
                 ]
             },
+            "metadata": {"placeholder": "Select Rating"},
         },
         {
             "name": "impact_resistance",
@@ -305,6 +317,7 @@ async def create_glazing_attribute_nodes(
                     "Class 4 (Maximum)",
                 ]
             },
+            "metadata": {"placeholder": "Select Class"},
         },
         # Dimensions and Installation
         {
@@ -319,6 +332,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "input",
             "help_text": "Maximum glass size (e.g., '2000x3000')",
             "validation_rules": {"max_length": 50},
+            "metadata": {"placeholder": "e.g. 2500x3500"},
         },
         {
             "name": "minimum_size",
@@ -332,6 +346,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "input",
             "help_text": "Minimum glass size (e.g., '300x300')",
             "validation_rules": {"max_length": 50},
+            "metadata": {"placeholder": "e.g. 300x300"},
         },
         {
             "name": "edge_work",
@@ -347,6 +362,7 @@ async def create_glazing_attribute_nodes(
             "validation_rules": {
                 "options": ["Polished", "Ground", "Cut", "Beveled", "Rounded", "Other"]
             },
+            "metadata": {"placeholder": "Select Edge Finish"},
         },
         # Pricing
         {
@@ -361,6 +377,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "currency",
             "help_text": "Price per square meter in local currency",
             "validation_rules": {"min": 0, "max": 1000},
+            "metadata": {"placeholder": "e.g. 45.00"},
         },
         {
             "name": "installation_cost",
@@ -374,6 +391,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "currency",
             "help_text": "Installation cost per square meter",
             "validation_rules": {"min": 0, "max": 200},
+            "metadata": {"placeholder": "e.g. 10.00"},
         },
         {
             "name": "lead_time",
@@ -387,6 +405,7 @@ async def create_glazing_attribute_nodes(
             "ui_component": "number",
             "help_text": "Manufacturing and delivery lead time in days",
             "validation_rules": {"min": 1, "max": 90},
+            "metadata": {"placeholder": "e.g. 14"},
         },
     ]
 
@@ -408,6 +427,7 @@ async def create_glazing_attribute_nodes(
             help_text=attr_def["help_text"],
             validation_rules=attr_def.get("validation_rules"),
             display_condition=attr_def.get("display_condition"),
+            metadata_=attr_def.get("metadata"),
             page_type="glazing",  # Set page_type for glazing attributes
         )
         session.add(node)

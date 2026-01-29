@@ -34,8 +34,22 @@
       </div>
     </template>
     <template #content>
+      <!-- Enhanced Search Bar -->
+      <SearchBar
+        v-model:searchQuery="searchQuery"
+        v-model:columnFilters="columnFilters"
+        v-model:showAdvancedSearch="showAdvancedSearch"
+        :headers="headers"
+        :searchStats="searchStats"
+        :isSearchActive="isSearchActive"
+        @export="handleExportResults"
+        @clear-search="clearSearch"
+        @clear-all="clearAll"
+        class="mb-4"
+      />
+
       <DataTable
-        :value="data"
+        :value="filteredData"
         editMode="row"
         dataKey="id"
         @row-edit-save="onRowEditSave"
@@ -67,9 +81,8 @@
               :class="getCellClass(data.id, field)"
               :data-row-id="data.id"
               :data-field="field"
-            >
-              {{ formatCellValue(data[field], field) }}
-            </div>
+              v-html="getHighlightedCellValue(data[field], field)"
+            />
           </template>
           <template #editor="{ data, field }">
             <InputText 
@@ -100,8 +113,20 @@
         <template #empty>
           <div class="text-center py-8">
             <i class="pi pi-inbox text-4xl text-gray-400 mb-4 block"></i>
-            <p class="text-gray-500 text-lg mb-2">No entries found</p>
-            <p class="text-gray-400 text-sm">Create one using the form above</p>
+            <p class="text-gray-500 text-lg mb-2">
+              {{ isSearchActive ? 'No matching results found' : 'No entries found' }}
+            </p>
+            <p class="text-gray-400 text-sm">
+              {{ isSearchActive ? 'Try adjusting your search criteria' : 'Create one using the form above' }}
+            </p>
+            <Button
+              v-if="isSearchActive"
+              label="Clear Search"
+              icon="pi pi-times"
+              @click="clearAll"
+              text
+              class="mt-3"
+            />
           </div>
         </template>
       </DataTable>
@@ -215,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, toRef } from 'vue'
 import Card from 'primevue/card'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -223,8 +248,11 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Badge from 'primevue/badge'
+import SearchBar from '@/components/common/SearchBar.vue'
 import { useAutoCalculation } from '@/composables/useAutoCalculation'
+import { useTableSearch } from '@/composables/useTableSearch'
 import { useDebugLogger } from '@/composables/useDebugLogger'
+import { useToast } from 'primevue/usetoast'
 
 const props = defineProps<{
   data: any[]
@@ -243,6 +271,7 @@ const emit = defineEmits<{
   (e: 'cell-update', data: { rowId: any, field: string, value: any, calculatedFields?: string[] }): void
 }>()
 
+const toast = useToast()
 const editingRows = ref([])
 const selectedRows = ref([])
 const selectAll = ref(false)
@@ -252,6 +281,23 @@ const showSingleDeleteDialog = ref(false)
 const itemToDelete = ref<any>(null)
 const bulkDeleteLoading = ref(false)
 const logger = useDebugLogger('EditableTable')
+
+// Setup search functionality
+const {
+  searchQuery,
+  columnFilters,
+  showAdvancedSearch,
+  filteredData,
+  searchStats,
+  isSearchActive,
+  setSearchQuery,
+  setColumnFilter,
+  clearSearch,
+  clearAll,
+  highlightSearchTerm,
+  isRowHighlighted,
+  exportSearchResults
+} = useTableSearch(toRef(props, 'data'), toRef(props, 'headers'))
 
 // Setup auto-calculation
 const schemaRef = computed(() => props.schema)
@@ -266,16 +312,7 @@ function onRowEditSave(event: any) {
 function onSelectAllChange(event: any) {
   selectAll.value = event.checked
   if (event.checked) {
-    selectedRows.value = [...props.data]
-  } else {
-    selectedRows.value = []
-  }
-}
-
-function toggleSelectAll(checked: boolean) {
-  selectAll.value = checked
-  if (checked) {
-    selectedRows.value = [...props.data]
+    selectedRows.value = [...filteredData.value]
   } else {
     selectedRows.value = []
   }
@@ -294,7 +331,7 @@ function onRowUnselect(event: any) {
 function updateSelectAllState() {
   if (selectedRows.value.length === 0) {
     selectAll.value = false
-  } else if (selectedRows.value.length === props.data.length) {
+  } else if (selectedRows.value.length === filteredData.value.length) {
     selectAll.value = true
   }
 }
@@ -414,6 +451,31 @@ function formatCellValue(value: any, field: string): string {
   }
   
   return String(value)
+}
+
+function getHighlightedCellValue(value: any, field: string): string {
+  const formattedValue = formatCellValue(value, field)
+  return highlightSearchTerm(formattedValue, field)
+}
+
+// Export search results with toast notification
+function handleExportResults() {
+  try {
+    exportSearchResults(`${props.title || 'table'}_search_results`)
+    toast.add({
+      severity: 'success',
+      summary: 'Export Successful',
+      detail: `Exported ${searchStats.value.filteredRecords} records`,
+      life: 3000
+    })
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: 'Export Failed',
+      detail: error.message,
+      life: 5000
+    })
+  }
 }
 </script>
 

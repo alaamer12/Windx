@@ -1,0 +1,898 @@
+# Profile page configuration for Window Profile Entry
+# This file defines all 29 CSV column attributes for the profile page
+
+page_type: profile
+manufacturing_type: Window Profile Entry
+
+# Manufacturing type configuration
+manufacturing_type_config:
+  description: "Window profile data entry system for comprehensive product configuration"
+  base_category: window
+  base_price: 200.00
+  base_weight: 15.00
+
+# Attribute definitions (29 CSV columns)
+attributes:
+  # Basic Information Section
+  - name: name
+    display_name: Product Name
+    description: |
+      A unique identifier for this profile.
+      
+      **Examples:**
+      • 'Standard Casement Window'
+      • 'Premium Sliding Door'
+      • 'Economy Frame Profile'
+      
+      **Tip:** Use descriptive names that clearly identify the product type and variant.
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: basic_information.name
+    depth: 1
+    sort_order: 1
+    ui_component: input
+    help_text: This name will be used in reports, quotes, and inventory listings. Make it descriptive enough to distinguish between similar profiles.
+    validation_rules:
+      min_length: 1
+      max_length: 200
+    metadata:
+      placeholder: "e.g. Standard Casement Window"
+
+  - name: type
+    display_name: Profile Type
+    description: |
+      The category of this profile component.
+      
+      **Options:**
+      • **Frame** - Main structural component that holds the glass
+      • **Sash** - Movable window panel
+      • **Mullion** - Vertical or horizontal divider
+      • **Glazing Bead** - Strip that holds glass in place
+      • **Track** - Sliding mechanism component
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: basic_information.type
+    depth: 1
+    sort_order: 2
+    ui_component: dropdown
+    help_text: Select the type that best describes this profile's function in the window or door assembly.
+    validation_rules: {}
+    metadata:
+      placeholder: "Select Profile Type"
+    options:
+      - Frame
+      - Sash
+      - Mullion
+      - Flying mullion
+      - Glazing bead
+      - Interlock
+      - Track
+      - Auxiliary
+      - Coupling
+      - Tube
+
+  - name: system_series
+    display_name: System Series
+    description: |
+      The specific profile system series from the manufacturer.
+      
+      **Examples:**
+      • Kom700 - Standard residential series
+      • Kom701 - Enhanced thermal performance
+      • Kom800 - Premium commercial series
+      
+      **Series Differences:**
+      • Chamber count (thermal efficiency)
+      • Wall thickness (strength)
+      • Glass capacity
+      • Price point
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: basic_information.system_series
+    depth: 1
+    sort_order: 3
+    ui_component: dropdown
+    help_text: Higher series numbers typically indicate better performance and higher cost. Verify compatibility with other components.
+    validation_rules:
+      max_length: 200
+    metadata:
+      placeholder: "Select System Series"
+    # No hardcoded options - comes from relations system
+
+  - name: company
+    display_name: Company
+    description: |
+      The manufacturer or supplier of this profile system.
+      
+      **Use:**
+      • Select from your database of approved suppliers
+      • Affects pricing, availability, and compatibility
+      • Used for inventory tracking and ordering
+      
+      **Note:** Different companies may have incompatible profile systems.
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: basic_information.company
+    depth: 1
+    sort_order: 4
+    ui_component: dropdown
+    help_text: Ensure all components in a project use compatible systems from the same manufacturer.
+    validation_rules:
+      max_length: 100
+    metadata:
+      placeholder: "Select Company"
+    # No hardcoded options - comes from relations system
+
+  - name: material
+    display_name: Material
+    description: |
+      The primary material composition of the profile.
+      
+      **Common Options:**
+      • **UPVC** - Durable, low-maintenance plastic (most common)
+      • **Aluminum** - Strong, corrosion-resistant metal
+      • **Wood** - Traditional, natural material
+      • **Composite** - Combination of materials
+      
+      **Properties:**
+      • Affects thermal performance
+      • Determines maintenance requirements
+      • Impacts pricing
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: basic_information.material
+    depth: 1
+    sort_order: 5
+    ui_component: dropdown
+    help_text: UPVC is the most popular choice for residential applications due to its durability and low maintenance.
+    validation_rules: {}
+    metadata:
+      placeholder: "Select Material"
+    # No hardcoded options - comes from relations system
+
+  - name: opening_system
+    display_name: Opening System
+    description: |
+      The window or door opening mechanism type.
+      
+      **Common Types:**
+      • **Casement** - Hinged window that opens outward
+      • **Sliding** - Horizontal sliding panels
+      • **Tilt & Turn** - Dual-action opening
+      • **Fixed** - Non-opening window
+      • **Awning** - Top-hinged, opens outward
+      
+      **Selection Criteria:**
+      • Space availability
+      • Ventilation needs
+      • Ease of cleaning
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: basic_information.opening_system
+    depth: 1
+    sort_order: 6
+    ui_component: dropdown
+    help_text: The opening system affects hardware requirements, pricing, and installation complexity.
+    validation_rules: {}
+    metadata:
+      placeholder: "Select Opening System"
+    # No hardcoded options - comes from relations system
+
+  - name: colours
+    display_name: Available Colors
+    description: |
+      Available color options for the profile finish.
+      
+      **Common Options:**
+      • **White** - Classic, versatile choice
+      • **Brown** - Traditional, warm appearance
+      • **Black** - Modern, contemporary look
+      • **Grey** - Neutral, sophisticated
+      • **Wood Grain** - Natural appearance
+      
+      **Considerations:**
+      • Architectural style
+      • Maintenance requirements
+      • Heat absorption
+      • Fade resistance
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: technical_specs.colours
+    depth: 1
+    sort_order: 7
+    ui_component: multi-select
+    help_text: Color selection affects both appearance and performance. Darker colors may require special consideration for thermal expansion.
+    validation_rules: {}
+    metadata:
+      placeholder: "Select Colors"
+    # No hardcoded options - comes from relations system
+
+  - name: code
+    display_name: Product Code
+    description: |
+      A unique product code or SKU for inventory and ordering purposes.
+      
+      **Format:**
+      • Use consistent naming convention
+      • Include manufacturer prefix if needed
+      • Examples: 'KOM700-FR', 'ALU-SASH-60'
+      
+      **Purpose:**
+      • Inventory tracking
+      • Order processing
+      • Quality control
+      • Documentation
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: basic_information.code
+    depth: 1
+    sort_order: 8
+    ui_component: input
+    help_text: This code should match your supplier's part number for easy ordering and inventory management.
+    validation_rules:
+      max_length: 50
+    metadata:
+      placeholder: "e.g. WIN-700-FR"
+
+  - name: length_of_beam
+    display_name: Length of Beam (m)
+    description: |
+      The standard length of profile beams available from the supplier.
+      
+      **Common Lengths:**
+      • Residential: 6m (20 feet)
+      • Commercial: 6-12m (20-40 feet)
+      • Custom: Variable lengths
+      
+      **Considerations:**
+      • Transportation limits
+      • Waste minimization
+      • Installation efficiency
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: basic_information.length_of_beam
+    depth: 1
+    sort_order: 9
+    ui_component: number
+    help_text: Longer beams reduce joints but may be harder to transport and handle on site.
+    validation_rules:
+      min: 0
+      max: 20
+    metadata:
+      placeholder: "e.g. 6.0"
+
+  # Conditional Fields Section
+  - name: renovation
+    display_name: Renovation
+    description: |
+      Indicates if this profile is designed for renovation applications.
+      
+      **Renovation Features:**
+      • Reduced depth for existing openings
+      • Special mounting systems
+      • Compatibility with existing frames
+      • Minimal disruption installation
+      
+      **Benefits:**
+      • Faster installation
+      • Less structural work
+      • Cost-effective upgrades
+    node_type: attribute
+    data_type: boolean
+    required: false
+    ltree_path: conditional_fields.renovation
+    depth: 1
+    sort_order: 10
+    ui_component: checkbox
+    help_text: Renovation profiles are specifically designed to fit into existing window openings with minimal modification.
+    display_condition:
+      operator: equals
+      field: type
+      value: Frame
+
+  - name: builtin_flyscreen_track
+    display_name: Built-in Flyscreen Track
+    description: |
+      Integrated track system for flyscreen installation.
+      
+      **Features:**
+      • Built-in guide rails
+      • Smooth operation
+      • Weather sealing
+      • Easy maintenance
+      
+      **Benefits:**
+      • Cleaner appearance
+      • Better performance
+      • Reduced installation time
+      • Improved durability
+    node_type: attribute
+    data_type: boolean
+    required: false
+    ltree_path: conditional_fields.builtin_flyscreen_track
+    depth: 1
+    sort_order: 11
+    ui_component: checkbox
+    help_text: Built-in tracks provide better integration and performance compared to add-on flyscreen systems.
+    display_condition:
+      operator: and
+      conditions:
+        - operator: equals
+          field: type
+          value: Frame
+        - operator: contains
+          field: opening_system
+          value: sliding
+
+  # Dimensions Section
+  - name: width
+    display_name: Width (mm)
+    description: |
+      The width of the profile cross-section in millimeters.
+      
+      **Measurement:**
+      • Measure the actual profile width
+      • Include any flanges or extensions
+      • Exclude gaskets and seals
+      
+      **Common Widths:**
+      • Frame profiles: 60-90mm
+      • Sash profiles: 50-70mm
+      • Mullions: 40-60mm
+      
+      **Impact:**
+      • Affects glass capacity
+      • Determines thermal performance
+      • Influences material cost
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.width
+    depth: 1
+    sort_order: 12
+    ui_component: number
+    help_text: Wider profiles generally provide better insulation but cost more. Verify compatibility with glass thickness.
+    validation_rules:
+      min: 0
+      max: 5000
+    metadata:
+      placeholder: "e.g. 1500"
+
+  - name: total_width
+    display_name: Total Width (mm)
+    description: |
+      Total width including the built-in flyscreen track system.
+      
+      **Measurement:**
+      • Frame width + track width
+      • Important for rough opening sizing
+      • Affects installation clearances
+      
+      **Planning:**
+      • Check available space
+      • Consider wall thickness
+      • Plan for proper sealing
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.total_width
+    depth: 1
+    sort_order: 13
+    ui_component: number
+    help_text: This dimension is critical for ensuring proper fit in the wall opening when flyscreen tracks are included.
+    validation_rules:
+      min: 0
+      max: 5000
+    display_condition:
+      operator: equals
+      field: builtin_flyscreen_track
+      value: true
+
+  - name: flyscreen_track_height
+    display_name: Flyscreen Track Height (mm)
+    description: |
+      Height of the integrated flyscreen track system.
+      
+      **Specifications:**
+      • Track depth in millimeters
+      • Affects screen operation
+      • Impacts weather sealing
+      
+      **Considerations:**
+      • Screen type compatibility
+      • Operating clearance
+      • Maintenance access
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.flyscreen_track_height
+    depth: 1
+    sort_order: 14
+    ui_component: number
+    help_text: Proper track height ensures smooth flyscreen operation and effective insect protection.
+    validation_rules:
+      min: 0
+      max: 200
+    metadata:
+      placeholder: "e.g. 25"
+    display_condition:
+      operator: equals
+      field: builtin_flyscreen_track
+      value: true
+
+  - name: front_height
+    display_name: Front Height (mm)
+    description: |
+      Height of the profile's front face in millimeters.
+      
+      **Measurement:**
+      • From bottom to top of visible face
+      • Affects appearance and proportions
+      • Important for glazing calculations
+      
+      **Design Impact:**
+      • Visual weight of the frame
+      • Glass area maximization
+      • Structural requirements
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.front_height
+    depth: 1
+    sort_order: 15
+    ui_component: number
+    help_text: Front height affects both the aesthetic appearance and the amount of daylight entering through the window.
+    validation_rules:
+      min: 0
+      max: 5000
+    metadata:
+      placeholder: "e.g. 65"
+
+  - name: rear_height
+    display_name: Rear Height (mm)
+    description: |
+      Height of the profile's rear face in millimeters.
+      
+      **Purpose:**
+      • Structural support
+      • Installation clearance
+      • Insulation space
+      • Hardware mounting
+      
+      **Considerations:**
+      • Wall cavity depth
+      • Insulation requirements
+      • Fixing methods
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.rear_height
+    depth: 1
+    sort_order: 16
+    ui_component: number
+    help_text: Rear height must accommodate wall thickness and provide adequate space for proper installation and insulation.
+    validation_rules:
+      min: 0
+      max: 5000
+    metadata:
+      placeholder: "e.g. 65"
+
+  - name: glazing_height
+    display_name: Glazing Height (mm)
+    description: |
+      Height available for glazing installation in millimeters.
+      
+      **Calculation:**
+      • Total height minus frame components
+      • Determines maximum glass size
+      • Affects glazing bead selection
+      
+      **Optimization:**
+      • Maximize daylight
+      • Ensure structural integrity
+      • Meet thermal requirements
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.glazing_height
+    depth: 1
+    sort_order: 17
+    ui_component: number
+    help_text: This dimension determines the actual glass size that can be installed in the frame.
+    validation_rules:
+      min: 0
+      max: 5000
+    metadata:
+      placeholder: "e.g. 45"
+
+  - name: renovation_height
+    display_name: Renovation Height (mm)
+    description: |
+      Additional height required for renovation installations.
+      
+      **Purpose:**
+      • Accommodate existing sill heights
+      • Provide proper drainage
+      • Ensure weather sealing
+      • Maintain structural integrity
+      
+      **Typical Values:**
+      • Standard: 38-50mm
+      • High performance: 60-80mm
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.renovation_height
+    depth: 1
+    sort_order: 18
+    ui_component: number
+    help_text: This height ensures proper installation over existing sills while maintaining weather performance.
+    validation_rules:
+      min: 0
+      max: 5000
+    metadata:
+      placeholder: "e.g. 38"
+    display_condition:
+      operator: equals
+      field: type
+      value: Frame
+
+  - name: glazing_undercut_height
+    display_name: Glazing Undercut Height (mm)
+    description: |
+      Depth of the undercut in glazing beads for glass installation.
+      
+      **Function:**
+      • Secure glass positioning
+      • Weather seal accommodation
+      • Thermal break continuity
+      • Easy glass replacement
+      
+      **Standards:**
+      • Minimum 3mm for small glass
+      • 5-8mm for larger panes
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: dimensions.glazing_undercut_height
+    depth: 1
+    sort_order: 19
+    ui_component: number
+    help_text: Proper undercut depth ensures secure glass installation and effective weather sealing.
+    validation_rules:
+      min: 0
+      max: 100
+    metadata:
+      placeholder: "e.g. 5"
+    display_condition:
+      operator: equals
+      field: type
+      value: Glazing bead
+
+  # Technical Specifications Section
+  - name: pic
+    display_name: Picture/Image
+    description: |
+      Reference image or technical drawing for this profile.
+      
+      **File Types:**
+      • Technical drawings (PDF, DWG)
+      • Product photos (JPG, PNG)
+      • Cross-section diagrams
+      • Installation guides
+      
+      **Benefits:**
+      • Visual identification
+      • Installation reference
+      • Quality control
+      • Customer communication
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: technical_specs.pic
+    depth: 1
+    sort_order: 20
+    ui_component: file
+    help_text: Visual references help ensure correct profile selection and proper installation procedures.
+    validation_rules:
+      max_length: 200
+    metadata:
+      placeholder: "Upload or enter image path"
+
+  - name: sash_overlap
+    display_name: Sash Overlap (mm)
+    description: |
+      Overlap dimension between sash and frame components.
+      
+      **Purpose:**
+      • Weather sealing
+      • Structural connection
+      • Thermal performance
+      • Security enhancement
+      
+      **Typical Values:**
+      • Residential: 8-12mm
+      • Commercial: 12-20mm
+      • High performance: 15-25mm
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: technical_specs.sash_overlap
+    depth: 1
+    sort_order: 21
+    ui_component: number
+    help_text: Adequate overlap is essential for weather resistance and thermal performance of the window system.
+    validation_rules:
+      min: 0
+      max: 50
+    metadata:
+      placeholder: "e.g. 8"
+    display_condition:
+      operator: equals
+      field: type
+      value: Sash
+
+  - name: flying_mullion_horizontal_clearance
+    display_name: Flying Mullion Horizontal Clearance (mm)
+    description: |
+      Horizontal clearance required for flying mullion installation.
+      
+      **Purpose:**
+      • Thermal expansion accommodation
+      • Installation tolerance
+      • Structural movement
+      • Weather sealing space
+      
+      **Typical Range:**
+      • Standard: 6-10mm
+      • High movement: 12-15mm
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: technical_specs.flying_mullion_horizontal_clearance
+    depth: 1
+    sort_order: 22
+    ui_component: number
+    help_text: Proper clearance prevents binding and ensures long-term performance of the mullion system.
+    validation_rules:
+      min: 0
+      max: 100
+    metadata:
+      placeholder: "e.g. 10"
+    display_condition:
+      operator: equals
+      field: type
+      value: Flying mullion
+
+  - name: flying_mullion_vertical_clearance
+    display_name: Flying Mullion Vertical Clearance (mm)
+    description: |
+      Vertical clearance required for flying mullion installation.
+      
+      **Considerations:**
+      • Building settlement
+      • Thermal movement
+      • Installation accuracy
+      • Maintenance access
+      
+      **Standards:**
+      • Minimum: 40mm
+      • Recommended: 50-60mm
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: technical_specs.flying_mullion_vertical_clearance
+    depth: 1
+    sort_order: 23
+    ui_component: number
+    help_text: Vertical clearance must accommodate building movement and provide access for maintenance and adjustment.
+    validation_rules:
+      min: 0
+      max: 100
+    metadata:
+      placeholder: "e.g. 50"
+    display_condition:
+      operator: equals
+      field: type
+      value: Flying mullion
+
+  - name: steel_material_thickness
+    display_name: Steel Material Thickness (mm)
+    description: |
+      Thickness of steel reinforcement used in the profile.
+      
+      **Applications:**
+      • Large span windows
+      • High wind load areas
+      • Security requirements
+      • Structural glazing
+      
+      **Common Thicknesses:**
+      • Light duty: 1.5-2.0mm
+      • Standard: 2.0-3.0mm
+      • Heavy duty: 3.0-5.0mm
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: technical_specs.steel_material_thickness
+    depth: 1
+    sort_order: 24
+    ui_component: number
+    help_text: Steel reinforcement thickness must be selected based on structural requirements and local building codes.
+    validation_rules:
+      min: 0
+      max: 10
+    metadata:
+      placeholder: "e.g. 2.0"
+    display_condition:
+      operator: is_not_empty
+      field: reinforcement_steel
+      value: null
+
+  - name: weight_per_meter
+    display_name: Weight per Meter (kg)
+    description: |
+      The weight of the profile per linear meter in kilograms.
+      
+      **Purpose:**
+      • Shipping cost calculations
+      • Structural load analysis
+      • Hardware sizing
+      • Installation planning
+      
+      **Typical Values:**
+      • Light profiles: 0.5-1.0 kg/m
+      • Standard profiles: 1.0-2.0 kg/m
+      • Heavy profiles: 2.0+ kg/m
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: technical_specs.weight_per_meter
+    depth: 1
+    sort_order: 25
+    ui_component: number
+    help_text: Heavier profiles generally indicate thicker walls and better structural performance but increase shipping costs.
+    validation_rules:
+      min: 0
+      max: 2000
+    metadata:
+      placeholder: "e.g. 1.25"
+
+  - name: reinforcement_steel
+    display_name: Reinforcement Steel
+    description: |
+      Type and specification of steel reinforcement used.
+      
+      **Options:**
+      • **Standard Steel** - Basic structural support
+      • **High Strength Steel** - Enhanced load capacity
+      • **Galvanized Steel** - Corrosion protection
+      
+      **Selection Criteria:**
+      • Load requirements
+      • Environmental conditions
+      • Durability needs
+      • Cost considerations
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: technical_specs.reinforcement_steel
+    depth: 1
+    sort_order: 26
+    ui_component: dropdown
+    help_text: Choose reinforcement steel based on structural requirements and environmental exposure conditions.
+    validation_rules: {}
+    metadata:
+      placeholder: "Select Reinforcement"
+    # No hardcoded options - comes from relations system
+
+  # Pricing Section
+  - name: price_per_meter
+    display_name: Price/m
+    description: |
+      The cost per linear meter of this profile in your local currency.
+      
+      **Includes:**
+      • Base material cost
+      • Manufacturing overhead
+      • Supplier markup
+      
+      **Excludes:**
+      • Installation labor
+      • Hardware and accessories
+      • Glass and glazing
+      
+      **Note:** This is automatically calculated from price per beam ÷ length.
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: pricing.price_per_meter
+    depth: 1
+    sort_order: 27
+    ui_component: currency
+    help_text: Update this price regularly to reflect current supplier pricing. Use for cost estimation and quoting.
+    validation_rules:
+      min: 0
+      max: 10000
+    metadata:
+      placeholder: "e.g. 15.50"
+    calculated_field:
+      type: divide
+      operands: [price_per_beam, length_of_beam]
+      trigger_on: [price_per_beam]
+      precision: 2
+
+  - name: price_per_beam
+    display_name: Price per Beam
+    description: |
+      Cost per standard length beam of this profile.
+      
+      **Calculation:**
+      • Price per meter × beam length
+      • May include cutting/handling charges
+      • Volume discounts may apply
+      
+      **Usage:**
+      • Project cost estimation
+      • Inventory valuation
+      • Supplier comparison
+      • Quote generation
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: pricing.price_per_beam
+    depth: 1
+    sort_order: 28
+    ui_component: currency
+    help_text: Beam pricing often provides better value than cut-to-length pricing for larger projects.
+    validation_rules:
+      min: 0
+      max: 50000
+    metadata:
+      placeholder: "e.g. 93.00"
+    calculated_field:
+      type: multiply
+      operands: [price_per_meter, length_of_beam]
+      trigger_on: [price_per_meter, length_of_beam]
+      precision: 2
+
+  - name: upvc_profile_discount
+    display_name: UPVC Profile Discount %
+    description: |
+      Percentage discount applied to UPVC profile pricing.
+      
+      **Usage:**
+      • Standard discount: 15-25%
+      • Volume discount: up to 40%
+      • Promotional discount: varies
+      
+      **Application:**
+      • Applied to base profile price
+      • Before other calculations
+      • Affects final quote pricing
+      
+      **Example:**
+      • Base price: $100/meter
+      • 20% discount: Final = $80/meter
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: pricing.upvc_profile_discount
+    depth: 1
+    sort_order: 29
+    ui_component: percentage
+    help_text: This discount is typically negotiated with suppliers based on volume commitments. Update regularly based on current agreements.
+    validation_rules:
+      min: 0
+      max: 100
+    metadata:
+      placeholder: "e.g. 20"

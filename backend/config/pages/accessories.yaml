@@ -1,0 +1,506 @@
+# Accessories page configuration for Window Profile Entry
+# This file defines all accessory attributes for window hardware and components
+
+page_type: accessories
+manufacturing_type: Window Profile Entry
+
+# Manufacturing type configuration (will use existing if found)
+manufacturing_type_config:
+  description: "Window profile data entry system for comprehensive product configuration"
+  base_category: window
+  base_price: 200.00
+  base_weight: 15.00
+
+# Accessory attribute definitions
+attributes:
+  # Basic Information
+  - name: accessory_name
+    display_name: Accessory Name
+    description: |
+      The name or part number of the accessory.
+      
+      **Examples:**
+      • '7.5" Hinge'
+      • 'Standard Handle'
+      • 'Premium Lock Set'
+      • 'Wheel Set - Heavy Duty'
+      
+      **Naming Guidelines:**
+      • Include size specifications
+      • Mention key features
+      • Use consistent format
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: accessories.basic.accessory_name
+    depth: 2
+    sort_order: 1
+    ui_component: input
+    help_text: Enter the accessory name (e.g., '7.5" Hinge', 'Standard Handle')
+    validation_rules:
+      min_length: 1
+      max_length: 200
+    metadata:
+      placeholder: "e.g. Standard Handle"
+
+  - name: accessory_type
+    display_name: Accessory Type
+    description: |
+      The category of accessory for organization and filtering.
+      
+      **Categories:**
+      • **Hinge** - Door and window hinges
+      • **Handle** - Operating handles and cranks
+      • **Lock** - Security locks and latches
+      • **Espagnolette** - Multi-point locking systems
+      • **Hardware Set** - Complete hardware packages
+      • **Wheel Set** - Sliding door/window wheels
+      • **Track** - Sliding mechanisms
+      • **Drain Cover** - Water drainage components
+      • **Nail Stud** - Fastening hardware
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: accessories.basic.accessory_type
+    depth: 2
+    sort_order: 2
+    ui_component: dropdown
+    help_text: Select the accessory category
+    validation_rules:
+      options:
+        - Hinge
+        - Handle
+        - Lock
+        - Espagnolette
+        - Hardware Set
+        - Wheel Set
+        - Track
+        - Drain Cover
+        - Nail Stud
+        - Other
+    metadata:
+      placeholder: "Select Category"
+
+  - name: size_specification
+    display_name: Size Specification
+    description: |
+      Physical dimensions or size specification of the accessory.
+      
+      **Format Examples:**
+      • Linear: '7.5"', '10cm', '80cm'
+      • Area: '50x30mm'
+      • Diameter: 'Ø25mm'
+      • Capacity: 'Max 80kg'
+      
+      **Use Cases:**
+      • Compatibility checking
+      • Installation planning
+      • Ordering specifications
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.basic.size_specification
+    depth: 2
+    sort_order: 3
+    ui_component: input
+    help_text: Size specification (e.g., '7.5"', '10cm', '80cm')
+    validation_rules:
+      max_length: 50
+    metadata:
+      placeholder: "e.g. 7.5\" or 10cm"
+
+  - name: material_finish
+    display_name: Material & Finish
+    description: |
+      The material composition and surface finish of the accessory.
+      
+      **Common Materials:**
+      • **Stainless Steel** - Corrosion resistant, durable
+      • **Aluminum** - Lightweight, weather resistant
+      • **Brass** - Traditional, decorative
+      • **Chrome** - Modern, easy to clean
+      
+      **Finish Options:**
+      • Polished, Brushed, Anodized
+      • Powder coated colors
+      • Plated finishes
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.basic.material_finish
+    depth: 2
+    sort_order: 4
+    ui_component: dropdown
+    help_text: Select material and finish
+    validation_rules:
+      options:
+        - Stainless Steel
+        - Aluminum
+        - Brass
+        - Chrome
+        - White
+        - Black
+        - Bronze
+        - Other
+    metadata:
+      placeholder: "Select Finish"
+
+  # Technical Specifications
+  - name: load_capacity
+    display_name: Load Capacity (kg)
+    description: |
+      Maximum weight capacity for load-bearing accessories.
+      
+      **Applications:**
+      • Hinges: Weight of door/window panel
+      • Wheel Sets: Sliding panel weight
+      • Tracks: Total system load
+      • Brackets: Mounting load capacity
+      
+      **Safety Factor:**
+      • Use 2:1 safety margin minimum
+      • Consider dynamic loads
+      • Account for wear over time
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: accessories.technical.load_capacity
+    depth: 2
+    sort_order: 5
+    ui_component: number
+    help_text: Maximum load capacity in kg (for hinges, wheel sets)
+    validation_rules:
+      min: 0
+      max: 200
+    metadata:
+      placeholder: "e.g. 50"
+    display_condition:
+      operator: in
+      field: accessory_type
+      value: [Hinge, Wheel Set]
+
+  - name: opening_angle
+    display_name: Maximum Opening Angle (degrees)
+    description: |
+      Maximum opening angle for hinged accessories.
+      
+      **Common Angles:**
+      • Standard hinges: 90-110°
+      • Wide opening: 120-180°
+      • Restricted: 45-90°
+      
+      **Considerations:**
+      • Available space
+      • Safety requirements
+      • Operational needs
+      • Building codes
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: accessories.technical.opening_angle
+    depth: 2
+    sort_order: 6
+    ui_component: number
+    help_text: Maximum opening angle in degrees (for hinges)
+    validation_rules:
+      min: 0
+      max: 180
+    metadata:
+      placeholder: "e.g. 90"
+    display_condition:
+      operator: equals
+      field: accessory_type
+      value: Hinge
+
+  - name: locking_points
+    display_name: Number of Locking Points
+    description: |
+      Number of locking points for security hardware.
+      
+      **Security Levels:**
+      • Basic: 1-2 points
+      • Standard: 3-5 points
+      • High security: 6+ points
+      
+      **Benefits:**
+      • Improved security
+      • Better weather sealing
+      • Reduced warping
+      • Enhanced durability
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: accessories.technical.locking_points
+    depth: 2
+    sort_order: 7
+    ui_component: number
+    help_text: Number of locking points (for espagnolettes, locks)
+    validation_rules:
+      min: 1
+      max: 10
+    metadata:
+      placeholder: "e.g. 3"
+    display_condition:
+      operator: in
+      field: accessory_type
+      value: [Lock, Espagnolette]
+
+  - name: operation_type
+    display_name: Operation Type
+    description: |
+      How the accessory is operated or functions.
+      
+      **Operation Methods:**
+      • **Manual** - Hand operated
+      • **Key Lock** - Key-operated security
+      • **Push Button** - Button activation
+      • **Lever** - Lever handle operation
+      • **Tilt & Turn** - Dual-action operation
+      • **Sliding** - Sliding mechanism
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.technical.operation_type
+    depth: 2
+    sort_order: 8
+    ui_component: dropdown
+    help_text: How the accessory operates
+    validation_rules:
+      options:
+        - Manual
+        - Key Lock
+        - Push Button
+        - Lever
+        - Tilt & Turn
+        - Sliding
+        - Other
+    metadata:
+      placeholder: "Select Operation Type"
+
+  # Compatibility
+  - name: compatible_systems
+    display_name: Compatible Window Systems
+    description: |
+      List of window/door systems compatible with this accessory.
+      
+      **Format:**
+      • Comma-separated list
+      • Use manufacturer codes
+      • Include series numbers
+      
+      **Examples:**
+      • 'Kom700, Kom800'
+      • 'All UPVC systems'
+      • 'Aluminum series only'
+      
+      **Importance:**
+      • Ensures proper fit
+      • Prevents compatibility issues
+      • Guides selection process
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.compatibility.compatible_systems
+    depth: 2
+    sort_order: 9
+    ui_component: text
+    help_text: List compatible window systems (e.g., 'Kom700, Kom800')
+    validation_rules:
+      max_length: 200
+    metadata:
+      placeholder: "e.g. Kom700, Kom800"
+
+  - name: installation_position
+    display_name: Installation Position
+    description: |
+      Where this accessory is typically installed.
+      
+      **Positions:**
+      • **Frame** - Mounted on window frame
+      • **Sash** - Mounted on moving panel
+      • **Both** - Components on frame and sash
+      • **Track** - Part of sliding mechanism
+      • **Bottom/Top/Side** - Specific edge mounting
+      • **Corner** - Corner installation
+      
+      **Planning Use:**
+      • Installation sequence
+      • Tool requirements
+      • Access considerations
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.compatibility.installation_position
+    depth: 2
+    sort_order: 10
+    ui_component: dropdown
+    help_text: Where this accessory is installed
+    validation_rules:
+      options:
+        - Frame
+        - Sash
+        - Both
+        - Track
+        - Bottom
+        - Top
+        - Side
+        - Corner
+        - Other
+    metadata:
+      placeholder: "Select Position"
+
+  # Pricing
+  - name: unit_price
+    display_name: Unit Price
+    description: |
+      Price per individual unit in local currency.
+      
+      **Pricing Considerations:**
+      • Volume discounts available
+      • Seasonal price variations
+      • Currency fluctuations
+      • Supplier agreements
+      
+      **Cost Factors:**
+      • Material quality
+      • Manufacturing complexity
+      • Brand premium
+      • Market demand
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: accessories.pricing.unit_price
+    depth: 2
+    sort_order: 11
+    ui_component: currency
+    help_text: Price per unit in local currency
+    validation_rules:
+      min: 0
+      max: 1000
+    metadata:
+      placeholder: "e.g. 5.50"
+
+  - name: quantity_per_window
+    display_name: Typical Quantity per Window
+    description: |
+      Standard quantity needed per window installation.
+      
+      **Typical Quantities:**
+      • Hinges: 2-3 per sash
+      • Handles: 1 per window
+      • Locks: 1 per window
+      • Wheel sets: 2-4 per sliding panel
+      • Drain covers: 2-4 per frame
+      
+      **Planning Benefits:**
+      • Accurate material estimation
+      • Bulk ordering optimization
+      • Installation planning
+      • Cost calculation
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: accessories.pricing.quantity_per_window
+    depth: 2
+    sort_order: 12
+    ui_component: number
+    help_text: Typical quantity needed per window
+    validation_rules:
+      min: 1
+      max: 20
+    metadata:
+      placeholder: "e.g. 2"
+
+  # Additional Properties
+  - name: color_options
+    display_name: Available Colors
+    description: |
+      Color options available for this accessory.
+      
+      **Common Colors:**
+      • White - Most popular, versatile
+      • Brown - Traditional, warm
+      • Black - Modern, contemporary
+      • Silver/Grey - Neutral, professional
+      • Bronze - Classic, elegant
+      
+      **Considerations:**
+      • Match window frame colors
+      • Architectural style
+      • Maintenance requirements
+      • Fade resistance
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.properties.color_options
+    depth: 2
+    sort_order: 13
+    ui_component: text
+    help_text: Available color options (e.g., 'White, Brown, Black')
+    validation_rules:
+      max_length: 200
+    metadata:
+      placeholder: "e.g. White, Brown, Black"
+
+  - name: warranty_period
+    display_name: Warranty Period (years)
+    description: |
+      Manufacturer warranty period in years.
+      
+      **Typical Warranties:**
+      • Basic hardware: 2-5 years
+      • Premium hardware: 5-10 years
+      • Commercial grade: 10-25 years
+      
+      **Coverage Usually Includes:**
+      • Manufacturing defects
+      • Material failures
+      • Finish degradation
+      • Operational failures
+      
+      **Exclusions:**
+      • Normal wear and tear
+      • Improper installation
+      • Environmental damage
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: accessories.properties.warranty_period
+    depth: 2
+    sort_order: 14
+    ui_component: number
+    help_text: Warranty period in years
+    validation_rules:
+      min: 0
+      max: 25
+    metadata:
+      placeholder: "e.g. 5"
+
+  - name: supplier_code
+    display_name: Supplier Part Code
+    description: |
+      Supplier's part number or product code.
+      
+      **Uses:**
+      • Ordering and procurement
+      • Inventory management
+      • Quality control tracking
+      • Warranty claims
+      • Technical support
+      
+      **Format Examples:**
+      • 'HNG-75SS' (Hinge-7.5"-Stainless Steel)
+      • 'HDL-STD-WHT' (Handle-Standard-White)
+      • 'LCK-MP-BLK' (Lock-Multi-Point-Black)
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: accessories.properties.supplier_code
+    depth: 2
+    sort_order: 15
+    ui_component: input
+    help_text: Supplier's part number or code
+    validation_rules:
+      max_length: 100
+    metadata:
+      placeholder: "e.g. HNG-75SS"

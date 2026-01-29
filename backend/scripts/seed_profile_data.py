@@ -43,7 +43,7 @@ async def seed_profile_data():
             if not manufacturing_type:
                 print("[ERROR] No manufacturing types found for profile page.")
                 print("   Please run the setup script first:")
-                print("   .venv\\scripts\\python scripts/setup_profile_hierarchy.py")
+                print("   .venv\\scripts\\python scripts/setup_hierarchy.py profile")
                 return
 
             print(

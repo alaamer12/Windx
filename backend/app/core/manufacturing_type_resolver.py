@@ -181,7 +181,7 @@ class ManufacturingTypeResolver:
         logger.warning(
             f"Primary manufacturing type '{cls.WINDOW_PROFILE_ENTRY}' not found. "
             "This type contains the rich profile structure with 29 CSV fields. "
-            "Run 'python scripts/setup_profile_hierarchy.py' to create it."
+            "Run 'python scripts/setup_hierarchy.py profile' to create it."
         )
 
         # Fallback: Try any window type
@@ -266,7 +266,7 @@ class ManufacturingTypeResolver:
             results["status"] = "error"
             results["errors"].append(
                 f"Primary manufacturing type '{cls.WINDOW_PROFILE_ENTRY}' not found. "
-                "Run 'python scripts/setup_profile_hierarchy.py' to create it."
+                "Run 'python scripts/setup_hierarchy.py profile' to create it."
             )
             return results
 

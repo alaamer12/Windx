@@ -1,0 +1,900 @@
+# Glazing page configuration for Window Profile Entry
+# This file defines all glazing attributes for glass specifications and performance
+
+page_type: glazing
+manufacturing_type: Window Profile Entry
+
+# Manufacturing type configuration (will use existing if found)
+manufacturing_type_config:
+  description: "Window profile data entry system for comprehensive product configuration"
+  base_category: window
+  base_price: 200.00
+  base_weight: 15.00
+
+# Glazing attribute definitions
+attributes:
+  # Basic Glass Information
+  - name: glass_type
+    display_name: Glass Type
+    description: |
+      The type of glass used in the window or door system.
+      
+      **Common Types:**
+      • **Clear** - Standard transparent glass, maximum light transmission
+      • **Tinted** - Colored glass that reduces glare and heat gain
+      • **Reflective** - Mirror-like coating that reflects heat and light
+      • **Low-E** - Low-emissivity coating for energy efficiency
+      • **Laminated** - Safety glass with plastic interlayer
+      • **Tempered** - Heat-treated for strength and safety
+      • **Insulated** - Multiple panes with air/gas gap
+      • **Acoustic** - Specially designed for sound reduction
+      • **Security** - Enhanced protection against break-ins
+      
+      **Selection Criteria:**
+      • Energy efficiency requirements
+      • Safety and security needs
+      • Aesthetic preferences
+      • Local building codes
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: glazing.basic.glass_type
+    depth: 2
+    sort_order: 1
+    ui_component: dropdown
+    help_text: Select the type of glass based on performance requirements
+    validation_rules:
+      options:
+        - Clear
+        - Tinted
+        - Reflective
+        - Low-E
+        - Laminated
+        - Tempered
+        - Insulated
+        - Acoustic
+        - Security
+        - Other
+    metadata:
+      placeholder: "Select Glass Type"
+
+  - name: glass_thickness
+    display_name: Glass Thickness (mm)
+    description: |
+      Thickness of the glass in millimeters.
+      
+      **Standard Thicknesses:**
+      • **4mm** - Light residential applications
+      • **5mm** - Standard residential windows
+      • **6mm** - Enhanced residential, light commercial
+      • **8mm** - Commercial applications
+      • **10mm** - Heavy commercial, large spans
+      • **12mm** - Structural glazing
+      • **15mm** - High-performance commercial
+      • **19mm** - Maximum strength applications
+      • **25mm** - Specialty applications
+      
+      **Considerations:**
+      • Wind load requirements
+      • Thermal stress
+      • Safety requirements
+      • Weight limitations
+      • Cost implications
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: glazing.basic.glass_thickness
+    depth: 2
+    sort_order: 2
+    ui_component: dropdown
+    help_text: Select glass thickness based on structural and performance requirements
+    validation_rules:
+      options:
+        - "4"
+        - "5"
+        - "6"
+        - "8"
+        - "10"
+        - "12"
+        - "15"
+        - "19"
+        - "25"
+    metadata:
+      placeholder: "Select Thickness"
+
+  - name: pane_configuration
+    display_name: Pane Configuration
+    description: |
+      Number of glass panes in the glazing unit.
+      
+      **Configurations:**
+      • **Single Pane** - Basic glazing, minimal insulation
+        - Lowest cost option
+        - Suitable for mild climates
+        - Limited thermal performance
+      
+      • **Double Pane** - Standard insulated glazing
+        - Good thermal performance
+        - Condensation resistance
+        - Most common choice
+      
+      • **Triple Pane** - High-performance glazing
+        - Excellent thermal performance
+        - Superior sound reduction
+        - Higher cost but better efficiency
+      
+      • **Quadruple Pane** - Maximum performance
+        - Ultimate thermal efficiency
+        - Extreme climate applications
+        - Highest cost option
+      
+      **Selection Factors:**
+      • Climate requirements
+      • Energy efficiency goals
+      • Budget considerations
+      • Weight limitations
+    node_type: attribute
+    data_type: string
+    required: true
+    ltree_path: glazing.basic.pane_configuration
+    depth: 2
+    sort_order: 3
+    ui_component: dropdown
+    help_text: Select the number of glass panes for optimal performance
+    validation_rules:
+      options:
+        - Single Pane
+        - Double Pane
+        - Triple Pane
+        - Quadruple Pane
+    metadata:
+      placeholder: "Select Configuration"
+
+  - name: air_gap
+    display_name: Air Gap Between Panes (mm)
+    description: |
+      Width of the air space between glass panes in millimeters.
+      
+      **Standard Gaps:**
+      • **6mm** - Minimum for double glazing
+      • **9mm** - Standard residential
+      • **12mm** - Optimal thermal performance
+      • **16mm** - Enhanced performance
+      • **20mm** - Maximum standard gap
+      
+      **Performance Impact:**
+      • Larger gaps improve thermal insulation
+      • Too large can cause convection currents
+      • Affects overall unit thickness
+      • Impacts structural requirements
+      
+      **Gas Filling:**
+      • Air - Standard, economical
+      • Argon - Better thermal performance
+      • Krypton - Premium performance
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.basic.air_gap
+    depth: 2
+    sort_order: 4
+    ui_component: number
+    help_text: Air gap between glass panes (only for multi-pane configurations)
+    validation_rules:
+      min: 6
+      max: 20
+    metadata:
+      placeholder: "e.g. 12"
+    display_condition:
+      operator: not_equals
+      field: pane_configuration
+      value: Single Pane
+
+  # Glass Treatments and Coatings
+  - name: low_e_coating
+    display_name: Low-E Coating
+    description: |
+      Low-emissivity coating for improved energy efficiency.
+      
+      **Benefits:**
+      • Reduces heat transfer through glass
+      • Blocks UV radiation (up to 99%)
+      • Maintains visible light transmission
+      • Prevents furniture fading
+      • Improves comfort near windows
+      
+      **Types:**
+      • **Hard Coat** - Durable, applied during manufacturing
+      • **Soft Coat** - Higher performance, applied after manufacturing
+      
+      **Performance:**
+      • Can reduce U-value by 30-50%
+      • Minimal impact on visible light
+      • Slight tint may be noticeable
+      
+      **Cost Consideration:**
+      • Moderate additional cost
+      • Excellent return on investment
+      • Required by many energy codes
+    node_type: attribute
+    data_type: boolean
+    required: false
+    ltree_path: glazing.treatments.low_e_coating
+    depth: 2
+    sort_order: 5
+    ui_component: checkbox
+    help_text: Check if glass has Low-E coating for energy efficiency
+
+  - name: coating_position
+    display_name: Coating Position
+    description: |
+      Position of the Low-E coating on the glass surfaces.
+      
+      **Surface Numbering:**
+      (From outside to inside)
+      • **Surface 1** - Outside face of outer pane
+      • **Surface 2** - Inside face of outer pane (most common for Low-E)
+      • **Surface 3** - Outside face of inner pane
+      • **Surface 4** - Inside face of inner pane
+      
+      **Optimal Positions:**
+      • **Heating Climates** - Surface 3 (keeps heat in)
+      • **Cooling Climates** - Surface 2 (keeps heat out)
+      • **Mixed Climates** - Surface 2 or 3 depending on priorities
+      
+      **Performance Impact:**
+      • Position affects solar heat gain
+      • Influences thermal performance
+      • Impacts condensation resistance
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.treatments.coating_position
+    depth: 2
+    sort_order: 6
+    ui_component: dropdown
+    help_text: Position of the Low-E coating (only if Low-E coating is selected)
+    validation_rules:
+      options:
+        - Surface 1 (Outside)
+        - Surface 2 (Inside outer pane)
+        - Surface 3 (Outside inner pane)
+        - Surface 4 (Inside)
+    metadata:
+      placeholder: "Select Position"
+    display_condition:
+      operator: equals
+      field: low_e_coating
+      value: true
+
+  - name: tint_color
+    display_name: Tint Color
+    description: |
+      Color tint applied to the glass for aesthetic and performance benefits.
+      
+      **Common Tint Colors:**
+      • **None** - Clear, maximum light transmission
+      • **Bronze** - Warm, traditional appearance
+      • **Gray** - Neutral, reduces glare effectively
+      • **Green** - Natural, good color rendition
+      • **Blue** - Cool, modern appearance
+      • **Silver** - Reflective, high heat rejection
+      • **Gold** - Luxury appearance, good performance
+      
+      **Benefits:**
+      • Reduces glare and eye strain
+      • Lowers solar heat gain
+      • Provides privacy during day
+      • Enhances building aesthetics
+      
+      **Considerations:**
+      • Reduces visible light transmission
+      • May affect interior lighting
+      • Color consistency across project
+      • Maintenance and cleaning
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.treatments.tint_color
+    depth: 2
+    sort_order: 7
+    ui_component: dropdown
+    help_text: Select tint color for glare reduction and aesthetics
+    validation_rules:
+      options:
+        - None
+        - Bronze
+        - Gray
+        - Green
+        - Blue
+        - Silver
+        - Gold
+        - Other
+    metadata:
+      placeholder: "Select Tint Color"
+
+  - name: uv_protection
+    display_name: UV Protection Level (%)
+    description: |
+      Percentage of ultraviolet radiation blocked by the glass.
+      
+      **Protection Levels:**
+      • **Standard Glass** - 25-30% UV protection
+      • **Tinted Glass** - 40-60% UV protection
+      • **Low-E Glass** - 95-99% UV protection
+      • **Laminated Glass** - 99%+ UV protection
+      
+      **Benefits of High UV Protection:**
+      • Prevents furniture and carpet fading
+      • Reduces skin exposure to harmful UV
+      • Protects artwork and photographs
+      • Maintains interior material colors
+      
+      **Health Considerations:**
+      • UV-A and UV-B radiation blocking
+      • Skin cancer risk reduction
+      • Eye protection benefits
+      
+      **Standards:**
+      • Minimum 99% for premium applications
+      • 95%+ for standard energy-efficient glass
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.treatments.uv_protection
+    depth: 2
+    sort_order: 8
+    ui_component: number
+    help_text: UV protection percentage (higher is better for fade protection)
+    validation_rules:
+      min: 0
+      max: 100
+    metadata:
+      placeholder: "e.g. 99"
+
+  # Performance Specifications
+  - name: u_value
+    display_name: U-Value (W/m²K)
+    description: |
+      Thermal transmittance - measure of heat transfer through the glass.
+      
+      **Understanding U-Value:**
+      • Lower values = better insulation
+      • Measured in Watts per square meter per Kelvin
+      • Includes glass, air gap, and frame effects
+      
+      **Typical Values:**
+      • **Single Pane** - 5.0-6.0 W/m²K (poor)
+      • **Double Pane** - 2.5-3.0 W/m²K (standard)
+      • **Double Pane + Low-E** - 1.5-2.0 W/m²K (good)
+      • **Triple Pane + Low-E** - 0.8-1.2 W/m²K (excellent)
+      • **High Performance** - 0.4-0.8 W/m²K (premium)
+      
+      **Energy Code Requirements:**
+      • Varies by climate zone
+      • Stricter requirements in extreme climates
+      • Affects building energy ratings
+      
+      **Cost vs. Performance:**
+      • Lower U-values cost more initially
+      • Significant long-term energy savings
+      • Improved comfort near windows
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.performance.u_value
+    depth: 2
+    sort_order: 9
+    ui_component: number
+    help_text: Thermal transmittance (lower values indicate better insulation)
+    validation_rules:
+      min: 0.1
+      max: 6.0
+    metadata:
+      placeholder: "e.g. 1.1"
+
+  - name: shgc
+    display_name: Solar Heat Gain Coefficient
+    description: |
+      Fraction of solar radiation that becomes heat inside the building.
+      
+      **Understanding SHGC:**
+      • Scale: 0.0 to 1.0
+      • Lower values = less solar heat gain
+      • Higher values = more solar heat gain
+      
+      **Typical Values:**
+      • **Clear Single Pane** - 0.85 (high heat gain)
+      • **Clear Double Pane** - 0.75 (moderate heat gain)
+      • **Low-E Double Pane** - 0.30-0.70 (variable)
+      • **Tinted/Reflective** - 0.20-0.50 (low heat gain)
+      
+      **Climate Considerations:**
+      • **Hot Climates** - Lower SHGC preferred (0.25-0.40)
+      • **Cold Climates** - Higher SHGC preferred (0.55-0.70)
+      • **Mixed Climates** - Moderate SHGC (0.40-0.55)
+      
+      **Benefits of Low SHGC:**
+      • Reduced cooling costs
+      • Less glare and hot spots
+      • More consistent indoor temperatures
+      
+      **Benefits of High SHGC:**
+      • Passive solar heating
+      • Reduced heating costs
+      • Natural warmth in winter
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.performance.shgc
+    depth: 2
+    sort_order: 10
+    ui_component: number
+    help_text: Solar heat gain coefficient (lower values block more heat)
+    validation_rules:
+      min: 0.0
+      max: 1.0
+    metadata:
+      placeholder: "e.g. 0.45"
+
+  - name: visible_transmittance
+    display_name: Visible Light Transmittance (%)
+    description: |
+      Percentage of visible light that passes through the glass.
+      
+      **Typical Values:**
+      • **Clear Glass** - 85-90% (maximum daylight)
+      • **Low-E Clear** - 75-85% (slight reduction)
+      • **Tinted Glass** - 40-70% (moderate reduction)
+      • **Reflective Glass** - 10-50% (significant reduction)
+      • **Heavily Tinted** - 5-20% (minimal daylight)
+      
+      **Impact on Building:**
+      • Higher VT = more natural light
+      • Lower VT = more artificial lighting needed
+      • Affects occupant comfort and productivity
+      • Influences energy use for lighting
+      
+      **Design Considerations:**
+      • Balance with solar heat gain
+      • Consider orientation and climate
+      • Account for interior lighting needs
+      • Evaluate glare control requirements
+      
+      **Standards:**
+      • Minimum 40% for most applications
+      • 60%+ preferred for occupied spaces
+      • May be lower for specialty applications
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.performance.visible_transmittance
+    depth: 2
+    sort_order: 11
+    ui_component: number
+    help_text: Percentage of visible light transmitted (higher allows more daylight)
+    validation_rules:
+      min: 0
+      max: 100
+    metadata:
+      placeholder: "e.g. 80"
+
+  - name: sound_reduction
+    display_name: Sound Reduction (dB)
+    description: |
+      Sound transmission class - reduction in noise transmission.
+      
+      **Typical Performance:**
+      • **Single Pane** - 25-30 dB (basic)
+      • **Double Pane** - 30-35 dB (good)
+      • **Laminated Glass** - 35-40 dB (very good)
+      • **Acoustic Glass** - 40-50 dB (excellent)
+      • **Specialty Acoustic** - 50+ dB (superior)
+      
+      **Noise Reduction Benefits:**
+      • Improved comfort and concentration
+      • Better sleep quality
+      • Increased property value
+      • Compliance with noise regulations
+      
+      **Applications:**
+      • **Urban Areas** - Traffic noise reduction
+      • **Airports** - Aircraft noise control
+      • **Industrial** - Machinery noise isolation
+      • **Residential** - General noise comfort
+      
+      **Design Factors:**
+      • Glass thickness affects performance
+      • Laminated glass provides best results
+      • Air gap width influences effectiveness
+      • Different glass thicknesses optimize performance
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.performance.sound_reduction
+    depth: 2
+    sort_order: 12
+    ui_component: number
+    help_text: Sound reduction in decibels (higher values provide better noise control)
+    validation_rules:
+      min: 20
+      max: 60
+    metadata:
+      placeholder: "e.g. 35"
+
+  # Safety and Security
+  - name: safety_rating
+    display_name: Safety Rating
+    description: |
+      Safety classification based on glass type and treatment.
+      
+      **Safety Classifications:**
+      • **Standard** - Regular annealed glass
+        - Breaks into large, sharp pieces
+        - Suitable for low-risk applications
+        - Lowest cost option
+      
+      • **Tempered** - Heat-treated safety glass
+        - Breaks into small, relatively harmless pieces
+        - 4-5 times stronger than standard glass
+        - Required in many safety applications
+      
+      • **Laminated** - Glass with plastic interlayer
+        - Holds together when broken
+        - Excellent security and safety
+        - UV protection and sound reduction
+      
+      • **Security** - Enhanced protection glass
+        - Resists forced entry attempts
+        - Multiple layers and treatments
+        - High-security applications
+      
+      • **Bulletproof** - Ballistic-resistant glazing
+        - Stops bullets and projectiles
+        - Extremely thick and heavy
+        - Specialized security applications
+      
+      • **Fire Rated** - Fire-resistant glazing
+        - Maintains integrity during fire
+        - Prevents flame and smoke passage
+        - Required in fire-rated assemblies
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.safety.safety_rating
+    depth: 2
+    sort_order: 13
+    ui_component: dropdown
+    help_text: Safety classification based on glass treatment and performance
+    validation_rules:
+      options:
+        - Standard
+        - Tempered
+        - Laminated
+        - Security
+        - Bulletproof
+        - Fire Rated
+    metadata:
+      placeholder: "Select Rating"
+
+  - name: impact_resistance
+    display_name: Impact Resistance Class
+    description: |
+      Classification of glass resistance to impact forces.
+      
+      **Impact Classes:**
+      • **Class 1 (Basic)** - Standard residential
+        - Light impact resistance
+        - Suitable for protected locations
+        - Minimum safety requirements
+      
+      • **Class 2 (Enhanced)** - Improved residential
+        - Moderate impact resistance
+        - Better protection against accidents
+        - Recommended for family homes
+      
+      • **Class 3 (High)** - Commercial grade
+        - High impact resistance
+        - Suitable for public buildings
+        - Enhanced safety performance
+      
+      • **Class 4 (Maximum)** - Security grade
+        - Maximum impact resistance
+        - Forced entry protection
+        - High-security applications
+      
+      **Testing Standards:**
+      • Pendulum impact tests
+      • Ball drop tests
+      • Human body impact simulation
+      • Repeated impact resistance
+      
+      **Applications:**
+      • Schools and public buildings
+      • Ground floor windows
+      • High-traffic areas
+      • Security-sensitive locations
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.safety.impact_resistance
+    depth: 2
+    sort_order: 14
+    ui_component: dropdown
+    help_text: Impact resistance classification for safety and security
+    validation_rules:
+      options:
+        - Class 1 (Basic)
+        - Class 2 (Enhanced)
+        - Class 3 (High)
+        - Class 4 (Maximum)
+    metadata:
+      placeholder: "Select Class"
+
+  # Dimensions and Installation
+  - name: maximum_size
+    display_name: Maximum Size (mm)
+    description: |
+      Maximum glass size that can be manufactured or installed.
+      
+      **Size Limitations:**
+      • **Manufacturing** - Equipment and handling limits
+      • **Transportation** - Truck and crane capacity
+      • **Installation** - Site access and crew capability
+      • **Structural** - Frame and support requirements
+      
+      **Typical Maximums:**
+      • **Residential** - 2000x3000mm
+      • **Commercial** - 3000x6000mm
+      • **Structural** - 4000x8000mm+
+      • **Specialty** - Custom sizes available
+      
+      **Format Examples:**
+      • Width x Height: "2500x3500"
+      • Single dimension: "3000" (square)
+      • Area limit: "8.5 m²"
+      
+      **Considerations:**
+      • Larger sizes cost significantly more
+      • Structural requirements increase
+      • Installation complexity grows
+      • Transportation challenges
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.dimensions.maximum_size
+    depth: 2
+    sort_order: 15
+    ui_component: input
+    help_text: Maximum glass size in mm (format: width x height, e.g., '2500x3500')
+    validation_rules:
+      max_length: 50
+    metadata:
+      placeholder: "e.g. 2500x3500"
+
+  - name: minimum_size
+    display_name: Minimum Size (mm)
+    description: |
+      Minimum glass size for practical manufacturing and installation.
+      
+      **Size Constraints:**
+      • **Manufacturing** - Equipment setup minimums
+      • **Handling** - Safe manipulation requirements
+      • **Installation** - Practical fitting limits
+      • **Economics** - Cost-effective production
+      
+      **Typical Minimums:**
+      • **Standard Glass** - 300x300mm
+      • **Tempered Glass** - 400x400mm
+      • **Laminated Glass** - 350x350mm
+      • **Insulated Units** - 400x400mm
+      
+      **Special Considerations:**
+      • Smaller sizes may have premium pricing
+      • Some treatments have higher minimums
+      • Custom shapes may vary
+      • Structural requirements still apply
+      
+      **Applications:**
+      • Small windows and sidelights
+      • Decorative panels
+      • Cabinet doors
+      • Specialty installations
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.dimensions.minimum_size
+    depth: 2
+    sort_order: 16
+    ui_component: input
+    help_text: Minimum glass size in mm (format: width x height, e.g., '300x300')
+    validation_rules:
+      max_length: 50
+    metadata:
+      placeholder: "e.g. 300x300"
+
+  - name: edge_work
+    display_name: Edge Work Type
+    description: |
+      Type of edge finishing applied to the glass.
+      
+      **Edge Finishing Types:**
+      • **Polished** - Smooth, clear edge finish
+        - Best appearance and safety
+        - Required for exposed edges
+        - Higher cost but premium quality
+      
+      • **Ground** - Smooth but not polished
+        - Good appearance and safety
+        - Standard for most applications
+        - Moderate cost
+      
+      • **Cut** - Basic factory edge
+        - Sharp, unfinished edge
+        - Only for glazed-in applications
+        - Lowest cost option
+      
+      • **Beveled** - Angled decorative edge
+        - Aesthetic enhancement
+        - Light refraction effects
+        - Premium decorative option
+      
+      • **Rounded** - Curved safety edge
+        - Enhanced safety
+        - Comfortable to touch
+        - Specialty applications
+      
+      **Selection Criteria:**
+      • Exposed vs. glazed edges
+      • Safety requirements
+      • Aesthetic preferences
+      • Budget considerations
+    node_type: attribute
+    data_type: string
+    required: false
+    ltree_path: glazing.dimensions.edge_work
+    depth: 2
+    sort_order: 17
+    ui_component: dropdown
+    help_text: Type of edge finishing for safety and appearance
+    validation_rules:
+      options:
+        - Polished
+        - Ground
+        - Cut
+        - Beveled
+        - Rounded
+        - Other
+    metadata:
+      placeholder: "Select Edge Finish"
+
+  # Pricing
+  - name: price_per_sqm
+    display_name: Price per Square Meter
+    description: |
+      Cost per square meter of glass in local currency.
+      
+      **Pricing Factors:**
+      • **Glass Type** - Clear vs. specialty glass
+      • **Thickness** - Thicker glass costs more
+      • **Treatments** - Coatings and tints add cost
+      • **Size** - Large sizes have premiums
+      • **Quantity** - Volume discounts available
+      
+      **Typical Price Ranges:**
+      • **Basic Clear** - $20-40/m²
+      • **Low-E Double** - $40-80/m²
+      • **Triple Pane** - $80-150/m²
+      • **Specialty Glass** - $150-500/m²
+      
+      **Additional Costs:**
+      • Edge work and finishing
+      • Transportation and handling
+      • Installation labor
+      • Hardware and sealants
+      
+      **Cost Optimization:**
+      • Standard sizes cost less
+      • Bulk orders reduce unit cost
+      • Local suppliers save shipping
+      • Standard specifications avoid premiums
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.pricing.price_per_sqm
+    depth: 2
+    sort_order: 18
+    ui_component: currency
+    help_text: Price per square meter in local currency
+    validation_rules:
+      min: 0
+      max: 1000
+    metadata:
+      placeholder: "e.g. 45.00"
+
+  - name: installation_cost
+    display_name: Installation Cost per m²
+    description: |
+      Labor cost for glass installation per square meter.
+      
+      **Installation Factors:**
+      • **Glass Weight** - Heavier glass requires more labor
+      • **Size** - Large pieces need more workers
+      • **Height** - Upper floors increase difficulty
+      • **Access** - Site conditions affect cost
+      • **Complexity** - Specialty installations cost more
+      
+      **Typical Installation Costs:**
+      • **Standard Residential** - $5-15/m²
+      • **Commercial Ground Floor** - $10-25/m²
+      • **High-Rise Commercial** - $25-50/m²
+      • **Specialty/Difficult** - $50-100/m²
+      
+      **Included Services:**
+      • Glass handling and positioning
+      • Glazing compound or gaskets
+      • Basic cleanup
+      • Quality inspection
+      
+      **Additional Costs:**
+      • Scaffolding or lifts
+      • Specialty tools
+      • Permits and inspections
+      • Warranty and callbacks
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.pricing.installation_cost
+    depth: 2
+    sort_order: 19
+    ui_component: currency
+    help_text: Installation labor cost per square meter
+    validation_rules:
+      min: 0
+      max: 200
+    metadata:
+      placeholder: "e.g. 10.00"
+
+  - name: lead_time
+    display_name: Lead Time (days)
+    description: |
+      Manufacturing and delivery time in days.
+      
+      **Lead Time Factors:**
+      • **Glass Type** - Standard vs. specialty
+      • **Size** - Large or custom sizes take longer
+      • **Treatments** - Coatings add processing time
+      • **Quantity** - Large orders may take longer
+      • **Season** - Busy periods extend lead times
+      
+      **Typical Lead Times:**
+      • **Standard Glass** - 3-7 days
+      • **Insulated Units** - 7-14 days
+      • **Specialty Glass** - 14-30 days
+      • **Custom Sizes** - 21-45 days
+      • **Import Glass** - 30-90 days
+      
+      **Planning Considerations:**
+      • Order early for critical path items
+      • Consider weather delays
+      • Plan for quality issues
+      • Coordinate with installation schedule
+      
+      **Rush Orders:**
+      • May be available for premium
+      • Limited to certain products
+      • Requires supplier confirmation
+      • May affect quality control
+    node_type: attribute
+    data_type: number
+    required: false
+    ltree_path: glazing.pricing.lead_time
+    depth: 2
+    sort_order: 20
+    ui_component: number
+    help_text: Manufacturing and delivery lead time in days
+    validation_rules:
+      min: 1
+      max: 90
+    metadata:
+      placeholder: "e.g. 14"

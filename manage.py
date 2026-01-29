@@ -804,19 +804,19 @@ async def setup_fresh_db_command(args: argparse.Namespace):
             # )
             # ...
 
-            # Step 6: Setup profile hierarchy (CRITICAL for profile page)
-            progress.update(task, description="[cyan]Setting up profile hierarchy...")
+            # Step 6: Setup all page hierarchies (profile, accessories, glazing)
+            progress.update(task, description="[cyan]Setting up page hierarchies...")
             result = subprocess.run(
-                [python_exe, "backend/scripts/setup_profile_hierarchy.py"], capture_output=True, text=True
+                [python_exe, "backend/scripts/setup_hierarchy.py"], capture_output=True, text=True
             )
             if result.returncode != 0:
-                console.print(f"\n[bold red]✗ Profile hierarchy setup failed:[/bold red]")
+                console.print(f"\n[bold red]✗ Page hierarchy setup failed:[/bold red]")
                 console.print(result.stderr)
                 console.print(
-                    "[yellow]This is critical for the profile page to work correctly![/yellow]"
+                    "[yellow]This is critical for all entry pages to work correctly![/yellow]"
                 )
                 return 1
-            progress.update(task, description="[green]✓ Profile hierarchy setup completed")
+            progress.update(task, description="[green]✓ Page hierarchies setup completed")
 
             # Step 7: Seed profile data (optional but recommended)
             if not args.no_sample_data:
@@ -869,7 +869,7 @@ async def setup_fresh_db_command(args: argparse.Namespace):
             "[cyan]•[/cyan] Alembic migrations applied\n"
             "[cyan]•[/cyan] Initial users and data seeded\n"
             "[cyan]•[/cyan] Entry system configured\n"
-            "[cyan]•[/cyan] Profile hierarchy with comprehensive attribute structure created\n"
+            "[cyan]•[/cyan] All page hierarchies (profile, accessories, glazing) created\n"
         )
         
         if not args.no_sample_data:
@@ -1165,7 +1165,7 @@ async def check_profile_command(args: argparse.Namespace):
             # Recommendations
             console.print("[bold cyan]Recommendations:[/bold cyan]")
             if profile_status["status"] == "error":
-                console.print("  • Run: [yellow]python scripts/setup_profile_hierarchy.py[/yellow]")
+                console.print("  • Run: [yellow]python scripts/setup_hierarchy.py profile[/yellow]")
                 console.print("  • Or run: [yellow]python manage.py setup_fresh_db[/yellow]")
             elif profile_status["status"] == "warning":
                 if not profile_status["has_rich_structure"]:
@@ -1173,7 +1173,7 @@ async def check_profile_command(args: argparse.Namespace):
                         "  • Consider adding more attributes to create richer product configuration"
                     )
                     console.print(
-                        "  • Run: [yellow]python scripts/setup_profile_hierarchy.py[/yellow] for a comprehensive example"
+                        "  • Run: [yellow]python scripts/setup_hierarchy.py profile[/yellow] for a comprehensive example"
                     )
                     console.print("  • Or create custom attributes through the admin interface")
                 console.print(

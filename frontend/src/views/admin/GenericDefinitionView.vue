@@ -3,7 +3,7 @@
     <div class="max-w-[1400px] mx-auto">
       <div class="mb-6 flex justify-between items-center">
         <div class="flex items-center gap-4">
-          <Select 
+          <SmartSelect 
             v-if="availableScopes.length > 0"
             v-model="selectedScope" 
             :options="availableScopes" 
@@ -11,6 +11,7 @@
             optionValue="value"
             class="w-48"
             @change="handleScopeChange"
+            @auto-selected="handleScopeChange"
             placeholder="Select Scope"
           />
           <div>
@@ -138,7 +139,7 @@
                   <!-- Type Selector -->
                   <div class="flex flex-col gap-2">
                     <label class="font-semibold text-slate-700">Definition Type</label>
-                    <Select 
+                    <SmartSelect 
                       v-model="selectedEntityType" 
                       :options="currentSchema?.entityTypes || []" 
                       optionLabel="label" 
@@ -146,6 +147,7 @@
                       placeholder="Select what to define..."
                       class="w-full"
                       @change="resetForm"
+                      @auto-selected="resetForm"
                     >
                       <template #option="slotProps">
                         <div class="flex items-center gap-2">
@@ -237,7 +239,7 @@
                               {{ selectedEntityDef.specialUi.config.label }} 
                               <span v-if="selectedEntityDef.specialUi.config.required" class="text-red-500">*</span>
                             </label>
-                            <Select 
+                            <SmartSelect 
                               v-model="formData[selectedEntityDef.specialUi.config.field_name]"
                               :options="entities?.[selectedEntityDef.specialUi.config.target_entity] || []"
                               optionLabel="name"
@@ -261,7 +263,7 @@
                         <div class="grid grid-cols-1 gap-4">
                           <div class="flex flex-col gap-2">
                             <label class="text-sm font-medium text-slate-700">Company & Material <span class="text-red-500">*</span></label>
-                            <Select 
+                            <SmartSelect 
                               v-model="formData.linked_company_material"
                               :options="companyMaterialOptions"
                               optionLabel="label"
@@ -273,7 +275,7 @@
 
                           <div class="flex flex-col gap-2">
                             <label class="text-sm font-medium text-slate-700">Opening System <span class="text-red-500">*</span></label>
-                            <Select 
+                            <SmartSelect 
                               v-model="formData.opening_system_id"
                               :options="entities?.opening_system || []"
                               optionLabel="name"
@@ -341,12 +343,12 @@ import { useDebugLogger } from '@/composables/useDebugLogger'
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
 import ColorChipMultiSelect from '@/components/common/ColorChipMultiSelect.vue'
+import SmartSelect from '@/components/common/SmartSelect.vue'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
-import Select from 'primevue/select'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Skeleton from 'primevue/skeleton'

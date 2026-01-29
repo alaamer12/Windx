@@ -5,7 +5,7 @@
       <Card class="mb-4">
         <template #title>Select {{ pageTitle }} Type</template>
         <template #content>
-          <Select
+          <SmartSelect
             v-model="selectedTypeId"
             :options="manufacturingStore.activeTypes"
             optionLabel="name"
@@ -13,6 +13,7 @@
             placeholder="Select a type"
             class="w-full md:w-1/2"
             @change="onTypeChange"
+            @auto-selected="onTypeChange"
             :loading="manufacturingStore.isLoading"
           />
         </template>
@@ -52,7 +53,7 @@ import { ref, watch, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import Card from 'primevue/card'
-import Select from 'primevue/select'
+import SmartSelect from '@/components/common/SmartSelect.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DynamicForm from '@/components/entry/DynamicForm.vue'
 import EditableTable from '@/components/entry/EditableTable.vue'

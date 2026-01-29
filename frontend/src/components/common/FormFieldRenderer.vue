@@ -93,7 +93,7 @@
     </div>
 
     <!-- Select / Dropdown -->
-    <Select
+    <SmartSelect
       v-else-if="field.ui_component === 'dropdown' || field.ui_component === 'select'"
       :id="field.name"
       :modelValue="modelValue"
@@ -106,10 +106,11 @@
       showClear
       :disabled="disabled"
       @change="emit('change', field.name)"
+      @auto-selected="(val) => emit('change', field.name)"
     />
 
     <!-- MultiSelect -->
-    <ColorChipMultiSelect
+    <SmartMultiSelect
       v-else-if="['multi-select', 'multiselect'].includes(field.ui_component)"
       :id="field.name"
       :modelValue="modelValue"
@@ -118,6 +119,22 @@
       :optionLabel="optionLabel"
       :optionValue="optionValue"
       :placeholder="placeholder || 'Select items...'"
+      class="w-full"
+      :disabled="disabled"
+      @change="emit('change', field.name)"
+      @auto-selected="(val) => emit('change', field.name)"
+    />
+
+    <!-- Color MultiSelect (Special case) -->
+    <ColorChipMultiSelect
+      v-else-if="field.ui_component === 'color-multi-select'"
+      :id="field.name"
+      :modelValue="modelValue"
+      @update:modelValue="(val) => emit('update:modelValue', val)"
+      :options="resolvedOptions"
+      :optionLabel="optionLabel"
+      :optionValue="optionValue"
+      :placeholder="placeholder || 'Select colors...'"
       class="w-full"
       :disabled="disabled"
       @change="emit('change', field.name)"
@@ -226,12 +243,13 @@ import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import Checkbox from 'primevue/checkbox'
-import Select from 'primevue/select'
 import RadioButton from 'primevue/radiobutton'
 import Slider from 'primevue/slider'
 import FileUpload from 'primevue/fileupload'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
+import SmartSelect from '@/components/common/SmartSelect.vue'
+import SmartMultiSelect from '@/components/common/SmartMultiSelect.vue'
 import ColorChipMultiSelect from '@/components/common/ColorChipMultiSelect.vue'
 import { useImageUpload } from '@/composables/useImageUpload'
 

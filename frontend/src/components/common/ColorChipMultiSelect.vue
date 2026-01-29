@@ -29,26 +29,41 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch, nextTick, toRef } from 'vue'
 import MultiSelect from 'primevue/multiselect'
+import { useAutoSelect } from '@/composables/useAutoSelect'
 
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: any[]
   options: any[]
   optionLabel?: string
   optionValue?: string
   placeholder?: string
-}>()
+  autoSelectSingle?: boolean
+}>(), {
+  autoSelectSingle: true
+})
 
 const emit = defineEmits<{
   'update:modelValue': [value: any[]]
+  'auto-selected': [value: any[]]
 }>()
 
 const model = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
+
+// Use the auto-select composable
+useAutoSelect({
+  options: toRef(props, 'options'),
+  modelValue: toRef(props, 'modelValue'),
+  optionValue: toRef(props, 'optionValue'),
+  autoSelectSingle: toRef(props, 'autoSelectSingle'),
+  disabled: computed(() => false), // ColorChipMultiSelect doesn't have disabled prop
+  isMultiSelect: true
+}, emit)
 
 // Helper to resolve the display label for an option
 function getOptionLabel(option: any): string {

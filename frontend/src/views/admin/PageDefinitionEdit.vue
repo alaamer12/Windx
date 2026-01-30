@@ -16,7 +16,7 @@
               />
               <div>
                 <h1 class="text-3xl font-bold text-slate-900">Edit Configuration</h1>
-                <p class="text-base text-slate-600 mt-2">{{ pathData?.ltree_path || 'Loading...' }}</p>
+                <p class="text-base text-slate-600 mt-2">{{ pathData?.display_path || 'Loading...' }}</p>
               </div>
             </div>
             <div class="header-right flex items-center gap-4">
@@ -122,185 +122,29 @@
             </div>
           </div>
 
-          <!-- Configuration Components - Single Column Layout -->
-          
-          <!-- Company -->
-          <div v-if="entityData.company" class="company-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="company-header px-8 py-6 border-b border-slate-200 bg-blue-50">
+          <!-- Dynamic Entity Cards -->
+          <div 
+            v-for="(entity, entityType) in entityData" 
+            :key="entityType"
+            class="entity-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+          >
+            <div 
+              class="entity-header px-8 py-6 border-b border-slate-200"
+              :class="getEntityHeaderClass(String(entityType))"
+            >
               <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                <i class="pi pi-building text-blue-600"></i>
-                Company Information
+                <i :class="getEntityIcon(String(entityType))"></i>
+                {{ getEntityTitle(String(entityType)) }}
               </h3>
             </div>
-            <div class="company-content p-8 space-y-6">
-              <FormFieldRenderer 
-                :field="{ name: 'company_name', label: 'Company Name', type: 'text' }"
-                v-model="formData.company_name"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'company_description', label: 'Description', type: 'textarea' }"
-                v-model="formData.company_description"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'company_price', label: 'Base Price', ui_component: 'currency' }"
-                v-model="formData.company_price"
-              />
-            </div>
-          </div>
-
-          <!-- Material -->
-          <div v-if="entityData.material" class="material-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="material-header px-8 py-6 border-b border-slate-200 bg-green-50">
-              <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                <i class="pi pi-box text-green-600"></i>
-                Material Specifications
-              </h3>
-            </div>
-            <div class="material-content p-8 space-y-6">
-              <FormFieldRenderer 
-                :field="{ name: 'material_name', label: 'Material Name', type: 'text' }"
-                v-model="formData.material_name"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'material_description', label: 'Description', type: 'textarea' }"
-                v-model="formData.material_description"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'material_price', label: 'Base Price', ui_component: 'currency' }"
-                v-model="formData.material_price"
-              />
-              <FormFieldRenderer 
-                v-if="entityData.material.validation_rules?.density"
-                :field="{ name: 'material_density', label: 'Density (kg/m³)', type: 'number' }"
-                v-model="formData.material_density"
-              />
-            </div>
-          </div>
-
-          <!-- Opening System -->
-          <div v-if="entityData.opening_system" class="opening-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="opening-header px-8 py-6 border-b border-slate-200 bg-orange-50">
-              <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                <i class="pi pi-cog text-orange-600"></i>
-                Opening System
-              </h3>
-            </div>
-            <div class="opening-content p-8 space-y-6">
-              <FormFieldRenderer 
-                :field="{ name: 'opening_system_name', label: 'System Name', type: 'text' }"
-                v-model="formData.opening_system_name"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'opening_system_description', label: 'Description', type: 'textarea' }"
-                v-model="formData.opening_system_description"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'opening_system_price', label: 'Base Price', ui_component: 'currency' }"
-                v-model="formData.opening_system_price"
-              />
-            </div>
-          </div>
-
-          <!-- System Series -->
-          <div v-if="entityData.system_series" class="series-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="series-header px-8 py-6 border-b border-slate-200 bg-purple-50">
-              <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                <i class="pi pi-sitemap text-purple-600"></i>
-                System Series
-              </h3>
-            </div>
-            <div class="series-content p-8 space-y-6">
-              <FormFieldRenderer 
-                :field="{ name: 'system_series_name', label: 'Series Name', type: 'text' }"
-                v-model="formData.system_series_name"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'system_series_description', label: 'Description', type: 'textarea' }"
-                v-model="formData.system_series_description"
-              />
-              <FormFieldRenderer 
-                :field="{ name: 'system_series_price', label: 'Base Price', ui_component: 'currency' }"
-                v-model="formData.system_series_price"
-              />
-              
-              <!-- Technical Specifications -->
-              <div class="tech-specs border-t border-slate-200 pt-8 mt-8">
-                <h4 class="text-lg font-bold text-slate-800 mb-6">Technical Specifications</h4>
-                <div class="tech-fields space-y-6">
-                  <FormFieldRenderer 
-                    v-if="entityData.system_series.validation_rules?.width"
-                    :field="{ name: 'system_series_width', label: 'Width (mm)', type: 'number' }"
-                    v-model="formData.system_series_width"
-                  />
-                  <FormFieldRenderer 
-                    v-if="entityData.system_series.validation_rules?.number_of_chambers"
-                    :field="{ name: 'system_series_chambers', label: 'Number of Chambers', type: 'number' }"
-                    v-model="formData.system_series_chambers"
-                  />
-                  <FormFieldRenderer 
-                    v-if="entityData.system_series.validation_rules?.u_value"
-                    :field="{ name: 'system_series_u_value', label: 'U-Value (W/m²K)', type: 'number' }"
-                    v-model="formData.system_series_u_value"
-                  />
-                  <FormFieldRenderer 
-                    v-if="entityData.system_series.validation_rules?.number_of_seals"
-                    :field="{ name: 'system_series_seals', label: 'Number of Seals', type: 'number' }"
-                    v-model="formData.system_series_seals"
-                  />
-                  <FormFieldRenderer 
-                    v-if="entityData.system_series.validation_rules?.characteristics"
-                    :field="{ name: 'system_series_characteristics', label: 'Characteristics', type: 'textarea' }"
-                    v-model="formData.system_series_characteristics"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Colors Section -->
-          <div v-if="entityData.colors && entityData.colors.length > 0" class="colors-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div class="colors-header px-8 py-6 border-b border-slate-200 bg-pink-50">
-              <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                <i class="pi pi-palette text-pink-600"></i>
-                Color Options ({{ entityData.colors.length }})
-              </h3>
-            </div>
-            <div class="colors-content p-8">
-              <div class="colors-list space-y-8">
-                <div 
-                  v-for="(color, index) in entityData.colors" 
-                  :key="color.id"
-                  class="color-item border border-slate-200 rounded-lg p-6 hover:border-slate-300 transition-colors"
-                >
-                  <div class="color-header flex items-center gap-4 mb-6">
-                    <div 
-                      class="w-8 h-8 rounded-full border-2 border-white shadow-sm"
-                      :style="{ backgroundColor: getColorValue(color) }"
-                    ></div>
-                    <h4 class="text-xl font-bold text-slate-900">{{ color.name }}</h4>
-                  </div>
-                  
-                  <div class="color-fields space-y-6">
-                    <FormFieldRenderer 
-                      :field="{ name: `color_${index}_name`, label: 'Color Name', type: 'text' }"
-                      v-model="formData[`color_${index}_name`]"
-                    />
-                    <FormFieldRenderer 
-                      :field="{ name: `color_${index}_price`, label: 'Price Impact', ui_component: 'currency' }"
-                      v-model="formData[`color_${index}_price`]"
-                    />
-                    <FormFieldRenderer 
-                      v-if="color.validation_rules?.code"
-                      :field="{ name: `color_${index}_code`, label: 'Color Code', type: 'text' }"
-                      v-model="formData[`color_${index}_code`]"
-                    />
-                    <FormFieldRenderer 
-                      v-if="color.validation_rules?.has_lamination !== undefined"
-                      :field="{ name: `color_${index}_lamination`, label: 'Has Lamination', type: 'boolean' }"
-                      v-model="formData[`color_${index}_lamination`]"
-                    />
-                  </div>
-                </div>
+            <div class="entity-content p-8">
+              <!-- Render fields dynamically based on entity data -->
+              <div class="entity-fields space-y-6">
+                <DynamicEntityFields 
+                  :entity="entity"
+                  :entity-type="String(entityType)"
+                  v-model="formData"
+                />
               </div>
             </div>
           </div>
@@ -342,11 +186,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { productDefinitionService } from '@/services/productDefinitionService'
 import { parseApiError } from '@/utils/errorHandler'
-import { getColorHex } from '@/utils/colorUtils'
 
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
-import FormFieldRenderer from '@/components/common/FormFieldRenderer.vue'
+import DynamicEntityFields from '@/components/common/DynamicEntityFields.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 
@@ -380,7 +223,7 @@ async function loadData() {
       throw new Error('Path ID is required')
     }
     
-    // Load path data and related entities
+    // Load path data and related entities from backend
     const response = await productDefinitionService.getPathDetails(parseInt(pathId))
     
     if (!response.success) {
@@ -390,7 +233,7 @@ async function loadData() {
     pathData.value = response.path
     entityData.value = response.path.entities || {}
     
-    // Initialize form data
+    // Initialize form data dynamically from entity data
     initializeFormData()
     
   } catch (error) {
@@ -405,79 +248,104 @@ async function loadData() {
 function initializeFormData() {
   const data: Record<string, any> = {}
   
-  // Basic information
-  data.display_path = pathData.value?.display_path || ''
-  
-  // Entity data
-  if (entityData.value.company) {
-    data.company_name = entityData.value.company.name
-    data.company_description = entityData.value.company.description
-    data.company_price = parseFloat(entityData.value.company.price_impact_value || '0')
-  }
-  
-  if (entityData.value.material) {
-    data.material_name = entityData.value.material.name
-    data.material_description = entityData.value.material.description
-    data.material_price = parseFloat(entityData.value.material.price_impact_value || '0')
-    data.material_density = entityData.value.material.validation_rules?.density
-  }
-  
-  if (entityData.value.opening_system) {
-    data.opening_system_name = entityData.value.opening_system.name
-    data.opening_system_description = entityData.value.opening_system.description
-    data.opening_system_price = parseFloat(entityData.value.opening_system.price_impact_value || '0')
-  }
-  
-  if (entityData.value.system_series) {
-    const series = entityData.value.system_series
-    data.system_series_name = series.name
-    data.system_series_description = series.description
-    data.system_series_price = parseFloat(series.price_impact_value || '0')
-    data.system_series_width = series.validation_rules?.width
-    data.system_series_chambers = series.validation_rules?.number_of_chambers
-    data.system_series_u_value = series.validation_rules?.u_value
-    data.system_series_seals = series.validation_rules?.number_of_seals
-    data.system_series_characteristics = series.validation_rules?.characteristics
-  }
-  
-  if (entityData.value.colors) {
-    entityData.value.colors.forEach((color: any, index: number) => {
-      data[`color_${index}_name`] = color.name
-      data[`color_${index}_price`] = parseFloat(color.price_impact_value || '0')
-      data[`color_${index}_code`] = color.validation_rules?.code
-      data[`color_${index}_lamination`] = color.validation_rules?.has_lamination
-    })
-  }
+  // Initialize form data dynamically from entity data
+  Object.entries(entityData.value).forEach(([entityType, entity]: [string, any]) => {
+    if (Array.isArray(entity)) {
+      // Handle arrays (like colors)
+      entity.forEach((item: any, index: number) => {
+        initializeEntityFields(data, `${entityType}_${index}`, item)
+      })
+    } else {
+      // Handle single entities
+      initializeEntityFields(data, entityType, entity)
+    }
+  })
   
   formData.value = data
   originalData.value = { ...data }
 }
 
-function calculateTotalPrice(): number {
-  let total = 0
-  total += formData.value.company_price || 0
-  total += formData.value.material_price || 0
-  total += formData.value.opening_system_price || 0
-  total += formData.value.system_series_price || 0
+function initializeEntityFields(data: Record<string, any>, prefix: string, entity: any) {
+  // Core fields
+  data[`${prefix}_name`] = entity.name || ''
+  data[`${prefix}_description`] = entity.description || ''
+  data[`${prefix}_image_url`] = entity.image_url || ''
+  data[`${prefix}_price_impact_value`] = parseFloat(entity.price_impact_value || '0')
   
-  // Add color prices
-  if (entityData.value.colors) {
-    entityData.value.colors.forEach((_: any, index: number) => {
-      total += formData.value[`color_${index}_price`] || 0
+  // Validation rules
+  if (entity.validation_rules) {
+    Object.entries(entity.validation_rules).forEach(([key, value]) => {
+      data[`${prefix}_validation_${key}`] = value
     })
   }
+  
+  // Metadata
+  if (entity.metadata_) {
+    Object.entries(entity.metadata_).forEach(([key, value]) => {
+      data[`${prefix}_metadata_${key}`] = value
+    })
+  }
+}
+
+function calculateTotalPrice(): number {
+  let total = 0
+  
+  // Calculate total from all entity price impacts
+  Object.entries(entityData.value).forEach(([entityType, entity]: [string, any]) => {
+    if (Array.isArray(entity)) {
+      entity.forEach((_, index: number) => {
+        const priceField = `${entityType}_${index}_price_impact_value`
+        total += formData.value[priceField] || 0
+      })
+    } else {
+      const priceField = `${entityType}_price_impact_value`
+      total += formData.value[priceField] || 0
+    }
+  })
   
   return total
 }
 
 function calculateTotalWeight(): number {
-  // This would be calculated based on actual weight formulas
-  return 45.2 // Placeholder
+  // This would be calculated based on actual weight formulas from backend
+  // For now, return a placeholder value
+  return 45.2
 }
 
-function getColorValue(color: any): string {
-  // Use the reusable color utility
-  return getColorHex(color.name || color)
+function getEntityTitle(entityType: string): string {
+  const titles: Record<string, string> = {
+    company: 'Company Information',
+    material: 'Material Specifications',
+    opening_system: 'Opening System',
+    system_series: 'System Series',
+    colors: 'Color Options'
+  }
+  
+  return titles[entityType] || entityType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+}
+
+function getEntityIcon(entityType: string): string {
+  const icons: Record<string, string> = {
+    company: 'pi pi-building text-blue-600',
+    material: 'pi pi-box text-green-600',
+    opening_system: 'pi pi-cog text-orange-600',
+    system_series: 'pi pi-sitemap text-purple-600',
+    colors: 'pi pi-palette text-pink-600'
+  }
+  
+  return icons[entityType] || 'pi pi-circle text-gray-600'
+}
+
+function getEntityHeaderClass(entityType: string): string {
+  const classes: Record<string, string> = {
+    company: 'bg-blue-50',
+    material: 'bg-green-50',
+    opening_system: 'bg-orange-50',
+    system_series: 'bg-purple-50',
+    colors: 'bg-pink-50'
+  }
+  
+  return classes[entityType] || 'bg-gray-50'
 }
 
 function formatDate(dateString: string): string {
@@ -489,10 +357,24 @@ async function saveChanges() {
   isSaving.value = true
   
   try {
-    // Here you would implement the actual save logic
-    // This would involve updating multiple entities through the API
+    // Prepare update data by extracting changes for each entity
+    const updates: Record<string, any> = {}
     
-    // Simulate save delay
+    Object.entries(entityData.value).forEach(([entityType, entity]: [string, any]) => {
+      if (Array.isArray(entity)) {
+        // Handle arrays (like colors)
+        updates[entityType] = entity.map((item: any, index: number) => {
+          return extractEntityChanges(`${entityType}_${index}`, item)
+        })
+      } else {
+        // Handle single entities
+        updates[entityType] = extractEntityChanges(entityType, entity)
+      }
+    })
+    
+    // Send updates to backend
+    // This would be implemented based on your backend API structure
+    // For now, simulate the save operation
     await new Promise(resolve => setTimeout(resolve, 1000))
     
     toast.add({
@@ -516,6 +398,78 @@ async function saveChanges() {
   } finally {
     isSaving.value = false
   }
+}
+
+function extractEntityChanges(prefix: string, originalEntity: any): any {
+  const changes: any = {
+    id: originalEntity.id
+  }
+  
+  // Extract core field changes
+  const nameField = `${prefix}_name`
+  const descField = `${prefix}_description`
+  const imageField = `${prefix}_image_url`
+  const priceField = `${prefix}_price_impact_value`
+  
+  if (formData.value[nameField] !== originalEntity.name) {
+    changes.name = formData.value[nameField]
+  }
+  
+  if (formData.value[descField] !== originalEntity.description) {
+    changes.description = formData.value[descField]
+  }
+  
+  if (formData.value[imageField] !== originalEntity.image_url) {
+    changes.image_url = formData.value[imageField]
+  }
+  
+  if (formData.value[priceField] !== parseFloat(originalEntity.price_impact_value || '0')) {
+    changes.price_impact_value = formData.value[priceField]
+  }
+  
+  // Extract validation rule changes
+  const validationRules: any = {}
+  let hasValidationChanges = false
+  
+  if (originalEntity.validation_rules) {
+    Object.keys(originalEntity.validation_rules).forEach(key => {
+      const fieldName = `${prefix}_validation_${key}`
+      const newValue = formData.value[fieldName]
+      const oldValue = originalEntity.validation_rules[key]
+      
+      if (newValue !== oldValue) {
+        validationRules[key] = newValue
+        hasValidationChanges = true
+      }
+    })
+  }
+  
+  if (hasValidationChanges) {
+    changes.validation_rules = validationRules
+  }
+  
+  // Extract metadata changes
+  const metadata: any = {}
+  let hasMetadataChanges = false
+  
+  if (originalEntity.metadata_) {
+    Object.keys(originalEntity.metadata_).forEach(key => {
+      const fieldName = `${prefix}_metadata_${key}`
+      const newValue = formData.value[fieldName]
+      const oldValue = originalEntity.metadata_[key]
+      
+      if (newValue !== oldValue) {
+        metadata[key] = newValue
+        hasMetadataChanges = true
+      }
+    })
+  }
+  
+  if (hasMetadataChanges) {
+    changes.metadata_ = metadata
+  }
+  
+  return changes
 }
 
 function goBack() {

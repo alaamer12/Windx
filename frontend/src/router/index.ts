@@ -53,6 +53,12 @@ const routes: RouteRecordRaw[] = [
         props: { pageType: 'profile' }
     },
     {
+        path: '/admin/definitions/:scope/edit/:pathId',
+        name: 'PageDefinitionEdit',
+        component: () => import('@/views/admin/PageDefinitionEdit.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: () => import('@/views/NotFoundView.vue')

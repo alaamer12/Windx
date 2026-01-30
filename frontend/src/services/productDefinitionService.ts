@@ -80,6 +80,11 @@ export const productDefinitionService = {
         return response.data.paths || []
     },
 
+    async getPathDetails(pathId: number) {
+        const response = await apiClient.get(`/api/v1/admin/relations/paths/${pathId}`)
+        return response.data
+    },
+
     async createPath(data: PathCreateRequest) {
         const response = await apiClient.post('/api/v1/admin/relations/paths', data)
         return response.data

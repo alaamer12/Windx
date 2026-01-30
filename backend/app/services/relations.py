@@ -585,6 +585,68 @@ class RelationsService(BaseService):
         await self.commit()
         return {"success": True, "message": f"Deleted {len(nodes)} path node(s)"}
     
+    async def get_path_details(self, path_id: int) -> dict[str, Any] | None:
+        """Get detailed path information with all related entities.
+        
+        Args:
+            path_id: Path node ID
+            
+        Returns:
+            Dict with path info and all related entity details, or None if not found
+        """
+        # Get the path node
+        result = await self.db.execute(
+            select(AttributeNode).where(AttributeNode.id == path_id)
+        )
+        path_node = result.scalar_one_or_none()
+        
+        if not path_node:
+            return None
+        
+        # Extract entity IDs from validation_rules
+        rules = path_node.validation_rules or {}
+        entity_ids = {
+            "company_id": rules.get("company_id"),
+            "material_id": rules.get("material_id"),
+            "opening_system_id": rules.get("opening_system_id"),
+            "system_series_id": rules.get("system_series_id"),
+            "color_id": rules.get("color_id"),
+        }
+        
+        # Load all related entities
+        entities = {}
+        for entity_type, entity_id in entity_ids.items():
+            if entity_id:
+                entity_type_name = entity_type.replace("_id", "")
+                entity = await self.get_entity_by_id(entity_id)
+                if entity:
+                    entities[entity_type_name] = {
+                        "id": entity.id,
+                        "name": entity.name,
+                        "description": entity.description,
+                        "image_url": entity.image_url,
+                        "price_impact_value": str(entity.price_impact_value) if entity.price_impact_value else "0.00",
+                        "validation_rules": entity.validation_rules or {},
+                        "metadata_": entity.metadata_ or {},
+                        "node_type": entity.node_type,
+                    }
+        
+        # Handle grouped colors (if this is a grouped path)
+        if path_node.node_type == "color_path" and "color" in entities:
+            # For now, just wrap single color in array
+            # In a real grouped scenario, you'd load all colors in the group
+            entities["colors"] = [entities.pop("color")]
+        
+        return {
+            "id": path_node.id,
+            "ltree_path": path_node.ltree_path,
+            "display_path": path_node.description or path_node.ltree_path,
+            "created_at": path_node.created_at.isoformat() if path_node.created_at else None,
+            "updated_at": path_node.updated_at.isoformat() if path_node.updated_at else None,
+            "entities": entities,
+            "validation_rules": path_node.validation_rules or {},
+        }
+    
     async def get_all_paths(self) -> list[dict[str, Any]]:
         """Get all complete dependency paths.
         

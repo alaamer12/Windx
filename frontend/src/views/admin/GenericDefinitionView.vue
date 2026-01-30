@@ -152,16 +152,28 @@
                   </template>
                 </Column>
 
-                <Column header="Actions" style="width: 5%">
+                <Column header="Actions" style="width: 10%">
                   <template #body="{ data }">
-                    <Button 
-                      icon="pi pi-trash" 
-                      severity="danger" 
-                      text 
-                      rounded 
-                      size="small"
-                      @click="confirmDeletePath(data)"
-                    />
+                    <div class="flex gap-1">
+                      <Button 
+                        icon="pi pi-pencil" 
+                        severity="info" 
+                        text 
+                        rounded 
+                        size="small"
+                        @click="editPath(data)"
+                        v-tooltip.bottom="'Edit Configuration'"
+                      />
+                      <Button 
+                        icon="pi pi-trash" 
+                        severity="danger" 
+                        text 
+                        rounded 
+                        size="small"
+                        @click="confirmDeletePath(data)"
+                        v-tooltip.bottom="'Delete Configuration'"
+                      />
+                    </div>
                   </template>
                 </Column>
 
@@ -375,6 +387,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import camelcaseKeys from 'camelcase-keys'
@@ -408,6 +421,7 @@ const props = defineProps<{
 const logger = useDebugLogger('GenericDefinitionView')
 const toast = useToast()
 const confirm = useConfirm()
+const router = useRouter()
 
 // State
 const isLoading = ref(false)
@@ -798,6 +812,22 @@ async function saveEntity() {
 }
 
 // Delete Logic
+function editPath(pathData: any) {
+  // Navigate to edit page with path data
+  router.push({
+    name: 'PageDefinitionEdit',
+    params: {
+      scope: selectedScope.value || 'profile',
+      pathId: pathData.id.toString()
+    },
+    query: {
+      // Pass additional data as query params for immediate access
+      ltreePath: pathData.ltree_path,
+      isGrouped: pathData._is_grouped ? 'true' : 'false'
+    }
+  })
+}
+
 function confirmDeletePath(pathData: any) {
   confirm.require({
     message: pathData._is_grouped && pathData._ltree_paths?.length > 1

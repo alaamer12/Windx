@@ -334,6 +334,35 @@ async def delete_path(
     return result
 
 
+@router.get("/relations/paths/{path_id}")
+async def get_path_details(
+    path_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentSuperuser = None,
+) -> dict[str, Any]:
+    """Get detailed path information with all related entities."""
+    try:
+        service = RelationsService(db)
+        path_details = await service.get_path_details(path_id)
+        
+        if not path_details:
+            raise HTTPException(status_code=404, detail="Path not found")
+        
+        return {
+            "success": True,
+            "path": path_details
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[ERROR] Failed to load path details for ID '{path_id}': {error_msg}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load path details. Please try again."
+        )
+
+
 @router.get("/relations/paths")
 async def get_all_paths(
     db: AsyncSession = Depends(get_db),

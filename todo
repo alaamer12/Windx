@@ -37,13 +37,6 @@ This page is a **full, structured edit view**, not a dynamic form.
 - second thing we need to update the name "relations" in backend to be a ProductDefinition as the frontend to ensure consistency
 - third thing we may need to refactor the full file because it violates Repository pattern
 
----------
-
-- i noitced that each setup file is having same pattern but with different data, i think we can do this
-make the setup files read from .json file [or maybe more flexible file if needing to] and then having a single setup script
-this will allow us in future when we need to add a configurator page to do it easily
-but i still dont know about the seeding scripts, are they necassry, and what about _entry_setup why it is necassry
-
 ----------
 
 a lot of different attributes we may need to migrate them from being an attribute into a field in JSONB, which would be more appreciated
@@ -51,9 +44,6 @@ because it allows us to add new things specially for UI easily
 
 also we need to handle this case about glasses, that if the user choose more than one glass each glass can get different configuration
 but the spacer is not like that
-
-
-we have discovered that the script _create_entry_pages.py is used, we need to handle this creation steps professionally, 
 
 ------
 

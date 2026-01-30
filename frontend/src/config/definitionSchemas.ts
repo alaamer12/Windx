@@ -104,16 +104,26 @@ export async function fetchAndBuildSchemas(): Promise<Record<string, DefinitionS
                 })
             }
 
-            // Chain structure (only relevant for profile currently)
+            // Chain structure from backend hierarchy
             let chainStructure: ChainNodeDefinition[] = []
-            if (scopeKey === 'profile') {
-                chainStructure = [
-                    { key: 'company', label: 'Company', icon: 'pi pi-building', entityType: 'company' },
-                    { key: 'material', label: 'Material', icon: 'pi pi-box', entityType: 'material' },
-                    { key: 'opening_system', label: 'Opening', icon: 'pi pi-cog', entityType: 'opening_system' },
-                    { key: 'system_series', label: 'Series', icon: 'pi pi-sitemap', entityType: 'system_series' },
-                    { key: 'color', label: 'Color', icon: 'pi pi-palette', entityType: 'color' }
-                ]
+            const hierarchy = data.hierarchy || {}
+            
+            // Convert hierarchy to chain structure
+            // Sort by level (0, 1, 2, etc.) and build chain nodes
+            const sortedLevels = Object.keys(hierarchy).sort((a, b) => parseInt(a) - parseInt(b))
+            
+            for (const level of sortedLevels) {
+                const entityType = hierarchy[level]
+                const entityData = entities[entityType]
+                
+                if (entityData) {
+                    chainStructure.push({
+                        key: entityType,
+                        label: entityData.label || entityType.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+                        icon: entityData.icon || 'pi pi-box',
+                        entityType: entityType
+                    })
+                }
             }
 
             schemas[scopeKey] = {

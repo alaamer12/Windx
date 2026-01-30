@@ -187,6 +187,11 @@ async def get_entities_by_type(
     service = RelationsService(db)
     entities = await service.get_entities_by_type(entity_type, scope=scope)
     
+    # Get type metadata from database
+    scopes = await service.get_definition_scopes()
+    resolved_scope = await service.get_scope_for_entity(entity_type)
+    type_metadata = scopes.get(resolved_scope, {}).get("entities", {}).get(entity_type, {})
+    
     return {
         "success": True,
         "entities": [
@@ -202,18 +207,22 @@ async def get_entities_by_type(
             }
             for e in entities
         ],
-        "type_metadata": RelationsService.DEFINITION_SCOPES.get(service.get_scope_for_entity(entity_type), {}).get("entities", {}).get(entity_type, {}),
+        "type_metadata": type_metadata,
     }
 
 
 @router.get("/relations/scopes")
 async def get_definition_scopes(
+    db: AsyncSession = Depends(get_db),
     current_user: CurrentSuperuser = None,
 ) -> dict[str, Any]:
     """Get available definition scopes with full schema details."""
+    service = RelationsService(db)
+    scopes = await service.get_definition_scopes()
+    
     return {
         "success": True,
-        "scopes": RelationsService.DEFINITION_SCOPES
+        "scopes": scopes
     }
 
 

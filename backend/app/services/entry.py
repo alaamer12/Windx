@@ -268,7 +268,8 @@ class EntryService(BaseService):
         # Get dependencies from relations system for this page type
         from app.services.relations import RelationsService
         relations_service = RelationsService(self.db)
-        scope_def = relations_service.DEFINITION_SCOPES.get(page_type)
+        scopes = await relations_service.get_definition_scopes()
+        scope_def = scopes.get(page_type)
         dependencies = scope_def.get("dependencies") if scope_def else None
 
         # Generate form schema

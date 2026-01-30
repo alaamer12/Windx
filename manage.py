@@ -731,6 +731,7 @@ async def setup_fresh_db_command(args: argparse.Namespace):
         console.print("  • Seed initial data")
         console.print("  • Create minimal entry system data")
         console.print("  • Setup profile hierarchy with comprehensive attribute structure")
+        console.print("  • Setup product definition scopes (profile, glazing, hardware)")
         if not args.no_sample_data:
             console.print("  • Seed sample profile data")
         else:
@@ -819,6 +820,20 @@ async def setup_fresh_db_command(args: argparse.Namespace):
                 return 1
             progress.update(task, description="[green]✓ Page hierarchies setup completed")
 
+            # Step 6.5: Setup product definition scopes (NEW)
+            progress.update(task, description="[cyan]Setting up product definition scopes...")
+            result = subprocess.run(
+                [python_exe, "backend/scripts/setup_product_definitions.py"], capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                console.print(f"\n[bold red]✗ Product definition scopes setup failed:[/bold red]")
+                console.print(result.stderr)
+                console.print(
+                    "[yellow]This is critical for the admin definition management to work correctly![/yellow]"
+                )
+                return 1
+            progress.update(task, description="[green]✓ Product definition scopes setup completed")
+
             # Step 7: Seed profile data (optional but recommended)
             if not args.no_sample_data:
                 progress.update(task, description="[cyan]Seeding profile data...")
@@ -871,6 +886,7 @@ async def setup_fresh_db_command(args: argparse.Namespace):
             "[cyan]•[/cyan] Initial users and data seeded\n"
             "[cyan]•[/cyan] Entry system configured\n"
             "[cyan]•[/cyan] All page hierarchies (profile, accessories, glazing) created\n"
+            "[cyan]•[/cyan] Product definition scopes (profile, glazing, hardware) configured\n"
         )
         
         if not args.no_sample_data:

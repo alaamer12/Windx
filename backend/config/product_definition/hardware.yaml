@@ -1,0 +1,84 @@
+# Hardware Definition Scope Configuration
+# This file defines the entities, hierarchy, and metadata for hardware definitions
+
+scope: hardware
+label: Hardware Definitions
+description: Manage definitions for handles, hinges, locks, and accessories
+
+# Entity definitions
+entities:
+  handle:
+    label: Handle
+    icon: pi pi-box
+    placeholders:
+      name: "Enter handle name (e.g., Standard Handle, Premium Handle)"
+      description: "Describe the handle specifications..."
+      price: "e.g. 45.00"
+    metadata_fields:
+      - name: color
+        type: text
+        label: "Color"
+        placeholder: "e.g. White"
+      - name: material
+        type: text
+        label: "Material"
+        placeholder: "e.g. Aluminum"
+      - name: lock_type
+        type: text
+        label: "Lock Type"
+        placeholder: "e.g. Key Lock"
+
+  hinge:
+    label: Hinge
+    icon: pi pi-cog
+    placeholders:
+      name: "Enter hinge name (e.g., Standard Hinge, Heavy Duty Hinge)"
+      description: "Describe the hinge specifications..."
+      price: "e.g. 25.00"
+    metadata_fields:
+      - name: max_load
+        type: number
+        label: "Max Load (kg)"
+        placeholder: "e.g. 80"
+      - name: material
+        type: text
+        label: "Material"
+        placeholder: "e.g. Stainless Steel"
+
+  lock:
+    label: Lock
+    icon: pi pi-lock
+    placeholders:
+      name: "Enter lock name (e.g., Multi-point Lock, Standard Lock)"
+      description: "Describe the lock specifications..."
+      price: "e.g. 120.00"
+    metadata_fields:
+      - name: security_level
+        type: text
+        label: "Security Level"
+        placeholder: "e.g. RC2"
+      - name: type
+        type: text
+        label: "Lock Type"
+        placeholder: "e.g. Multi-point"
+
+  accessory:
+    label: Accessory
+    icon: pi pi-wrench
+    placeholders:
+      name: "Enter accessory name (e.g., Weather Strip, Gasket)"
+      description: "Describe the accessory..."
+      price: "e.g. 8.00"
+    metadata_fields: []
+
+# Hierarchy definition (level: entity_type)
+# Hardware uses the same hierarchy as profile for compatibility
+hierarchy:
+  0: company
+  1: material
+  2: opening_system
+  3: system_series
+  4: color
+
+# No dependencies for hardware scope
+dependencies: []

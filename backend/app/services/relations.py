@@ -4,6 +4,9 @@ This module provides the RelationsService for managing hierarchical
 option dependencies (Company → Material → Opening System → System Series → Colors)
 using the existing EAV pattern with AttributeNode and LTREE.
 
+The service now reads definition scopes from the database instead of hard-coded constants,
+making the system more flexible and configurable.
+
 Public Classes:
     RelationsService: Service for managing relation entities and dependency paths
 """
@@ -30,217 +33,9 @@ class RelationsService(BaseService):
     Manages entities (Company, Material, Opening System, System Series, Color, Unit Type)
     and their dependency paths using the existing AttributeNode model with LTREE.
     
-    Hierarchy Levels:
-        0: Company
-        1: Material
-        2: Opening System
-        3: System Series
-        4: Color
-        
-    Unit Type is independent (no hierarchy).
+    Definition scopes are now loaded from the database instead of hard-coded constants.
     """
     
-    # Hierarchy levels mapping
-    
-    # Definition Scopes: Map scopes to their entities, hierarchy, and metadata
-    DEFINITION_SCOPES: dict[str, ScopeDef] = {
-        "profile": {
-            "label": "Profile Definitions",
-            "entities": {
-                "material": {
-                    "label": "Material",
-                    "icon": "pi pi-box",
-                    "placeholders": {
-                        "name": "Enter material name (e.g., Aluminum, PVC)",
-                        "description": "Describe the material properties...",
-                        "price": "e.g. 15.50"
-                    },
-                    "metadata_fields": [
-                        {"name": "density", "type": "number", "label": "Density (kg/m³)", "placeholder": "e.g. 1.4"}
-                    ]
-                },
-                "opening_system": {
-                    "label": "Opening System",
-                    "icon": "pi pi-cog",
-                    "placeholders": {
-                        "name": "Enter opening system name (e.g., Tilt & Turn, Sliding)",
-                        "description": "Describe how this opening system works...",
-                        "price": "e.g. 0.00"
-                    },
-                    "metadata_fields": []
-                },
-                "color": {
-                    "label": "Color",
-                    "icon": "pi pi-palette",
-                    "placeholders": {
-                        "name": "Enter color name (e.g., White, Anthracite Grey)",
-                        "description": "Describe the color finish...",
-                        "price": "e.g. 25.00"
-                    },
-                    "metadata_fields": [
-                        {"name": "code", "type": "text", "label": "Color Code", "placeholder": "e.g. RAL9016"},
-                        {"name": "has_lamination", "type": "boolean", "label": "Has Lamination"}
-                    ]
-                },
-                "company": {
-                    "label": "Company",
-                    "icon": "pi pi-building",
-                    "placeholders": {
-                        "name": "Enter company name (e.g., Schüco, Reynaers)",
-                        "description": "Describe the company and their products...",
-                        "price": "e.g. 0.00"
-                    },
-                    "metadata_fields": [
-                        {"name": "linked_material_id", "type": "number", "hidden": True}
-                    ],
-                    "special_ui": {
-                        "type": "relation_selector",
-                        "config": {
-                            "field_name": "linked_material_id",
-                            "target_entity": "material",
-                            "label": "Linked Material",
-                            "required": True,
-                            "help_text": "Companies must be linked to a specific material type."
-                        }
-                    }
-                },
-                "system_series": {
-                    "label": "System Series",
-                    "icon": "pi pi-sitemap",
-                    "placeholders": {
-                        "name": "Enter series name (e.g., AWS 75, CW 50)",
-                        "description": "Describe the system series specifications...",
-                        "price": "e.g. 150.00"
-                    },
-                    "metadata_fields": [
-                        {"name": "width", "type": "number", "label": "Width (mm)", "placeholder": "e.g. 70"},
-                        {"name": "number_of_chambers", "type": "number", "label": "Chambers", "placeholder": "e.g. 5"},
-                        {"name": "u_value", "type": "number", "label": "U-Value", "placeholder": "e.g. 1.3"},
-                        {"name": "number_of_seals", "type": "number", "label": "Seals", "placeholder": "e.g. 2"},
-                        {"name": "characteristics", "type": "textarea", "label": "Characteristics", "placeholder": "e.g. High thermal performance, suitable for residential use"}
-                    ]
-                }
-            },
-            "hierarchy": {0: "company", 1: "material", 2: "opening_system", 3: "system_series", 4: "color"},
-            "dependencies": [
-                {
-                    "trigger_field": "system_series",
-                    "actions": [
-                        {
-                            "type": "autofill",
-                            "target_field": "opening_system",
-                            "source_property": "metadata_.opening_system_id",
-                            "disable_target": True,
-                            "lookup_source": None,
-                            "lookup_key": None,
-                            "chain": None
-                        },
-                        {
-                            "type": "autofill",
-                            "target_field": "company",
-                            "source_property": "metadata_.linked_company_material",
-                            "disable_target": True,
-                            "lookup_source": None,
-                            "lookup_key": None,
-                            "chain": None
-                        },
-                        {
-                            "type": "autofill",
-                            "target_field": "material",
-                            "source_property": "metadata_.linked_material_id",
-                            "disable_target": True,
-                            "lookup_source": None,
-                            "lookup_key": None,
-                            "chain": None
-                        }
-                    ]
-                }
-            ]
-        },
-        "glazing": {
-            "label": "Glazing Definitions",
-            "entities": {
-                "glass_unit": {
-                    "label": "Glass Unit",
-                    "icon": "pi pi-stop",
-                    "placeholders": {
-                        "name": "Enter glass unit name (e.g., Double Glazed, Triple Glazed)",
-                        "description": "Describe the glass unit specifications...",
-                        "price": "e.g. 85.00"
-                    },
-                    "metadata_fields": [
-                        {"name": "u_value", "type": "number", "label": "U-Value (W/m²K)", "placeholder": "e.g. 1.1"},
-                        {"name": "thickness", "type": "number", "label": "Total Thickness (mm)", "placeholder": "e.g. 24"},
-                        {"name": "g_value", "type": "number", "label": "G-Value", "placeholder": "e.g. 0.63"}
-                    ]
-                },
-                "spacer": {
-                    "label": "Spacer",
-                    "icon": "pi pi-minus",
-                    "placeholders": {
-                        "name": "Enter spacer name (e.g., Warm Edge, Aluminum)",
-                        "description": "Describe the spacer type...",
-                        "price": "e.g. 12.00"
-                    },
-                    "metadata_fields": [
-                        {"name": "material", "type": "text", "label": "Material", "placeholder": "e.g. Stainless Steel"},
-                        {"name": "psi_value", "type": "number", "label": "Psi Value", "placeholder": "e.g. 0.04"}
-                    ]
-                },
-                "gas": {
-                    "label": "Gas Filling",
-                    "icon": "pi pi-cloud",
-                    "placeholders": {
-                        "name": "Enter gas type (e.g., Argon, Krypton, Air)",
-                        "description": "Describe the gas filling properties...",
-                        "price": "e.g. 8.00"
-                    },
-                    "metadata_fields": [
-                        {"name": "density", "type": "number", "label": "Density", "placeholder": "e.g. 1.78"},
-                        {"name": "thermal_conductivity", "type": "number", "label": "Thermal Conductivity", "placeholder": "e.g. 0.0177"}
-                    ]
-                }
-            },
-            "hierarchy": {0: "glass_unit", 1: "spacer", 2: "gas"}
-        },
-        "hardware": {
-            "label": "Hardware Definitions",
-            "entities": {
-                "handle": {
-                    "label": "Handle",
-                    "icon": "pi pi-box",
-                    "metadata_fields": [
-                        {"name": "color", "type": "text", "label": "Color", "placeholder": "e.g. White"},
-                        {"name": "material", "type": "text", "label": "Material", "placeholder": "e.g. Aluminum"},
-                        {"name": "lock_type", "type": "text", "label": "Lock Type", "placeholder": "e.g. Key Lock"}
-                    ]
-                },
-                "hinge": {
-                    "label": "Hinge",
-                    "icon": "pi pi-cog",
-                    "metadata_fields": [
-                        {"name": "max_load", "type": "number", "label": "Max Load (kg)", "placeholder": "e.g. 80"},
-                        {"name": "material", "type": "text", "label": "Material", "placeholder": "e.g. Stainless Steel"}
-                    ]
-                },
-                "lock": {
-                    "label": "Lock",
-                    "icon": "pi pi-lock",
-                    "metadata_fields": [
-                        {"name": "security_level", "type": "text", "label": "Security Level", "placeholder": "e.g. RC2"},
-                        {"name": "type", "type": "text", "label": "Lock Type", "placeholder": "e.g. Multi-point"}
-                    ]
-                },
-                "accessory": {
-                    "label": "Accessory",
-                    "icon": "pi pi-wrench",
-                    "metadata_fields": []
-                }
-            },
-            "hierarchy": {0: "company", 1: "material", 2: "opening_system", 3: "system_series", 4: "color"}
-        }
-    }
-
     def __init__(self, db: AsyncSession) -> None:
         """Initialize RelationsService.
 
@@ -248,6 +43,77 @@ class RelationsService(BaseService):
             db: Database session
         """
         super().__init__(db)
+        self._definition_scopes_cache: dict[str, ScopeDef] | None = None
+    
+    async def get_definition_scopes(self) -> dict[str, ScopeDef]:
+        """Get all definition scopes from the database.
+        
+        Returns:
+            Dictionary mapping scope names to their definitions
+        """
+        if self._definition_scopes_cache is not None:
+            return self._definition_scopes_cache
+        
+        # Load scope metadata from database
+        scope_stmt = select(AttributeNode).where(
+            AttributeNode.node_type == "scope_metadata"
+        )
+        scope_result = await self.db.execute(scope_stmt)
+        scope_nodes = scope_result.scalars().all()
+        
+        if not scope_nodes:
+            # Fallback to empty dict if no scopes are configured
+            print("[WARNING] No product definition scopes found in database. Run setup_product_definitions.py")
+            self._definition_scopes_cache = {}
+            return self._definition_scopes_cache
+        
+        scopes = {}
+        
+        for scope_node in scope_nodes:
+            scope_name = scope_node.name
+            scope_metadata = scope_node.metadata_ or {}
+            
+            # Load entity definitions for this scope
+            entity_stmt = select(AttributeNode).where(
+                and_(
+                    AttributeNode.node_type == "entity_definition",
+                    AttributeNode.page_type == scope_name
+                )
+            )
+            entity_result = await self.db.execute(entity_stmt)
+            entity_nodes = entity_result.scalars().all()
+            
+            # Build entities dict
+            entities = {}
+            for entity_node in entity_nodes:
+                entity_metadata = entity_node.metadata_ or {}
+                entity_type = entity_metadata.get("entity_type", entity_node.name)
+                
+                entities[entity_type] = {
+                    "label": entity_metadata.get("label", entity_type.replace('_', ' ').title()),
+                    "icon": entity_metadata.get("icon", "pi pi-box"),
+                    "placeholders": entity_metadata.get("placeholders", {}),
+                    "metadata_fields": entity_metadata.get("metadata_fields", []),
+                }
+                
+                # Add special_ui if present
+                if "special_ui" in entity_metadata:
+                    entities[entity_type]["special_ui"] = entity_metadata["special_ui"]
+            
+            # Build scope definition
+            scopes[scope_name] = {
+                "label": scope_metadata.get("label", scope_name.title()),
+                "entities": entities,
+                "hierarchy": scope_metadata.get("hierarchy", {}),
+                "dependencies": scope_metadata.get("dependencies", [])
+            }
+        
+        self._definition_scopes_cache = scopes
+        return scopes
+    
+    def clear_definition_scopes_cache(self) -> None:
+        """Clear the cached definition scopes to force reload from database."""
+        self._definition_scopes_cache = None
     
     @staticmethod
     def _slugify(name: str) -> str:
@@ -272,17 +138,19 @@ class RelationsService(BaseService):
             slug = "n" + slug
         return slug or "unnamed"
     
-    def get_scope_for_entity(self, entity_type: str) -> str:
+    async def get_scope_for_entity(self, entity_type: str) -> str:
         """Resolve definition scope for an entity type."""
-        for scope, data in self.DEFINITION_SCOPES.items():
+        scopes = await self.get_definition_scopes()
+        for scope, data in scopes.items():
             if entity_type in data["entities"]:
                 return scope
         return "profile"  # Default fallback
 
-    def get_hierarchy_level(self, entity_type: str) -> int:
+    async def get_hierarchy_level(self, entity_type: str) -> int:
         """Get hierarchy level for an entity type within its scope."""
-        scope = self.get_scope_for_entity(entity_type)
-        hierarchy = self.DEFINITION_SCOPES[scope]["hierarchy"]
+        scope = await self.get_scope_for_entity(entity_type)
+        scopes = await self.get_definition_scopes()
+        hierarchy = scopes[scope]["hierarchy"]
         # Reverse lookup level by type
         for level, type_name in hierarchy.items():
             if type_name == entity_type:
@@ -315,8 +183,9 @@ class RelationsService(BaseService):
             ValueError: If entity_type is invalid
         """
         # Resolve scope
-        scope = self.get_scope_for_entity(entity_type)
-        scope_data = self.DEFINITION_SCOPES.get(scope)
+        scope = await self.get_scope_for_entity(entity_type)
+        scopes = await self.get_definition_scopes()
+        scope_data = scopes.get(scope)
         
         if not scope_data or entity_type not in scope_data["entities"]:
              # Fallback check against old metadata for backward compat or fail
@@ -326,7 +195,7 @@ class RelationsService(BaseService):
         entity_def = scope_data["entities"][entity_type]
         
         # Determine depth based on hierarchy
-        depth = self.get_hierarchy_level(entity_type)
+        depth = await self.get_hierarchy_level(entity_type)
         
         # Build LTREE path (just the slug for standalone entities)
         slug = self._slugify(name)
@@ -461,7 +330,7 @@ class RelationsService(BaseService):
         """
         # Resolve scope if not provided (though filtering by type usually implies scope)
         if not scope:
-            scope = self.get_scope_for_entity(entity_type)
+            scope = await self.get_scope_for_entity(entity_type)
 
         result = await self.db.execute(
             select(AttributeNode)
@@ -497,7 +366,8 @@ class RelationsService(BaseService):
         """
         entities = {}
         # Iterate over all scopes and their entities
-        for scope_data in self.DEFINITION_SCOPES.values():
+        scopes = await self.get_definition_scopes()
+        for scope_data in scopes.values():
             for entity_type in scope_data["entities"]:
                 entities[entity_type] = await self.get_entities_by_type(entity_type)
         return entities
@@ -638,7 +508,8 @@ class RelationsService(BaseService):
         Creates nodes for each level of the path if they don't exist.
         """
         # Get profile hierarchy
-        hierarchy = self.DEFINITION_SCOPES["profile"]["hierarchy"]
+        scopes = await self.get_definition_scopes()
+        hierarchy = scopes["profile"]["hierarchy"]
         
         # Create intermediate paths (company, company.material, etc.)
         for depth in range(4):  # 0 to 3 (not including the leaf)

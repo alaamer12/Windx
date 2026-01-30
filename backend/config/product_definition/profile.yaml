@@ -1,0 +1,120 @@
+# Profile Definition Scope Configuration
+# This file defines the entities, hierarchy, and metadata for profile definitions
+
+scope: profile
+label: Profile Definitions
+description: Manage definitions and valid product configurations for window and door profiles
+
+# Entity definitions
+entities:
+  material:
+    label: Material
+    icon: pi pi-box
+    placeholders:
+      name: "Enter material name (e.g., Aluminum, PVC)"
+      description: "Describe the material properties..."
+      price: "e.g. 15.50"
+    metadata_fields:
+      - name: density
+        type: number
+        label: "Density (kg/m³)"
+        placeholder: "e.g. 1.4"
+
+  opening_system:
+    label: Opening System
+    icon: pi pi-cog
+    placeholders:
+      name: "Enter opening system name (e.g., Tilt & Turn, Sliding)"
+      description: "Describe how this opening system works..."
+      price: "e.g. 0.00"
+    metadata_fields: []
+
+  color:
+    label: Color
+    icon: pi pi-palette
+    placeholders:
+      name: "Enter color name (e.g., White, Anthracite Grey)"
+      description: "Describe the color finish..."
+      price: "e.g. 25.00"
+    metadata_fields:
+      - name: code
+        type: text
+        label: "Color Code"
+        placeholder: "e.g. RAL9016"
+      - name: has_lamination
+        type: boolean
+        label: "Has Lamination"
+
+  company:
+    label: Company
+    icon: pi pi-building
+    placeholders:
+      name: "Enter company name (e.g., Schüco, Reynaers)"
+      description: "Describe the company and their products..."
+      price: "e.g. 0.00"
+    metadata_fields:
+      - name: linked_material_id
+        type: number
+        hidden: true
+    special_ui:
+      type: relation_selector
+      config:
+        field_name: linked_material_id
+        target_entity: material
+        label: "Linked Material"
+        required: true
+        help_text: "Companies must be linked to a specific material type."
+
+  system_series:
+    label: System Series
+    icon: pi pi-sitemap
+    placeholders:
+      name: "Enter series name (e.g., AWS 75, CW 50)"
+      description: "Describe the system series specifications..."
+      price: "e.g. 150.00"
+    metadata_fields:
+      - name: width
+        type: number
+        label: "Width (mm)"
+        placeholder: "e.g. 70"
+      - name: number_of_chambers
+        type: number
+        label: "Chambers"
+        placeholder: "e.g. 5"
+      - name: u_value
+        type: number
+        label: "U-Value"
+        placeholder: "e.g. 1.3"
+      - name: number_of_seals
+        type: number
+        label: "Seals"
+        placeholder: "e.g. 2"
+      - name: characteristics
+        type: textarea
+        label: "Characteristics"
+        placeholder: "e.g. High thermal performance, suitable for residential use"
+
+# Hierarchy definition (level: entity_type)
+hierarchy:
+  0: company
+  1: material
+  2: opening_system
+  3: system_series
+  4: color
+
+# Dependencies for auto-fill functionality
+dependencies:
+  - trigger_field: system_series
+    actions:
+      - type: autofill
+        target_field: opening_system
+        source_property: metadata_.opening_system_id
+        disable_target: true
+      - type: autofill
+        target_field: company
+        source_property: metadata_.linked_company_material
+        disable_target: true
+      - type: autofill
+        target_field: material
+        source_property: metadata_.linked_material_id
+        disable_target: true

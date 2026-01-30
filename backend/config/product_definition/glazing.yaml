@@ -1,0 +1,72 @@
+# Glazing Definition Scope Configuration
+# This file defines the entities, hierarchy, and metadata for glazing definitions
+
+scope: glazing
+label: Glazing Definitions
+description: Manage definitions for glass units, spacers, and gas fillings
+
+# Entity definitions
+entities:
+  glass_unit:
+    label: Glass Unit
+    icon: pi pi-stop
+    placeholders:
+      name: "Enter glass unit name (e.g., Double Glazed, Triple Glazed)"
+      description: "Describe the glass unit specifications..."
+      price: "e.g. 85.00"
+    metadata_fields:
+      - name: u_value
+        type: number
+        label: "U-Value (W/m²K)"
+        placeholder: "e.g. 1.1"
+      - name: thickness
+        type: number
+        label: "Total Thickness (mm)"
+        placeholder: "e.g. 24"
+      - name: g_value
+        type: number
+        label: "G-Value"
+        placeholder: "e.g. 0.63"
+
+  spacer:
+    label: Spacer
+    icon: pi pi-minus
+    placeholders:
+      name: "Enter spacer name (e.g., Warm Edge, Aluminum)"
+      description: "Describe the spacer type..."
+      price: "e.g. 12.00"
+    metadata_fields:
+      - name: material
+        type: text
+        label: "Material"
+        placeholder: "e.g. Stainless Steel"
+      - name: psi_value
+        type: number
+        label: "Psi Value"
+        placeholder: "e.g. 0.04"
+
+  gas:
+    label: Gas Filling
+    icon: pi pi-cloud
+    placeholders:
+      name: "Enter gas type (e.g., Argon, Krypton, Air)"
+      description: "Describe the gas filling properties..."
+      price: "e.g. 8.00"
+    metadata_fields:
+      - name: density
+        type: number
+        label: "Density"
+        placeholder: "e.g. 1.78"
+      - name: thermal_conductivity
+        type: number
+        label: "Thermal Conductivity"
+        placeholder: "e.g. 0.0177"
+
+# Hierarchy definition (level: entity_type)
+hierarchy:
+  0: glass_unit
+  1: spacer
+  2: gas
+
+# No dependencies for glazing scope
+dependencies: []

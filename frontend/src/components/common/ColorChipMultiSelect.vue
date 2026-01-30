@@ -29,10 +29,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, nextTick, toRef } from 'vue'
+import { computed, toRef } from 'vue'
 import MultiSelect from 'primevue/multiselect'
 import { useAutoSelect } from '@/composables/useAutoSelect'
-
+import { getColorStyle } from '@/utils/colorUtils'
 
 const props = withDefaults(defineProps<{
   modelValue: any[]
@@ -98,126 +98,9 @@ function getColorName(value: any): string {
 
 function getChipStyle(value: any): { backgroundColor: string; color: string; borderColor: string } {
   const colorName = getColorName(value)
-  const bgColor = getColorForChip(colorName)
-  return {
-    backgroundColor: bgColor,
-    color: getContrastTextColor(bgColor),
-    borderColor: getBorderColor(bgColor)
-  }
+  // Use the reusable color utility following SRP
+  return getColorStyle(colorName)
 }
-
-// Professional Color Management
-const COLOR_PALETTE: Record<string, string> = {
-  // Whites / Off-whites
-  'white': '#F8FAFC',
-  'snow': '#FFFAFA',
-  'ivory': '#FFFFF0',
-  'cream': '#FFFDD0',
-  'beige': '#F5F5DC',
-  'silver': '#C0C0C0',
-  
-  // Grays / Blacks
-  'black': '#1a1a1a',
-  'gray': '#6B7280',
-  'grey': '#6B7280',
-  'slate': '#475569',
-  'charcoal': '#36454F',
-  
-  // Reds / Pinks
-  'red': '#EF4444',
-  'rose': '#F43F5E',
-  'crimson': '#DC143C',
-  'maroon': '#800000',
-  'pink': '#EC4899',
-  'fuchsia': '#D946EF',
-  
-  // Oranges / Yellows
-  'orange': '#F97316',
-  'amber': '#F59E0B',
-  'yellow': '#EAB308',
-  'gold': '#FFD700',
-  'bronze': '#CD7F32',
-  'brown': '#92400E',
-  
-  // Greens
-  'green': '#22C55E',
-  'emerald': '#10B981',
-  'lime': '#84CC16',
-  'olive': '#808000',
-  'teal': '#14B8A6',
-  
-  // Blues
-  'blue': '#3B82F6',
-  'navy': '#000080',
-  'sky': '#0EA5E9',
-  'cyan': '#06B6D4',
-  'indigo': '#6366F1',
-  'royal': '#4169E1',
-  
-  // Purples
-  'purple': '#A855F7',
-  'violet': '#8B5CF6',
-  'magenta': '#FF00FF',
-}
-
-function getColorForChip(colorName: string): string {
-  if (!colorName) return '#E2E8F0'
-  const name = String(colorName).toLowerCase().trim()
-  
-  // 1. Exact match
-  if (COLOR_PALETTE[name]) return COLOR_PALETTE[name]
-  
-  // 2. Fuzzy match
-  const matches = Object.keys(COLOR_PALETTE).filter(key => name.includes(key))
-  if (matches.length > 0) {
-    const sorted = matches.sort((a, b) => b.length - a.length)
-    const bestMatch = sorted[0]
-    if (bestMatch && COLOR_PALETTE[bestMatch]) {
-      return COLOR_PALETTE[bestMatch]
-    }
-  }
-  
-  // 3. Fallback: Hash generation
-  return stringToColor(name)
-}
-
-function stringToColor(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  const c = (hash & 0x00ffffff).toString(16).toUpperCase()
-  return '#' + '00000'.substring(0, 6 - c.length) + c
-}
-
-function getContrastTextColor(hexColor: string): string {
-  const hex = hexColor.replace('#', '')
-  const r = parseInt(hex.substring(0, 2), 16)
-  const g = parseInt(hex.substring(2, 4), 16)
-  const b = parseInt(hex.substring(4, 6), 16)
-  
-  const uicolors = [r / 255, g / 255, b / 255]
-  const c = uicolors.map((col) => {
-    if (col <= 0.03928) {
-      return col / 12.92
-    }
-    return Math.pow((col + 0.055) / 1.055, 2.4)
-  })
-  
-  const rL = c[0] ?? 0
-  const gL = c[1] ?? 0
-  const bL = c[2] ?? 0
-  
-  const L = 0.2126 * rL + 0.7152 * gL + 0.0722 * bL
-  
-  return L > 0.4 ? '#1F2937' : '#FFFFFF'
-}
-
-function getBorderColor(hexColor: string): string {
-  return getContrastTextColor(hexColor) === '#1F2937' ? '#E2E8F0' : 'transparent'
-}
-
-
 </script>
 
 <style scoped>

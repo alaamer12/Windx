@@ -342,6 +342,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { productDefinitionService } from '@/services/productDefinitionService'
 import { parseApiError } from '@/utils/errorHandler'
+import { getColorHex } from '@/utils/colorUtils'
 
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -475,15 +476,8 @@ function calculateTotalWeight(): number {
 }
 
 function getColorValue(color: any): string {
-  // Simple color mapping - in real app, you'd have proper color values
-  const colorMap: Record<string, string> = {
-    'White': '#FFFFFF',
-    'Black': '#000000',
-    'Brown': '#8B4513',
-    'Grey': '#808080',
-    'Blue': '#0000FF'
-  }
-  return colorMap[color.name] || '#CCCCCC'
+  // Use the reusable color utility
+  return getColorHex(color.name || color)
 }
 
 function formatDate(dateString: string): string {

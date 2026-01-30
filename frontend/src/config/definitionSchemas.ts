@@ -1,4 +1,5 @@
 import { productDefinitionService } from '@/services/productDefinitionService'
+import { parseApiError } from '@/utils/errorHandler'
 
 // Types for schema definition
 export interface FieldDefinition {
@@ -124,7 +125,13 @@ export async function fetchAndBuildSchemas(): Promise<Record<string, DefinitionS
 
         return schemas
     } catch (error) {
-        console.error('Failed to fetch and build schemas:', error)
-        return {}
+        const apiError = parseApiError(error)
+        console.error('Failed to fetch and build schemas:', {
+            error: apiError,
+            originalError: error
+        })
+        
+        // Re-throw with more context for the calling component
+        throw new Error(`Schema loading failed: ${apiError.message}`)
     }
 }

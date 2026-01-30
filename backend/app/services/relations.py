@@ -154,7 +154,8 @@ class RelationsService(BaseService):
         # Reverse lookup level by type
         for level, type_name in hierarchy.items():
             if type_name == entity_type:
-                return level
+                # Ensure we return an integer, not a string
+                return int(level)
         return 0  # Default to root if not in hierarchy
 
     async def create_entity(
@@ -514,7 +515,7 @@ class RelationsService(BaseService):
         # Create intermediate paths (company, company.material, etc.)
         for depth in range(4):  # 0 to 3 (not including the leaf)
             partial_path = ".".join(path_parts[:depth + 1])
-            entity_type = hierarchy[depth]  # Dynamic lookup
+            entity_type = hierarchy[str(depth)]  # Convert depth to string for dictionary lookup
             entity = entities[entity_type]
             
             # Check if this path node exists

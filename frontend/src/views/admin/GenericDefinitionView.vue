@@ -3,8 +3,15 @@
     <div class="max-w-[1400px] mx-auto">
       <div class="mb-6 flex justify-between items-center">
         <div class="flex items-center gap-4">
+          <!-- Scope Selector with Loading State -->
+          <div v-if="isScopesLoading" class="w-48">
+            <Skeleton height="2.5rem" class="rounded-md" />
+          </div>
+          <div v-else-if="scopesLoadError" class="w-48 p-2 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+            {{ scopesLoadError }}
+          </div>
           <SmartSelect 
-            v-if="availableScopes.length > 0"
+            v-else-if="availableScopes.length > 0"
             v-model="selectedScope" 
             :options="availableScopes" 
             optionLabel="label" 
@@ -14,7 +21,13 @@
             @auto-selected="handleScopeChange"
             placeholder="Select Scope"
           />
-          <div>
+          
+          <!-- Title with Loading State -->
+          <div v-if="isScopesLoading">
+            <Skeleton height="2rem" width="15rem" class="mb-1" />
+            <Skeleton height="1rem" width="20rem" />
+          </div>
+          <div v-else>
             <h1 class="text-3xl font-bold text-slate-800">{{ currentSchema?.title || 'Loading...' }}</h1>
             <p class="text-slate-500 mt-1">Manage definitions and valid product configurations</p>
           </div>
@@ -28,12 +41,41 @@
             @click="loadData" 
             :loading="isLoading" 
             v-tooltip.bottom="'Reload Data'"
+            :disabled="isScopesLoading"
           />
         </div>
       </div>
 
       <div class="card">
-        <Tabs value="overview">
+        <!-- Loading State for Entire Interface -->
+        <div v-if="isScopesLoading" class="p-8">
+          <div class="flex gap-4 mb-6">
+            <Skeleton height="2.5rem" width="8rem" />
+            <Skeleton height="2.5rem" width="10rem" />
+          </div>
+          <div class="grid gap-4 mb-6 grid-cols-2 md:grid-cols-5">
+            <Skeleton height="100px" v-for="i in 5" :key="i" class="rounded-xl" />
+          </div>
+          <Skeleton height="300px" class="rounded-lg" />
+        </div>
+
+        <!-- Error State -->
+        <div v-else-if="scopesLoadError" class="p-8 text-center">
+          <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+            <i class="pi pi-exclamation-triangle text-red-500 text-3xl mb-4"></i>
+            <h3 class="text-lg font-semibold text-red-800 mb-2">Failed to Load Configuration</h3>
+            <p class="text-red-600 mb-4">{{ scopesLoadError }}</p>
+            <Button 
+              label="Retry" 
+              icon="pi pi-refresh" 
+              @click="loadData" 
+              :loading="isLoading"
+            />
+          </div>
+        </div>
+
+        <!-- Main Interface -->
+        <Tabs v-else value="overview">
           <TabList>
             <Tab value="overview">
               <i class="pi pi-list mr-2"></i> Overview
@@ -339,6 +381,7 @@ import camelcaseKeys from 'camelcase-keys'
 import { fetchAndBuildSchemas, type DefinitionSchema } from '@/config/definitionSchemas'
 import { productDefinitionService } from '@/services/productDefinitionService'
 import { useDebugLogger } from '@/composables/useDebugLogger'
+import { parseApiError, getErrorMessage } from '@/utils/errorHandler'
 
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -377,6 +420,8 @@ const typeMetadata = ref<Record<string, any>>({})
 const selectedScope = ref<string | null>(null)
 const availableScopes = ref<any[]>([])
 const schemas = ref<Record<string, DefinitionSchema>>({})
+const isScopesLoading = ref(false)
+const scopesLoadError = ref<string | null>(null)
 
 
 // Form State
@@ -397,8 +442,11 @@ const imagePreview = ref<string | null>(null)
 
 // Computed
 const currentSchema = computed(() => {
+  if (isScopesLoading.value) {
+    return { title: 'Loading scopes...', entityTypes: [], chainStructure: [] }
+  }
   if (!selectedScope.value || !schemas.value[selectedScope.value]) {
-    return { title: 'Loading...', entityTypes: [], chainStructure: [] }
+    return { title: 'Select a scope', entityTypes: [], chainStructure: [] }
   }
   return schemas.value[selectedScope.value]
 })
@@ -507,20 +555,38 @@ async function loadData() {
   try {
     // 0. Fetch and build schemas if not already done (or force refresh)
     if (Object.keys(schemas.value).length === 0) {
-        schemas.value = await fetchAndBuildSchemas()
+        isScopesLoading.value = true
+        scopesLoadError.value = null
         
-        // Populate available scopes
-        availableScopes.value = Object.keys(schemas.value).map(key => {
-            const schema = schemas.value[key]
-            return {
-                label: schema ? schema.title : key,  // Guard access
-                value: key
-            }
-        })
+        try {
+          schemas.value = await fetchAndBuildSchemas()
+          
+          // Populate available scopes
+          availableScopes.value = Object.keys(schemas.value).map(key => {
+              const schema = schemas.value[key]
+              return {
+                  label: schema ? schema.title : key,  // Guard access
+                  value: key
+              }
+          })
 
-        // Set default scope
-        if (!selectedScope.value && availableScopes.value.length > 0) {
-            selectedScope.value = props.pageType && schemas.value[props.pageType] ? props.pageType : availableScopes.value[0].value
+          // Set default scope
+          if (!selectedScope.value && availableScopes.value.length > 0) {
+              selectedScope.value = props.pageType && schemas.value[props.pageType] ? props.pageType : availableScopes.value[0].value
+          }
+        } catch (error) {
+          const apiError = parseApiError(error)
+          scopesLoadError.value = apiError.message
+          logger.error('Failed to load scopes', { error: apiError, originalError: error })
+          toast.add({ 
+            severity: 'error', 
+            summary: 'Configuration Error', 
+            detail: apiError.message, 
+            life: 5000 
+          })
+          return
+        } finally {
+          isScopesLoading.value = false
         }
     }
 
@@ -553,8 +619,14 @@ async function loadData() {
 
     logger.info('Data loaded', { scope: selectedScope.value, entityTypes: Object.keys(entities.value) })
   } catch (error) {
-    logger.error('Failed to load definition data', error)
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load definitions', life: 5000 })
+    const apiError = parseApiError(error)
+    logger.error('Failed to load definition data', { error: apiError, originalError: error })
+    toast.add({ 
+      severity: 'error', 
+      summary: apiError.type === 'server' ? 'Server Error' : 'Load Error', 
+      detail: apiError.message, 
+      life: 5000 
+    })
   } finally {
     isLoading.value = false
   }
@@ -564,6 +636,9 @@ async function handleScopeChange() {
     // Reset selection when scope changes
     selectedEntityType.value = null
     resetForm()
+    // Clear previous data
+    entities.value = {}
+    paths.value = []
     // Reload data for new scope
     await loadData()
 }
@@ -698,8 +773,25 @@ async function saveEntity() {
     formData.value.price_from = null
     clearImage()
   } catch (error: any) {
-    logger.error('Save failed', error)
-    toast.add({ severity: 'error', summary: 'Error', detail: error.message || 'Failed to save', life: 3000 })
+    const apiError = parseApiError(error)
+    logger.error('Save failed', { error: apiError, originalError: error })
+    
+    // Provide specific error messages based on error type
+    let summary = 'Save Error'
+    if (apiError.type === 'validation') {
+      summary = 'Validation Error'
+    } else if (apiError.type === 'server') {
+      summary = 'Server Error'
+    } else if (apiError.type === 'network') {
+      summary = 'Connection Error'
+    }
+    
+    toast.add({ 
+      severity: 'error', 
+      summary, 
+      detail: apiError.message, 
+      life: 5000 
+    })
   } finally {
     isSaving.value = false
   }
@@ -727,7 +819,13 @@ function confirmDeletePath(pathData: any) {
         toast.add({ severity: 'success', summary: 'Deleted', detail: 'Configuration removed', life: 3000 })
         await loadData() // Refresh state
       } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete', life: 3000 })
+        const apiError = parseApiError(error)
+        toast.add({ 
+          severity: 'error', 
+          summary: 'Delete Error', 
+          detail: apiError.message, 
+          life: 5000 
+        })
       }
     }
   })

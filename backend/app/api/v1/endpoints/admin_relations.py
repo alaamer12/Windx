@@ -119,6 +119,38 @@ async def create_entity(
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Handle database errors and other unexpected errors
+        error_msg = str(e)
+        
+        # Provide more specific error messages for common database issues
+        if "duplicate key" in error_msg.lower() or "already exists" in error_msg.lower():
+            raise HTTPException(
+                status_code=400, 
+                detail=f"An entity with the name '{data.name}' already exists. Please use a different name."
+            )
+        elif "foreign key" in error_msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Referenced item not found. Please check your selections and try again."
+            )
+        elif "invalid input" in error_msg.lower() or "cannot be interpreted" in error_msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid data format provided. Please check your input values."
+            )
+        elif "not null" in error_msg.lower():
+            raise HTTPException(
+                status_code=400,
+                detail="Required field is missing. Please fill in all required information."
+            )
+        else:
+            # Log the full error for debugging but return a user-friendly message
+            print(f"[ERROR] Unexpected error creating entity: {error_msg}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create entity due to a server error. Please try again or contact support."
+            )
 
 
 @router.put("/relations/entities/{entity_id}")
@@ -182,33 +214,41 @@ async def get_entities_by_type(
     current_user: CurrentSuperuser = None,
 ) -> dict[str, Any]:
     """Get all entities of a specific type."""
-    # service.get_scope_for_entity call inside get_entities_by_type handles validation effectively
-    
-    service = RelationsService(db)
-    entities = await service.get_entities_by_type(entity_type, scope=scope)
-    
-    # Get type metadata from database
-    scopes = await service.get_definition_scopes()
-    resolved_scope = await service.get_scope_for_entity(entity_type)
-    type_metadata = scopes.get(resolved_scope, {}).get("entities", {}).get(entity_type, {})
-    
-    return {
-        "success": True,
-        "entities": [
-            {
-                "id": e.id,
-                "name": e.name,
-                "node_type": e.node_type,
-                "image_url": e.image_url,
-                "price_impact_value": str(e.price_impact_value) if e.price_impact_value else None,
-                "description": e.description,
-                "validation_rules": e.validation_rules,
-                "metadata_": e.metadata_,
-            }
-            for e in entities
-        ],
-        "type_metadata": type_metadata,
-    }
+    try:
+        service = RelationsService(db)
+        entities = await service.get_entities_by_type(entity_type, scope=scope)
+        
+        # Get type metadata from database
+        scopes = await service.get_definition_scopes()
+        resolved_scope = await service.get_scope_for_entity(entity_type)
+        type_metadata = scopes.get(resolved_scope, {}).get("entities", {}).get(entity_type, {})
+        
+        return {
+            "success": True,
+            "entities": [
+                {
+                    "id": e.id,
+                    "name": e.name,
+                    "node_type": e.node_type,
+                    "image_url": e.image_url,
+                    "price_impact_value": str(e.price_impact_value) if e.price_impact_value else None,
+                    "description": e.description,
+                    "validation_rules": e.validation_rules,
+                    "metadata_": e.metadata_,
+                }
+                for e in entities
+            ],
+            "type_metadata": type_metadata,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[ERROR] Failed to load entities for type '{entity_type}': {error_msg}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to load {entity_type.replace('_', ' ')} entities. Please try again."
+        )
 
 
 @router.get("/relations/scopes")
@@ -217,13 +257,30 @@ async def get_definition_scopes(
     current_user: CurrentSuperuser = None,
 ) -> dict[str, Any]:
     """Get available definition scopes with full schema details."""
-    service = RelationsService(db)
-    scopes = await service.get_definition_scopes()
-    
-    return {
-        "success": True,
-        "scopes": scopes
-    }
+    try:
+        service = RelationsService(db)
+        scopes = await service.get_definition_scopes()
+        
+        if not scopes:
+            raise HTTPException(
+                status_code=500,
+                detail="No product definition scopes found. Please run the setup script to initialize the system."
+            )
+        
+        return {
+            "success": True,
+            "scopes": scopes
+        }
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[ERROR] Failed to load definition scopes: {error_msg}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load system configuration. Please contact support."
+        )
 
 
 # ============================================================================

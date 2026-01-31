@@ -177,19 +177,5 @@ function formatLabel(key: string): string {
 </script>
 
 <style scoped>
-.dynamic-entity-fields {
-  /* Component-specific styles if needed */
-}
-
-.core-fields {
-  /* Core fields styling */
-}
-
-.validation-fields {
-  /* Dynamic fields styling */
-}
-
-.validation-field {
-  /* Individual field styling */
-}
+/* Component styles are handled by parent components and Tailwind classes */
 </style>

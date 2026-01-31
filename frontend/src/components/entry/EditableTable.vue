@@ -41,7 +41,7 @@
         v-model:showAdvancedSearch="showAdvancedSearch"
         :headers="headers"
         :searchStats="searchStats"
-        :isSearchActive="isSearchActive"
+        :isSearchActive="!!isSearchActive"
         @export="handleExportResults"
         @clear-search="clearSearch"
         @clear-all="clearAll"
@@ -78,30 +78,30 @@
         >
           <template #body="{ data, field }">
             <div 
-              :class="getCellClass(data.id, field)"
+              :class="getCellClass(data.id, String(field))"
               :data-row-id="data.id"
-              :data-field="field"
+              :data-field="String(field)"
             >
               <!-- Image display for image fields -->
-              <div v-if="isImageField(field) && data[field]" class="image-cell">
+              <div v-if="isImageField(String(field)) && getFieldValue(data, String(field))" class="image-cell">
                 <img 
-                  :src="getImagePath(data[field])" 
+                  :src="getImagePath(String(getFieldValue(data, String(field))))" 
                   class="w-12 h-12 object-cover rounded border cursor-pointer"
-                  @click="openImagePreview(data[field])"
+                  @click="openImagePreview(String(getFieldValue(data, String(field))))"
                   @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/48x48?text=Invalid'"
-                  :title="data[field]"
+                  :title="String(getFieldValue(data, String(field)))"
                 />
               </div>
               <!-- Regular text display -->
               <div 
                 v-else
-                v-html="getHighlightedCellValue(data[field], field)"
+                v-html="getHighlightedCellValue(getFieldValue(data, String(field)), String(field))"
               />
             </div>
           </template>
           <template #editor="{ data, field }">
             <!-- Dynamic editor based on field type -->
-            <div v-if="isImageField(field)" class="image-editor">
+            <div v-if="isImageField(String(field))" class="image-editor">
               <div v-if="data[field]" class="current-image mb-2">
                 <img 
                   :src="getImagePath(data[field])" 
@@ -115,7 +115,7 @@
                 accept="image/*"
                 :maxFileSize="5000000"
                 customUpload
-                @uploader="(event) => handleImageUpload(event, data, field)"
+                @uploader="(event) => handleImageUpload(event, data, String(field))"
                 :auto="true"
                 :chooseLabel="data[field] ? 'Change' : 'Upload'"
                 class="p-button-sm"
@@ -126,7 +126,7 @@
               v-else
               v-model="data[field]" 
               class="w-full" 
-              @input="onCellEdit(data, field, $event.target.value)"
+              @update:modelValue="(value) => onCellEdit(data, String(field), value)"
               size="small"
             />
           </template>
@@ -349,7 +349,7 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const editingRows = ref([])
-const selectedRows = ref([])
+const selectedRows = ref<any[]>([])
 const selectAll = ref(false)
 const highlightedCells = ref<Set<string>>(new Set())
 const showBulkDeleteDialog = ref(false)
@@ -360,6 +360,12 @@ const itemToDelete = ref<any>(null)
 const bulkDeleteLoading = ref(false)
 const logger = useDebugLogger('EditableTable')
 
+// Helper function to safely get field values
+function getFieldValue(data: any, field: string | number): any {
+  const fieldKey = String(field)
+  return data[fieldKey]
+}
+
 // Setup search functionality
 const {
   searchQuery,
@@ -368,19 +374,16 @@ const {
   filteredData,
   searchStats,
   isSearchActive,
-  setSearchQuery,
-  setColumnFilter,
   clearSearch,
   clearAll,
   highlightSearchTerm,
-  isRowHighlighted,
   exportSearchResults
 } = useTableSearch(toRef(props, 'data'), toRef(props, 'headers'))
 
 // Setup auto-calculation
 const schemaRef = computed(() => props.schema)
 const dummyFormData = ref<Record<string, any>>({})
-const { autoCalculateFields, parseDecimal, isFieldCalculated, clearCalculatedFields } = 
+const { autoCalculateFields, clearCalculatedFields } = 
   useAutoCalculation(schemaRef, dummyFormData)
 
 function onRowEditSave(event: any) {

@@ -106,7 +106,7 @@
       showClear
       :disabled="disabled"
       @change="emit('change', field.name)"
-      @auto-selected="(val) => emit('change', field.name)"
+      @auto-selected="() => emit('change', field.name)"
     />
 
     <!-- MultiSelect -->
@@ -122,7 +122,7 @@
       class="w-full"
       :disabled="disabled"
       @change="emit('change', field.name)"
-      @auto-selected="(val) => emit('change', field.name)"
+      @auto-selected="() => emit('change', field.name)"
     />
 
     <!-- Color MultiSelect (Special case) -->

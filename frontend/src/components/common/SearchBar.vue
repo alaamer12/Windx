@@ -86,7 +86,7 @@
           <div class="relative">
             <InputText
               :modelValue="columnFilters[header] || ''"
-              @update:modelValue="(value) => setColumnFilter(header, value)"
+              @update:modelValue="(value) => setColumnFilter(header, value || '')"
               :placeholder="`Filter ${header}...`"
               class="w-full text-sm"
               size="small"

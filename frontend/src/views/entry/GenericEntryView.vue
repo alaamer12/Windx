@@ -201,7 +201,7 @@ function confirmBulkDelete(selectedRows: any[]) {
   handleBulkDelete(configIds, count)
 }
 
-async function handleBulkDelete(configIds: number[], count: number) {
+async function handleBulkDelete(configIds: number[], _count: number) {
   try {
     const result = await configStore.bulkDeleteConfigurations(configIds)
     

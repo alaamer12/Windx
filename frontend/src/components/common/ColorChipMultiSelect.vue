@@ -56,6 +56,15 @@ const model = computed({
 })
 
 // Use the auto-select composable
+// Use the auto-select composable
+const composableEmit = (event: 'update:modelValue' | 'auto-selected', value: any) => {
+  if (event === 'update:modelValue') {
+    emit('update:modelValue', value)
+  } else if (event === 'auto-selected') {
+    emit('auto-selected', value)
+  }
+}
+
 useAutoSelect({
   options: toRef(props, 'options'),
   modelValue: toRef(props, 'modelValue'),
@@ -63,7 +72,7 @@ useAutoSelect({
   autoSelectSingle: toRef(props, 'autoSelectSingle'),
   disabled: computed(() => false), // ColorChipMultiSelect doesn't have disabled prop
   isMultiSelect: true
-}, emit)
+}, composableEmit)
 
 // Helper to resolve the display label for an option
 function getOptionLabel(option: any): string {

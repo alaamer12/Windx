@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, toRef } from 'vue'
+import { toRef } from 'vue'
 import MultiSelect from 'primevue/multiselect'
 import { useAutoSelect } from '@/composables/useAutoSelect'
 
@@ -52,13 +52,15 @@ const emit = defineEmits<{
   'auto-selected': [value: any[]]
 }>()
 
-// Computed to get the actual value from options based on optionValue
-const resolvedOptions = computed(() => {
-  if (!Array.isArray(props.options)) return []
-  return props.options
-})
-
 // Use the auto-select composable
+const composableEmit = (event: 'update:modelValue' | 'auto-selected', value: any) => {
+  if (event === 'update:modelValue') {
+    emit('update:modelValue', value)
+  } else if (event === 'auto-selected') {
+    emit('auto-selected', value)
+  }
+}
+
 useAutoSelect({
   options: toRef(props, 'options'),
   modelValue: toRef(props, 'modelValue'),
@@ -66,7 +68,7 @@ useAutoSelect({
   autoSelectSingle: toRef(props, 'autoSelectSingle'),
   disabled: toRef(props, 'disabled'),
   isMultiSelect: true
-}, emit)
+}, composableEmit)
 
 function handleUpdate(value: any[]) {
   emit('update:modelValue', value || [])

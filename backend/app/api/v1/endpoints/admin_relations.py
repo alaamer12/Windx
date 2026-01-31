@@ -161,33 +161,44 @@ async def update_entity(
     current_user: CurrentSuperuser = None,
 ) -> dict[str, Any]:
     """Update an existing relation entity."""
-    service = RelationsService(db)
-    
-    entity = await service.update_entity(
-        entity_id=entity_id,
-        name=data.name,
-        image_url=data.image_url,
-        price_from=data.price_from,
-        description=data.description,
-        metadata=data.metadata,
-    )
-    
-    if not entity:
-        raise HTTPException(status_code=404, detail="Entity not found")
-    
-    return {
-        "success": True,
-        "message": f"Entity '{entity.name}' updated",
-        "entity": {
-            "id": entity.id,
-            "name": entity.name,
-            "node_type": entity.node_type,
-            "image_url": entity.image_url,
-            "price_impact_value": str(entity.price_impact_value) if entity.price_impact_value else None,
-            "description": entity.description,
-            "validation_rules": entity.validation_rules,
-        },
-    }
+    try:
+        service = RelationsService(db)
+        
+        entity = await service.update_entity(
+            entity_id=entity_id,
+            name=data.name,
+            image_url=data.image_url,
+            price_from=data.price_from,
+            description=data.description,
+            metadata=data.metadata,
+        )
+        
+        if not entity:
+            raise HTTPException(status_code=404, detail="Entity not found")
+        
+        return {
+            "success": True,
+            "message": f"Entity '{entity.name}' updated successfully",
+            "entity": {
+                "id": entity.id,
+                "name": entity.name,
+                "node_type": entity.node_type,
+                "image_url": entity.image_url,
+                "price_impact_value": str(entity.price_impact_value) if entity.price_impact_value else None,
+                "description": entity.description,
+                "validation_rules": entity.validation_rules,
+                "metadata_": entity.metadata_,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[ERROR] Failed to update entity {entity_id}: {error_msg}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update entity: {error_msg}"
+        )
 
 
 @router.delete("/relations/entities/{entity_id}")

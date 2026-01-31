@@ -186,6 +186,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { productDefinitionService } from '@/services/productDefinitionService'
 import { parseApiError } from '@/utils/errorHandler'
+import { useDebugLogger } from '@/composables/useDebugLogger'
 
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
@@ -196,6 +197,7 @@ import Skeleton from 'primevue/skeleton'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const logger = useDebugLogger('PageDefinitionEdit')
 
 // State
 const isLoading = ref(true)
@@ -218,6 +220,7 @@ async function loadData() {
   
   try {
     const pathId = route.params.pathId as string
+    logger.info('Loading path details', { pathId })
     
     if (!pathId) {
       throw new Error('Path ID is required')
@@ -233,13 +236,21 @@ async function loadData() {
     pathData.value = response.path
     entityData.value = response.path.entities || {}
     
+    logger.debug('Loaded path data', { 
+      pathId, 
+      entityCount: Object.keys(entityData.value).length,
+      entities: Object.keys(entityData.value)
+    })
+    
     // Initialize form data dynamically from entity data
     initializeFormData()
+    
+    logger.info('Path data loaded successfully', { pathId })
     
   } catch (error) {
     const apiError = parseApiError(error)
     loadError.value = apiError.message
-    console.error('Failed to load path data:', error)
+    logger.error('Failed to load path data', { pathId: route.params.pathId, error: apiError })
   } finally {
     isLoading.value = false
   }
@@ -247,22 +258,30 @@ async function loadData() {
 
 function initializeFormData() {
   const data: Record<string, any> = {}
+  logger.debug('Initializing form data from entity data')
   
   // Initialize form data dynamically from entity data
   Object.entries(entityData.value).forEach(([entityType, entity]: [string, any]) => {
     if (Array.isArray(entity)) {
       // Handle arrays (like colors)
+      logger.debug(`Processing array entity type: ${entityType}`, { count: entity.length })
       entity.forEach((item: any, index: number) => {
         initializeEntityFields(data, `${entityType}_${index}`, item)
       })
     } else {
       // Handle single entities
+      logger.debug(`Processing single entity type: ${entityType}`, { entityId: entity.id })
       initializeEntityFields(data, entityType, entity)
     }
   })
   
   formData.value = data
   originalData.value = { ...data }
+  
+  logger.info('Form data initialized', { 
+    fieldCount: Object.keys(data).length,
+    entityTypes: Object.keys(entityData.value)
+  })
 }
 
 function initializeEntityFields(data: Record<string, any>, prefix: string, entity: any) {
@@ -355,40 +374,120 @@ function formatDate(dateString: string): string {
 
 async function saveChanges() {
   isSaving.value = true
+  logger.info('Starting save operation')
   
   try {
     // Prepare update data by extracting changes for each entity
-    const updates: Record<string, any> = {}
+    const updates: Array<{ entityId: number, entityType: string, changes: any }> = []
     
     Object.entries(entityData.value).forEach(([entityType, entity]: [string, any]) => {
       if (Array.isArray(entity)) {
         // Handle arrays (like colors)
-        updates[entityType] = entity.map((item: any, index: number) => {
-          return extractEntityChanges(`${entityType}_${index}`, item)
+        entity.forEach((item: any, index: number) => {
+          const changes = extractEntityChanges(`${entityType}_${index}`, item)
+          if (hasActualChanges(changes)) {
+            updates.push({ 
+              entityId: item.id, 
+              entityType: `${entityType}[${index}]`,
+              changes 
+            })
+          }
         })
       } else {
         // Handle single entities
-        updates[entityType] = extractEntityChanges(entityType, entity)
+        const changes = extractEntityChanges(entityType, entity)
+        if (hasActualChanges(changes)) {
+          updates.push({ 
+            entityId: entity.id, 
+            entityType,
+            changes 
+          })
+        }
       }
     })
     
-    // Send updates to backend
-    // This would be implemented based on your backend API structure
-    // For now, simulate the save operation
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Configuration updated successfully',
-      life: 3000
+    logger.debug('Detected changes', { 
+      totalEntities: Object.keys(entityData.value).length,
+      changedEntities: updates.length,
+      changes: updates.map(u => ({ entityId: u.entityId, entityType: u.entityType, changeKeys: Object.keys(u.changes).filter(k => k !== 'id') }))
     })
     
-    // Update original data to reflect saved state
-    originalData.value = { ...formData.value }
+    // Only proceed if there are actual changes
+    if (updates.length === 0) {
+      logger.info('No changes detected, skipping save')
+      toast.add({
+        severity: 'info',
+        summary: 'No Changes',
+        detail: 'No changes detected to save',
+        life: 3000
+      })
+      return
+    }
+    
+    logger.info(`Saving ${updates.length} changed entities`)
+    
+    // Send updates to backend for each changed entity
+    const savePromises = updates.map(async ({ entityId, entityType, changes }) => {
+      try {
+        const updateData = prepareUpdatePayload(changes)
+        
+        logger.debug(`Updating entity ${entityId} (${entityType})`, { updateData })
+        
+        const response = await productDefinitionService.updateEntity(entityId, updateData)
+        
+        if (!response.success) {
+          throw new Error(`Failed to update entity ${entityId}: ${response.message || 'Unknown error'}`)
+        }
+        
+        logger.debug(`Successfully updated entity ${entityId}`, { response: response.entity })
+        return { entityId, entityType, success: true, response }
+      } catch (error) {
+        const errorMessage = parseApiError(error).message
+        logger.error(`Failed to update entity ${entityId} (${entityType})`, { error: errorMessage })
+        return { entityId, entityType, success: false, error: errorMessage }
+      }
+    })
+    
+    // Wait for all updates to complete
+    const results = await Promise.all(savePromises)
+    
+    // Check results
+    const successful = results.filter(r => r.success)
+    const failed = results.filter(r => !r.success)
+    
+    logger.info('Save operation completed', {
+      total: results.length,
+      successful: successful.length,
+      failed: failed.length,
+      failedEntities: failed.map(f => ({ entityId: f.entityId, entityType: f.entityType, error: f.error }))
+    })
+    
+    if (failed.length > 0) {
+      // Some updates failed
+      const failedDetails = failed.map(f => `${f.entityType} (ID: ${f.entityId})`).join(', ')
+      toast.add({
+        severity: 'warn',
+        summary: 'Partial Save',
+        detail: `${successful.length} entities updated successfully, ${failed.length} failed: ${failedDetails}`,
+        life: 7000
+      })
+    } else {
+      // All updates successful
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: `Successfully updated ${successful.length} ${successful.length === 1 ? 'entity' : 'entities'}`,
+        life: 3000
+      })
+      
+      // Update original data to reflect saved state
+      originalData.value = { ...formData.value }
+      logger.info('Original data updated to reflect saved state')
+    }
     
   } catch (error) {
     const apiError = parseApiError(error)
+    logger.error('Save operation failed', { error: apiError })
     toast.add({
       severity: 'error',
       summary: 'Save Error',
@@ -397,7 +496,41 @@ async function saveChanges() {
     })
   } finally {
     isSaving.value = false
+    logger.debug('Save operation finished')
   }
+}
+
+function prepareUpdatePayload(changes: any): any {
+  const updateData: any = {
+    name: changes.name,
+    description: changes.description,
+    image_url: changes.image_url,
+    price_from: changes.price_impact_value,
+    metadata: {
+      ...changes.validation_rules && { validation_rules: changes.validation_rules },
+      ...changes.metadata_ && { ...changes.metadata_ }
+    }
+  }
+  
+  // Remove undefined fields
+  Object.keys(updateData).forEach(key => {
+    if (updateData[key] === undefined) {
+      delete updateData[key]
+    }
+  })
+  
+  // Only include metadata if it has content
+  if (Object.keys(updateData.metadata).length === 0) {
+    delete updateData.metadata
+  }
+  
+  return updateData
+}
+
+function hasActualChanges(changes: any): boolean {
+  // Check if there are any actual changes beyond the ID
+  const changeKeys = Object.keys(changes).filter(key => key !== 'id')
+  return changeKeys.length > 0
 }
 
 function extractEntityChanges(prefix: string, originalEntity: any): any {
@@ -411,20 +544,31 @@ function extractEntityChanges(prefix: string, originalEntity: any): any {
   const imageField = `${prefix}_image_url`
   const priceField = `${prefix}_price_impact_value`
   
-  if (formData.value[nameField] !== originalEntity.name) {
-    changes.name = formData.value[nameField]
+  // Check for actual changes (not just different types)
+  const currentName = formData.value[nameField]
+  const currentDesc = formData.value[descField]
+  const currentImage = formData.value[imageField]
+  const currentPrice = formData.value[priceField]
+  
+  const originalName = originalEntity.name || ''
+  const originalDesc = originalEntity.description || ''
+  const originalImage = originalEntity.image_url || ''
+  const originalPrice = parseFloat(originalEntity.price_impact_value || '0')
+  
+  if (currentName !== originalName) {
+    changes.name = currentName
   }
   
-  if (formData.value[descField] !== originalEntity.description) {
-    changes.description = formData.value[descField]
+  if (currentDesc !== originalDesc) {
+    changes.description = currentDesc
   }
   
-  if (formData.value[imageField] !== originalEntity.image_url) {
-    changes.image_url = formData.value[imageField]
+  if (currentImage !== originalImage) {
+    changes.image_url = currentImage
   }
   
-  if (formData.value[priceField] !== parseFloat(originalEntity.price_impact_value || '0')) {
-    changes.price_impact_value = formData.value[priceField]
+  if (Math.abs(currentPrice - originalPrice) > 0.001) { // Handle floating point precision
+    changes.price_impact_value = currentPrice
   }
   
   // Extract validation rule changes
@@ -437,7 +581,8 @@ function extractEntityChanges(prefix: string, originalEntity: any): any {
       const newValue = formData.value[fieldName]
       const oldValue = originalEntity.validation_rules[key]
       
-      if (newValue !== oldValue) {
+      // More precise comparison for different types
+      if (!isEqual(newValue, oldValue)) {
         validationRules[key] = newValue
         hasValidationChanges = true
       }
@@ -458,7 +603,7 @@ function extractEntityChanges(prefix: string, originalEntity: any): any {
       const newValue = formData.value[fieldName]
       const oldValue = originalEntity.metadata_[key]
       
-      if (newValue !== oldValue) {
+      if (!isEqual(newValue, oldValue)) {
         metadata[key] = newValue
         hasMetadataChanges = true
       }
@@ -470,6 +615,37 @@ function extractEntityChanges(prefix: string, originalEntity: any): any {
   }
   
   return changes
+}
+
+// Helper function for deep equality comparison
+function isEqual(a: any, b: any): boolean {
+  if (a === b) return true
+  
+  // Handle null/undefined
+  if (a == null || b == null) return a === b
+  
+  // Handle arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false
+    return a.every((item, index) => isEqual(item, b[index]))
+  }
+  
+  // Handle objects
+  if (typeof a === 'object' && typeof b === 'object') {
+    const keysA = Object.keys(a)
+    const keysB = Object.keys(b)
+    
+    if (keysA.length !== keysB.length) return false
+    
+    return keysA.every(key => isEqual(a[key], b[key]))
+  }
+  
+  // Handle numbers with precision tolerance
+  if (typeof a === 'number' && typeof b === 'number') {
+    return Math.abs(a - b) < 0.001
+  }
+  
+  return false
 }
 
 function goBack() {

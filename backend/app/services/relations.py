@@ -13,6 +13,7 @@ Public Classes:
 
 from __future__ import annotations
 
+import logging
 import re
 from decimal import Decimal
 from typing import Any
@@ -26,6 +27,8 @@ from app.schemas.definition import ScopeDef
 
 
 __all__ = ["RelationsService"]
+
+logger = logging.getLogger("RelationsService")
 
 class RelationsService(BaseService):
     """Service for managing hierarchical option dependencies.
@@ -266,47 +269,78 @@ class RelationsService(BaseService):
             image_url: Optional new image URL
             price_from: Optional new price
             description: Optional new description
-            metadata: Optional new metadata
+            metadata: Optional metadata containing validation_rules and other metadata
             
         Returns:
             Updated AttributeNode or None if not found
         """
+        logger.info(f"Updating entity {entity_id}", extra={
+            "entity_id": entity_id,
+            "name": name,
+            "image_url": image_url,
+            "price_from": price_from,
+            "description": description,
+            "metadata": metadata
+        })
+        
         result = await self.db.execute(
             select(AttributeNode).where(AttributeNode.id == entity_id)
         )
         entity = result.scalar_one_or_none()
         
         if not entity:
+            logger.warning(f"Entity {entity_id} not found for update")
             return None
         
+        logger.debug(f"Found entity {entity_id}: {entity.name} (type: {entity.node_type})")
+        
         if name is not None:
+            old_name = entity.name
             entity.name = name
+            logger.debug(f"Updated name: {old_name} -> {name}")
             # Update slug in ltree_path if it's a standalone entity
             if "." not in entity.ltree_path:
+                old_path = entity.ltree_path
                 entity.ltree_path = self._slugify(name)
+                logger.debug(f"Updated ltree_path: {old_path} -> {entity.ltree_path}")
         
         if image_url is not None:
+            old_url = entity.image_url
             entity.image_url = image_url
+            logger.debug(f"Updated image_url: {old_url} -> {image_url}")
         
         if price_from is not None:
+            old_price = entity.price_impact_value
             entity.price_impact_value = price_from
+            logger.debug(f"Updated price_impact_value: {old_price} -> {price_from}")
         
         if description is not None:
+            old_desc = entity.description
             entity.description = description
+            logger.debug(f"Updated description: {old_desc} -> {description}")
         
         if metadata is not None:
-            # Update validation_rules
-            current_rules = entity.validation_rules or {}
-            current_rules.update(metadata)
-            entity.validation_rules = current_rules
+            # Handle validation_rules separately
+            if "validation_rules" in metadata:
+                old_rules = entity.validation_rules or {}
+                current_rules = old_rules.copy()
+                current_rules.update(metadata["validation_rules"])
+                entity.validation_rules = current_rules
+                logger.debug(f"Updated validation_rules: {old_rules} -> {current_rules}")
             
-            # Update metadata_ (Critical for Dependency Engine)
-            current_meta = entity.metadata_ or {}
-            current_meta.update(metadata)
-            entity.metadata_ = current_meta
+            # Handle other metadata (excluding validation_rules)
+            other_metadata = {k: v for k, v in metadata.items() if k != "validation_rules"}
+            if other_metadata:
+                old_meta = entity.metadata_ or {}
+                current_meta = old_meta.copy()
+                current_meta.update(other_metadata)
+                entity.metadata_ = current_meta
+                logger.debug(f"Updated metadata_: {old_meta} -> {current_meta}")
         
         await self.commit()
         await self.refresh(entity)
+        
+        logger.info(f"Successfully updated entity {entity_id}: {entity.name}")
         return entity
     
     async def delete_entity(self, entity_id: int) -> dict[str, Any]:

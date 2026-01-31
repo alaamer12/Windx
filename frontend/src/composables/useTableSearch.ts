@@ -64,6 +64,12 @@ export function useTableSearch<T extends Record<string, any>>(
     return filtered
   })
 
+  // Check if any search is active
+  const isSearchActive = computed(() => {
+    return !!(searchQuery.value && searchQuery.value.trim()) || 
+           Object.values(columnFilters.value).some(filter => filter && filter.trim())
+  })
+
   // Search statistics
   const searchStats = computed<SearchStats>(() => ({
     totalRecords: searchResults.value.total,
@@ -74,12 +80,6 @@ export function useTableSearch<T extends Record<string, any>>(
     columnFiltersActive: Object.values(columnFilters.value).some(filter => filter && filter.trim()),
     activeFiltersCount: Object.values(columnFilters.value).filter(filter => filter && filter.trim()).length
   }))
-
-  // Check if any search is active
-  const isSearchActive = computed(() => {
-    return (searchQuery.value && searchQuery.value.trim()) || 
-           Object.values(columnFilters.value).some(filter => filter && filter.trim())
-  })
 
   // Current search state
   const searchState = computed<SearchState>(() => ({
@@ -270,7 +270,7 @@ export function useTableSearch<T extends Record<string, any>>(
    */
   function generateCSV(items: T[], headerList: string[]): string {
     if (!headerList.length) {
-      headerList = items.length > 0 ? Object.keys(items[0]) : []
+      headerList = items.length > 0 && items[0] ? Object.keys(items[0]) : []
     }
 
     // Create CSV header row

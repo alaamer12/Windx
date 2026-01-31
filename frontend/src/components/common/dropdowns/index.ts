@@ -5,7 +5,8 @@ export { default as SmartSelect } from '../SmartSelect.vue'
 export { default as SmartMultiSelect } from '../SmartMultiSelect.vue'
 export { default as ColorChipMultiSelect } from '../ColorChipMultiSelect.vue'
 
-// Auto-selection composable
+// Type definitions for dropdown components
+// @ts-ignore
 export { useAutoSelect } from '../../composables/useAutoSelect'
 
 // Type definitions for dropdown components

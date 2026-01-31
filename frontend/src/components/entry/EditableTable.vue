@@ -81,11 +81,49 @@
               :class="getCellClass(data.id, field)"
               :data-row-id="data.id"
               :data-field="field"
-              v-html="getHighlightedCellValue(data[field], field)"
-            />
+            >
+              <!-- Image display for image fields -->
+              <div v-if="isImageField(field) && data[field]" class="image-cell">
+                <img 
+                  :src="getImagePath(data[field])" 
+                  class="w-12 h-12 object-cover rounded border cursor-pointer"
+                  @click="openImagePreview(data[field])"
+                  @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/48x48?text=Invalid'"
+                  :title="data[field]"
+                />
+              </div>
+              <!-- Regular text display -->
+              <div 
+                v-else
+                v-html="getHighlightedCellValue(data[field], field)"
+              />
+            </div>
           </template>
           <template #editor="{ data, field }">
+            <!-- Dynamic editor based on field type -->
+            <div v-if="isImageField(field)" class="image-editor">
+              <div v-if="data[field]" class="current-image mb-2">
+                <img 
+                  :src="getImagePath(data[field])" 
+                  class="w-16 h-16 object-cover rounded border"
+                  @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/64x64?text=Invalid'"
+                />
+              </div>
+              <FileUpload
+                mode="basic"
+                name="file"
+                accept="image/*"
+                :maxFileSize="5000000"
+                customUpload
+                @uploader="(event) => handleImageUpload(event, data, field)"
+                :auto="true"
+                :chooseLabel="data[field] ? 'Change' : 'Upload'"
+                class="p-button-sm"
+                size="small"
+              />
+            </div>
             <InputText 
+              v-else
               v-model="data[field]" 
               class="w-full" 
               @input="onCellEdit(data, field, $event.target.value)"
@@ -237,6 +275,42 @@
       </div>
     </template>
   </Dialog>
+
+  <!-- Image Preview Dialog -->
+  <Dialog 
+    v-model:visible="showImagePreview" 
+    modal 
+    header="Image Preview"
+    :style="{ width: '50rem' }"
+    :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+  >
+    <div class="flex justify-center">
+      <img 
+        :src="previewImageUrl" 
+        class="max-w-full max-h-96 object-contain rounded"
+        @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/400x300?text=Image+Not+Found'"
+      />
+    </div>
+    
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <Button 
+          label="Close" 
+          icon="pi pi-times" 
+          @click="showImagePreview = false" 
+          text 
+        />
+        <a 
+          :href="previewImageUrl" 
+          target="_blank" 
+          class="p-button p-button-outlined no-underline flex items-center gap-2"
+        >
+          <i class="pi pi-external-link"></i>
+          Open in New Tab
+        </a>
+      </div>
+    </template>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -248,11 +322,13 @@ import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Badge from 'primevue/badge'
+import FileUpload from 'primevue/fileupload'
 import SearchBar from '@/components/common/SearchBar.vue'
 import { useAutoCalculation } from '@/composables/useAutoCalculation'
 import { useTableSearch } from '@/composables/useTableSearch'
 import { useDebugLogger } from '@/composables/useDebugLogger'
 import { useToast } from 'primevue/usetoast'
+import { productDefinitionService } from '@/services/productDefinitionService'
 
 const props = defineProps<{
   data: any[]
@@ -278,6 +354,8 @@ const selectAll = ref(false)
 const highlightedCells = ref<Set<string>>(new Set())
 const showBulkDeleteDialog = ref(false)
 const showSingleDeleteDialog = ref(false)
+const showImagePreview = ref(false)
+const previewImageUrl = ref('')
 const itemToDelete = ref<any>(null)
 const bulkDeleteLoading = ref(false)
 const logger = useDebugLogger('EditableTable')
@@ -477,6 +555,77 @@ function handleExportResults() {
     })
   }
 }
+
+// Image handling functions
+function isImageField(field: string): boolean {
+  return field.toLowerCase().includes('image') || 
+         field.toLowerCase().includes('picture') || 
+         field.toLowerCase().includes('photo') ||
+         field.toLowerCase().includes('pic')
+}
+
+function getImagePath(path: string): string {
+  if (!path) return ''
+  if (path.startsWith('http') || path.startsWith('data:')) return path
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  return `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+}
+
+async function handleImageUpload(event: any, rowData: any, field: string) {
+  const file = event.files[0]
+  if (!file) return
+
+  try {
+    logger.debug('Uploading image for table cell', { 
+      rowId: rowData.id, 
+      field, 
+      fileName: file.name 
+    })
+
+    const result = await productDefinitionService.uploadImage(file)
+    
+    if (result.success) {
+      const imageUrl = result.image_url || result.url || result.filename
+      
+      // Update the row data
+      onCellEdit(rowData, field, imageUrl)
+      
+      toast.add({
+        severity: 'success',
+        summary: 'Image Uploaded',
+        detail: 'Image uploaded successfully',
+        life: 3000
+      })
+      
+      logger.info('Image uploaded successfully', { 
+        rowId: rowData.id, 
+        field, 
+        imageUrl 
+      })
+    } else {
+      throw new Error(result.error || 'Upload failed')
+    }
+  } catch (error: any) {
+    logger.error('Image upload failed', { 
+      rowId: rowData.id, 
+      field, 
+      error: error.message 
+    })
+    
+    toast.add({
+      severity: 'error',
+      summary: 'Upload Failed',
+      detail: error.message || 'Failed to upload image',
+      life: 5000
+    })
+  }
+}
+
+function openImagePreview(imageUrl: string) {
+  previewImageUrl.value = getImagePath(imageUrl)
+  showImagePreview.value = true
+}
 </script>
 
 <style scoped>
@@ -618,5 +767,44 @@ function handleExportResults() {
   min-width: 1.5rem;
   height: 1.5rem;
   line-height: 1.5rem;
+}
+
+/* Image cell styling */
+.image-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+}
+
+.image-cell img {
+  transition: transform 0.2s ease;
+}
+
+.image-cell img:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Image editor styling */
+.image-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.current-image {
+  display: flex;
+  justify-content: center;
+}
+
+.current-image img {
+  border: 2px solid #e2e8f0;
+  transition: border-color 0.2s ease;
+}
+
+.current-image img:hover {
+  border-color: #3b82f6;
 }
 </style>

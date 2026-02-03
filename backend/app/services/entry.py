@@ -266,8 +266,8 @@ class EntryService(BaseService):
         attribute_nodes = result.scalars().all()
 
         # Get dependencies from relations system for this page type
-        from app.services.relations import RelationsService
-        relations_service = RelationsService(self.db)
+        from app.services.product_definition import ProductDefinitionService
+        relations_service = ProductDefinitionService(self.db)
         scopes = await relations_service.get_definition_scopes()
         scope_def = scopes.get(page_type)
         dependencies = scope_def.get("dependencies") if scope_def else None
@@ -495,9 +495,9 @@ class EntryService(BaseService):
         """
         logger.info(f"Loading options for field: {field_name}")
         
-        from app.services.relations import RelationsService
+        from app.services.product_definition import ProductDefinitionService
 
-        relations_service = RelationsService(self.db)
+        relations_service = ProductDefinitionService(self.db)
 
         # Map field names to entity types
         field_to_entity_type = {

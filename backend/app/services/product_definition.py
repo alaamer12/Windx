@@ -18,19 +18,20 @@ import re
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select, and_, or_, delete
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.attribute_node import AttributeNode
-from app.services.base import BaseService
 from app.schemas.definition import ScopeDef
+from app.services.base import BaseService
+
+__all__ = ["ProductDefinitionService"]
+
+logger = logging.getLogger("ProductDefinitionService")
 
 
-__all__ = ["RelationsService"]
-
-logger = logging.getLogger("RelationsService")
-
-class RelationsService(BaseService):
+# noinspection PyTypeChecker
+class ProductDefinitionService(BaseService):
     """Service for managing hierarchical option dependencies.
     
     Manages entities (Company, Material, Opening System, System Series, Color, Unit Type)
@@ -38,7 +39,7 @@ class RelationsService(BaseService):
     
     Definition scopes are now loaded from the database instead of hard-coded constants.
     """
-    
+
     def __init__(self, db: AsyncSession) -> None:
         """Initialize RelationsService.
 
@@ -47,7 +48,7 @@ class RelationsService(BaseService):
         """
         super().__init__(db)
         self._definition_scopes_cache: dict[str, ScopeDef] | None = None
-    
+
     async def get_definition_scopes(self) -> dict[str, ScopeDef]:
         """Get all definition scopes from the database.
         
@@ -56,26 +57,26 @@ class RelationsService(BaseService):
         """
         if self._definition_scopes_cache is not None:
             return self._definition_scopes_cache
-        
+
         # Load scope metadata from database
         scope_stmt = select(AttributeNode).where(
             AttributeNode.node_type == "scope_metadata"
         )
         scope_result = await self.db.execute(scope_stmt)
         scope_nodes = scope_result.scalars().all()
-        
+
         if not scope_nodes:
             # Fallback to empty dict if no scopes are configured
             print("[WARNING] No product definition scopes found in database. Run setup_product_definitions.py")
             self._definition_scopes_cache = {}
             return self._definition_scopes_cache
-        
+
         scopes = {}
-        
+
         for scope_node in scope_nodes:
             scope_name = scope_node.name
             scope_metadata = scope_node.metadata_ or {}
-            
+
             # Load entity definitions for this scope
             entity_stmt = select(AttributeNode).where(
                 and_(
@@ -85,24 +86,24 @@ class RelationsService(BaseService):
             )
             entity_result = await self.db.execute(entity_stmt)
             entity_nodes = entity_result.scalars().all()
-            
+
             # Build entities dict
             entities = {}
             for entity_node in entity_nodes:
                 entity_metadata = entity_node.metadata_ or {}
                 entity_type = entity_metadata.get("entity_type", entity_node.name)
-                
+
                 entities[entity_type] = {
                     "label": entity_metadata.get("label", entity_type.replace('_', ' ').title()),
                     "icon": entity_metadata.get("icon", "pi pi-box"),
                     "placeholders": entity_metadata.get("placeholders", {}),
                     "metadata_fields": entity_metadata.get("metadata_fields", []),
                 }
-                
+
                 # Add special_ui if present
                 if "special_ui" in entity_metadata:
                     entities[entity_type]["special_ui"] = entity_metadata["special_ui"]
-            
+
             # Build scope definition
             scopes[scope_name] = {
                 "label": scope_metadata.get("label", scope_name.title()),
@@ -110,14 +111,14 @@ class RelationsService(BaseService):
                 "hierarchy": scope_metadata.get("hierarchy", {}),
                 "dependencies": scope_metadata.get("dependencies", [])
             }
-        
+
         self._definition_scopes_cache = scopes
         return scopes
-    
+
     def clear_definition_scopes_cache(self) -> None:
         """Clear the cached definition scopes to force reload from database."""
         self._definition_scopes_cache = None
-    
+
     @staticmethod
     def _slugify(name: str) -> str:
         """Convert name to LTREE-safe slug.
@@ -140,7 +141,7 @@ class RelationsService(BaseService):
         if slug and slug[0].isdigit():
             slug = "n" + slug
         return slug or "unnamed"
-    
+
     async def get_scope_for_entity(self, entity_type: str) -> str:
         """Resolve definition scope for an entity type."""
         scopes = await self.get_definition_scopes()
@@ -162,13 +163,13 @@ class RelationsService(BaseService):
         return 0  # Default to root if not in hierarchy
 
     async def create_entity(
-        self,
-        entity_type: str,
-        name: str,
-        image_url: str | None = None,
-        price_from: Decimal | None = None,
-        description: str | None = None,
-        metadata: dict[str, Any] | None = None,
+            self,
+            entity_type: str,
+            name: str,
+            image_url: str | None = None,
+            price_from: Decimal | None = None,
+            description: str | None = None,
+            metadata: dict[str, Any] | None = None,
     ) -> AttributeNode:
         """Create a new relation entity.
         
@@ -190,20 +191,20 @@ class RelationsService(BaseService):
         scope = await self.get_scope_for_entity(entity_type)
         scopes = await self.get_definition_scopes()
         scope_data = scopes.get(scope)
-        
+
         if not scope_data or entity_type not in scope_data["entities"]:
-             # Fallback check against old metadata for backward compat or fail
-             raise ValueError(f"Invalid entity type: {entity_type}")
-        
+            # Fallback check against old metadata for backward compat or fail
+            raise ValueError(f"Invalid entity type: {entity_type}")
+
         # Get entity definition
         entity_def = scope_data["entities"][entity_type]
-        
+
         # Determine depth based on hierarchy
         depth = await self.get_hierarchy_level(entity_type)
-        
+
         # Build LTREE path (just the slug for standalone entities)
         slug = self._slugify(name)
-        
+
         # Build validation_rules with metadata
         validation_rules = {"is_relation_entity": True}
         if metadata:
@@ -211,11 +212,11 @@ class RelationsService(BaseService):
             allowed_fields = entity_def.get("metadata_fields", [])
             # Extract names if they are objects
             field_names = [f["name"] if isinstance(f, dict) else f for f in allowed_fields]
-            
+
             for key in field_names:
                 if key in metadata:
                     validation_rules[key] = metadata[key]
-        
+
         # Get UI metadata for this entity type (constructed from definition)
         ui_metadata = {
             "label": entity_def.get("label", entity_type),
@@ -225,12 +226,12 @@ class RelationsService(BaseService):
             "name_placeholder": f"e.g. {entity_def.get('label')} Name",
             "description_placeholder": f"Optional description for {entity_def.get('label')}"
         }
-        
+
         # Merge provided metadata into ui_metadata so it is stored in the metadata_ column
         # This is critical for Dependency Engine fields (linked_company_material, etc.)
         if metadata:
             ui_metadata.update(metadata)
-        
+
         # Create the entity
         entity = AttributeNode(
             name=name,
@@ -246,20 +247,20 @@ class RelationsService(BaseService):
             metadata_=ui_metadata,
             page_type=scope,  # Use scope as page_type
         )
-        
+
         self.db.add(entity)
         await self.commit()
         await self.refresh(entity)
         return entity
-    
+
     async def update_entity(
-        self,
-        entity_id: int,
-        name: str | None = None,
-        image_url: str | None = None,
-        price_from: Decimal | None = None,
-        description: str | None = None,
-        metadata: dict[str, Any] | None = None,
+            self,
+            entity_id: int,
+            name: str | None = None,
+            image_url: str | None = None,
+            price_from: Decimal | None = None,
+            description: str | None = None,
+            metadata: dict[str, Any] | None = None,
     ) -> AttributeNode | None:
         """Update an existing relation entity.
         
@@ -282,18 +283,18 @@ class RelationsService(BaseService):
             "description": description,
             "metadata": metadata
         })
-        
+
         result = await self.db.execute(
             select(AttributeNode).where(AttributeNode.id == entity_id)
         )
         entity = result.scalar_one_or_none()
-        
+
         if not entity:
             logger.warning(f"Entity {entity_id} not found for update")
             return None
-        
+
         logger.debug(f"Found entity {entity_id}: {entity.name} (type: {entity.node_type})")
-        
+
         if name is not None:
             old_name = entity.name
             entity.name = name
@@ -303,22 +304,22 @@ class RelationsService(BaseService):
                 old_path = entity.ltree_path
                 entity.ltree_path = self._slugify(name)
                 logger.debug(f"Updated ltree_path: {old_path} -> {entity.ltree_path}")
-        
+
         if image_url is not None:
             old_url = entity.image_url
             entity.image_url = image_url
             logger.debug(f"Updated image_url: {old_url} -> {image_url}")
-        
+
         if price_from is not None:
             old_price = entity.price_impact_value
             entity.price_impact_value = price_from
             logger.debug(f"Updated price_impact_value: {old_price} -> {price_from}")
-        
+
         if description is not None:
             old_desc = entity.description
             entity.description = description
             logger.debug(f"Updated description: {old_desc} -> {description}")
-        
+
         if metadata is not None:
             # Handle validation_rules separately
             if "validation_rules" in metadata:
@@ -327,7 +328,7 @@ class RelationsService(BaseService):
                 current_rules.update(metadata["validation_rules"])
                 entity.validation_rules = current_rules
                 logger.debug(f"Updated validation_rules: {old_rules} -> {current_rules}")
-            
+
             # Handle other metadata (excluding validation_rules)
             other_metadata = {k: v for k, v in metadata.items() if k != "validation_rules"}
             if other_metadata:
@@ -336,13 +337,13 @@ class RelationsService(BaseService):
                 current_meta.update(other_metadata)
                 entity.metadata_ = current_meta
                 logger.debug(f"Updated metadata_: {old_meta} -> {current_meta}")
-        
+
         await self.commit()
         await self.refresh(entity)
-        
+
         logger.info(f"Successfully updated entity {entity_id}: {entity.name}")
         return entity
-    
+
     async def delete_entity(self, entity_id: int) -> dict[str, Any]:
         """Delete a relation entity.
         
@@ -356,14 +357,14 @@ class RelationsService(BaseService):
             select(AttributeNode).where(AttributeNode.id == entity_id)
         )
         entity = result.scalar_one_or_none()
-        
+
         if not entity:
             return {"success": False, "message": "Entity not found"}
-        
+
         await self.db.delete(entity)
         await self.commit()
         return {"success": True, "message": f"Entity '{entity.name}' deleted"}
-    
+
     async def get_entities_by_type(self, entity_type: str, scope: str = None) -> list[AttributeNode]:
         """Get all entities of a specific type.
         
@@ -389,7 +390,7 @@ class RelationsService(BaseService):
             .order_by(AttributeNode.name)
         )
         return list(result.scalars().all())
-    
+
     async def get_entity_by_id(self, entity_id: int) -> AttributeNode | None:
         """Get entity by ID.
         
@@ -403,7 +404,7 @@ class RelationsService(BaseService):
             select(AttributeNode).where(AttributeNode.id == entity_id)
         )
         return result.scalar_one_or_none()
-    
+
     async def get_all_entities(self) -> dict[str, list[AttributeNode]]:
         """Get all relation entities grouped by type.
         
@@ -418,14 +419,13 @@ class RelationsService(BaseService):
                 entities[entity_type] = await self.get_entities_by_type(entity_type)
         return entities
 
-    
     async def create_dependency_path(
-        self,
-        company_id: int,
-        material_id: int,
-        opening_system_id: int,
-        system_series_id: int,
-        color_id: int,
+            self,
+            company_id: int,
+            material_id: int,
+            opening_system_id: int,
+            system_series_id: int,
+            color_id: int,
     ) -> AttributeNode:
         """Create a complete dependency path.
         
@@ -462,7 +462,7 @@ class RelationsService(BaseService):
             if entity.node_type != expected_type:
                 raise ValueError(f"Entity {entity_id} is not a {expected_type}")
             entities[expected_type] = entity
-        
+
         # Build the LTREE path
         path_parts = [
             self._slugify(entities["company"].name),
@@ -472,7 +472,7 @@ class RelationsService(BaseService):
             self._slugify(entities["color"].name),
         ]
         full_path = ".".join(path_parts)
-        
+
         # Check if path already exists
         result = await self.db.execute(
             select(AttributeNode).where(
@@ -485,10 +485,10 @@ class RelationsService(BaseService):
         existing = result.scalar_one_or_none()
         if existing:
             raise ValueError(f"Path already exists: {full_path}")
-        
+
         # Create intermediate nodes if they don't exist
         await self._ensure_path_nodes(entities, path_parts)
-        
+
         # Create the leaf node (color with full path)
         color_entity = entities["color"]
         path_node = AttributeNode(
@@ -511,24 +511,24 @@ class RelationsService(BaseService):
             },
             page_type="profile",
         )
-        
+
         self.db.add(path_node)
-        
+
         # NEW: Synchronize metadata to the standalone system_series entity to support auto-fill
         # Find the standalone system_series entity
         series_entity = entities["system_series"]
         series_metadata = series_entity.metadata_ or {}
-        
+
         # Inject parent NAMES for frontend auto-fill logic
         series_updated = False
         company_name = entities["company"].name
         opening_name = entities["opening_system"].name
         material_name = entities["material"].name
-        
+
         if series_metadata.get("linked_company_material") != company_name:
             series_metadata["linked_company_material"] = company_name
             series_updated = True
-        
+
         if series_metadata.get("opening_system_id") != opening_name:
             series_metadata["opening_system_id"] = opening_name
             series_updated = True
@@ -536,18 +536,18 @@ class RelationsService(BaseService):
         if series_metadata.get("linked_material_id") != material_name:
             series_metadata["linked_material_id"] = material_name
             series_updated = True
-            
+
         if series_updated:
             series_entity.metadata_ = series_metadata
-        
+
         await self.commit()
         await self.refresh(path_node)
         return path_node
-    
+
     async def _ensure_path_nodes(
-        self,
-        entities: dict[str, AttributeNode],
-        path_parts: list[str],
+            self,
+            entities: dict[str, AttributeNode],
+            path_parts: list[str],
     ) -> None:
         """Ensure intermediate path nodes exist.
         
@@ -556,13 +556,13 @@ class RelationsService(BaseService):
         # Get profile hierarchy
         scopes = await self.get_definition_scopes()
         hierarchy = scopes["profile"]["hierarchy"]
-        
+
         # Create intermediate paths (company, company.material, etc.)
         for depth in range(4):  # 0 to 3 (not including the leaf)
             partial_path = ".".join(path_parts[:depth + 1])
             entity_type = hierarchy[str(depth)]  # Convert depth to string for dictionary lookup
             entity = entities[entity_type]
-            
+
             # Check if this path node exists
             result = await self.db.execute(
                 select(AttributeNode).where(
@@ -574,7 +574,7 @@ class RelationsService(BaseService):
                 )
             )
             existing = result.scalar_one_or_none()
-            
+
             if not existing:
                 # Create the path node
                 path_node = AttributeNode(
@@ -593,7 +593,7 @@ class RelationsService(BaseService):
                     page_type="profile",
                 )
                 self.db.add(path_node)
-    
+
     async def delete_dependency_path(self, ltree_path: str) -> dict[str, Any]:
         """Delete a dependency path and its descendants.
         
@@ -604,8 +604,7 @@ class RelationsService(BaseService):
             Result dict with success status
         """
         # Delete all nodes with this path or descendants
-        from sqlalchemy import text
-        
+
         # Use LTREE operator to find path and descendants
         result = await self.db.execute(
             select(AttributeNode).where(
@@ -620,16 +619,16 @@ class RelationsService(BaseService):
             )
         )
         nodes = list(result.scalars().all())
-        
+
         if not nodes:
             return {"success": False, "message": "Path not found"}
-        
+
         for node in nodes:
             await self.db.delete(node)
-        
+
         await self.commit()
         return {"success": True, "message": f"Deleted {len(nodes)} path node(s)"}
-    
+
     async def get_path_details(self, path_id: int) -> dict[str, Any] | None:
         """Get detailed path information with all related entities.
         
@@ -644,10 +643,10 @@ class RelationsService(BaseService):
             select(AttributeNode).where(AttributeNode.id == path_id)
         )
         path_node = result.scalar_one_or_none()
-        
+
         if not path_node:
             return None
-        
+
         # Extract entity IDs from validation_rules
         rules = path_node.validation_rules or {}
         entity_ids = {
@@ -657,7 +656,7 @@ class RelationsService(BaseService):
             "system_series_id": rules.get("system_series_id"),
             "color_id": rules.get("color_id"),
         }
-        
+
         # Load all related entities
         entities = {}
         for entity_type, entity_id in entity_ids.items():
@@ -675,13 +674,13 @@ class RelationsService(BaseService):
                         "metadata_": entity.metadata_ or {},
                         "node_type": entity.node_type,
                     }
-        
+
         # Handle grouped colors (if this is a grouped path)
         if path_node.node_type == "color_path" and "color" in entities:
             # For now, just wrap single color in array
             # In a real grouped scenario, you'd load all colors in the group
             entities["colors"] = [entities.pop("color")]
-        
+
         return {
             "id": path_node.id,
             "ltree_path": path_node.ltree_path,
@@ -691,7 +690,7 @@ class RelationsService(BaseService):
             "entities": entities,
             "validation_rules": path_node.validation_rules or {},
         }
-    
+
     async def get_all_paths(self) -> list[dict[str, Any]]:
         """Get all complete dependency paths.
         
@@ -709,7 +708,7 @@ class RelationsService(BaseService):
             ).order_by(AttributeNode.ltree_path)
         )
         path_nodes = list(result.scalars().all())
-        
+
         paths = []
         for node in path_nodes:
             rules = node.validation_rules or {}
@@ -724,12 +723,12 @@ class RelationsService(BaseService):
                 "system_series_id": rules.get("system_series_id"),
                 "color_id": rules.get("color_id"),
             })
-        
+
         return paths
-    
+
     async def get_dependent_options(
-        self,
-        parent_selections: dict[str, int | None],
+            self,
+            parent_selections: dict[str, int | None],
     ) -> dict[str, list[dict[str, Any]]]:
         """Get available options based on parent selections.
         
@@ -745,56 +744,56 @@ class RelationsService(BaseService):
             Dict of entity_type -> list of available options
         """
         result = {}
-        
+
         # Get all complete paths (leaf nodes)
         all_paths = await self.get_all_paths()
-        
+
         # Extract selection values
         company_id = parent_selections.get("company_id")
         material_id = parent_selections.get("material_id")
         opening_system_id = parent_selections.get("opening_system_id")
         system_series_id = parent_selections.get("system_series_id")
-        
+
         # Special case: If only system_series_id is provided, find all related options
         if system_series_id and not any([company_id, material_id, opening_system_id]):
             # Filter paths by system series
             filtered_paths = [p for p in all_paths if p.get("system_series_id") == system_series_id]
-            
+
             if filtered_paths:
                 # Get unique companies from filtered paths
-                company_ids = set(p.get("company_id") for p in filtered_paths if p.get("company_id"))
+                company_ids = {p.get("company_id") for p in filtered_paths if p.get("company_id")}
                 companies = await self.get_entities_by_type("company")
                 result["company"] = [
                     {"id": e.id, "name": e.name, "image_url": e.image_url}
                     for e in companies if e.id in company_ids
                 ]
-                
+
                 # Get unique materials from filtered paths
-                material_ids = set(p.get("material_id") for p in filtered_paths if p.get("material_id"))
+                material_ids = {p.get("material_id") for p in filtered_paths if p.get("material_id")}
                 materials = await self.get_entities_by_type("material")
                 result["material"] = [
                     {"id": e.id, "name": e.name, "image_url": e.image_url}
                     for e in materials if e.id in material_ids
                 ]
-                
+
                 # Get unique opening systems from filtered paths
-                opening_ids = set(p.get("opening_system_id") for p in filtered_paths if p.get("opening_system_id"))
+                opening_ids = {p.get("opening_system_id") for p in filtered_paths if p.get("opening_system_id")}
                 openings = await self.get_entities_by_type("opening_system")
                 result["opening_system"] = [
                     {"id": e.id, "name": e.name, "image_url": e.image_url}
                     for e in openings if e.id in opening_ids
                 ]
-                
+
                 # Get unique colors from filtered paths
-                color_ids = set(p.get("color_id") for p in filtered_paths if p.get("color_id"))
+                color_ids = {p.get("color_id") for p in filtered_paths if p.get("color_id")}
                 colors = await self.get_entities_by_type("color")
                 result["colors"] = [  # Note: using "colors" (plural) to match frontend expectation
                     {"id": e.id, "name": e.name, "image_url": e.image_url}
                     for e in colors if e.id in color_ids
                 ]
-            
+
             return result
-        
+
         # Standard forward hierarchy logic
         # Always return all companies
         companies = await self.get_entities_by_type("company")
@@ -802,53 +801,53 @@ class RelationsService(BaseService):
             {"id": e.id, "name": e.name, "image_url": e.image_url}
             for e in companies
         ]
-        
+
         # Filter paths by company
         if company_id:
             filtered_paths = [p for p in all_paths if p.get("company_id") == company_id]
-            
+
             # Get unique materials from filtered paths
-            material_ids = set(p.get("material_id") for p in filtered_paths if p.get("material_id"))
+            material_ids = {p.get("material_id") for p in filtered_paths if p.get("material_id")}
             materials = await self.get_entities_by_type("material")
             result["material"] = [
                 {"id": e.id, "name": e.name, "image_url": e.image_url}
                 for e in materials if e.id in material_ids
             ]
-            
+
             # Filter by material
             if material_id:
                 filtered_paths = [p for p in filtered_paths if p.get("material_id") == material_id]
-                
+
                 # Get unique opening systems from filtered paths
-                opening_ids = set(p.get("opening_system_id") for p in filtered_paths if p.get("opening_system_id"))
+                opening_ids = {p.get("opening_system_id") for p in filtered_paths if p.get("opening_system_id")}
                 openings = await self.get_entities_by_type("opening_system")
                 result["opening_system"] = [
                     {"id": e.id, "name": e.name, "image_url": e.image_url}
                     for e in openings if e.id in opening_ids
                 ]
-                
+
                 # Filter by opening system
                 if opening_system_id:
                     filtered_paths = [p for p in filtered_paths if p.get("opening_system_id") == opening_system_id]
-                    
+
                     # Get unique system series from filtered paths
-                    series_ids = set(p.get("system_series_id") for p in filtered_paths if p.get("system_series_id"))
+                    series_ids = {p.get("system_series_id") for p in filtered_paths if p.get("system_series_id")}
                     series = await self.get_entities_by_type("system_series")
                     result["system_series"] = [
                         {"id": e.id, "name": e.name, "image_url": e.image_url}
                         for e in series if e.id in series_ids
                     ]
-                    
+
                     # Filter by system series
                     if system_series_id:
                         filtered_paths = [p for p in filtered_paths if p.get("system_series_id") == system_series_id]
-                        
+
                         # Get unique colors from filtered paths
-                        color_ids = set(p.get("color_id") for p in filtered_paths if p.get("color_id"))
+                        color_ids = {p.get("color_id") for p in filtered_paths if p.get("color_id")}
                         colors = await self.get_entities_by_type("color")
                         result["colors"] = [  # Note: using "colors" (plural) to match frontend expectation
                             {"id": e.id, "name": e.name, "image_url": e.image_url}
                             for e in colors if e.id in color_ids
                         ]
-        
+
         return result

@@ -7,8 +7,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any, Literal
 
-from typing_extensions import TypedDict
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing_extensions import TypedDict
 
 
 class CalculatedFieldMetadata(TypedDict, total=False):

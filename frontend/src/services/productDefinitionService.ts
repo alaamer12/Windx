@@ -4,7 +4,7 @@ import { useDebugLogger } from '@/composables/useDebugLogger'
 // Create logger instance for the service
 const logger = useDebugLogger('ProductDefinitionService')
 
-// Interfaces aligned with Backend Pydantic Schemas (app.api.v1.endpoints.admin_relations)
+// Interfaces aligned with Backend Pydantic Schemas (app.api.v1.endpoints.admin_product_definitions)
 
 export interface EntityCreateRequest {
     entity_type: string
@@ -57,7 +57,7 @@ export const productDefinitionService = {
     async getEntities(type: string, scope?: string) {
         logger.debug('Getting entities', { type, scope })
         try {
-            const response = await apiClient.get(`/api/v1/admin/relations/entities/${type}`, {
+            const response = await apiClient.get(`/api/v1/admin/product-definitions/entities/${type}`, {
                 params: scope ? { scope } : {}
             })
             logger.info('Successfully retrieved entities', { type, scope, count: response.data?.entities?.length })
@@ -71,7 +71,7 @@ export const productDefinitionService = {
     async createEntity(data: EntityCreateRequest) {
         logger.debug('Creating entity', { entityType: data.entity_type, name: data.name })
         try {
-            const response = await apiClient.post('/api/v1/admin/relations/entities', data)
+            const response = await apiClient.post('/api/v1/admin/product-definitions/entities', data)
             logger.info('Successfully created entity', { entityId: response.data?.entity?.id, name: data.name })
             return response.data
         } catch (error) {
@@ -111,7 +111,7 @@ export const productDefinitionService = {
             
             logger.debug('Prepared update payload', { entityId: id, payload: updatePayload })
             
-            const response = await apiClient.put(`/api/v1/admin/relations/entities/${id}`, updatePayload)
+            const response = await apiClient.put(`/api/v1/admin/product-definitions/entities/${id}`, updatePayload)
             
             logger.info('Successfully updated entity', { 
                 entityId: id, 
@@ -129,7 +129,7 @@ export const productDefinitionService = {
     async deleteEntity(id: number) {
         logger.debug('Deleting entity', { entityId: id })
         try {
-            const response = await apiClient.delete(`/api/v1/admin/relations/entities/${id}`)
+            const response = await apiClient.delete(`/api/v1/admin/product-definitions/entities/${id}`)
             logger.info('Successfully deleted entity', { entityId: id })
             return response.data
         } catch (error) {
@@ -142,7 +142,7 @@ export const productDefinitionService = {
     async getPaths() {
         logger.debug('Getting all paths')
         try {
-            const response = await apiClient.get('/api/v1/admin/relations/paths')
+            const response = await apiClient.get('/api/v1/admin/product-definitions/paths')
             const paths = response.data.paths || []
             logger.info('Successfully retrieved paths', { count: paths.length })
             return paths
@@ -155,7 +155,7 @@ export const productDefinitionService = {
     async getPathDetails(pathId: number) {
         logger.debug('Getting path details', { pathId })
         try {
-            const response = await apiClient.get(`/api/v1/admin/relations/paths/${pathId}`)
+            const response = await apiClient.get(`/api/v1/admin/product-definitions/paths/${pathId}`)
             const entityCount = response.data?.path?.entities ? Object.keys(response.data.path.entities).length : 0
             logger.info('Successfully retrieved path details', { 
                 pathId, 
@@ -172,7 +172,7 @@ export const productDefinitionService = {
     async createPath(data: PathCreateRequest) {
         logger.debug('Creating path', { data })
         try {
-            const response = await apiClient.post('/api/v1/admin/relations/paths', data)
+            const response = await apiClient.post('/api/v1/admin/product-definitions/paths', data)
             logger.info('Successfully created path', { 
                 pathId: response.data?.path?.id,
                 ltreePath: response.data?.path?.ltree_path 
@@ -187,7 +187,7 @@ export const productDefinitionService = {
     async deletePath(data: PathDeleteRequest) {
         logger.debug('Deleting path', { ltreePath: data.ltree_path })
         try {
-            const response = await apiClient.delete('/api/v1/admin/relations/paths', { data })
+            const response = await apiClient.delete('/api/v1/admin/product-definitions/paths', { data })
             logger.info('Successfully deleted path', { ltreePath: data.ltree_path })
             return response.data
         } catch (error) {
@@ -200,7 +200,7 @@ export const productDefinitionService = {
     async getScopes() {
         logger.debug('Getting scopes')
         try {
-            const response = await apiClient.get('/api/v1/admin/relations/scopes')
+            const response = await apiClient.get('/api/v1/admin/product-definitions/scopes')
             logger.info('Successfully retrieved scopes', { count: Object.keys(response.data || {}).length })
             return response.data
         } catch (error) {

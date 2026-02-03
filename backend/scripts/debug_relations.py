@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connection import get_session_maker
-from app.services.relations import RelationsService
+from app.services.product_definition import ProductDefinitionService
 
 
 async def debug_relations():
@@ -28,7 +28,7 @@ async def debug_relations():
     
     session_maker = get_session_maker()
     async with session_maker() as db:
-        service = RelationsService(db)
+        service = ProductDefinitionService(db)
         
         # Get all entities
         print("\n📦 ENTITIES BY TYPE:")

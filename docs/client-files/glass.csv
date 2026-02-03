@@ -1,0 +1,33 @@
+glass type table,"single , double or triple glass
+picture for each type ",
+single glass,"-- Glass types with additional technical specifications
+CREATE TABLE glass_type (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    thickness NUMERIC(5,2) NOT NULL,
+    light_transmittance NUMERIC(5,2), -- % of visible light transmitted
+    solar_heat_gain_coefficient NUMERIC(5,2), -- SHGC value
+    u_value NUMERIC(5,2), -- U-value for single pane
+    safety_rating VARCHAR(50), -- e.g., ANSI Z97.1, EN 12600
+    acoustic_performance NUMERIC(5,2), -- dB reduction
+    price_per_sqm NUMERIC(10,2) -- base price per square meter
+);","name, id, description, thickness,light_transmittance NUMERIC, solar_heat_gain_coefficient,    u_value , acoustic_performance (db reduction) , price_per_sqm , wieght per sqm, picture, colour , colour code for fronten"
+Spacer,"-- Spacer types with thermal performance data
+CREATE TABLE glazing.spacer (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    material VARCHAR(100),
+    thckness NUMERIC(5,2) NOT NULL,
+    thermal_conductivity NUMERIC(5,2), -- W/m·K
+    color VARCHAR(50),
+    price_per_linear_meter NUMERIC(10,2)
+);","name, id, desription, material, thickness, color, thermal_conductivity, price_per_linear_meter, weight_per_linear_meter , 
+picture"
+window glazing,"1- choose from glass type if glass is single or double or triple
+2- if the glass single then choose from the single glass table the glass
+3- if the glass is double then choose the outer glass from single glass table and inner glass from single glass table and spacer from spacer table , then need to add all other vlaus
+4- if the glass triple choose , outer , middle and inner glass, choose spacer between middle and outer and choose spacer between middle and inner
+5- for single and double glass choose if using gas between glasses or not","name, id, description, total thickness (calculated from selection) ,light_transmittance NUMERIC, solar_heat_gain_coefficient,    u_value , acoustic_performance (db reduction) , price_per_sqm (calculated but can be overwritten) , wieght per sqm calculated but can be overwritten, picture, colour can be taken from single galass , colour code for frontend can be taken from frontend"
+,,
+,,

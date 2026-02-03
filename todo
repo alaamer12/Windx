@@ -34,7 +34,7 @@ This page is a **full, structured edit view**, not a dynamic form.
 ------
 
 - now we need to refactor our application to depend on setup scripts, and instead of hardcoded relations inside the backend they should be a setup script
-- second thing we need to update the name "relations" in backend to be a ProductDefinition as the frontend to ensure consistency
+- ✅ COMPLETED: Updated the name "relations" in backend to be "product-definitions" as the frontend to ensure consistency
 - third thing we may need to refactor the full file because it violates Repository pattern
 
 ----------

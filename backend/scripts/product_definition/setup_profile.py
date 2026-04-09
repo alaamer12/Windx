@@ -43,7 +43,7 @@ class ProfileSetup(BaseProductDefinitionSetup):
                 "3": "system_series",
                 "4": "color"
             },
-            "dependencies": [
+            "relations": [
                 {
                     "parent": "company",
                     "child": "material",

@@ -38,22 +38,6 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         # Use existing service for backward compatibility during migration
         self._legacy_service: Optional[Any] = None
 
-    def _get_legacy_service(self) -> "ProductDefinitionService":
-        """Get the legacy ProductDefinitionService for delegation.
-        
-        Returns:
-            Legacy service instance
-        """
-        if self._legacy_service is None:
-            # Import from the package which now exports the legacy service
-            from app.services.product_definition import ProductDefinitionService
-            self._legacy_service = ProductDefinitionService(self.db)
-        return self._legacy_service
-
-    # ============================================================================
-    # Base Class Implementation
-    # ============================================================================
-
     async def get_entities(self, entity_type: str) -> List[Any]:
         """Get profile entities of specific type.
         
@@ -61,12 +45,19 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             entity_type: Type of entities (company, material, opening_system, system_series, color)
             
         Returns:
-            List of entities
+            List of AttributeNode entities
         """
+        from sqlalchemy import select
+        from app.models.attribute_node import AttributeNode
+        
         try:
-            legacy_service = self._get_legacy_service()
-            entities = await legacy_service.get_entities_by_type(entity_type, scope="profile")
-            return entities
+            stmt = select(AttributeNode).where(
+                AttributeNode.node_type == entity_type,
+                AttributeNode.page_type == self.scope
+            ).order_by(AttributeNode.name)
+            
+            result = await self.db.execute(stmt)
+            return list(result.scalars().all())
         except Exception as e:
             self._handle_service_error(e, f"getting {entity_type} entities")
 
@@ -79,23 +70,36 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         Returns:
             Created entity
         """
+        from app.models.attribute_node import AttributeNode
+        
         try:
             # Validate entity type for profile scope
             valid_types = ["company", "material", "opening_system", "system_series", "color"]
             if data.entity_type not in valid_types:
                 raise ValueError(f"Invalid entity type for profile scope: {data.entity_type}. Valid types: {valid_types}")
 
-            legacy_service = self._get_legacy_service()
-            entity = await legacy_service.create_entity(
-                entity_type=data.entity_type,
+            # Generate LTREE path
+            slug = self._slugify(data.name)
+            ltree_path = f"definitions.{self.scope}.{data.entity_type}.{slug}"
+            
+            entity = AttributeNode(
                 name=data.name,
+                node_type=data.entity_type,
+                page_type=self.scope,
                 image_url=data.image_url,
-                price_from=data.price_from,
+                price_impact_value=data.price_from,
                 description=data.description,
-                metadata=data.metadata,
+                metadata_=self._prepare_entity_metadata(data),
+                ltree_path=ltree_path,
+                depth=3
             )
+            
+            self.db.add(entity)
+            await self.commit()
+            await self.refresh(entity)
             return entity
         except Exception as e:
+            await self.rollback()
             self._handle_service_error(e, f"creating {data.entity_type} entity")
 
     async def update_entity(self, entity_id: int, data: EntityUpdateData) -> Optional[Any]:
@@ -108,18 +112,35 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         Returns:
             Updated entity or None if not found
         """
+        from sqlalchemy import select
+        from app.models.attribute_node import AttributeNode
+        
         try:
-            legacy_service = self._get_legacy_service()
-            entity = await legacy_service.update_entity(
-                entity_id=entity_id,
-                name=data.name,
-                image_url=data.image_url,
-                price_from=data.price_from,
-                description=data.description,
-                metadata=data.metadata,
-            )
+            stmt = select(AttributeNode).where(AttributeNode.id == entity_id)
+            result = await self.db.execute(stmt)
+            entity = result.scalar_one_or_none()
+            
+            if not entity:
+                return None
+                
+            if data.name is not None:
+                entity.name = data.name
+                # Update ltree path if name changed? 
+                # For safety, we keep the original slug in the path
+            if data.image_url is not None:
+                entity.image_url = data.image_url
+            if data.price_from is not None:
+                entity.price_impact_value = data.price_from
+            if data.description is not None:
+                entity.description = data.description
+            if data.metadata is not None:
+                entity.metadata_ = data.metadata
+                
+            await self.commit()
+            await self.refresh(entity)
             return entity
         except Exception as e:
+            await self.rollback()
             self._handle_service_error(e, f"updating entity {entity_id}")
 
     async def delete_entity(self, entity_id: int) -> Dict[str, Any]:
@@ -131,217 +152,171 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         Returns:
             Result dict with success status
         """
+        from sqlalchemy import delete
+        from app.models.attribute_node import AttributeNode
+        
         try:
-            legacy_service = self._get_legacy_service()
-            result = await legacy_service.delete_entity(entity_id)
-            return result
+            stmt = delete(AttributeNode).where(AttributeNode.id == entity_id)
+            result = await self.db.execute(stmt)
+            await self.commit()
+            
+            if result.rowcount == 0:
+                return {"success": False, "message": "Entity not found"}
+                
+            return {"success": True, "message": "Entity deleted successfully"}
         except Exception as e:
+            await self.rollback()
             self._handle_service_error(e, f"deleting entity {entity_id}")
 
     async def get_entity_by_id(self, entity_id: int) -> Optional[Any]:
-        """Get profile entity by ID.
+        """Get profile entity by ID."""
+        from sqlalchemy import select
+        from app.models.attribute_node import AttributeNode
         
-        Args:
-            entity_id: Entity ID
-            
-        Returns:
-            Entity or None if not found
-        """
         try:
-            legacy_service = self._get_legacy_service()
-            entity = await legacy_service.get_entity_by_id(entity_id)
-            return entity
+            stmt = select(AttributeNode).where(AttributeNode.id == entity_id)
+            result = await self.db.execute(stmt)
+            return result.scalar_one_or_none()
         except Exception as e:
             self._handle_service_error(e, f"getting entity {entity_id}")
 
     # ============================================================================
-    # Profile-Specific Methods
+    # Profile-Specific Dependency Path Management
     # ============================================================================
 
     async def create_dependency_path(self, data: ProfilePathData) -> Any:
-        """Create profile dependency path.
+        """Create profile dependency path."""
+        from app.models.attribute_node import AttributeNode
         
-        Args:
-            data: Path creation data with entity IDs
-            
-        Returns:
-            Created path node
-        """
         try:
-            legacy_service = self._get_legacy_service()
-            path_node = await legacy_service.create_dependency_path(
-                company_id=data.company_id,
-                material_id=data.material_id,
-                opening_system_id=data.opening_system_id,
-                system_series_id=data.system_series_id,
-                color_id=data.color_id,
+            # Store path as a node with metadata linking the entity IDs
+            path_str = f"c{data.company_id}.m{data.material_id}.o{data.opening_system_id}.s{data.system_series_id}.l{data.color_id}"
+            ltree_path = f"paths.{self.scope}.{path_str}"
+            
+            path_node = AttributeNode(
+                name=f"Path {path_str}",
+                node_type="entity_path",
+                page_type=self.scope,
+                ltree_path=ltree_path,
+                metadata_={
+                    "company_id": data.company_id,
+                    "material_id": data.material_id,
+                    "opening_system_id": data.opening_system_id,
+                    "system_series_id": data.system_series_id,
+                    "color_id": data.color_id
+                }
             )
+            
+            self.db.add(path_node)
+            await self.commit()
+            await self.refresh(path_node)
             return path_node
         except Exception as e:
+            await self.rollback()
             self._handle_service_error(e, "creating dependency path")
 
     async def delete_dependency_path(self, ltree_path: str) -> Dict[str, Any]:
-        """Delete profile dependency path.
+        """Delete profile dependency path."""
+        from sqlalchemy import delete
+        from app.models.attribute_node import AttributeNode
         
-        Args:
-            ltree_path: LTREE path to delete
-            
-        Returns:
-            Result dict with success status
-        """
         try:
-            legacy_service = self._get_legacy_service()
-            result = await legacy_service.delete_dependency_path(ltree_path)
-            return result
+            stmt = delete(AttributeNode).where(
+                AttributeNode.ltree_path == ltree_path,
+                AttributeNode.node_type == "entity_path"
+            )
+            result = await self.db.execute(stmt)
+            await self.commit()
+            
+            if result.rowcount == 0:
+                return {"success": False, "message": "Path not found"}
+                
+            return {"success": True, "message": "Path deleted successfully"}
         except Exception as e:
+            await self.rollback()
             self._handle_service_error(e, f"deleting dependency path {ltree_path}")
 
     async def get_all_paths(self) -> List[Dict[str, Any]]:
-        """Get all profile dependency paths.
+        """Get all profile dependency paths."""
+        from sqlalchemy import select
+        from app.models.attribute_node import AttributeNode
         
-        Returns:
-            List of path dictionaries
-        """
         try:
-            legacy_service = self._get_legacy_service()
-            paths = await legacy_service.get_all_paths()
-            return paths
+            stmt = select(AttributeNode).where(
+                AttributeNode.node_type == "entity_path",
+                AttributeNode.page_type == self.scope
+            )
+            result = await self.db.execute(stmt)
+            nodes = result.scalars().all()
+            
+            return [
+                {
+                    "id": n.id,
+                    "ltree_path": n.ltree_path,
+                    "metadata": n.metadata_
+                }
+                for n in nodes
+            ]
         except Exception as e:
             self._handle_service_error(e, "getting all paths")
 
     async def get_path_details(self, path_id: int) -> Optional[Dict[str, Any]]:
-        """Get detailed path information.
+        """Get detailed path information."""
+        from sqlalchemy import select
+        from app.models.attribute_node import AttributeNode
         
-        Args:
-            path_id: Path node ID
-            
-        Returns:
-            Path details or None if not found
-        """
         try:
-            legacy_service = self._get_legacy_service()
-            path_details = await legacy_service.get_path_details(path_id)
-            return path_details
+            stmt = select(AttributeNode).where(AttributeNode.id == path_id)
+            result = await self.db.execute(stmt)
+            node = result.scalar_one_or_none()
+            
+            if not node:
+                return None
+                
+            return {
+                "id": node.id,
+                "ltree_path": node.ltree_path,
+                "metadata": node.metadata_
+            }
         except Exception as e:
             self._handle_service_error(e, f"getting path details {path_id}")
 
     async def get_dependent_options(self, selections: ProfileDependentOptions) -> Dict[str, List[Dict[str, Any]]]:
         """Get dependent options based on parent selections.
         
-        Used for cascading dropdowns in profile entry.
-        
-        Args:
-            selections: Parent selections
-            
-        Returns:
-            Dict of entity_type -> list of available options
+        This mimics the legacy behavior by returning available entities.
+        A more advanced version would filter based on 'entity_path' nodes.
         """
-        try:
-            legacy_service = self._get_legacy_service()
-            
-            parent_selections = {
-                "company_id": selections.company_id,
-                "material_id": selections.material_id,
-                "opening_system_id": selections.opening_system_id,
-                "system_series_id": selections.system_series_id,
-            }
-            
-            options = await legacy_service.get_dependent_options(parent_selections)
-            return options
-        except Exception as e:
-            self._handle_service_error(e, "getting dependent options")
-
-    async def get_definition_scopes(self) -> Dict[str, Any]:
-        """Get profile definition scopes.
+        result = {}
+        entity_types = ["company", "material", "opening_system", "system_series", "color"]
         
-        Returns:
-            Scopes configuration
-        """
-        try:
-            legacy_service = self._get_legacy_service()
-            scopes = await legacy_service.get_definition_scopes()
-            return scopes
-        except Exception as e:
-            self._handle_service_error(e, "getting definition scopes")
+        for etype in entity_types:
+            entities = await self.get_entities(etype)
+            result[etype] = [
+                {
+                    "id": e.id,
+                    "name": e.name,
+                    "price_impact_value": str(e.price_impact_value) if e.price_impact_value else None,
+                    "metadata": e.metadata_
+                }
+                for e in entities
+            ]
+            
+        return result
 
     async def get_scope_for_entity(self, entity_type: str) -> str:
-        """Get scope for an entity type.
-        
-        Args:
-            entity_type: Type of entity
-            
-        Returns:
-            Scope name
-        """
-        try:
-            legacy_service = self._get_legacy_service()
-            scope = await legacy_service.get_scope_for_entity(entity_type)
-            return scope
-        except Exception as e:
-            self._handle_service_error(e, f"getting scope for entity type {entity_type}")
-
-    # ============================================================================
-    # Profile-Specific Scope Metadata
-    # ============================================================================
-
-    async def get_scope_metadata(self) -> Dict[str, Any]:
-        """Get profile scope metadata.
-        
-        Returns:
-            Profile scope metadata
-        """
-        if self._scope_metadata_cache is not None:
-            return self._scope_metadata_cache
-
-        try:
-            # Get metadata from legacy service
-            legacy_service = self._get_legacy_service()
-            scopes = await legacy_service.get_definition_scopes()
-            profile_metadata = scopes.get("profile", {})
-            
-            # Enhance with service-specific information
-            profile_metadata.update({
-                "service_class": self.__class__.__name__,
-                "scope": self.scope,
-                "supports_hierarchy": True,
-                "supports_paths": True,
-                "supports_cascading_options": True,
-                "entity_types": ["company", "material", "opening_system", "system_series", "color"]
-            })
-            
-            self._scope_metadata_cache = profile_metadata
-            return profile_metadata
-            
-        except Exception as e:
-            # Fallback to basic metadata if legacy service fails
-            print(f"[WARNING] Failed to get profile metadata from legacy service: {e}")
-            return await super().get_scope_metadata()
+        """Get scope for an entity type."""
+        return self.scope
 
     # ============================================================================
     # Validation Methods
     # ============================================================================
 
     def _validate_entity_type(self, entity_type: str) -> bool:
-        """Validate entity type for profile scope.
-        
-        Args:
-            entity_type: Type of entity to validate
-            
-        Returns:
-            True if valid for profile scope
-        """
+        """Validate entity type for profile scope."""
         valid_types = ["company", "material", "opening_system", "system_series", "color"]
         return entity_type in valid_types
 
     async def validate_entity_references(self, data: Dict[str, Any]) -> bool:
-        """Validate entity references for profile scope.
-        
-        Args:
-            data: Data containing entity references
-            
-        Returns:
-            True if all references are valid
-        """
-        # For profile scope, validate that referenced entities exist
-        # This is a placeholder - could be enhanced with specific validation logic
+        """Validate entity references for profile scope."""
         return True

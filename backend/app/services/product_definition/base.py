@@ -52,6 +52,17 @@ class BaseProductDefinitionService(BaseService, ABC):
         """
         pass
 
+    async def get_entities_by_type(self, entity_type: str) -> List[Any]:
+        """Alias for get_entities for backward compatibility.
+        
+        Args:
+            entity_type: Type of entities to retrieve
+            
+        Returns:
+            List of entities
+        """
+        return await self.get_entities(entity_type)
+
     @abstractmethod
     async def create_entity(self, data: EntityCreateData) -> Any:
         """Create entity for this scope.
@@ -94,27 +105,92 @@ class BaseProductDefinitionService(BaseService, ABC):
     # ============================================================================
 
     async def get_scope_metadata(self) -> Dict[str, Any]:
-        """Get metadata for this scope.
+        """Get metadata for this scope, merging YAML configuration with database extensions.
         
         Returns:
-            Scope metadata dictionary
+        	Scope metadata dictionary
         """
         if self._scope_metadata_cache is not None:
             return self._scope_metadata_cache
 
-        # Load scope metadata from database
-        # This is a placeholder - in a real implementation, this would
-        # query the database for scope configuration
-        metadata = {
+        # 1. Load from YAML (Core Configuration)
+        metadata = await self._load_scope_metadata_from_yaml()
+        
+        # 2. Merge with Database (Dynamic Extensions)
+        db_metadata = await self._load_scope_metadata_from_db()
+        if db_metadata:
+            # Handle legacy 'dependencies' key in DB which conflicts with new form 'dependencies'
+            # If the DB metadata has 'dependencies' with parent/child structure, move it to 'relations'
+            if "dependencies" in db_metadata:
+                deps = db_metadata["dependencies"]
+                if isinstance(deps, list) and len(deps) > 0 and "parent" in deps[0]:
+                    # This is legacy relation data, move it to 'relations' to avoid schema conflicts
+                    db_metadata["relations"] = deps
+                    del db_metadata["dependencies"]
+            
+            # Merge logic: favor DB metadata for keys that exist in both, but combine lists if appropriate
+            # For now, we'll continue with update() but after the key fix
+            metadata.update(db_metadata)
+            
+        self._scope_metadata_cache = metadata
+        return metadata
+
+    async def get_definition_scopes(self) -> Dict[str, Any]:
+        """Get definition scopes.
+        
+        Returns:
+            Dict mapping scope name to its metadata
+        """
+        metadata = await self.get_scope_metadata()
+        return {self.scope: metadata}
+
+    async def _load_scope_metadata_from_yaml(self) -> Dict[str, Any]:
+        """Load scope metadata from YAML configuration file."""
+        import yaml
+        from pathlib import Path
+        
+        # Try to find the YAML file in the config directory
+        config_path = Path("backend/config/product_definition") / f"{self.scope}.yaml"
+        
+        # Fallback for different working directories
+        if not config_path.exists():
+             config_path = Path(__file__).resolve().parent.parent.parent.parent / "config" / "product_definition" / f"{self.scope}.yaml"
+
+        if config_path.exists():
+            try:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    return yaml.safe_load(f)
+            except Exception as e:
+                print(f"[WARNING] Failed to load YAML metadata for {self.scope}: {e}")
+        
+        # Default fallback if YAML not found
+        return {
             "scope": self.scope,
             "label": self.scope.title(),
             "entities": {},
             "hierarchy": {},
             "dependencies": []
         }
+
+    async def _load_scope_metadata_from_db(self) -> Dict[str, Any]:
+        """Load scope metadata from database."""
+        from sqlalchemy import select
+        from app.models.attribute_node import AttributeNode
         
-        self._scope_metadata_cache = metadata
-        return metadata
+        try:
+            stmt = select(AttributeNode).where(
+                AttributeNode.node_type == "scope_metadata",
+                AttributeNode.page_type == self.scope
+            )
+            result = await self.db.execute(stmt)
+            node = result.scalar_one_or_none()
+            
+            if node and node.metadata_:
+                return node.metadata_
+        except Exception as e:
+            print(f"[WARNING] Failed to load DB metadata for {self.scope}: {e}")
+            
+        return {}
 
     def clear_scope_metadata_cache(self) -> None:
         """Clear the cached scope metadata to force reload from database."""

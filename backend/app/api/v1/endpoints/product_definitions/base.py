@@ -121,6 +121,16 @@ class BaseProductDefinitionEndpoints(ABC):
             except Exception as e:
                 self._handle_database_error(e, f"deleting entity {entity_id}")
 
+        @self.router.get("/metadata")
+        async def get_scope_metadata(
+                db: AsyncSession = Depends(get_db),
+                current_user: CurrentSuperuser = None,
+        ) -> dict[str, Any]:
+            """Get metadata for this scope."""
+            from app.services.product_definition import get_product_definition_service
+            service = get_product_definition_service(self.scope, db)
+            return await service.get_scope_metadata()
+
         @self.router.get("/entities/{entity_type}")
         async def get_entities_by_type(
                 entity_type: str,

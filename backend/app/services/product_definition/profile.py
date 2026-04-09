@@ -253,7 +253,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
                 {
                     "id": n.id,
                     "ltree_path": n.ltree_path,
-                    "metadata": n.metadata_
+                    **(n.metadata_ if n.metadata_ else {})
                 }
                 for n in nodes
             ]
@@ -276,7 +276,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             return {
                 "id": node.id,
                 "ltree_path": node.ltree_path,
-                "metadata": node.metadata_
+                **(node.metadata_ if node.metadata_ else {})
             }
         except Exception as e:
             self._handle_service_error(e, f"getting path details {path_id}")

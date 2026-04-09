@@ -41,128 +41,66 @@ export interface DefinitionSchema {
 // Dynamic Schema Builder
 export async function fetchAndBuildSchemas(): Promise<Record<string, DefinitionSchema>> {
     try {
-        // Get available scopes from factory
         const availableScopes = productDefinitionServiceFactory.getAvailableScopes()
         const schemas: Record<string, DefinitionSchema> = {}
 
-        // For now, create basic schemas for each scope
-        // In the future, this could be enhanced to fetch schema definitions from the backend
         for (const scope of availableScopes) {
-            if (scope === 'profile') {
-                schemas[scope] = {
-                    title: 'Profile System',
-                    entityTypes: [
-                        {
-                            value: 'company',
-                            label: 'Company',
-                            icon: 'pi pi-building',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'price_from', label: 'Price From', type: 'number' }
-                            ],
-                            hasImage: true
-                        },
-                        {
-                            value: 'material',
-                            label: 'Material',
-                            icon: 'pi pi-box',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'price_from', label: 'Price From', type: 'number' }
-                            ],
-                            hasImage: true
-                        },
-                        {
-                            value: 'opening_system',
-                            label: 'Opening System',
-                            icon: 'pi pi-arrows-alt',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'price_from', label: 'Price From', type: 'number' }
-                            ],
-                            hasImage: true
-                        },
-                        {
-                            value: 'system_series',
-                            label: 'System Series',
-                            icon: 'pi pi-list',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'price_from', label: 'Price From', type: 'number' }
-                            ],
-                            hasImage: true
-                        },
-                        {
-                            value: 'color',
-                            label: 'Color',
-                            icon: 'pi pi-palette',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'price_from', label: 'Price From', type: 'number' }
-                            ],
-                            hasImage: true
-                        }
-                    ],
-                    chainStructure: [
-                        { key: 'company', entityType: 'company', label: 'Company', icon: 'pi pi-building' },
-                        { key: 'material', entityType: 'material', label: 'Material', icon: 'pi pi-box' },
-                        { key: 'opening_system', entityType: 'opening_system', label: 'Opening System', icon: 'pi pi-arrows-alt' },
-                        { key: 'system_series', entityType: 'system_series', label: 'System Series', icon: 'pi pi-list' },
-                        { key: 'color', entityType: 'color', label: 'Color', icon: 'pi pi-palette' }
-                    ]
+            try {
+                const service = productDefinitionServiceFactory.getService(scope)
+                const metadata = await service.getScopeMetadata()
+
+                if (!metadata) continue
+
+                // Map backend metadata to frontend DefinitionSchema
+                const entityTypes: EntityTypeDefinition[] = []
+
+                if (metadata.entities) {
+                    Object.keys(metadata.entities).forEach(type => {
+                        const def = metadata.entities[type]
+                        entityTypes.push({
+                            value: type,
+                            label: def.label || type,
+                            icon: def.icon || 'pi pi-tag',
+                            hasImage: true,
+                            isLinker: type === 'system_series', // Special case for profile linker
+                            fields: (def.metadata_fields || []).map((f: any) => ({
+                                name: f.name,
+                                label: f.label || f.name,
+                                type: f.type || 'text',
+                                required: f.required || false,
+                                metadata_: {
+                                    placeholder: f.placeholder
+                                }
+                            })),
+                            specialUi: def.special_ui
+                        })
+                    })
                 }
-            } else if (scope === 'glazing') {
-                schemas[scope] = {
-                    title: 'Glazing System',
-                    entityTypes: [
-                        {
-                            value: 'glass_type',
-                            label: 'Glass Type',
-                            icon: 'pi pi-stop',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'thickness', label: 'Thickness (mm)', type: 'number' },
-                                { name: 'u_value', label: 'U-Value', type: 'number' },
-                                { name: 'light_transmittance', label: 'Light Transmittance', type: 'number' },
-                                { name: 'price_per_sqm', label: 'Price per m²', type: 'number' }
-                            ],
-                            hasImage: true
-                        },
-                        {
-                            value: 'spacer',
-                            label: 'Spacer',
-                            icon: 'pi pi-minus',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'material', label: 'Material', type: 'text' },
-                                { name: 'thickness', label: 'Thickness (mm)', type: 'number' },
-                                { name: 'thermal_conductivity', label: 'Thermal Conductivity', type: 'number' },
-                                { name: 'price_per_sqm', label: 'Price per m²', type: 'number' }
-                            ],
-                            hasImage: true
-                        },
-                        {
-                            value: 'gas',
-                            label: 'Gas Filling',
-                            icon: 'pi pi-cloud',
-                            fields: [
-                                { name: 'name', label: 'Name', type: 'text', required: true },
-                                { name: 'description', label: 'Description', type: 'textarea' },
-                                { name: 'density', label: 'Density', type: 'number' },
-                                { name: 'price_per_sqm', label: 'Price per m²', type: 'number' }
-                            ],
-                            hasImage: true
-                        }
-                    ],
-                    chainStructure: [] // Glazing doesn't use chain structure like profile
+
+                // Map hierarchy to chainStructure
+                const chainStructure: ChainNodeDefinition[] = []
+                if (metadata.hierarchy) {
+                    const sortedLevels = Object.keys(metadata.hierarchy).sort((a, b) => parseInt(a) - parseInt(b))
+                    sortedLevels.forEach(level => {
+                        const entityType = metadata.hierarchy[level]
+                        const entityDef = metadata.entities?.[entityType]
+                        chainStructure.push({
+                            key: entityType,
+                            entityType: entityType,
+                            label: entityDef?.label || entityType,
+                            icon: entityDef?.icon || 'pi pi-tag'
+                        })
+                    })
                 }
+
+                schemas[scope] = {
+                    title: metadata.label || scope,
+                    entityTypes,
+                    chainStructure
+                }
+            } catch (err) {
+                console.warn(`Failed to build schema for scope ${scope}:`, err)
+                // Fallback or skip
             }
         }
 

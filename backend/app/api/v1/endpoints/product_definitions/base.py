@@ -69,14 +69,20 @@ class BaseProductDefinitionEndpoints(ABC):
                 data: EntityCreateRequest,
                 db: AsyncSession = Depends(get_db),
                 current_user: CurrentSuperuser = None,
-        ) -> BaseResponse:
+        ) -> Any:
             """Create a new entity for this scope."""
             try:
                 entity = await self.create_entity_impl(data, db)
-                return BaseResponse(
-                    success=True,
-                    message=f"{data.entity_type.replace('_', ' ').title()} '{data.name}' created"
-                )
+                return {
+                    "success": True,
+                    "message": f"{data.entity_type.replace('_', ' ').title()} '{data.name}' created",
+                    "entity": {
+                        "id": entity.id,
+                        "name": entity.name,
+                        "node_type": entity.node_type,
+                        "metadata_": entity.metadata_
+                    }
+                }
             except ValueError as e:
                 raise HTTPException(status_code=400, detail=str(e))
             except Exception as e:

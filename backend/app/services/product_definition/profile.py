@@ -39,14 +39,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         self._legacy_service: Optional[Any] = None
 
     async def get_entities(self, entity_type: str) -> List[Any]:
-        """Get profile entities of specific type.
-        
-        Args:
-            entity_type: Type of entities (company, material, opening_system, system_series, color)
-            
-        Returns:
-            List of AttributeNode entities
-        """
+        """Get profile entities of specific type."""
         from sqlalchemy import select
         from app.models.attribute_node import AttributeNode
         
@@ -57,9 +50,60 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             ).order_by(AttributeNode.name)
             
             result = await self.db.execute(stmt)
-            return list(result.scalars().all())
+            entities = list(result.scalars().all())
+
+            # Enrich system_series with parent information from paths for dynamic autofill
+            if entity_type == "system_series":
+                # Get all paths to find parents
+                path_stmt = select(AttributeNode).where(
+                    AttributeNode.node_type == "entity_path",
+                    AttributeNode.page_type == self.scope
+                )
+                path_result = await self.db.execute(path_stmt)
+                paths = path_result.scalars().all()
+
+                # Build a lookup for parents by series_id
+                # Since multiple paths might exist for one series (different colors), 
+                # we just need any one path to find the parents
+                series_to_parents = {}
+                for path in paths:
+                    pm = path.metadata_ or {}
+                    sid = pm.get("system_series_id")
+                    if sid and sid not in series_to_parents:
+                        series_to_parents[sid] = {
+                            "company_id": pm.get("company_id"),
+                            "material_id": pm.get("material_id"),
+                            "opening_system_id": pm.get("opening_system_id")
+                        }
+
+                # Get names for all referenced parent IDs to avoid N+1
+                all_parent_ids = set()
+                for p in series_to_parents.values():
+                    all_parent_ids.update([v for v in p.values() if v])
+                
+                parent_map = {}
+                if all_parent_ids:
+                    p_stmt = select(AttributeNode).where(AttributeNode.id.in_(all_parent_ids))
+                    p_res = await self.db.execute(p_stmt)
+                    for p_node in p_res.scalars().all():
+                        parent_map[p_node.id] = p_node.name
+
+                # Inject parent names into series metadata
+                for entity in entities:
+                    parents = series_to_parents.get(entity.id)
+                    if parents:
+                        if not entity.metadata_:
+                            entity.metadata_ = {}
+                        
+                        # Add parent names to metadata for frontend dependency engine
+                        entity.metadata_["company"] = parent_map.get(parents["company_id"])
+                        entity.metadata_["material"] = parent_map.get(parents["material_id"])
+                        entity.metadata_["opening_system"] = parent_map.get(parents["opening_system_id"])
+
+            return entities
         except Exception as e:
             self._handle_service_error(e, f"getting {entity_type} entities")
+
 
     async def create_entity(self, data: EntityCreateData) -> Any:
         """Create profile entity.
@@ -82,6 +126,9 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             slug = self._slugify(data.name)
             ltree_path = f"definitions.{self.scope}.{data.entity_type}.{slug}"
             
+            metadata = self._prepare_entity_metadata(data)
+            validation_rules = metadata.pop("validation_rules", None)
+            
             entity = AttributeNode(
                 name=data.name,
                 node_type=data.entity_type,
@@ -89,7 +136,8 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
                 image_url=data.image_url,
                 price_impact_value=data.price_from,
                 description=data.description,
-                metadata_=self._prepare_entity_metadata(data),
+                metadata_=metadata,
+                validation_rules=validation_rules,
                 ltree_path=ltree_path,
                 depth=3
             )
@@ -134,7 +182,13 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             if data.description is not None:
                 entity.description = data.description
             if data.metadata is not None:
-                entity.metadata_ = data.metadata
+                # Extract validation rules if present in metadata dictionary
+                metadata = data.metadata.copy()
+                if "validation_rules" in metadata:
+                    entity.validation_rules = metadata.pop("validation_rules")
+                
+                # Use remaining metadata for metadata_ column
+                entity.metadata_ = metadata
                 
             await self.commit()
             await self.refresh(entity)
@@ -261,7 +315,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             self._handle_service_error(e, "getting all paths")
 
     async def get_path_details(self, path_id: int) -> Optional[Dict[str, Any]]:
-        """Get detailed path information."""
+        """Get detailed path information including enriched entity data."""
         from sqlalchemy import select
         from app.models.attribute_node import AttributeNode
         
@@ -272,12 +326,60 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
             
             if not node:
                 return None
-                
-            return {
+            
+            # Basic details from path node
+            details = {
                 "id": node.id,
                 "ltree_path": node.ltree_path,
+                "name": node.name,
+                "created_at": node.created_at.isoformat() if node.created_at else None,
                 **(node.metadata_ if node.metadata_ else {})
             }
+            
+            # Enrich with actual entity objects
+            entity_ids = {
+                "company": details.get("company_id"),
+                "material": details.get("material_id"),
+                "opening_system": details.get("opening_system_id"),
+                "system_series": details.get("system_series_id"),
+                "color": details.get("color_id")
+            }
+            
+            entities = {}
+            for etype, eid in entity_ids.items():
+                if eid:
+                    estmt = select(AttributeNode).where(AttributeNode.id == eid)
+                    eresult = await self.db.execute(estmt)
+                    enode = eresult.scalar_one_or_none()
+                    if enode:
+                        entities[etype] = {
+                            "id": enode.id,
+                            "name": enode.name,
+                            "node_type": enode.node_type,
+                            "description": enode.description,
+                            "image_url": enode.image_url,
+                            "price_impact_value": str(enode.price_impact_value) if enode.price_impact_value else "0",
+                            "metadata_": enode.metadata_,
+                            "validation_rules": enode.validation_rules
+                        }
+            
+            details["entities"] = entities
+            
+            # Fetch scope metadata for definitions
+            scope_metadata = await self.get_scope_metadata()
+            details["definitions"] = scope_metadata.get("entities", {})
+            
+            # Construct display path from entity names
+            path_names = [
+                entities.get("company", {}).get("name"),
+                entities.get("material", {}).get("name"),
+                entities.get("opening_system", {}).get("name"),
+                entities.get("system_series", {}).get("name"),
+                entities.get("color", {}).get("name")
+            ]
+            details["display_path"] = " → ".join([n for n in path_names if n])
+            
+            return details
         except Exception as e:
             self._handle_service_error(e, f"getting path details {path_id}")
 

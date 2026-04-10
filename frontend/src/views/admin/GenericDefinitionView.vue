@@ -505,15 +505,15 @@ const companyMaterialOptions = computed(() => {
   const options = []
   for (const comp of entities.value.company) {
     // Check various possible locations for the link
-    // TRY ALL: validation_rules, metadata, or just root property
+    // TRY ALL: validation_rules, metadata_, or just root property
     const matId = comp.validation_rules?.linked_material_id 
-               || comp.metadata?.linked_material_id 
+               || comp.metadata_?.linked_material_id 
                || comp.linked_material_id
                || (comp.validation_rules && comp.validation_rules['linked_material_id'])
     
     console.log(`[GenericDefinitionView] Checking Company: ${comp.name}`, { 
       validation_rules: JSON.parse(JSON.stringify(comp.validation_rules || {})), 
-      metadata: JSON.parse(JSON.stringify(comp.metadata || {})),
+      metadata_: JSON.parse(JSON.stringify(comp.metadata_ || {})),
       extractedMatId: matId 
     })
 

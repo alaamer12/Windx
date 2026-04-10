@@ -106,6 +106,15 @@ class ProfileSetup(BaseProductDefinitionSetup):
         
         await db.commit()
         print(f"  [CLEAN] Deleted {deleted_count} existing definition records")
+        
+        # Also clean existing entities to avoid "Jill Mohr-Bode" etc.
+        delete_entities_stmt = delete(AttributeNode).where(
+            AttributeNode.page_type == self.scope,
+            AttributeNode.node_type.in_(['material', 'company', 'opening_system', 'system_series', 'color', 'entity_path'])
+        )
+        ent_result = await db.execute(delete_entities_stmt)
+        print(f"  [CLEAN] Deleted {ent_result.rowcount} existing entities and paths")
+        await db.commit()
 
     async def _create_entity_definitions(self, db: AsyncSession) -> None:
         """Create entity definition records for profile scope."""
@@ -122,7 +131,17 @@ class ProfileSetup(BaseProductDefinitionSetup):
                 "metadata_fields": [
                     {"name": "website", "type": "text", "label": "Website"},
                     {"name": "contact_email", "type": "email", "label": "Contact Email"}
-                ]
+                ],
+                "special_ui": {
+                    "type": "relation_selector",
+                    "config": {
+                        "field_name": "linked_material_id",
+                        "target_entity": "material",
+                        "label": "Linked Material",
+                        "required": True,
+                        "help_text": "Companies must be linked to a specific material type."
+                    }
+                }
             },
             "material": {
                 "label": "Material",
@@ -223,8 +242,8 @@ class ProfileSetup(BaseProductDefinitionSetup):
         
         # Define entities to create
         entities_to_create = {
-            "company": ["Komben"],
             "material": ["UPVC", "Aluminum"],
+            "company": ["Komben"],
             "opening_system": ["Casement", "Sliding"],
             "system_series": ["K700", "K600", "K701", "K800"],
             "color": ["White", "Red", "Green", "Blue"],
@@ -240,9 +259,14 @@ class ProfileSetup(BaseProductDefinitionSetup):
             
             for name in names:
                 try:
+                    metadata = {}
+                    if entity_type == "company" and "material" in entity_ids and "UPVC" in entity_ids["material"]:
+                        metadata["linked_material_id"] = entity_ids["material"]["UPVC"]
+                    
                     entity_data = EntityCreateData(
                         entity_type=entity_type,
                         name=name,
+                        metadata=metadata
                     )
                     entity = await service.create_entity(entity_data)
                     entity_ids[entity_type][name] = entity.id

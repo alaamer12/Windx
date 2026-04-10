@@ -143,6 +143,7 @@
                 <DynamicEntityFields 
                   :entity="entity"
                   :entity-type="String(entityType)"
+                  :definition="definitions[String(entityType)]"
                   v-model="formData"
                 />
               </div>
@@ -208,6 +209,7 @@ const isSaving = ref(false)
 const loadError = ref<string | null>(null)
 const pathData = ref<any>(null)
 const entityData = ref<any>({})
+const definitions = ref<any>({})
 const formData = ref<Record<string, any>>({})
 const originalData = ref<Record<string, any>>({})
 
@@ -244,11 +246,13 @@ async function loadData() {
     
     pathData.value = response.path
     entityData.value = response.path.entities || {}
+    definitions.value = response.path.definitions || {}
     
     logger.debug('Loaded path data', { 
       pathId, 
       entityCount: Object.keys(entityData.value).length,
-      entities: Object.keys(entityData.value)
+      entities: Object.keys(entityData.value),
+      definitionCount: Object.keys(definitions.value).length
     })
     
     // Initialize form data dynamically from entity data
@@ -307,10 +311,15 @@ function initializeEntityFields(data: Record<string, any>, prefix: string, entit
     })
   }
   
-  // Metadata
-  if (entity.metadata_) {
-    Object.entries(entity.metadata_).forEach(([key, value]) => {
-      data[`${prefix}_metadata_${key}`] = value
+  // Metadata fields from definition (ensure all expected fields are in formData)
+  const entityType = prefix.includes('_') ? prefix.split('_')[0] : prefix
+  const definition = definitions.value[entityType]
+  if (definition?.metadata_fields) {
+    definition.metadata_fields.forEach((field: any) => {
+      const fieldName = `${prefix}_validation_${field.name}`
+      if (!(fieldName in data)) {
+        data[fieldName] = entity.validation_rules?.[field.name] ?? ''
+      }
     })
   }
 }
@@ -647,17 +656,31 @@ function extractEntityChanges(prefix: string, originalEntity: any): any {
     changes.price_impact_value = currentPrice
   }
   
-  // Extract validation rule changes
+  // Extract validation rule changes from definition fields
   const validationRules: any = {}
   let hasValidationChanges = false
   
-  if (originalEntity.validation_rules) {
+  const entityType = prefix.includes('_') ? prefix.split('_')[0] : prefix
+  const definition = definitions.value[entityType]
+  
+  if (definition?.metadata_fields) {
+    definition.metadata_fields.forEach((field: any) => {
+      const fieldName = `${prefix}_validation_${field.name}`
+      const newValue = formData.value[fieldName]
+      const oldValue = originalEntity.validation_rules?.[field.name]
+      
+      if (!isEqual(newValue, oldValue)) {
+        validationRules[field.name] = newValue
+        hasValidationChanges = true
+      }
+    })
+  } else if (originalEntity.validation_rules) {
+    // Fallback if no definition
     Object.keys(originalEntity.validation_rules).forEach(key => {
       const fieldName = `${prefix}_validation_${key}`
       const newValue = formData.value[fieldName]
       const oldValue = originalEntity.validation_rules[key]
       
-      // More precise comparison for different types
       if (!isEqual(newValue, oldValue)) {
         validationRules[key] = newValue
         hasValidationChanges = true

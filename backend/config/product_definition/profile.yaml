@@ -53,9 +53,12 @@ entities:
       description: "Describe the company and their products..."
       price: "e.g. 0.00"
     metadata_fields:
-      - name: linked_material_id
-        type: number
-        hidden: true
+      - name: website
+        type: text
+        label: "Website"
+      - name: contact_email
+        type: email
+        label: "Contact Email"
     special_ui:
       type: relation_selector
       config:
@@ -64,6 +67,8 @@ entities:
         label: "Linked Material"
         required: true
         help_text: "Companies must be linked to a specific material type."
+
+
 
   system_series:
     label: System Series
@@ -108,13 +113,13 @@ dependencies:
     actions:
       - type: autofill
         target_field: opening_system
-        source_property: metadata_.opening_system_id
+        source_property: metadata_.opening_system
         disable_target: true
       - type: autofill
         target_field: company
-        source_property: metadata_.linked_company_material
+        source_property: metadata_.company
         disable_target: true
       - type: autofill
         target_field: material
-        source_property: metadata_.linked_material_id
+        source_property: metadata_.material
         disable_target: true

@@ -53,19 +53,19 @@
     </div>
 
     <!-- Dynamic Validation Rules Fields -->
-    <div v-if="hasValidationRules" class="validation-fields border-t border-slate-200 pt-8 mt-8">
+    <div v-if="hasMetadataFields" class="validation-fields border-t border-slate-200 pt-8 mt-8">
       <h4 class="text-lg font-bold text-slate-800 mb-6">Technical Specifications</h4>
       <div class="validation-fields-content space-y-6">
         <div 
-          v-for="(value, ruleKey) in entity.validation_rules" 
-          :key="ruleKey"
+          v-for="field in definition.metadata_fields" 
+          :key="field.name"
           class="validation-field"
         >
           <FormFieldRenderer 
-            :field="getValidationRuleField(String(ruleKey), value)"
-            :model-value="getValidationRuleValue(String(ruleKey))"
+            :field="getMetadataField(field)"
+            :model-value="getMetadataFieldValue(field.name)"
             :disabled="readOnly"
-            @update:model-value="updateValidationRule(String(ruleKey), $event)"
+            @update:model-value="updateMetadataField(field.name, $event)"
           />
         </div>
       </div>
@@ -81,6 +81,7 @@ import FormFieldRenderer from '@/components/common/FormFieldRenderer.vue'
 interface Props {
   entity: any
   entityType: string
+  definition: any
   modelValue: Record<string, any>
   readOnly?: boolean
 }
@@ -95,8 +96,8 @@ const emit = defineEmits<{
 }>()
 
 // Computed
-const hasValidationRules = computed(() => {
-  return props.entity.validation_rules && Object.keys(props.entity.validation_rules).length > 0
+const hasMetadataFields = computed(() => {
+  return props.definition?.metadata_fields && props.definition.metadata_fields.length > 0
 })
 
 // Methods
@@ -122,48 +123,33 @@ function updateField(fieldName: string, value: any): void {
   })
 }
 
-function getValidationRuleField(ruleKey: string, value: any): any {
-  const fieldName = getFieldName(`validation_${ruleKey}`)
-  
-  // Determine field type based on rule key and value
-  let fieldType = 'text'
-  let uiComponent = undefined
-  
-  if (typeof value === 'number') {
-    fieldType = 'number'
-    uiComponent = 'number'
-  } else if (typeof value === 'boolean') {
-    fieldType = 'boolean'
-    uiComponent = 'checkbox'
-  } else if (ruleKey.includes('price') || ruleKey.includes('cost')) {
-    uiComponent = 'currency'
-  } else if (ruleKey.includes('description') || ruleKey.includes('characteristics')) {
-    fieldType = 'textarea'
-  }
+function getMetadataField(field: any): any {
+  const fieldName = getFieldName(`validation_${field.name}`)
   
   return {
     name: fieldName,
-    label: formatLabel(ruleKey),
-    type: fieldType,
-    ui_component: uiComponent
+    label: field.label || formatLabel(field.name),
+    type: field.type || 'text',
+    ui_component: field.type === 'number' ? 'number' : undefined,
+    step: field.step
   }
 }
 
-function getValidationRuleValue(ruleKey: string): any {
-  const fieldName = getFieldName(`validation_${ruleKey}`)
+function getMetadataFieldValue(fieldName: string): any {
+  const fullFieldName = getFieldName(`validation_${fieldName}`)
   // Check if the field exists in modelValue (even if it's empty)
-  if (fieldName in props.modelValue) {
-    return props.modelValue[fieldName]
+  if (fullFieldName in props.modelValue) {
+    return props.modelValue[fullFieldName]
   }
-  // Only fallback to entity value if the field hasn't been touched yet
-  return props.entity.validation_rules?.[ruleKey]
+  // Fallback to entity validation rules
+  return props.entity.validation_rules?.[fieldName]
 }
 
-function updateValidationRule(ruleKey: string, value: any): void {
-  const fieldName = getFieldName(`validation_${ruleKey}`)
+function updateMetadataField(fieldName: string, value: any): void {
+  const fullFieldName = getFieldName(`validation_${fieldName}`)
   emit('update:modelValue', {
     ...props.modelValue,
-    [fieldName]: value
+    [fullFieldName]: value
   })
 }
 

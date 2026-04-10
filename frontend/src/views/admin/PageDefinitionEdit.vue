@@ -312,7 +312,7 @@ function initializeEntityFields(data: Record<string, any>, prefix: string, entit
   }
   
   // Metadata fields from definition (ensure all expected fields are in formData)
-  const entityType = prefix.includes('_') ? prefix.split('_')[0] : prefix
+  const entityType = (prefix.includes('_') ? prefix.split('_')[0] : prefix) as string
   const definition = definitions.value[entityType]
   if (definition?.metadata_fields) {
     definition.metadata_fields.forEach((field: any) => {
@@ -660,7 +660,7 @@ function extractEntityChanges(prefix: string, originalEntity: any): any {
   const validationRules: any = {}
   let hasValidationChanges = false
   
-  const entityType = prefix.includes('_') ? prefix.split('_')[0] : prefix
+  const entityType = (prefix.includes('_') ? prefix.split('_')[0] : prefix) as string
   const definition = definitions.value[entityType]
   
   if (definition?.metadata_fields) {

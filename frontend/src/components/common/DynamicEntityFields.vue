@@ -52,14 +52,14 @@
       />
     </div>
 
-    <!-- Dynamic Validation Rules Fields -->
-    <div v-if="hasMetadataFields" class="validation-fields border-t border-slate-200 pt-8 mt-8">
-      <h4 class="text-lg font-bold text-slate-800 mb-6">Technical Specifications</h4>
-      <div class="validation-fields-content space-y-6">
+    <!-- Dynamic Properties Fields -->
+    <div v-if="hasMetadataFields" class="properties-fields border-t border-slate-200 pt-8 mt-8">
+      <h4 class="text-lg font-bold text-slate-800 mb-6">Properties</h4>
+      <div class="properties-fields-content space-y-6">
         <div 
-          v-for="field in definition.metadata_fields" 
+          v-for="field in definition.fields" 
           :key="field.name"
-          class="validation-field"
+          class="property-field"
         >
           <FormFieldRenderer 
             :field="getMetadataField(field)"
@@ -97,7 +97,7 @@ const emit = defineEmits<{
 
 // Computed
 const hasMetadataFields = computed(() => {
-  return props.definition?.metadata_fields && props.definition.metadata_fields.length > 0
+  return props.definition?.fields && props.definition.fields.length > 0
 })
 
 // Methods
@@ -124,7 +124,7 @@ function updateField(fieldName: string, value: any): void {
 }
 
 function getMetadataField(field: any): any {
-  const fieldName = getFieldName(`validation_${field.name}`)
+  const fieldName = getFieldName(`metadata_${field.name}`)
   
   return {
     name: fieldName,
@@ -136,17 +136,17 @@ function getMetadataField(field: any): any {
 }
 
 function getMetadataFieldValue(fieldName: string): any {
-  const fullFieldName = getFieldName(`validation_${fieldName}`)
+  const fullFieldName = getFieldName(`metadata_${fieldName}`)
   // Check if the field exists in modelValue (even if it's empty)
   if (fullFieldName in props.modelValue) {
     return props.modelValue[fullFieldName]
   }
-  // Fallback to entity validation rules
-  return props.entity.validation_rules?.[fieldName]
+  // Fallback to entity metadata
+  return props.entity.metadata_?.[fieldName]
 }
 
 function updateMetadataField(fieldName: string, value: any): void {
-  const fullFieldName = getFieldName(`validation_${fieldName}`)
+  const fullFieldName = getFieldName(`metadata_${fieldName}`)
   emit('update:modelValue', {
     ...props.modelValue,
     [fullFieldName]: value

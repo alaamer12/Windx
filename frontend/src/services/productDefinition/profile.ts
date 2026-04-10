@@ -1,6 +1,6 @@
 // Profile-specific service (migrated logic)
 import { BaseProductDefinitionService } from './base'
-import { apiClient } from '@/services/api'
+
 import type {
     EntityCreateRequest,
     EntityUpdateRequest,

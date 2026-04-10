@@ -8,7 +8,7 @@ import { apiClient } from './api'
 
 const BASE_ROUTE = '/api/v1/'
 const BASE_CONFIG = `${BASE_ROUTE}configurations`
-const BASE_ADMIN = `${BASE_ROUTE}admin/entry/profile`
+
 
 export const configurationService = {
   async getAll(params?: {

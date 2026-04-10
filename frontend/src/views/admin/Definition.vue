@@ -1,6 +1,8 @@
 <template>
   <AppLayout>
     <div class="definition-page bg-slate-50 min-h-screen">
+      <ConfirmDialog></ConfirmDialog>
+      
       <!-- Header -->
       <div class="header-container bg-white border-b border-slate-200 sticky top-0 z-10">
         <div class="header-content px-8 py-6">
@@ -50,36 +52,99 @@
       </div>
 
       <!-- Content -->
-      <div class="content-container px-8 py-8 max-w-6xl mx-auto">
-        <!-- Definition Selector -->
+      <div class="content-container px-8 py-8 mx-auto w-full max-w-full">
+        <!-- Definition Table Selector (Replaces Dropdown) -->
         <div class="selector-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-          <div class="selector-header px-8 py-6 border-b border-slate-200 bg-slate-50">
+          <div class="selector-header px-8 py-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
             <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
               <i :class="getEntityIcon()"></i>
-              Select {{ getEntityDisplayName() }}
+              All {{ getEntityDisplayName() }} Configurations
             </h2>
+            <Toolbar class="bg-transparent border-0 p-0 m-0">
+                <template #start>
+                    <Button 
+                      label="Bulk Delete" 
+                      icon="pi pi-trash" 
+                      severity="danger" 
+                      @click="confirmBulkDelete" 
+                      :disabled="!selectedDefinitions || !selectedDefinitions.length" 
+                      class="mr-2"
+                    />
+                </template>
+            </Toolbar>
           </div>
-          <div class="selector-content p-8">
-            <div class="selector-field">
-              <label class="block text-sm font-semibold text-slate-700 mb-3">
-                Choose a {{ entityType }} definition to view or edit:
-              </label>
-              <DefinitionSelect
-                v-model="selectedDefinitionId"
-                :options="definitionOptions"
-                :loading="isLoadingDefinitions"
-                :placeholder="`Select ${getEntityDisplayName()}...`"
-                :entity-type="entityType"
-                option-label="name"
-                option-value="id"
-                class="w-full"
-                @change="onDefinitionSelect"
-              />
-            </div>
+          <div class="selector-content p-0">
+            <DataTable 
+              :value="definitionOptions" 
+              v-model:selection="selectedDefinitions" 
+              dataKey="id"
+              :paginator="true" 
+              :rows="10" 
+              :loading="isLoadingDefinitions"
+              responsiveLayout="scroll"
+              selectionMode="multiple"
+              class="w-full"
+              stripedRows
+              hoverableRows
+              :rowHover="true"
+              @row-click="onRowClick"
+            >
+              <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+              
+              <!-- Image Column -->
+              <Column v-if="selectedEntityDef?.hasImage" header="Image" style="width: 6rem">
+                <template #body="{ data }">
+                  <div class="relative group cursor-pointer overflow-hidden rounded-md border border-slate-200 transition-all hover:border-blue-400">
+                    <Image v-if="data.image_url" :src="getImagePath(data.image_url)" alt="Image" width="50" preview class="w-full h-full object-cover" />
+                    <div v-else class="w-12 h-12 bg-slate-50 flex items-center justify-center text-slate-300">
+                      <i class="pi pi-image text-xl"></i>
+                    </div>
+                    <div class="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 flex items-center justify-center transition-colors pointer-events-none">
+                       <i class="pi pi-search-plus text-white opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </div>
+                  </div>
+                </template>
+              </Column>
+              
+              <Column field="name" header="Name" sortable></Column>
+              
+              <!-- Dynamic columns based on entity schema -->
+              <Column 
+                v-for="col in entityMetadataFields" 
+                :key="col.name" 
+                :field="'metadata_.' + col.name" 
+                :header="col.label" 
+                sortable
+              >
+                <template #body="{ data }">
+                  {{ data.metadata_ ? data.metadata_[col.name] : '' }}
+                </template>
+              </Column>
+              
+              <Column field="price_impact_value" header="Base Price" sortable>
+                <template #body="{ data }">
+                  {{ data.price_impact_value || '0.00' }}
+                </template>
+              </Column>
+              
+              <Column field="description" header="Description" sortable style="max-width: 200px" class="truncate"></Column>
+
+              <!-- Actions column -->
+              <Column header="Actions" :exportable="false" style="min-width: 8rem" alignFrozen="right" :frozen="true">
+                <template #body="slotProps">
+                    <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="editDefinition(slotProps.data)" />
+                    <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteDefinition(slotProps.data)" />
+                </template>
+              </Column>
+              
+              <template #empty>
+                  <div class="text-center p-4">No definitions found for {{ getEntityDisplayName() }}.</div>
+              </template>
+            </DataTable>
           </div>
         </div>
 
-        <!-- Definition Details -->
+        <!-- Definition Details Editor -->
         <div v-if="selectedDefinition" class="definition-details">
           <!-- Loading State -->
           <div v-if="isLoadingDetails" class="loading-card bg-white rounded-xl p-8 shadow-sm">
@@ -92,11 +157,11 @@
           </div>
 
           <!-- Definition Form -->
-          <div v-else class="definition-form bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div v-else id="editor-section" class="definition-form bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="form-header px-8 py-6 border-b border-slate-200" :class="getEntityHeaderClass()">
               <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
                 <i :class="getEntityIcon()"></i>
-                {{ selectedDefinition.name }}
+                Editing: {{ selectedDefinition.name }}
                 <span v-if="!isEditMode" class="text-sm font-normal text-slate-600 ml-2">(Read-only)</span>
                 <span v-else class="text-sm font-normal text-green-600 ml-2">(Editing)</span>
               </h3>
@@ -105,22 +170,12 @@
               <DynamicEntityFields 
                 :entity="selectedDefinition"
                 :entity-type="entityType"
+                :definition="selectedEntityDef"
                 :read-only="!isEditMode"
                 v-model="formData"
               />
             </div>
           </div>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else-if="!isLoadingDefinitions" class="empty-state text-center py-16">
-          <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <i :class="getEntityIcon() + ' text-4xl text-slate-400'"></i>
-          </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-3">No Definition Selected</h3>
-          <p class="text-slate-600 max-w-md mx-auto">
-            Choose a {{ entityType }} definition from the dropdown above to view and edit its details.
-          </p>
         </div>
       </div>
     </div>
@@ -131,21 +186,27 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
 import { productDefinitionServiceFactory } from '@/services/productDefinition'
-import type { ProfileProductDefinitionService } from '@/services/productDefinition'
 import { parseApiError } from '@/utils/errorHandler'
 import { useDebugLogger } from '@/composables/useDebugLogger'
+import { fetchAndBuildSchemas, type DefinitionSchema, type EntityTypeDefinition } from '@/config/definitionSchemas'
 
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DynamicEntityFields from '@/components/common/DynamicEntityFields.vue'
-import DefinitionSelect from '@/components/common/DefinitionSelect.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Toolbar from 'primevue/toolbar'
+import Image from 'primevue/image'
+import ConfirmDialog from 'primevue/confirmdialog'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const confirm = useConfirm()
 const logger = useDebugLogger('Definition')
 
 // Props from route
@@ -153,18 +214,52 @@ const entityType = computed(() => route.params.entityType as string)
 
 // State
 const isLoadingDefinitions = ref(true)
+const isLoadingSchemas = ref(true)
 const isLoadingDetails = ref(false)
 const isSaving = ref(false)
 const isEditMode = ref(false)
-const selectedDefinitionId = ref<number | null>(null)
-const selectedDefinition = ref<any>(null)
+
+function getImagePath(path: string | null | undefined): string {
+  if (!path) return ''
+  if (path.startsWith('http') || path.startsWith('data:')) return path
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  return `${baseUrl.replace(/\/$/, '')}/${path.replace(/^\//, '')}`
+}
+
 const definitionOptions = ref<any[]>([])
+const selectedDefinitions = ref<any[]>([])
+const selectedDefinition = ref<any>(null)
 const formData = ref<Record<string, any>>({})
 const originalData = ref<Record<string, any>>({})
 
-// Helper function to get profile service (this view is profile-specific)
-const getProfileService = (): ProfileProductDefinitionService => {
-  return productDefinitionServiceFactory.getService('profile') as ProfileProductDefinitionService
+// Dynamic Schemas
+const schemas = ref<Record<string, DefinitionSchema>>({})
+
+const selectedEntityDef = computed<EntityTypeDefinition | undefined>(() => {
+  for (const scope in schemas.value) {
+    const found = schemas.value[scope]?.entityTypes?.find(t => t.value === entityType.value)
+    if (found) return found
+  }
+  return undefined
+})
+
+const loadedScope = computed<string>(() => {
+  for (const scope in schemas.value) {
+    if (schemas.value[scope]?.entityTypes?.some(t => t.value === entityType.value)) {
+      return scope
+    }
+  }
+  return 'profile' // fallback
+})
+
+const entityMetadataFields = computed(() => {
+  const def = selectedEntityDef.value
+  return def ? def.fields : []
+})
+
+// Helper function to get service
+const getService = (): any => {
+  return productDefinitionServiceFactory.getService(loadedScope.value)
 }
 
 // Computed
@@ -173,13 +268,24 @@ const hasChanges = computed(() => {
 })
 
 // Methods
+async function loadSchemas() {
+  isLoadingSchemas.value = true
+  try {
+    schemas.value = await fetchAndBuildSchemas()
+  } catch (err) {
+    logger.error('Failed to load schemas', { error: err })
+  } finally {
+    isLoadingSchemas.value = false
+  }
+}
+
 async function loadDefinitions() {
   isLoadingDefinitions.value = true
   logger.info('Loading definitions', { entityType: entityType.value })
   
   try {
-    const profileService = getProfileService()
-    const response = await profileService.getEntities(entityType.value)
+    const service = getService()
+    const response = await service.getEntities(entityType.value)
     
     if (response.success && response.entities) {
       definitionOptions.value = response.entities.map((entity: any) => ({
@@ -210,54 +316,89 @@ async function loadDefinitions() {
   }
 }
 
-async function onDefinitionSelect() {
-  if (!selectedDefinitionId.value) {
-    selectedDefinition.value = null
-    return
-  }
+// Edit action when a table row is clicked
+function onRowClick(event: any) {
+  editDefinition(event.data)
+}
+
+function editDefinition(definition: any) {
+  selectedDefinition.value = definition
+  initializeFormData(definition)
   
-  isLoadingDetails.value = true
-  logger.info('Loading definition details', { 
-    entityType: entityType.value, 
-    definitionId: selectedDefinitionId.value 
-  })
+  // Reset purely to view mode initially, or allow editing immediately if you prefer
+  isEditMode.value = true
   
-  try {
-    // Find the selected definition from the options
-    const definition = definitionOptions.value.find(opt => opt.id === selectedDefinitionId.value)
-    
-    if (!definition) {
-      throw new Error('Definition not found')
+  // Scroll to editor
+  setTimeout(() => {
+    document.getElementById('editor-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, 100)
+}
+
+// Bulk delete functionality matching user request
+function confirmBulkDelete() {
+  confirm.require({
+    message: `Are you sure you want to delete the selected ${selectedDefinitions.value.length} items?`,
+    header: 'Confirm Bulk Deletion',
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: () => {
+      executeBulkDelete()
     }
-    
-    selectedDefinition.value = definition
-    initializeFormData(definition)
-    
-    // Reset edit mode when selecting a new definition
-    isEditMode.value = false
-    
-    logger.info('Definition details loaded', { 
-      entityType: entityType.value, 
-      definitionId: selectedDefinitionId.value,
-      definitionName: definition.name
-    })
-    
-  } catch (error) {
-    const apiError = parseApiError(error)
-    logger.error('Failed to load definition details', { 
-      entityType: entityType.value, 
-      definitionId: selectedDefinitionId.value, 
-      error: apiError 
-    })
-    toast.add({
-      severity: 'error',
-      summary: 'Load Error',
-      detail: `Failed to load definition details: ${apiError.message}`,
-      life: 5000
-    })
-  } finally {
-    isLoadingDetails.value = false
+  })
+}
+
+async function executeBulkDelete() {
+  const service = getService()
+  let deletedCount = 0
+  let errorCount = 0
+
+  // TODO: make a real bulk delete and swap it out
+  for (const def of selectedDefinitions.value) {
+    try {
+      const res = await service.deleteEntity(def.id)
+      if (res.success) deletedCount++
+      else errorCount++
+    } catch (e) {
+      errorCount++
+    }
   }
+
+  // Reload table
+  await loadDefinitions()
+  selectedDefinitions.value = [] // clear selection
+
+  if (errorCount === 0) {
+    toast.add({ severity: 'success', summary: 'Successful', detail: `${deletedCount} definitions deleted`, life: 3000 })
+  } else {
+    toast.add({ severity: 'warn', summary: 'Partial Success', detail: `${deletedCount} deleted, ${errorCount} failed`, life: 5000 })
+  }
+}
+
+function confirmDeleteDefinition(definition: any) {
+    confirm.require({
+        message: `Are you sure you want to delete ${definition.name}?`,
+        header: 'Confirm',
+        icon: 'pi pi-exclamation-triangle',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            try {
+                const service = getService()
+                const ds = await service.deleteEntity(definition.id)
+                if (ds.success) {
+                    toast.add({ severity: 'success', summary: 'Successful', detail: 'Definition Deleted', life: 3000 })
+                    // Clear selected if it was the one deleted
+                    if (selectedDefinition.value && selectedDefinition.value.id === definition.id) {
+                        selectedDefinition.value = null
+                    }
+                    await loadDefinitions()
+                } else {
+                    toast.add({ severity: 'error', summary: 'Error', detail: ds.message, life: 3000 })
+                }
+            } catch(e) {
+                toast.add({ severity: 'error', summary: 'Error', detail: parseApiError(e).message, life: 3000 })
+            }
+        }
+    })
 }
 
 function initializeFormData(definition: any) {
@@ -269,14 +410,14 @@ function initializeFormData(definition: any) {
   data[`${entityType.value}_image_url`] = definition.image_url || ''
   data[`${entityType.value}_price_impact_value`] = parseFloat(definition.price_impact_value || '0')
   
-  // Validation rules
+  // Validation rules (stored in metadata but often mapped specifically)
   if (definition.validation_rules) {
     Object.entries(definition.validation_rules).forEach(([key, value]) => {
       data[`${entityType.value}_validation_${key}`] = value
     })
   }
   
-  // Metadata
+  // Metadata Properties
   if (definition.metadata_) {
     Object.entries(definition.metadata_).forEach(([key, value]) => {
       data[`${entityType.value}_metadata_${key}`] = value
@@ -285,102 +426,64 @@ function initializeFormData(definition: any) {
   
   formData.value = data
   originalData.value = { ...data }
-  
-  logger.debug('Form data initialized', { 
-    entityType: entityType.value,
-    fieldCount: Object.keys(data).length 
-  })
 }
 
 function enableEditMode() {
   isEditMode.value = true
-  logger.info('Edit mode enabled', { 
-    entityType: entityType.value, 
-    definitionId: selectedDefinitionId.value 
-  })
 }
 
 function cancelEdit() {
   isEditMode.value = false
-  // Reset form data to original values
   formData.value = { ...originalData.value }
-  logger.info('Edit mode cancelled', { 
-    entityType: entityType.value, 
-    definitionId: selectedDefinitionId.value 
-  })
 }
 
 async function saveChanges() {
   if (!selectedDefinition.value) return
   
   isSaving.value = true
-  logger.info('Saving definition changes', { 
-    entityType: entityType.value, 
-    definitionId: selectedDefinition.value.id 
-  })
   
   try {
     const changes = extractEntityChanges()
-    
     if (!hasActualChanges(changes)) {
-      toast.add({
-        severity: 'info',
-        summary: 'No Changes',
-        detail: 'No changes detected to save',
-        life: 3000
-      })
+      toast.add({ severity: 'info', summary: 'No Changes', detail: 'No changes detected to save', life: 3000 })
       return
     }
     
     const updateData = prepareUpdatePayload(changes)
-    logger.debug('Prepared update data', { 
-      entityId: selectedDefinition.value.id, 
-      updateData 
-    })
-    
-    const profileService = getProfileService()
-    const response = await profileService.updateEntity(selectedDefinition.value.id, updateData)
+    const service = getService()
+    const response = await service.updateEntity(selectedDefinition.value.id, updateData)
     
     if (!response.success) {
       throw new Error(response.message || 'Update failed')
     }
     
-    // Update the definition in our local state
-    Object.assign(selectedDefinition.value, response.entity)
+    // Update local data
+    const idx = definitionOptions.value.findIndex(d => d.id === selectedDefinition.value.id)
+    if (idx !== -1) {
+      // Merge changes locally since backend only returns message/success
+      const updatedItem = { 
+        ...definitionOptions.value[idx],
+        ...changes
+      }
+      
+      if (changes.metadata_) {
+        updatedItem.metadata_ = { ...(definitionOptions.value[idx].metadata_ || {}), ...changes.metadata_ }
+      }
+      if (changes.validation_rules) {
+        updatedItem.validation_rules = { ...(definitionOptions.value[idx].validation_rules || {}), ...changes.validation_rules }
+      }
+      
+      // Replace object for reactivity
+      definitionOptions.value[idx] = updatedItem
+      selectedDefinition.value = updatedItem
+    }
+    
     originalData.value = { ...formData.value }
     isEditMode.value = false
     
-    // Update the definition in the options list
-    const optionIndex = definitionOptions.value.findIndex(opt => opt.id === selectedDefinition.value.id)
-    if (optionIndex !== -1) {
-      Object.assign(definitionOptions.value[optionIndex], response.entity)
-    }
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: `${getEntityDisplayName()} updated successfully`,
-      life: 3000
-    })
-    
-    logger.info('Definition saved successfully', { 
-      entityType: entityType.value, 
-      definitionId: selectedDefinition.value.id 
-    })
-    
+    toast.add({ severity: 'success', summary: 'Success', detail: `${getEntityDisplayName()} updated successfully`, life: 3000 })
   } catch (error) {
-    const apiError = parseApiError(error)
-    logger.error('Failed to save definition', { 
-      entityType: entityType.value, 
-      definitionId: selectedDefinition.value.id, 
-      error: apiError 
-    })
-    toast.add({
-      severity: 'error',
-      summary: 'Save Error',
-      detail: apiError.message,
-      life: 5000
-    })
+    toast.add({ severity: 'error', summary: 'Save Error', detail: parseApiError(error).message, life: 5000 })
   } finally {
     isSaving.value = false
   }
@@ -394,72 +497,51 @@ function extractEntityChanges(): any {
   const imageField = `${entityType.value}_image_url`
   const priceField = `${entityType.value}_price_impact_value`
   
-  if (formData.value[nameField] !== selectedDefinition.value.name) {
-    changes.name = formData.value[nameField]
-  }
-  
-  if (formData.value[descField] !== selectedDefinition.value.description) {
-    changes.description = formData.value[descField]
-  }
-  
-  if (formData.value[imageField] !== selectedDefinition.value.image_url) {
-    changes.image_url = formData.value[imageField]
-  }
+  if (formData.value[nameField] !== selectedDefinition.value.name) changes.name = formData.value[nameField]
+  if (formData.value[descField] !== selectedDefinition.value.description) changes.description = formData.value[descField]
+  if (formData.value[imageField] !== selectedDefinition.value.image_url) changes.image_url = formData.value[imageField]
   
   const currentPrice = formData.value[priceField]
   const originalPrice = parseFloat(selectedDefinition.value.price_impact_value || '0')
-  if (Math.abs(currentPrice - originalPrice) > 0.001) {
-    changes.price_impact_value = currentPrice
-  }
+  if (Math.abs(currentPrice - originalPrice) > 0.001) changes.price_impact_value = currentPrice
   
-  // Extract validation rule changes
   const validationRules: any = {}
   let hasValidationChanges = false
-  
   if (selectedDefinition.value.validation_rules) {
     Object.keys(selectedDefinition.value.validation_rules).forEach(key => {
       const fieldName = `${entityType.value}_validation_${key}`
-      const newValue = formData.value[fieldName]
-      const oldValue = selectedDefinition.value.validation_rules[key]
-      
-      if (newValue !== oldValue) {
-        validationRules[key] = newValue
+      if (formData.value[fieldName] !== selectedDefinition.value.validation_rules[key]) {
+        validationRules[key] = formData.value[fieldName]
         hasValidationChanges = true
       }
     })
   }
+  if (hasValidationChanges) changes.validation_rules = validationRules
   
-  if (hasValidationChanges) {
-    changes.validation_rules = validationRules
-  }
-  
-  // Extract metadata changes
   const metadata: any = {}
   let hasMetadataChanges = false
   
-  if (selectedDefinition.value.metadata_) {
-    Object.keys(selectedDefinition.value.metadata_).forEach(key => {
-      const fieldName = `${entityType.value}_metadata_${key}`
-      const newValue = formData.value[fieldName]
-      const oldValue = selectedDefinition.value.metadata_[key]
+  // Iterate over fields defined in schema to pick up all potential changes (including new ones)
+  if (selectedEntityDef.value?.fields) {
+    selectedEntityDef.value.fields.forEach(field => {
+      const fieldName = `${entityType.value}_metadata_${field.name}`
+      const currentVal = formData.value[fieldName]
+      const originalVal = selectedDefinition.value.metadata_ ? selectedDefinition.value.metadata_[field.name] : undefined
       
-      if (newValue !== oldValue) {
-        metadata[key] = newValue
+      if (currentVal !== originalVal) {
+        metadata[field.name] = currentVal
         hasMetadataChanges = true
       }
     })
   }
   
-  if (hasMetadataChanges) {
-    changes.metadata_ = metadata
-  }
+  if (hasMetadataChanges) changes.metadata_ = metadata
   
   return changes
 }
 
 function hasActualChanges(changes: any): boolean {
-  const changeKeys = Object.keys(changes).filter(key => key !== 'id')
-  return changeKeys.length > 0
+  return Object.keys(changes).filter(k => k !== 'id').length > 0
 }
 
 function prepareUpdatePayload(changes: any): any {
@@ -473,19 +555,8 @@ function prepareUpdatePayload(changes: any): any {
       ...changes.metadata_ && { ...changes.metadata_ }
     }
   }
-  
-  // Remove undefined fields
-  Object.keys(updateData).forEach(key => {
-    if (updateData[key] === undefined) {
-      delete updateData[key]
-    }
-  })
-  
-  // Only include metadata if it has content
-  if (Object.keys(updateData.metadata).length === 0) {
-    delete updateData.metadata
-  }
-  
+  Object.keys(updateData).forEach(k => { if (updateData[k] === undefined) delete updateData[k] })
+  if (Object.keys(updateData.metadata).length === 0) delete updateData.metadata
   return updateData
 }
 
@@ -494,38 +565,17 @@ function getPageTitle(): string {
 }
 
 function getEntityDisplayName(): string {
-  const displayNames: Record<string, string> = {
-    company: 'Company',
-    material: 'Material',
-    opening_system: 'Opening System',
-    system_series: 'System Series',
-    color: 'Color'
-  }
-  
+  const displayNames: Record<string, string> = { company: 'Company', material: 'Material', opening_system: 'Opening System', system_series: 'System Series', color: 'Color' }
   return displayNames[entityType.value] || entityType.value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
 function getEntityIcon(): string {
-  const icons: Record<string, string> = {
-    company: 'pi pi-building text-blue-600',
-    material: 'pi pi-box text-green-600',
-    opening_system: 'pi pi-cog text-orange-600',
-    system_series: 'pi pi-sitemap text-purple-600',
-    color: 'pi pi-palette text-pink-600'
-  }
-  
+  const icons: Record<string, string> = { company: 'pi pi-building text-blue-600', material: 'pi pi-box text-green-600', opening_system: 'pi pi-cog text-orange-600', system_series: 'pi pi-sitemap text-purple-600', color: 'pi pi-palette text-pink-600' }
   return icons[entityType.value] || 'pi pi-circle text-gray-600'
 }
 
 function getEntityHeaderClass(): string {
-  const classes: Record<string, string> = {
-    company: 'bg-blue-50',
-    material: 'bg-green-50',
-    opening_system: 'bg-orange-50',
-    system_series: 'bg-purple-50',
-    color: 'bg-pink-50'
-  }
-  
+  const classes: Record<string, string> = { company: 'bg-blue-50', material: 'bg-green-50', opening_system: 'bg-orange-50', system_series: 'bg-purple-50', color: 'bg-pink-50' }
   return classes[entityType.value] || 'bg-gray-50'
 }
 
@@ -533,73 +583,30 @@ function goBack() {
   router.go(-1)
 }
 
-// Watch for entity type changes
-watch(() => entityType.value, () => {
-  selectedDefinitionId.value = null
+watch(() => entityType.value, async () => {
+  selectedDefinitions.value = []
   selectedDefinition.value = null
   isEditMode.value = false
-  loadDefinitions()
+  if (Object.keys(schemas.value).length === 0) {
+    await loadSchemas()
+  }
+  await loadDefinitions()
 }, { immediate: true })
 
-// Lifecycle
 onMounted(() => {
   logger.info('Definition page mounted', { entityType: entityType.value })
 })
 </script>
 
 <style scoped>
-.header-container {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.header-content {
-  max-width: 72rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.header-flex {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.content-container {
-  max-width: 72rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.selector-card,
-.definition-form {
-  overflow: hidden;
-}
-
-.selector-header,
-.form-header {
-  padding: 1.5rem 2rem;
-}
-
-.selector-content,
-.form-content {
-  padding: 2rem;
-}
-
-.empty-state {
-  padding: 4rem 0;
-}
+.header-container { position: sticky; top: 0; z-index: 10; }
+.header-content { max-width: 100%; margin-left: auto; margin-right: auto; }
+.header-flex { display: flex; align-items: center; justify-content: space-between; }
+.header-left { display: flex; align-items: center; gap: 1rem; }
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.content-container { width: 100%; padding-left: 2rem; padding-right: 2rem; }
+.selector-card, .definition-form { overflow: hidden; }
+.selector-header, .form-header { padding: 1.5rem 2rem; }
+.selector-content { padding: 0; }
+.form-content { padding: 2rem; }
 </style>

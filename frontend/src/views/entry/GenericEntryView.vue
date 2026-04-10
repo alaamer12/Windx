@@ -109,9 +109,12 @@ const filteredTypes = computed(() => {
 
 // Auto-select if only one type matches this scope
 watch(filteredTypes, (types) => {
-  if (types.length === 1 && !selectedTypeId.value) {
-    selectedTypeId.value = types[0].id
-    onTypeChange()
+  if (types && types.length === 1 && !selectedTypeId.value) {
+    const defaultType = types[0]
+    if (defaultType) {
+      selectedTypeId.value = defaultType.id
+      onTypeChange()
+    }
   }
 }, { immediate: true })
 

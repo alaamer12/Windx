@@ -178,29 +178,39 @@
 
     <!-- Image / File Upload -->
     <div v-else-if="['picture-input', 'file', 'image', 'pic'].includes(field.ui_component)" class="flex flex-col gap-2">
-      <div v-if="modelValue" class="relative w-48 h-48 rounded-lg border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 group flex items-center justify-center">
-        <img 
-          :src="getImagePath(modelValue)" 
-          class="w-full h-full object-contain"
-          @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/200x200?text=Invalid+Image'" 
-        />
-        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-          <Button 
-            icon="pi pi-trash" 
-            severity="danger" 
-            rounded 
-            @click="emit('update:modelValue', null)" 
-            v-tooltip.bottom="'Remove Image'"
+      <div 
+        class="relative w-full aspect-video md:w-64 md:h-64 rounded-xl border-2 border-dashed border-slate-200 overflow-hidden bg-slate-50 transition-all hover:border-blue-400 hover:bg-blue-50 group flex flex-col items-center justify-center cursor-pointer"
+        @click="triggerUpload"
+      >
+        <div v-if="modelValue" class="w-full h-full relative">
+          <img 
+            :src="getImagePath(modelValue)" 
+            class="w-full h-full object-contain"
+            @error="(e) => (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=Invalid+Image'" 
           />
-          <a :href="getImagePath(modelValue)" target="_blank" class="p-button p-button-icon-only p-button-info p-button-rounded no-underline flex items-center justify-center">
-            <i class="pi pi-external-link"></i>
-          </a>
+          <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+             <Button 
+              icon="pi pi-pencil" 
+              severity="secondary" 
+              rounded 
+              class="bg-white/90 border-0"
+              @click.stop="triggerUpload" 
+            />
+            <Button 
+              icon="pi pi-trash" 
+              severity="danger" 
+              rounded 
+              @click.stop="emit('update:modelValue', null)" 
+            />
+          </div>
         </div>
-      </div>
-      
-      <div class="flex items-center gap-2">
+        <div v-else class="text-center p-6 flex flex-col items-center gap-2">
+          <i class="pi pi-cloud-upload text-4xl text-slate-300 group-hover:text-blue-400 transition-colors"></i>
+          <p class="text-sm font-medium text-slate-500 group-hover:text-blue-600 transition-colors">Click to upload or drag image</p>
+          <p class="text-xs text-slate-400">PNG, JPG, WebP (Max 5MB)</p>
+        </div>
         <FileUpload
-          v-show="!isUploading"
+          ref="fileUploader"
           mode="basic"
           name="file"
           accept="image/*"
@@ -208,15 +218,11 @@
           customUpload
           @uploader="handleFileUpload"
           :auto="true"
-          :chooseLabel="modelValue ? 'Change Image' : 'Upload Image'"
-          class="p-button-sm"
+          class="hidden"
           :disabled="disabled"
         />
-        <small v-if="modelValue" class="text-slate-400 text-xs truncate max-w-[150px]">
-          {{ modelValue }}
-        </small>
       </div>
-      <ProgressBar v-if="isUploading" mode="indeterminate" style="height: 6px" />
+      <ProgressBar v-if="isUploading" mode="indeterminate" style="height: 4px" class="w-64 rounded-full mt-2" />
     </div>
 
     <!-- Fallback -->
@@ -238,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -272,6 +278,15 @@ const placeholder = computed(() => {
   const meta = props.field.metadata_ || {}
   return meta.placeholder || meta.name_placeholder || (props.field.required ? `Enter ${props.field.label}` : 'Optional')
 })
+
+const fileUploader = ref<any>(null)
+
+function triggerUpload() {
+  if (props.disabled) return
+  // Trigger the hidden file upload's choose method or input click
+  const input = fileUploader.value?.$el?.querySelector('input[type="file"]')
+  if (input) input.click()
+}
 
 // Helper for Radio keys
 function getErrorKey(option: any) {

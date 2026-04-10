@@ -148,9 +148,14 @@
                       </template>
                       
                       <!-- Handle single ID -->
-                      <span v-else class="font-medium text-slate-700">
-                        {{ getEntityName(node.entityType, data[`${node.entityType}_id`]) }}
-                      </span>
+                      <span 
+                         v-else 
+                         class="font-medium"
+                         :class="isEntityUnknown(node.entityType, data[`${node.entityType}_id`]) ? 'text-red-500 italic' : 'text-slate-700'"
+                       >
+                         {{ getEntityName(node.entityType, data[`${node.entityType}_id`]) }}
+                         <i v-if="isEntityUnknown(node.entityType, data[`${node.entityType}_id`])" class="pi pi-exclamation-triangle ml-1" v-tooltip="'This entity no longer exists or is invalid'"></i>
+                       </span>
                     </div>
                   </template>
                 </Column>
@@ -680,6 +685,18 @@ function getEntityName(type: string, id: number) {
   if (!list) return 'Unknown'
   const found = list.find((e: any) => e.id === id)
   return found ? found.name : 'Unknown'
+}
+
+function isEntityUnknown(type: string, id: any): boolean {
+  if (!id) return false
+  const list = entities.value[type]
+  if (!list) return true
+  
+  if (Array.isArray(id)) {
+    return id.some(singleId => !list.find((e: any) => e.id === singleId))
+  }
+  
+  return !list.find((e: any) => e.id === id)
 }
 
 // Form Actions

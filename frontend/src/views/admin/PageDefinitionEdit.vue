@@ -124,7 +124,7 @@
 
           <!-- Dynamic Entity Cards -->
           <div 
-            v-for="(entity, entityType) in entityData" 
+            v-for="(_, entityType) in definitions" 
             :key="entityType"
             class="entity-card bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
           >
@@ -132,20 +132,51 @@
               class="entity-header px-8 py-6 border-b border-slate-200"
               :class="getEntityHeaderClass(String(entityType))"
             >
-              <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                <i :class="getEntityIcon(String(entityType))"></i>
-                {{ getEntityTitle(String(entityType)) }}
-              </h3>
+              <div class="flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                  <i :class="getEntityIcon(String(entityType))"></i>
+                  {{ getEntityTitle(String(entityType)) }}
+                </h3>
+                
+                <!-- ID Selector (Always visible to allow swapping) -->
+                <div class="w-64">
+                   <SmartSelect 
+                    v-model="pathMetadata[`${entityType}_id`]"
+                    :options="availableEntities[String(entityType)] || []"
+                    optionLabel="name"
+                    optionValue="id"
+                    :placeholder="`Select ${getEntityTitle(String(entityType))}`"
+                    class="w-full"
+                    @change="onEntityIdChange(String(entityType))"
+                  />
+                </div>
+              </div>
             </div>
+            
             <div class="entity-content p-8">
+              <!-- Warning if entity data is missing -->
+              <div v-if="!entityData[entityType]" class="bg-red-50 border border-red-100 rounded-lg p-6 mb-6">
+                <div class="flex items-center gap-3 text-red-700 font-semibold mb-2">
+                  <i class="pi pi-exclamation-triangle text-xl"></i>
+                  Missing {{ getEntityTitle(String(entityType)) }}
+                </div>
+                <p class="text-red-600 text-sm">
+                  The current reference for this {{ entityType }} is invalid or has been deleted. 
+                  Please select a new one from the dropdown above to fix this configuration.
+                </p>
+              </div>
+
               <!-- Render fields dynamically based on entity data -->
-              <div class="entity-fields space-y-6">
+              <div v-if="entityData[entityType]" class="entity-fields space-y-6">
                 <DynamicEntityFields 
-                  :entity="entity"
+                  :entity="entityData[entityType]"
                   :entity-type="String(entityType)"
                   :definition="definitions[String(entityType)]"
                   v-model="formData"
                 />
+              </div>
+              <div v-else class="text-center py-10 border-2 border-dashed border-slate-100 rounded-xl">
+                 <p class="text-slate-400 italic">No details available. Select an entity above to populate fields.</p>
               </div>
             </div>
           </div>
@@ -195,6 +226,7 @@ import { useDebugLogger } from '@/composables/useDebugLogger'
 // Components
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DynamicEntityFields from '@/components/common/DynamicEntityFields.vue'
+import SmartSelect from '@/components/common/SmartSelect.vue'
 import Button from 'primevue/button'
 import Skeleton from 'primevue/skeleton'
 
@@ -208,10 +240,13 @@ const isLoading = ref(true)
 const isSaving = ref(false)
 const loadError = ref<string | null>(null)
 const pathData = ref<any>(null)
+const pathMetadata = ref<Record<string, any>>({})
 const entityData = ref<any>({})
+const availableEntities = ref<Record<string, any[]>>({})
 const definitions = ref<any>({})
 const formData = ref<Record<string, any>>({})
 const originalData = ref<Record<string, any>>({})
+const originalPathMetadata = ref<Record<string, any>>({})
 
 // Helper function to get profile service (this view is profile-specific)
 const getProfileService = (): ProfileProductDefinitionService => {
@@ -220,7 +255,9 @@ const getProfileService = (): ProfileProductDefinitionService => {
 
 // Computed
 const hasChanges = computed(() => {
-  return JSON.stringify(formData.value) !== JSON.stringify(originalData.value)
+  const formChanged = JSON.stringify(formData.value) !== JSON.stringify(originalData.value)
+  const pathChanged = JSON.stringify(pathMetadata.value) !== JSON.stringify(originalPathMetadata.value)
+  return formChanged || pathChanged
 })
 
 // Methods
@@ -248,6 +285,20 @@ async function loadData() {
     entityData.value = response.path.entities || {}
     definitions.value = response.path.definitions || {}
     
+    // Setup path metadata (the core IDs)
+    const metadata: Record<string, any> = {}
+    Object.keys(definitions.value).forEach(etype => {
+      metadata[`${etype}_id`] = response.path[`${etype}_id`]
+    })
+    pathMetadata.value = metadata
+    originalPathMetadata.value = { ...metadata }
+
+    // Load available entities for all types to support re-selection
+    loadAvailableEntities()
+    
+    // Initialize form data dynamically from entity data
+    initializeFormData()
+    
     logger.debug('Loaded path data', { 
       pathId, 
       entityCount: Object.keys(entityData.value).length,
@@ -255,7 +306,6 @@ async function loadData() {
       definitionCount: Object.keys(definitions.value).length
     })
     
-    // Initialize form data dynamically from entity data
     initializeFormData()
     
     logger.info('Path data loaded successfully', { pathId })
@@ -266,6 +316,35 @@ async function loadData() {
     logger.error('Failed to load path data', { pathId: route.params.pathId, error: apiError })
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadAvailableEntities() {
+  const profileService = getProfileService()
+  const types = Object.keys(definitions.value)
+  
+  for (const type of types) {
+    try {
+      const response = await profileService.getEntities(type)
+      if (response.success) {
+        availableEntities.value[type] = response.entities
+      }
+    } catch (e) {
+      logger.error(`Failed to load entities for ${type}`, e)
+    }
+  }
+}
+
+function onEntityIdChange(entityType: string) {
+  const newId = pathMetadata.value[`${entityType}_id`]
+  const entity = availableEntities.value[entityType]?.find(e => e.id === newId)
+  
+  if (entity) {
+    // Update entityData for this section locally so properties show up
+    entityData.value[entityType] = entity
+    // Re-initialize form data for this entity
+    initializeEntityFields(formData.value, entityType, entity)
+    toast.add({ severity: 'info', summary: 'Entity Selected', detail: `Switched to ${entity.name}`, life: 2000 })
   }
 }
 
@@ -461,7 +540,17 @@ async function saveChanges() {
   logger.info('Starting save operation')
   
   try {
-    // Prepare update data by extracting changes for each entity
+    // 1. Detect Path Metadata Changes (IDs)
+    const pathChanges: Record<string, any> = {}
+    let hasPathChanges = false
+    Object.keys(pathMetadata.value).forEach(key => {
+      if (pathMetadata.value[key] !== originalPathMetadata.value[key]) {
+        pathChanges[key] = pathMetadata.value[key]
+        hasPathChanges = true
+      }
+    })
+
+    // 2. Detect Entity Field Changes
     const updates: Array<{ entityId: number, entityType: string, changes: any }> = []
     
     Object.entries(entityData.value).forEach(([entityType, entity]: [string, any]) => {
@@ -491,13 +580,12 @@ async function saveChanges() {
     })
     
     logger.debug('Detected changes', { 
-      totalEntities: Object.keys(entityData.value).length,
+      pathChanges: hasPathChanges ? pathChanges : 'none',
       changedEntities: updates.length,
-      changes: updates.map(u => ({ entityId: u.entityId, entityType: u.entityType, changeKeys: Object.keys(u.changes).filter(k => k !== 'id') }))
     })
     
     // Only proceed if there are actual changes
-    if (updates.length === 0) {
+    if (updates.length === 0 && !hasPathChanges) {
       logger.info('No changes detected, skipping save')
       toast.add({
         severity: 'info',
@@ -508,29 +596,51 @@ async function saveChanges() {
       return
     }
     
-    logger.info(`Saving ${updates.length} changed entities`)
+    logger.info(`Saving changes (${updates.length} entities, path update: ${hasPathChanges})`)
     
-    // Send updates to backend for each changed entity
-    const savePromises = updates.map(async ({ entityId, entityType, changes }) => {
-      try {
-        const updateData = prepareUpdatePayload(changes)
-        
-        logger.debug(`Updating entity ${entityId} (${entityType})`, { updateData })
-        
-        const profileService = getProfileService()
-        const response = await profileService.updateEntity(entityId, updateData)
-        
-        if (!response.success) {
-          throw new Error(`Failed to update entity ${entityId}: ${response.message || 'Unknown error'}`)
+    // Prepare all save promises
+    const savePromises = []
+
+    // Add path update promise if needed
+    if (hasPathChanges) {
+      const pathPromise = (async () => {
+        try {
+          const profileService = getProfileService()
+          // Construct payload for path node update
+          // Path node uses the IDs in its metadata_ column
+          const updatePayload = {
+            metadata: { 
+              ...(pathData.value.metadata_ || {}),
+              ...pathChanges 
+            }
+          }
+          
+          logger.debug('Updating path node', { id: pathData.value.id, updatePayload })
+          const response = await profileService.updateEntity(pathData.value.id, updatePayload)
+          if (!response.success) throw new Error(response.message || 'Path update failed')
+          return { type: 'path', success: true }
+        } catch (e) {
+          logger.error('Failed to update path', e)
+          return { type: 'path', success: false, error: parseApiError(e).message }
         }
-        
-        logger.debug(`Successfully updated entity ${entityId}`, { response: response.entity })
-        return { entityId, entityType, success: true, response }
-      } catch (error) {
-        const errorMessage = parseApiError(error).message
-        logger.error(`Failed to update entity ${entityId} (${entityType})`, { error: errorMessage })
-        return { entityId, entityType, success: false, error: errorMessage }
-      }
+      })()
+      savePromises.push(pathPromise)
+    }
+
+    // Add entity update promises
+    updates.forEach(({ entityId, entityType, changes }) => {
+      const entityPromise = (async () => {
+        try {
+          const updateData = prepareUpdatePayload(changes)
+          const profileService = getProfileService()
+          const response = await profileService.updateEntity(entityId, updateData)
+          if (!response.success) throw new Error(response.message || 'Update failed')
+          return { type: 'entity', entityType, id: entityId, success: true }
+        } catch (e) {
+          return { type: 'entity', entityType, id: entityId, success: false, error: parseApiError(e).message }
+        }
+      })()
+      savePromises.push(entityPromise)
     })
     
     // Wait for all updates to complete
@@ -543,17 +653,20 @@ async function saveChanges() {
     logger.info('Save operation completed', {
       total: results.length,
       successful: successful.length,
-      failed: failed.length,
-      failedEntities: failed.map(f => ({ entityId: f.entityId, entityType: f.entityType, error: f.error }))
+      failed: failed.length
     })
     
     if (failed.length > 0) {
       // Some updates failed
-      const failedDetails = failed.map(f => `${f.entityType} (ID: ${f.entityId})`).join(', ')
+      const failedDetails = failed.map(f => {
+        if ('entityType' in f && 'id' in f) return `${f.entityType} (ID: ${f.id})`
+        return f.type === 'path' ? 'Path Configuration' : 'Unknown'
+      }).join(', ')
+      
       toast.add({
         severity: 'warn',
         summary: 'Partial Save',
-        detail: `${successful.length} entities updated successfully, ${failed.length} failed: ${failedDetails}`,
+        detail: `${successful.length} updates successful, ${failed.length} failed: ${failedDetails}`,
         life: 7000
       })
     } else {
@@ -561,13 +674,14 @@ async function saveChanges() {
       toast.add({
         severity: 'success',
         summary: 'Success',
-        detail: `Successfully updated ${successful.length} ${successful.length === 1 ? 'entity' : 'entities'}`,
+        detail: `Successfully saved all changes (${successful.length} updates)`,
         life: 3000
       })
       
       // Update original data to reflect saved state
       originalData.value = { ...formData.value }
-      logger.info('Original data updated to reflect saved state')
+      originalPathMetadata.value = { ...pathMetadata.value }
+      logger.info('Original data and path metadata updated to reflect saved state')
     }
     
   } catch (error) {

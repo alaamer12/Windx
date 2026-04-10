@@ -2,7 +2,7 @@
 # This file defines all accessory attributes for window hardware and components
 
 page_type: accessories
-manufacturing_type: Window Profile Entry
+manufacturing_type: Hardware & Accessories
 
 # Manufacturing type configuration (will use existing if found)
 manufacturing_type_config:

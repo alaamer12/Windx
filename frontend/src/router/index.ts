@@ -53,6 +53,20 @@ const routes: RouteRecordRaw[] = [
         props: { pageType: 'profile' }
     },
     {
+        path: '/admin/definitions/glazing',
+        name: 'GlazingDefinitions',
+        component: () => import('@/views/admin/GenericDefinitionView.vue'),
+        meta: { requiresAuth: true },
+        props: { pageType: 'glazing' }
+    },
+    {
+        path: '/admin/definitions/accessories',
+        name: 'AccessoriesDefinitions',
+        component: () => import('@/views/admin/GenericDefinitionView.vue'),
+        meta: { requiresAuth: true },
+        props: { pageType: 'accessories' }
+    },
+    {
         path: '/admin/definitions/:scope/edit/:pathId',
         name: 'PageDefinitionEdit',
         component: () => import('@/views/admin/PageDefinitionEdit.vue'),

@@ -16,6 +16,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
     const configurations = ref<Configuration[]>([])
     const currentConfiguration = ref<Configuration | null>(null)
     const pendingEdits = ref<Map<number, Record<string, any>>>(new Map())
+    const currentPageType = ref<string>('profile')
     const isLoading = ref(false)
     const error = ref<string | null>(null)
 
@@ -40,13 +41,14 @@ export const useConfigurationStore = defineStore('configuration', () => {
         }
     }
 
-    async function loadPreviews(manufacturingTypeId: number) {
+    async function loadPreviews(manufacturingTypeId: number, pageType: string = 'profile') {
         isLoading.value = true
         error.value = null
+        currentPageType.value = pageType
 
         try {
-            logger.info('Loading previews', { manufacturingTypeId })
-            const data = await configurationService.getPreviews(manufacturingTypeId)
+            logger.info('Loading previews', { manufacturingTypeId, pageType })
+            const data = await configurationService.getPreviews(manufacturingTypeId, pageType)
             configurations.value = data.rows || []
             logger.info('Previews loaded', { count: configurations.value.length })
             return data
@@ -65,8 +67,8 @@ export const useConfigurationStore = defineStore('configuration', () => {
         error.value = null
 
         try {
-            logger.info('Creating configuration', { data })
-            const result = await configurationService.create(data)
+            logger.info('Creating configuration', { data, pageType: currentPageType.value })
+            const result = await configurationService.create(data, currentPageType.value)
             configurations.value.push(result)
             logger.info('Configuration created', { id: result.id })
             return result
@@ -115,7 +117,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
             for (const [rowId, edits] of pendingEdits.value.entries()) {
                 for (const [field, value] of Object.entries(edits)) {
                     try {
-                        await configurationService.updateCell(rowId, field, value)
+                        await configurationService.updateCell(rowId, field, value, currentPageType.value)
                         successCount++
                         logger.debug('Cell saved', { rowId, field })
                     } catch (err: any) {
@@ -166,19 +168,19 @@ export const useConfigurationStore = defineStore('configuration', () => {
 
         try {
             logger.info('Bulk deleting configurations', { ids, count: ids.length })
-            const result = await configurationService.bulkDelete(ids)
-            
+            const result = await configurationService.bulkDelete(ids, currentPageType.value)
+
             // Remove deleted configurations from local state
             configurations.value = configurations.value.filter(c => !ids.includes(c.id))
-            
+
             // Clear pending edits for deleted configurations
             ids.forEach(id => pendingEdits.value.delete(id))
-            
-            logger.info('Bulk delete completed', { 
-                deleted: result.deleted_count, 
-                errors: result.error_count 
+
+            logger.info('Bulk delete completed', {
+                deleted: result.deleted_count,
+                errors: result.error_count
             })
-            
+
             return result
         } catch (err: any) {
             const msg = err.response?.data?.detail || err.message || 'Failed to bulk delete configurations'
@@ -199,6 +201,7 @@ export const useConfigurationStore = defineStore('configuration', () => {
         configurations,
         currentConfiguration,
         pendingEdits,
+        currentPageType,
         isLoading,
         error,
         hasPendingChanges,

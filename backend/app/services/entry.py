@@ -1270,11 +1270,14 @@ class EntryService(BaseService):
         self._header_cache[cache_key] = headers
         return headers
 
-    async def generate_header_mapping(self, manufacturing_type_id: int) -> dict[str, str]:
+    async def generate_header_mapping(
+        self, manufacturing_type_id: int, page_type: str = "profile"
+    ) -> dict[str, str]:
         """Generate dynamic header-to-field mapping from attribute nodes.
 
         Args:
             manufacturing_type_id: Manufacturing type ID
+            page_type: Page type (profile, accessories, glazing)
 
         Returns:
             dict[str, str]: Mapping from header names to field names
@@ -1288,6 +1291,7 @@ class EntryService(BaseService):
             select(AttributeNode)
             .where(
                 AttributeNode.manufacturing_type_id == manufacturing_type_id,
+                AttributeNode.page_type == page_type,
                 AttributeNode.node_type == "attribute",  # Only attributes generate mappings
             )
             .order_by(AttributeNode.sort_order, AttributeNode.name)
@@ -1307,27 +1311,31 @@ class EntryService(BaseService):
         self._mapping_cache[manufacturing_type_id] = mapping
         return mapping
 
-    async def get_reverse_header_mapping(self, manufacturing_type_id: int) -> dict[str, str]:
+    async def get_reverse_header_mapping(
+        self, manufacturing_type_id: int, page_type: str = "profile"
+    ) -> dict[str, str]:
         """Get reverse mapping from field names to headers.
 
         Args:
             manufacturing_type_id: Manufacturing type ID
+            page_type: Page type (profile, accessories, glazing)
 
         Returns:
             dict[str, str]: Mapping from field names to header names
         """
         # Check cache first
-        if manufacturing_type_id in self._reverse_mapping_cache:
-            return self._reverse_mapping_cache[manufacturing_type_id]
+        cache_key = f"{manufacturing_type_id}:{page_type}"
+        if cache_key in self._reverse_mapping_cache:
+            return self._reverse_mapping_cache[cache_key]
 
         # Generate forward mapping first
-        forward_mapping = await self.generate_header_mapping(manufacturing_type_id)
+        forward_mapping = await self.generate_header_mapping(manufacturing_type_id, page_type)
 
         # Create reverse mapping
         reverse_mapping = {v: k for k, v in forward_mapping.items()}
 
         # Cache the result
-        self._reverse_mapping_cache[manufacturing_type_id] = reverse_mapping
+        self._reverse_mapping_cache[cache_key] = reverse_mapping
         return reverse_mapping
 
     def clear_header_cache(self, manufacturing_type_id: int | None = None) -> None:
@@ -1347,12 +1355,15 @@ class EntryService(BaseService):
 
     @require(ConfigurationViewer)
     @require(AdminAccess)  # Admins can view any configuration
-    async def list_previews(self, manufacturing_type_id: int, user: User) -> PreviewTable:
+    async def list_previews(
+        self, manufacturing_type_id: int, user: User, page_type: str = "profile"
+    ) -> PreviewTable:
         """List all profile configuration previews for a manufacturing type.
 
         Args:
             manufacturing_type_id: Manufacturing type ID
             user: Current user
+            page_type: Page type (profile, accessories, glazing)
 
         Returns:
             PreviewTable: Table with all configurations
@@ -1382,12 +1393,13 @@ class EntryService(BaseService):
         result = await self.db.execute(stmt)
         configurations = result.scalars().all()
 
-        return await self.generate_preview_table(configurations, manufacturing_type_id)
+        return await self.generate_preview_table(configurations, manufacturing_type_id, page_type)
 
     async def generate_preview_table(
         self,
         data: Configuration | list[Configuration] | dict[str, Any],
         manufacturing_type_id: int | None = None,
+        page_type: str = "profile",
     ) -> PreviewTable:
         """Generate preview table from configuration data or form data.
 
@@ -1411,19 +1423,22 @@ class EntryService(BaseService):
                 raise ValueError("manufacturing_type_id is required for dynamic header generation")
 
         # Generate dynamic headers
-        headers = await self.generate_preview_headers(manufacturing_type_id)
+        headers = await self.generate_preview_headers(manufacturing_type_id, page_type)
         rows = []
 
         if isinstance(data, list):
             for item in data:
-                rows.append(await self._create_row(item, manufacturing_type_id))
+                rows.append(await self._create_row(item, manufacturing_type_id, page_type))
         else:
-            rows.append(await self._create_row(data, manufacturing_type_id))
+            rows.append(await self._create_row(data, manufacturing_type_id, page_type))
 
         return PreviewTable(headers=headers, rows=rows)
 
     async def _create_row(
-        self, data: Configuration | dict[str, Any], manufacturing_type_id: int
+        self,
+        data: Configuration | dict[str, Any],
+        manufacturing_type_id: int,
+        page_type: str = "profile",
     ) -> dict[str, Any]:
         """Create a single table row.
 
@@ -1437,8 +1452,8 @@ class EntryService(BaseService):
         row_data: dict[str, Any] = {}
 
         # Get dynamic mappings
-        header_mapping = await self.generate_header_mapping(manufacturing_type_id)
-        reverse_mapping = await self.get_reverse_header_mapping(manufacturing_type_id)
+        header_mapping = await self.generate_header_mapping(manufacturing_type_id, page_type)
+        reverse_mapping = await self.get_reverse_header_mapping(manufacturing_type_id, page_type)
 
         if isinstance(data, Configuration):
             row_data["id"] = data.id
@@ -1539,7 +1554,12 @@ class EntryService(BaseService):
 
     @require(AdminAccess)  # Allow admins to edit configurations
     async def update_preview_value(
-        self, configuration_id: int, field: str, value: Any, user: User
+        self,
+        configuration_id: int,
+        field: str,
+        value: Any,
+        user: User,
+        page_type: str = "profile",
     ) -> Configuration:
         """Update a specific field in a configuration from table preview.
 
@@ -1548,6 +1568,7 @@ class EntryService(BaseService):
             field: Header name or field path
             value: New value
             user: Current user
+            page_type: Page type (profile, accessories, glazing)
 
         Returns:
             Configuration: Updated configuration
@@ -1569,7 +1590,7 @@ class EntryService(BaseService):
             raise NotFoundException(f"Configuration {configuration_id} not found")
 
         # Get dynamic header mapping for this manufacturing type
-        header_mapping = await self.generate_header_mapping(config.manufacturing_type_id)
+        header_mapping = await self.generate_header_mapping(config.manufacturing_type_id, page_type)
 
         # Resolve field name from header if needed
         field_path = header_mapping.get(field, field)
@@ -1582,6 +1603,7 @@ class EntryService(BaseService):
             # Get attribute node by name (not ltree_path!)
             stmt = select(AttributeNode).where(
                 AttributeNode.manufacturing_type_id == config.manufacturing_type_id,
+                AttributeNode.page_type == page_type,
                 AttributeNode.name == field_path,  # Use name instead of ltree_path
             )
             res = await self.db.execute(stmt)

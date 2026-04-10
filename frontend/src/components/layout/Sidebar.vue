@@ -68,16 +68,52 @@ const menuItems = computed(() => [
     command: () => router.push('/dashboard')
   },
   {
-    label: 'Profile Entry',
+    label: 'Entry Pages',
     icon: 'pi pi-file-edit',
-    class: route.path === '/profile-entry' ? 'active-link' : '',
-    command: () => router.push('/profile-entry')
+    items: [
+      {
+        label: 'Profile Entry',
+        icon: 'pi pi-user',
+        class: route.path === '/profile-entry' ? 'active-link' : '',
+        command: () => router.push('/profile-entry')
+      },
+      {
+        label: 'Glazing Entry',
+        icon: 'pi pi-stop',
+        class: route.path === '/glazing-entry' ? 'active-link' : '',
+        command: () => router.push('/glazing-entry')
+      },
+      {
+        label: 'Hardware Entry',
+        icon: 'pi pi-cog',
+        class: route.path === '/hardware-entry' ? 'active-link' : '',
+        command: () => router.push('/hardware-entry')
+      }
+    ]
   },
   {
-    label: 'Product Definition',
+    label: 'Definitions',
     icon: 'pi pi-sitemap',
-    class: route.path.startsWith('/admin/definitions') ? 'active-link' : '',
-    command: () => router.push('/admin/definitions/profile')
+    items: [
+      {
+        label: 'Profile',
+        icon: 'pi pi-user',
+        class: route.path === '/admin/definitions/profile' ? 'active-link' : '',
+        command: () => router.push('/admin/definitions/profile')
+      },
+      {
+        label: 'Glazing',
+        icon: 'pi pi-stop',
+        class: route.path === '/admin/definitions/glazing' ? 'active-link' : '',
+        command: () => router.push('/admin/definitions/glazing')
+      },
+      {
+        label: 'Hardware',
+        icon: 'pi pi-cog',
+        class: route.path === '/admin/definitions/accessories' ? 'active-link' : '',
+        command: () => router.push('/admin/definitions/accessories')
+      }
+    ]
   }
 ])
 

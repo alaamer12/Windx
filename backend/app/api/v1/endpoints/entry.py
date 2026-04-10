@@ -89,6 +89,7 @@ async def get_profile_schema(
     manufacturing_type_id: PositiveInt,
     current_user: CurrentUser,
     db: DBSession,
+    page_type: str = "profile",
 ) -> ProfileSchema:
     """Get profile form schema for a manufacturing type.
 
@@ -112,7 +113,7 @@ async def get_profile_schema(
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    return await entry_service.get_profile_schema(manufacturing_type_id)
+    return await entry_service.get_profile_schema(manufacturing_type_id, page_type)
 
 
 @router.post(
@@ -137,6 +138,7 @@ async def save_profile_data(
     profile_data: ProfileEntryData,
     current_user: CurrentUser,
     db: DBSession,
+    page_type: str = "profile",
 ) -> Configuration:
     """Save profile configuration data.
 
@@ -171,7 +173,7 @@ async def save_profile_data(
 
     entry_service = EntryService(db)
     try:
-        return await entry_service.save_profile_configuration(profile_data, current_user)
+        return await entry_service.save_profile_configuration(profile_data, current_user, page_type)
     except ValidationException as e:
         import logging
 
@@ -330,6 +332,7 @@ async def evaluate_display_conditions(
     form_data: dict[str, Any],
     current_user: CurrentUser,
     db: DBSession,
+    page_type: str = "profile",
 ):
     """Evaluate display conditions for conditional field visibility.
 
@@ -341,24 +344,24 @@ async def evaluate_display_conditions(
         form_data (dict): Current form data
         current_user (User): Current authenticated user
         db (AsyncSession): Database session
+        page_type (str): Requested page type (profile, accessories, glazing)
 
     Returns:
         dict[str, bool]: Field visibility map
 
     Example:
-        POST /api/v1/entry/profile/evaluate-conditions
+        POST /api/v1/entry/profile/evaluate-conditions?page_type=glazing
         {
             "manufacturing_type_id": 1,
             "form_data": {
-                "type": "Frame",
-                "opening_system": "sliding"
+                "glass_layers": 2
             }
         }
     """
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    schema = await entry_service.get_profile_schema(manufacturing_type_id)
+    schema = await entry_service.get_profile_schema(manufacturing_type_id, page_type)
     return await entry_service.evaluate_display_conditions(form_data, schema)
 
 
@@ -399,7 +402,7 @@ async def get_profile_header_mapping(
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    return await entry_service.generate_header_mapping(manufacturing_type_id)
+    return await entry_service.generate_header_mapping(manufacturing_type_id, page_type)
 
 
 @router.get(
@@ -413,12 +416,13 @@ async def list_profile_previews(
     manufacturing_type_id: PositiveInt,
     current_user: CurrentUser,
     db: DBSession,
+    page_type: str = "profile",
 ) -> PreviewTable:
     """List all profile configuration previews."""
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
-    return await entry_service.list_previews(manufacturing_type_id, current_user)
+    return await entry_service.list_previews(manufacturing_type_id, current_user, page_type)
 
 
 
@@ -434,13 +438,14 @@ async def update_profile_cell(
     edit_request: InlineEditRequest,
     current_user: CurrentUser,
     db: DBSession,
+    page_type: str = "profile",
 ) -> Configuration:
     """Update a specific field in a configuration."""
     from app.services.entry import EntryService
 
     entry_service = EntryService(db)
     return await entry_service.update_preview_value(
-        configuration_id, edit_request.field, edit_request.value, current_user
+        configuration_id, edit_request.field, edit_request.value, current_user, page_type
     )
 
 
@@ -532,6 +537,7 @@ async def bulk_delete_profile_configurations(
     configuration_ids: list[PositiveInt],
     current_user: CurrentUser,
     db: DBSession,
+    page_type: str = "profile",
 ) -> dict[str, Any]:
     """Bulk delete multiple profile configurations.
 

@@ -2,7 +2,7 @@
 # This file defines all glazing attributes for glass specifications and performance
 
 page_type: glazing
-manufacturing_type: Window Profile Entry
+manufacturing_type: Glazing System
 
 # Manufacturing type configuration (will use existing if found)
 manufacturing_type_config:
@@ -666,7 +666,7 @@ attributes:
     depth: 2
     sort_order: 15
     ui_component: input
-    help_text: Maximum glass size in mm (format: width x height, e.g., '2500x3500')
+    help_text: "Maximum glass size in mm (format: width x height, e.g., '2500x3500')"
     validation_rules:
       max_length: 50
     metadata:
@@ -707,7 +707,7 @@ attributes:
     depth: 2
     sort_order: 16
     ui_component: input
-    help_text: Minimum glass size in mm (format: width x height, e.g., '300x300')
+    help_text: "Minimum glass size in mm (format: width x height, e.g., '300x300')"
     validation_rules:
       max_length: 50
     metadata:

@@ -25,8 +25,10 @@ export const configurationService = {
     return res.data
   },
 
-  async create(data: Record<string, any>) {
-    const res = await apiClient.post(`${BASE_ADMIN}/save`, data)
+  async create(data: Record<string, any>, pageType: string = 'profile') {
+    const res = await apiClient.post(`${BASE_ROUTE}admin/entry/profile/save`, data, {
+      params: { page_type: pageType }
+    })
     return res.data
   },
 
@@ -40,25 +42,30 @@ export const configurationService = {
     return res.data
   },
 
-  async bulkDelete(ids: number[]) {
+  async bulkDelete(ids: number[], pageType: string = 'profile') {
     const res = await apiClient.delete(
-      `${BASE_ADMIN}/configurations/bulk`,
-      { data: ids }
+      `${BASE_ROUTE}admin/entry/profile/configurations/bulk`,
+      {
+        data: ids,
+        params: { page_type: pageType }
+      }
     )
     return res.data
   },
 
-  async updateCell(id: number, field: string, value: any) {
+  async updateCell(id: number, field: string, value: any, pageType: string = 'profile') {
     const res = await apiClient.patch(
-      `${BASE_ADMIN}/preview/${id}/update-cell`,
-      { field, value }
+      `${BASE_ROUTE}admin/entry/profile/preview/${id}/update-cell`,
+      { field, value },
+      { params: { page_type: pageType } }
     )
     return res.data
   },
 
-  async getPreviews(manufacturingTypeId: number) {
+  async getPreviews(manufacturingTypeId: number, pageType: string = 'profile') {
     const res = await apiClient.get(
-      `${BASE_ADMIN}/previews/${manufacturingTypeId}`
+      `${BASE_ROUTE}admin/entry/profile/previews/${manufacturingTypeId}`,
+      { params: { page_type: pageType } }
     )
     return res.data
   },

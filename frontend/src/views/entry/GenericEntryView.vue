@@ -7,7 +7,7 @@
         <template #content>
           <SmartSelect
             v-model="selectedTypeId"
-            :options="manufacturingStore.activeTypes"
+            :options="filteredTypes"
             optionLabel="name"
             optionValue="id"
             placeholder="Select a type"
@@ -50,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import Card from 'primevue/card'
 import SmartSelect from '@/components/common/SmartSelect.vue'
@@ -93,6 +93,28 @@ onMounted(async () => {
   }
 })
 
+const filteredTypes = computed(() => {
+  const allTypes = manufacturingStore.activeTypes
+  if (props.pageType === 'glazing') {
+    return allTypes.filter(t => t.name.toLowerCase().includes('glazing'))
+  }
+  if (props.pageType === 'accessories') {
+    return allTypes.filter(t => t.name.toLowerCase().includes('hardware') || t.name.toLowerCase().includes('accessories'))
+  }
+  if (props.pageType === 'profile') {
+    return allTypes.filter(t => t.name.toLowerCase().includes('profile'))
+  }
+  return allTypes
+})
+
+// Auto-select if only one type matches this scope
+watch(filteredTypes, (types) => {
+  if (types.length === 1 && !selectedTypeId.value) {
+    selectedTypeId.value = types[0].id
+    onTypeChange()
+  }
+}, { immediate: true })
+
 async function onTypeChange() {
   if (!selectedTypeId.value) return
 
@@ -102,10 +124,11 @@ async function onTypeChange() {
   try {
     await Promise.all([
       manufacturingStore.loadAll(selectedTypeId.value, props.pageType),
-      configStore.loadPreviews(selectedTypeId.value)
+      configStore.loadPreviews(selectedTypeId.value, props.pageType)
     ])
     logger.info('Schema and previews loaded')
   } catch (error) {
+    logger.error('Failed to load data', error)
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load data', life: 5000 })
   }
 }
@@ -129,7 +152,7 @@ async function saveConfiguration(data: any) {
     
     // Reload previews
     if (selectedTypeId.value) {
-      await configStore.loadPreviews(selectedTypeId.value)
+      await configStore.loadPreviews(selectedTypeId.value, props.pageType)
     }
   } catch (error: any) {
     toast.add({ severity: 'error', summary: 'Error', detail: error.message, life: 5000 })
@@ -215,7 +238,7 @@ async function handleBulkDelete(configIds: number[], _count: number) {
       
       // Reload configurations to refresh the table
       if (selectedTypeId.value) {
-        await configStore.loadPreviews(selectedTypeId.value)
+        await configStore.loadPreviews(selectedTypeId.value, props.pageType)
       }
     } else {
       toast.add({ 

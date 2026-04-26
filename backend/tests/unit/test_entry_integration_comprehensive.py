@@ -61,17 +61,12 @@ def mock_complete_database_state(draw):
     manufacturing_type.base_weight = draw(st.decimals(min_value=10, max_value=100, places=2))
     manufacturing_type.is_active = True
 
-    # Mock attribute nodes
+    # Mock attribute nodes — load field names from YAML
+    from app.core.config_loader import RuntimeConfigLoader
+    config = RuntimeConfigLoader.load_page_config("profile")
+    field_names = [attr["name"] for attr in config.get("attributes", [])][:7]  # Use first 7 for mock
+    
     attribute_nodes = []
-    field_names = [
-        "name",
-        "type",
-        "material",
-        "opening_system",
-        "system_series",
-        "width",
-        "renovation",
-    ]
 
     for i, field_name in enumerate(field_names):
         node = MagicMock(spec=AttributeNode)

@@ -102,36 +102,12 @@ class TestEntryPageProperties:
     @given(
         st.dictionaries(
             st.sampled_from(
+                # Load field display names from YAML — single source of truth
                 [
-                    "Name",
-                    "Type",
-                    "Company",
-                    "Material",
-                    "Opening System",
-                    "System Series",
-                    "Code",
-                    "Length of beam",
-                    "Renovation",
-                    "Width",
-                    "Builtin Flyscreen Track",
-                    "Total Width",
-                    "Flyscreen Track Height",
-                    "Front Height",
-                    "Rear Height",
-                    "Glazing Height",
-                    "Renovation Height",
-                    "Glazing Undercut Height",
-                    "Pic",
-                    "Sash Overlap",
-                    "Flying Mullion Horizontal Clearance",
-                    "Flying Mullion Vertical Clearance",
-                    "Steel Material Thickness",
-                    "Weight per meter",
-                    "Reinforcement Steel",
-                    "Colours",
-                    "Price per meter",
-                    "Price per beam",
-                    "UPVC Profile Discount",
+                    attr.get("display_name") or attr["name"]
+                    for attr in __import__("app.core.config_loader", fromlist=["RuntimeConfigLoader"])
+                    .RuntimeConfigLoader.load_page_config("profile")
+                    .get("attributes", [])
                 ]
             ),
             st.one_of(

@@ -16,6 +16,31 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.services.entry import EntryService
+from app.core.config_loader import RuntimeConfigLoader
+
+
+def _load_profile_fields() -> list[str]:
+    """Load profile field names from YAML config."""
+    config = RuntimeConfigLoader.load_page_config("profile")
+    return [attr["name"] for attr in config.get("attributes", [])]
+
+
+def _load_profile_headers() -> list[str]:
+    """Load profile display names (headers) from YAML config."""
+    config = RuntimeConfigLoader.load_page_config("profile")
+    return [
+        attr.get("display_name") or attr["name"]
+        for attr in config.get("attributes", [])
+    ]
+
+
+def _load_header_field_mapping() -> dict[str, str]:
+    """Load header → field_name mapping from YAML config."""
+    config = RuntimeConfigLoader.load_page_config("profile")
+    return {
+        (attr.get("display_name") or attr["name"]): attr["name"]
+        for attr in config.get("attributes", [])
+    }
 
 
 class TestCSVStructurePreservation:
@@ -26,71 +51,10 @@ class TestCSVStructurePreservation:
         """Set up test fixtures."""
         self.entry_service = EntryService(db_session)
 
-        # Expected CSV headers from the profile table example (all 29 columns)
-        self.expected_headers = [
-            "Name",
-            "Type",
-            "Company",
-            "Material",
-            "opening system",
-            "system series",
-            "Code",
-            "Length of Beam\nm",
-            "Renovation\nonly for frame",
-            "width",
-            "builtin Flyscreen track only for sliding frame",
-            "Total width\nonly for frame with builtin flyscreen",
-            "flyscreen track height\nonly for frame with builtin flyscreen",
-            "front Height mm",
-            "Rear heightt",
-            "Glazing height",
-            "Renovation height mm\nonly for frame",
-            "Glazing undercut heigth\nonly for glazing bead",
-            "Pic",
-            "Sash overlap only for sashs",
-            "flying mullion horizontal clearance",
-            "flying mullion vertical clearance",
-            "Steel material thickness\nonly for reinforcement",
-            "Weight/m kg",
-            "Reinforcement steel",
-            "Colours",
-            "Price/m",
-            "Price per/beam",
-            "UPVC Profile Discount%",
-        ]
-
-        # Header to field mapping for validation
-        self.header_field_mapping = {
-            "Name": "name",
-            "Type": "type",
-            "Company": "company",
-            "Material": "material",
-            "opening system": "opening_system",
-            "system series": "system_series",
-            "Code": "code",
-            "Length of Beam\nm": "length_of_beam",
-            "Renovation\nonly for frame": "renovation",
-            "width": "width",
-            "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
-            "Total width\nonly for frame with builtin flyscreen": "total_width",
-            "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
-            "front Height mm": "front_height",
-            "Rear heightt": "rear_height",
-            "Glazing height": "glazing_height",
-            "Renovation height mm\nonly for frame": "renovation_height",
-            "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
-            "Pic": "pic",
-            "Sash overlap only for sashs": "sash_overlap",
-            "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
-            "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
-            "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
-            "Weight/m kg": "weight_per_meter",
-            "Reinforcement steel": "reinforcement_steel",
-            "Colours": "colours",
-            "Price/m": "price_per_meter",
-            "Price per/beam": "price_per_beam",
-            "UPVC Profile Discount%": "upvc_profile_discount",
-        }
+        # Load field lists from YAML — single source of truth
+        self.profile_fields = _load_profile_fields()
+        self.expected_headers = _load_profile_headers()
+        self.header_field_mapping = _load_header_field_mapping()
 
     @given(
         profile_data=st.fixed_dictionaries(

@@ -17,6 +17,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.services.entry import EntryService
+from app.core.config_loader import RuntimeConfigLoader
 
 
 class TestRealTimePreviewSynchronization:
@@ -27,38 +28,13 @@ class TestRealTimePreviewSynchronization:
         """Set up test fixtures."""
         self.entry_service = EntryService(db_session)
 
-        # Header to field mapping for validation
+        # Load header → field mapping from YAML — single source of truth
+        config = RuntimeConfigLoader.load_page_config("profile")
         self.header_field_mapping = {
-            "Name": "name",
-            "Type": "type",
-            "Company": "company",
-            "Material": "material",
-            "opening system": "opening_system",
-            "system series": "system_series",
-            "Code": "code",
-            "Length of Beam\nm": "length_of_beam",
-            "Renovation\nonly for frame": "renovation",
-            "width": "width",
-            "builtin Flyscreen track only for sliding frame": "builtin_flyscreen_track",
-            "Total width\nonly for frame with builtin flyscreen": "total_width",
-            "flyscreen track height\nonly for frame with builtin flyscreen": "flyscreen_track_height",
-            "front Height mm": "front_height",
-            "Rear heightt": "rear_height",
-            "Glazing height": "glazing_height",
-            "Renovation height mm\nonly for frame": "renovation_height",
-            "Glazing undercut heigth\nonly for glazing bead": "glazing_undercut_height",
-            "Pic": "pic",
-            "Sash overlap only for sashs": "sash_overlap",
-            "flying mullion horizontal clearance": "flying_mullion_horizontal_clearance",
-            "flying mullion vertical clearance": "flying_mullion_vertical_clearance",
-            "Steel material thickness\nonly for reinforcement": "steel_material_thickness",
-            "Weight/m kg": "weight_per_meter",
-            "Reinforcement steel": "reinforcement_steel",
-            "Colours": "colours",
-            "Price/m": "price_per_meter",
-            "Price per/beam": "price_per_beam",
-            "UPVC Profile Discount%": "upvc_profile_discount",
+            (attr.get("display_name") or attr["name"]): attr["name"]
+            for attr in config.get("attributes", [])
         }
+        self.profile_fields = [attr["name"] for attr in config.get("attributes", [])]
 
     @given(
         initial_data=st.fixed_dictionaries(

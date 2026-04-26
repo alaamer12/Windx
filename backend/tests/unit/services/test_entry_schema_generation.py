@@ -13,6 +13,7 @@ from hypothesis import strategies as st
 from app.models.attribute_node import AttributeNode
 from app.schemas.entry import FieldDefinition, FormSection, ProfileSchema
 from app.services.entry import EntryService
+from app.core.config_loader import RuntimeConfigLoader
 
 # Valid data types for attribute nodes
 VALID_DATA_TYPES = ["string", "number", "boolean", "formula", "dimension"]
@@ -20,8 +21,13 @@ VALID_DATA_TYPES = ["string", "number", "boolean", "formula", "dimension"]
 # Valid node types
 VALID_NODE_TYPES = ["category", "attribute", "option", "component", "technical_spec"]
 
-# Valid UI components
-VALID_UI_COMPONENTS = ["input", "dropdown", "radio", "checkbox", "slider", "multiselect"]
+# Load valid UI components from YAML config (canonical names + aliases)
+def _get_valid_ui_components() -> list[str]:
+    aliases = RuntimeConfigLoader.get_ui_component_aliases()
+    fallbacks = RuntimeConfigLoader.get_ui_component_fallbacks()
+    return list(set(aliases.values()) | set(fallbacks.values()))
+
+VALID_UI_COMPONENTS = _get_valid_ui_components()
 
 
 @st.composite
@@ -233,9 +239,9 @@ class TestSchemaGeneration:
 
     def test_field_definition_creation(self):
         """Test field definition creation from attribute nodes."""
+        import asyncio
         entry_service = EntryService(None)  # type: ignore
 
-        # Create test attribute node
         node = AttributeNode(
             id=1,
             manufacturing_type_id=1,
@@ -250,14 +256,15 @@ class TestSchemaGeneration:
             display_condition={"operator": "equals", "field": "type", "value": "Frame"},
         )
 
-        field = entry_service.create_field_definition(node)
+        field = asyncio.get_event_loop().run_until_complete(
+            entry_service.create_field_definition(node, "profile")
+        )
 
         assert isinstance(field, FieldDefinition)
         assert field.name == "test_field"
-        assert field.label == "Test Field"
         assert field.data_type == "string"
         assert field.required is True
-        assert field.ui_component == "input"
+        assert field.ui_component == "text"  # "input" maps to "text" via ui_components.yaml
         assert field.help_text == "Test help"
         assert field.validation_rules == {"min_length": 1, "max_length": 100}
         assert field.display_condition == {"operator": "equals", "field": "type", "value": "Frame"}

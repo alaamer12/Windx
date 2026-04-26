@@ -24,6 +24,13 @@ from app.models.manufacturing_type import ManufacturingType
 from app.models.user import User
 from app.schemas.entry import ProfileEntryData
 from app.services.entry import EntryService
+from app.core.config_loader import RuntimeConfigLoader
+
+
+def _get_all_profile_fields() -> list[str]:
+    """Load all profile field names from YAML."""
+    config = RuntimeConfigLoader.load_page_config("profile")
+    return [attr["name"] for attr in config.get("attributes", [])]
 
 
 @st.composite
@@ -42,37 +49,8 @@ def manufacturing_type_data(draw):
 @st.composite
 def attribute_node_data(draw, manufacturing_type_id):
     """Generate attribute node data for testing."""
-    field_names = [
-        "name",
-        "type",
-        "company",
-        "material",
-        "opening_system",
-        "system_series",
-        "code",
-        "length_of_beam",
-        "renovation",
-        "width",
-        "builtin_flyscreen_track",
-        "total_width",
-        "flyscreen_track_height",
-        "front_height",
-        "rear_height",
-        "glazing_height",
-        "renovation_height",
-        "glazing_undercut_height",
-        "pic",
-        "sash_overlap",
-        "flying_mullion_horizontal_clearance",
-        "flying_mullion_vertical_clearance",
-        "steel_material_thickness",
-        "weight_per_meter",
-        "reinforcement_steel",
-        "colours",
-        "price_per_meter",
-        "price_per_beam",
-        "upvc_profile_discount",
-    ]
+    # Load field names from YAML — no hardcoded list
+    field_names = _get_all_profile_fields()
 
     nodes = []
     for i, field_name in enumerate(field_names):
@@ -216,36 +194,7 @@ class TestEntryDataPersistence:
                 sort_order=i,
             )
             for i, field_name in enumerate(
-                [
-                    "type",
-                    "company",
-                    "material",
-                    "opening_system",
-                    "system_series",
-                    "code",
-                    "length_of_beam",
-                    "renovation",
-                    "width",
-                    "builtin_flyscreen_track",
-                    "total_width",
-                    "flyscreen_track_height",
-                    "front_height",
-                    "rear_height",
-                    "glazing_height",
-                    "renovation_height",
-                    "glazing_undercut_height",
-                    "pic",
-                    "sash_overlap",
-                    "flying_mullion_horizontal_clearance",
-                    "flying_mullion_vertical_clearance",
-                    "steel_material_thickness",
-                    "weight_per_meter",
-                    "reinforcement_steel",
-                    "colours",
-                    "price_per_meter",
-                    "price_per_beam",
-                    "upvc_profile_discount",
-                ]
+                [f for f in _get_all_profile_fields() if f != "name"]
             )
         ]
 
@@ -419,36 +368,7 @@ class TestEntryDataPersistence:
                 sort_order=i,
             )
             for i, field_name in enumerate(
-                [
-                    "type",
-                    "company",
-                    "material",
-                    "opening_system",
-                    "system_series",
-                    "code",
-                    "length_of_beam",
-                    "renovation",
-                    "width",
-                    "builtin_flyscreen_track",
-                    "total_width",
-                    "flyscreen_track_height",
-                    "front_height",
-                    "rear_height",
-                    "glazing_height",
-                    "renovation_height",
-                    "glazing_undercut_height",
-                    "pic",
-                    "sash_overlap",
-                    "flying_mullion_horizontal_clearance",
-                    "flying_mullion_vertical_clearance",
-                    "steel_material_thickness",
-                    "weight_per_meter",
-                    "reinforcement_steel",
-                    "colours",
-                    "price_per_meter",
-                    "price_per_beam",
-                    "upvc_profile_discount",
-                ]
+                [f for f in _get_all_profile_fields() if f != "name"]
             )
         ]
 

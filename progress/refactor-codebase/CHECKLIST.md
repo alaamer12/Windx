@@ -33,6 +33,143 @@
 > Estimated effort: 1 day | Risk: MEDIUM | Impact: 🔴 CRITICAL
 
 ### 2.1 — Create `backend/app/core/config_loader.py`
+- [x] Create `RuntimeConfigLoader` class
+- [x] Implement `load_page_config(page_type: str) -> dict` with file-mtime-based cache
+- [x] Implement `load_config(config_name: str) -> dict` for non-page configs
+- [x] Implement `get_attribute_config(page_type: str, field_name: str) -> dict | None`
+- [x] Implement `get_entity_types(scope: str) -> list[str]`
+- [x] Implement `get_page_types() -> list[str]` — scans `config/pages/*.yaml` directory
+- [x] Implement `clear_cache()` for hot-reload support
+- [x] Add file path resolution using `__file__`-relative paths
+- [x] Add graceful fallback if YAML file not found (log warning, return empty dict)
+
+### 2.2 — Create `backend/app/core/validation_engine.py`
+- [x] Create `DynamicValidationEngine` class
+- [x] Implement `validate_field(field_name, field_value, form_data, field_config) -> str | None`
+- [x] Support `required_when` rule type
+- [x] Support `tolerance_check` rule type
+- [x] Support `formula_check` rule type
+- [x] Support template variables in `error_message` strings
+- [x] Implement `validate_form(form_data, page_type) -> dict[str, str]`
+- [x] Add safe formula evaluator (whitelist only, no eval())
+
+### 2.3 — Extend `backend/config/pages/profile.yaml`
+- [x] Add `required_when` to `total_width` attribute validation_rules
+- [x] Add `required_when` to `flyscreen_track_height` attribute validation_rules
+- [x] Add `required_when` to `flying_mullion_horizontal_clearance` attribute validation_rules
+- [x] Add `required_when` to `flying_mullion_vertical_clearance` attribute validation_rules
+- [x] Add `tolerance_check` to `rear_height` attribute validation_rules (max_difference: 50, unit: mm)
+- [x] Add `formula_check` to `price_per_beam` attribute validation_rules
+- [x] Add `error_message` templates to all new validation rules
+
+### 2.4 — Update `backend/app/services/entry.py`
+- [x] Replace `validate_cross_field_rules()` body with `DynamicValidationEngine().validate_form()`
+- [x] Pass `page_type` through to `validate_cross_field_rules()`
+
+### 2.5 — Verification
+- [ ] Test: `builtin_flyscreen_track=true` without `total_width` → validation error
+- [ ] Test: `front_height=100, rear_height=200` → validation error (diff > 50mm)
+- [ ] Test: `price_per_meter=10, length_of_beam=6, price_per_beam=100` → error
+- [ ] Test: change tolerance in YAML from 50 to 30, verify validation changes without code deploy
+
+---
+
+## Phase 3 — Entity Types from YAML
+> Estimated effort: 4 hours | Risk: LOW | Impact: 🟠 HIGH
+
+### 3.1 — Update `backend/app/services/product_definition/profile.py`
+- [x] Replace hardcoded `valid_types` in `create_entity()` with `RuntimeConfigLoader.get_entity_types("profile")`
+- [x] Replace hardcoded `valid_types` in `_validate_entity_type()` with loader call
+- [x] Replace hardcoded `entity_types` in `get_dependent_options()` with loader call
+
+### 3.2 — Update `backend/app/services/product_definition/glazing.py`
+- [x] Replace `valid_types` in `_validate_entity_type()` with `RuntimeConfigLoader.get_entity_types("glazing")`
+- [x] Replace hardcoded lists in `get_scope_metadata()` with loader calls
+- [x] Remove `_scope_metadata_cache` early-return from `get_scope_metadata()`
+
+### 3.3 — Update `backend/config/product_definition/glazing.yaml`
+- [x] Add `glazing_types: [single, double, triple]` top-level key
+- [x] Add `entity_types: [glass_type, spacer, gas]` top-level key
+
+### 3.4 — Update `backend/config/product_definition/profile.yaml`
+- [x] Add `entity_types: [company, material, opening_system, system_series, color]` top-level key
+
+### 3.5 — Update `backend/app/schemas/product_definition/profile.py`
+- [x] Change `ProfileEntityCreate.entity_type` pattern to `@field_validator` using `RuntimeConfigLoader`
+- [x] Change `ProfileScopeResponse.entity_types` default_factory to load from config
+
+### 3.6 — Update `backend/app/schemas/product_definition/glazing.py`
+- [x] Change `GlazingComponentCreate.entity_type` from `Literal` to `str` + `@field_validator`
+- [x] Change `GlazingUnitCreate.glazing_type` from `Literal` to `str` + `@field_validator`
+- [x] Change `GlazingCalculationRequest.glazing_type` from `Literal` to `str` + `@field_validator`
+- [x] Change `GlazingScopeResponse.glazing_types` default_factory to config loader
+
+### 3.7 — Update `backend/app/services/product_definition/types.py`
+- [x] Change `GlazingComponentData.component_type` pattern to `@field_validator`
+- [x] Change `GlazingUnitData.glazing_type` pattern to `@field_validator`
+
+### 3.8 — Update `backend/app/core/manufacturing_type_resolver.py`
+- [x] Add `get_valid_page_types()` classmethod using `RuntimeConfigLoader.get_page_types()`
+- [x] Update `validate_page_type()` to use `get_valid_page_types()`
+- [x] Keep `VALID_PAGE_TYPES` class attribute for backward compat
+
+### 3.9 — Update `backend/app/services/product_definition/factory.py`
+- [x] Add `accessories` scope registration
+
+### 3.10 — Update `backend/app/api/v1/endpoints/product_definitions/glazing.py`
+- [x] Replace `Literal["single","double","triple"]` in `GlazingCalculationRequest` with `str` + `@field_validator`
+
+---
+
+## Phase 4 — UI Component Mappings + Relations Fields from YAML
+> Estimated effort: 3 hours | Risk: LOW | Impact: 🟠 HIGH
+
+### 4.1 — Create `backend/config/ui_components.yaml`
+- [x] Add `aliases` section
+- [x] Add `fallbacks_by_data_type` section
+- [x] Add `relations_fields` section per page type
+
+### 4.2 — Update `backend/app/services/entry.py` `create_field_definition()`
+- [x] Add `page_type` parameter
+- [x] Replace hardcoded alias block with `RuntimeConfigLoader.get_ui_component_aliases()`
+- [x] Replace hardcoded fallback block with `RuntimeConfigLoader.get_ui_component_fallbacks()`
+- [x] Replace hardcoded relations field list with `RuntimeConfigLoader.get_relations_fields(page_type)`
+- [x] Update `generate_form_schema()` to pass `page_type` to `create_field_definition()`
+- [x] Update `get_profile_schema()` to pass `page_type` to `generate_form_schema()`
+
+---
+
+## Phase 5 — Glazing Calculation Defaults from YAML
+> Estimated effort: 2 hours | Risk: LOW | Impact: 🟠 HIGH
+
+### 5.1 — Create `backend/config/glazing_defaults.yaml`
+- [x] Add `calculation_defaults` section with all 9 fallback values
+
+### 5.2 — Update `backend/app/services/product_definition/glazing.py`
+- [x] Load defaults dict at top of `_calculate_glazing_properties()`
+- [x] Replace all hardcoded fallback values with `d.get("key", fallback)`
+- [x] Replace `combined_u_value *= 0.9` with YAML factor
+- [x] Replace `combined_u_value = 5.8` default with YAML value
+
+---
+
+## Phase 6 — ProfileEntryData Schema Flexibility
+> Estimated effort: 4 hours | Risk: MEDIUM | Impact: 🟡 MEDIUM
+
+### 6.1 — Update `backend/app/schemas/entry.py` `ProfileEntryData`
+- [x] Add `model_config = ConfigDict(extra="allow")`
+- [x] Add `_load_upvc_default()` module-level helper
+- [x] Replace `default=20.0` with `default_factory=_load_upvc_default`
+
+### 6.2 — Update `backend/config/pages/profile.yaml`
+- [x] Add `default: 20.0` to `upvc_profile_discount` attribute metadata section
+
+---
+
+## Phase 2 — Runtime Config Loader + Cross-Field Validation in YAML
+> Estimated effort: 1 day | Risk: MEDIUM | Impact: 🔴 CRITICAL
+
+### 2.1 — Create `backend/app/core/config_loader.py`
 - [ ] Create `RuntimeConfigLoader` class
 - [ ] Implement `load_page_config(page_type: str) -> dict` with file-mtime-based cache
 - [ ] Implement `load_config(config_name: str) -> dict` for non-page configs (ui_components, glazing_defaults, etc.)
@@ -207,30 +344,39 @@
 ## Phase 7 — Tests Cleanup
 > Estimated effort: 4 hours | Risk: LOW | Impact: 🟢 LOW
 
-### 7.1 — `backend/tests/unit/services/test_entry_schema_generation.py`
-- [ ] Replace `VALID_UI_COMPONENTS = ["input","dropdown","radio","checkbox","slider","multiselect"]` with load from `ui_components.yaml`
+### 7.1 — `backend/tests/unit/services/test_entry.py`
+- [x] Deleted `TestEntryServiceBusinessRules` class (tested deleted `evaluate_business_rules()`)
+- [x] Deleted `test_get_field_display_value_with_business_rules` (tested old N/A logic)
+- [x] Fixed `TestConditionEvaluator` class structure after deletion
 
-### 7.2 — `backend/tests/unit/test_entry_validation.py`
-- [ ] Replace hardcoded `rear_height: 200.0` (testing > 50mm tolerance) with value loaded from YAML tolerance config
-- [ ] Add test: modify YAML tolerance, verify validation behavior changes
+### 7.2 — `backend/tests/unit/services/test_entry_schema_generation.py`
+- [x] Replace `VALID_UI_COMPONENTS` hardcoded list with values loaded from `ui_components.yaml`
+- [x] Fix `test_field_definition_creation` — `create_field_definition` is now async + takes `page_type`
 
-### 7.3 — `backend/tests/unit/test_entry_csv_structure.py`
-- [ ] Replace hardcoded expected field list with fields loaded from `profile.yaml` attributes
-- [ ] Replace hardcoded header mapping with dynamic mapping from YAML `display_name` fields
+### 7.3 — `backend/tests/unit/test_entry_validation.py`
+- [x] Remove `reinforcement_steel_missing_thickness` scenario (was a business rule, not YAML cross-field)
+- [x] Fix `height_difference_too_large` — load tolerance from YAML instead of hardcoding `200.0`
+- [x] Updated docstring to reflect YAML-driven validation
 
-### 7.4 — `backend/tests/unit/test_entry_preview_sync.py`
-- [ ] Replace hardcoded field list with YAML-loaded list
+### 7.4 — `backend/tests/unit/test_entry_csv_structure.py`
+- [x] Replace hardcoded 29-field header list with `_load_profile_headers()` from YAML
+- [x] Replace hardcoded header→field mapping with `_load_header_field_mapping()` from YAML
 
-### 7.5 — `backend/tests/unit/test_entry_error_recovery_properties.py`
-- [ ] Replace hardcoded `FieldDefinition` instances with ones built from YAML config
+### 7.5 — `backend/tests/unit/test_entry_preview_sync.py`
+- [x] Replace hardcoded header→field mapping with YAML-loaded mapping
 
-### 7.6 — `backend/tests/unit/services/test_entry_unit.py`
-- [ ] Replace hardcoded validation_rules values with values loaded from YAML
+### 7.6 — `backend/tests/unit/test_entry_null_handling_properties.py`
+- [x] Replace hardcoded optional field list with `_get_optional_profile_fields()` from YAML
 
-### 7.7 — Verification
-- [ ] All unit tests pass
-- [ ] All integration tests pass
-- [ ] Add new attribute to `profile.yaml`, verify tests still pass without code changes
+### 7.7 — `backend/tests/unit/test_entry_data_persistence.py`
+- [x] Replace hardcoded field list in `attribute_node_data()` with `_get_all_profile_fields()` from YAML
+- [x] Replace both hardcoded inline field lists with YAML-loaded list
+
+### 7.8 — Files verified as NOT needing changes
+- `test_entry_error_recovery_properties.py` — uses generic FieldDefinition mocks, not hardcoded profile fields
+- `test_entry_validation_properties.py` — tests generic validation logic, not hardcoded business rules
+- `test_entry_data_persistence_properties.py` — only references `upvc_profile_discount` as a float field, still valid
+- `test_entry_null_handling.py` — generates data using field names directly, compatible with `extra="allow"`
 
 ---
 

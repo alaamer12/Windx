@@ -18,12 +18,23 @@ from app.models.configuration import Configuration
 from app.models.configuration_selection import ConfigurationSelection
 from app.schemas.entry import PreviewTable, ProfileEntryData
 from app.services.entry import EntryService
+from app.core.config_loader import RuntimeConfigLoader
+
+
+def _get_optional_profile_fields() -> list[str]:
+    """Load optional profile field names from YAML — excludes required fields."""
+    config = RuntimeConfigLoader.load_page_config("profile")
+    required = {"manufacturing_type_id", "name", "type", "material", "opening_system", "system_series"}
+    return [
+        attr["name"]
+        for attr in config.get("attributes", [])
+        if attr["name"] not in required and not attr.get("required", False)
+    ]
 
 
 @st.composite
 def profile_data_with_nulls(draw):
     """Generate profile entry data with various null/empty combinations."""
-    # Always include required fields
     base_data = {
         "manufacturing_type_id": draw(st.integers(min_value=1, max_value=100)),
         "name": draw(st.text(min_size=1, max_size=50)),
@@ -33,32 +44,8 @@ def profile_data_with_nulls(draw):
         "system_series": draw(st.text(min_size=1, max_size=20)),
     }
 
-    # Add optional fields with various null/empty states
-    optional_fields = [
-        "company",
-        "code",
-        "length_of_beam",
-        "renovation",
-        "width",
-        "builtin_flyscreen_track",
-        "total_width",
-        "flyscreen_track_height",
-        "front_height",
-        "rear_height",
-        "glazing_height",
-        "renovation_height",
-        "glazing_undercut_height",
-        "pic",
-        "sash_overlap",
-        "flying_mullion_horizontal_clearance",
-        "flying_mullion_vertical_clearance",
-        "steel_material_thickness",
-        "weight_per_meter",
-        "reinforcement_steel",
-        "colours",
-        "price_per_meter",
-        "price_per_beam",
-    ]
+    # Load optional fields from YAML — no hardcoded list
+    optional_fields = _get_optional_profile_fields()
 
     for field in optional_fields:
         # Generate various null/empty states

@@ -340,7 +340,6 @@ class TestEntryValidation:
             [
                 "builtin_flyscreen_missing_dimensions",
                 "flying_mullion_missing_clearance",
-                "reinforcement_steel_missing_thickness",
                 "height_difference_too_large",
                 "price_inconsistency",
             ]
@@ -349,18 +348,22 @@ class TestEntryValidation:
     @settings(max_examples=50, deadline=None)
     async def test_property_cross_field_validation(self, cross_field_scenario: str):
         """
-        Property: For any cross-field validation rules, the system should detect
-        violations and provide appropriate error messages.
+        Property: For any cross-field validation rules defined in YAML, the system
+        should detect violations and provide appropriate error messages.
+
+        Rules are driven by validation_rules in config/pages/profile.yaml:
+        - required_when: field required based on another field's value
+        - tolerance_check: field value must be within tolerance of another field
+        - formula_check: field value must match a formula within tolerance
         """
-        # Arrange
+        from app.core.config_loader import RuntimeConfigLoader
+
         mock_db = AsyncMock()
         entry_service = EntryService(mock_db)
 
-        # Create minimal schema
         schema = ProfileSchema(manufacturing_type_id=1, sections=[], conditional_logic={})
         entry_service.get_profile_schema = AsyncMock(return_value=schema)
 
-        # Create profile data that violates cross-field rules
         base_data = {
             "manufacturing_type_id": 1,
             "name": "Test Configuration",
@@ -371,65 +374,38 @@ class TestEntryValidation:
         }
 
         if cross_field_scenario == "builtin_flyscreen_missing_dimensions":
-            base_data.update(
-                {
-                    "builtin_flyscreen_track": True,
-                    # Missing total_width and flyscreen_track_height
-                }
-            )
+            base_data.update({"builtin_flyscreen_track": True})
+            # Missing total_width and flyscreen_track_height — required_when rule in YAML
         elif cross_field_scenario == "flying_mullion_missing_clearance":
-            base_data.update(
-                {
-                    "type": "Flying mullion",
-                    # Missing clearance fields
-                }
-            )
-        elif cross_field_scenario == "reinforcement_steel_missing_thickness":
-            base_data.update(
-                {
-                    "reinforcement_steel": ["Standard"],
-                    # Missing steel_material_thickness
-                }
-            )
+            base_data.update({"type": "Flying mullion"})
+            # Missing clearance fields — required_when rule in YAML
         elif cross_field_scenario == "height_difference_too_large":
-            base_data.update(
-                {
-                    "front_height": 100.0,
-                    "rear_height": 200.0,  # Difference > 50mm
-                }
-            )
+            # Load tolerance from YAML so test stays in sync with config
+            attr = RuntimeConfigLoader.get_attribute_config("profile", "rear_height")
+            max_diff = attr["validation_rules"]["tolerance_check"]["max_difference"]
+            base_data.update({"front_height": 100.0, "rear_height": 100.0 + max_diff + 10})
         elif cross_field_scenario == "price_inconsistency":
-            base_data.update(
-                {
-                    "price_per_meter": 10.0,
-                    "length_of_beam": 2.0,
-                    "price_per_beam": 50.0,  # Should be ~20.0 (10 * 2)
-                }
-            )
+            base_data.update({
+                "price_per_meter": 10.0,
+                "length_of_beam": 2.0,
+                "price_per_beam": 50.0,  # Should be ~20.0 (10 * 2), >10% off
+            })
 
         profile_data = ProfileEntryData(**base_data)
 
-        # Act & Assert - Should fail cross-field validation
         with pytest.raises(ValidationException) as exc_info:
             await entry_service.validate_profile_data(profile_data)
 
-        # Verify appropriate cross-field errors are present
         field_errors = exc_info.value.field_errors
         assert len(field_errors) > 0
 
-        # Check for expected error fields based on scenario
         if cross_field_scenario == "builtin_flyscreen_missing_dimensions":
             assert any(field in field_errors for field in ["total_width", "flyscreen_track_height"])
         elif cross_field_scenario == "flying_mullion_missing_clearance":
             assert any(
                 field in field_errors
-                for field in [
-                    "flying_mullion_horizontal_clearance",
-                    "flying_mullion_vertical_clearance",
-                ]
+                for field in ["flying_mullion_horizontal_clearance", "flying_mullion_vertical_clearance"]
             )
-        elif cross_field_scenario == "reinforcement_steel_missing_thickness":
-            assert "steel_material_thickness" in field_errors
         elif cross_field_scenario == "height_difference_too_large":
             assert "rear_height" in field_errors
         elif cross_field_scenario == "price_inconsistency":

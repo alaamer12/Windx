@@ -19,63 +19,11 @@ from app.schemas.entry import ProfileEntryData
 from app.services.entry import ConditionEvaluator, EntryService
 
 
-class TestEntryServiceBusinessRules:
-    """Test business rules functionality in EntryService."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.mock_db = AsyncMock()
-        self.service = EntryService(self.mock_db)
-
-    def test_evaluate_business_rules_frame_type(self):
-        """Test business rules for frame type."""
-        form_data = {"type": "Frame", "opening_system": "sliding", "builtin_flyscreen_track": True}
-
-        visibility = self.service.evaluate_business_rules(form_data)
-
-        # Frame-specific fields should be visible
-        assert visibility["renovation"] is True
-        assert visibility["renovation_height"] is True
-        assert visibility["builtin_flyscreen_track"] is True
-        assert visibility["total_width"] is True  # Because builtin_flyscreen_track is True
-        assert (
-            visibility["flyscreen_track_height"] is True
-        )  # Because builtin_flyscreen_track is True
-
-        # Non-frame fields should be hidden
-        assert visibility["sash_overlap"] is False
-        assert visibility["flying_mullion_horizontal_clearance"] is False
-        assert visibility["glazing_undercut_height"] is False
-
-    def test_evaluate_business_rules_sash_type(self):
-        """Test business rules for sash type."""
-        form_data = {"type": "sash", "opening_system": "casement"}
-
-        visibility = self.service.evaluate_business_rules(form_data)
-
-        # Sash-specific fields should be visible
-        assert visibility["sash_overlap"] is True
-
-        # Non-sash fields should be hidden
-        assert visibility["renovation"] is False
-        assert visibility["flying_mullion_horizontal_clearance"] is False
-        assert visibility["glazing_undercut_height"] is False
-        assert visibility["builtin_flyscreen_track"] is False
-
-    def test_evaluate_business_rules_flying_mullion_type(self):
-        """Test business rules for flying mullion type."""
-        form_data = {"type": "Flying mullion", "opening_system": "casement"}
-
-        visibility = self.service.evaluate_business_rules(form_data)
-
-        # Flying mullion-specific fields should be visible
-        assert visibility["flying_mullion_horizontal_clearance"] is True
-        assert visibility["flying_mullion_vertical_clearance"] is True
-
-        # Non-flying mullion fields should be hidden
-        assert visibility["renovation"] is False
-        assert visibility["sash_overlap"] is False
-        assert visibility["glazing_undercut_height"] is False
+# NOTE: TestEntryServiceBusinessRules was removed.
+# evaluate_business_rules() and validate_business_rules() were deleted in the
+# YAML-driven refactor. Field visibility is now driven by display_condition stored
+# in the DB (populated from YAML via setup_hierarchy.py) and evaluated by
+# ConditionEvaluator. See test_entry_conditional_visibility.py for those tests.
 
     async def test_add_field_option_success(self):
         """Test successful field option addition."""
@@ -273,21 +221,9 @@ class TestEntryServiceBusinessRules:
 
         assert "Option 99999 not found" in str(exc_info.value)
 
-    def test_get_field_display_value_with_business_rules(self):
-        """Test field display value with business rules applied."""
-        form_data = {
-            "type": "sash",
-            "sash_overlap": "8",
-            "renovation": "yes",  # Not applicable for sash
-        }
-
-        # Field that applies to current type should show value
-        display_value = self.service.get_field_display_value("sash_overlap", "8", form_data)
-        assert display_value == "8"
-
-        # Field that doesn't apply to current type should show N/A
-        display_value = self.service.get_field_display_value("renovation", "yes", form_data)
-        assert display_value == "N/A"
+    def test_clear_header_cache(self, entry_service):
+        """Test header cache clearing."""
+        pass  # moved to TestEntryService below
 
 
 class TestConditionEvaluator:

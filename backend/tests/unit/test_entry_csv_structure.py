@@ -19,6 +19,33 @@ from app.services.entry import EntryService
 from app.core.config_loader import RuntimeConfigLoader
 
 
+def _build_optional_field_strategy(attr: dict) -> st.SearchStrategy:
+    """Build a Hypothesis strategy for a profile field based on its YAML data_type."""
+    data_type = attr.get("data_type", "string")
+    ui_component = attr.get("ui_component", "input")
+    rules = attr.get("validation_rules") or {}
+
+    if data_type == "boolean":
+        return st.one_of(st.none(), st.booleans())
+    elif data_type == "number":
+        min_v = float(rules.get("min", 0.0))
+        max_v = float(rules.get("max", 10000.0))
+        return st.one_of(st.none(), st.floats(min_value=min_v, max_value=max_v))
+    elif ui_component in ("currency", "percentage"):
+        min_v = float(rules.get("min", 0))
+        max_v = float(rules.get("max", 10000))
+        return st.one_of(st.none(), st.decimals(min_value=min_v, max_value=max_v, places=2))
+    elif ui_component in ("multi-select", "multiselect"):
+        return st.one_of(
+            st.none(),
+            st.just([]),
+            st.lists(st.text(min_size=1, max_size=20), min_size=1, max_size=3),
+        )
+    else:
+        max_len = int(rules.get("max_length", 100))
+        return st.one_of(st.none(), st.just(""), st.text(min_size=1, max_size=max_len))
+
+
 def _load_profile_fields() -> list[str]:
     """Load profile field names from YAML config."""
     config = RuntimeConfigLoader.load_page_config("profile")
@@ -43,7 +70,29 @@ def _load_header_field_mapping() -> dict[str, str]:
     }
 
 
-class TestCSVStructurePreservation:
+def _build_profile_data_strategy() -> st.SearchStrategy:
+    """Build a Hypothesis strategy for full profile data from YAML config."""
+    from decimal import Decimal as _Decimal
+    config = RuntimeConfigLoader.load_page_config("profile")
+    required_names = {"manufacturing_type_id", "name", "type", "material", "opening_system", "system_series"}
+
+    fixed = {
+        "manufacturing_type_id": st.integers(min_value=1, max_value=100),
+        "name": st.text(min_size=1, max_size=100),
+        "type": st.sampled_from(["Frame", "sash", "Mullion", "Flying mullion", "glazing bead"]),
+        "company": st.one_of(st.none(), st.text(min_size=1, max_size=50)),
+        "material": st.sampled_from(["UPVC", "Aluminum", "Wood"]),
+        "opening_system": st.sampled_from(["Casement", "Sliding", "Fixed"]),
+        "system_series": st.sampled_from(["Kom700", "Kom800"]),
+    }
+
+    for attr in config.get("attributes", []):
+        name = attr.get("name")
+        if not name or name in required_names or name == "company":
+            continue
+        fixed[name] = _build_optional_field_strategy(attr)
+
+    return st.fixed_dictionaries(fixed)
     """Property-based tests for CSV structure preservation."""
 
     @pytest.fixture(autouse=True)
@@ -57,72 +106,7 @@ class TestCSVStructurePreservation:
         self.header_field_mapping = _load_header_field_mapping()
 
     @given(
-        profile_data=st.fixed_dictionaries(
-            {
-                "manufacturing_type_id": st.integers(min_value=1, max_value=100),
-                "name": st.text(min_size=1, max_size=100),
-                "type": st.sampled_from(
-                    [
-                        "Frame",
-                        "sash",
-                        "Mullion",
-                        "Flying mullion",
-                        "glazing bead",
-                        "Interlock",
-                        "Track",
-                        "auxilary",
-                    ]
-                ),
-                "company": st.one_of(st.none(), st.text(min_size=1, max_size=50)),
-                "material": st.sampled_from(["UPVC", "Aluminum", "Wood"]),
-                "opening_system": st.sampled_from(["Casement", "Sliding", "Fixed", "Tilt & Turn"]),
-                "system_series": st.sampled_from(["Kom700", "Kom701", "Kom800", "All"]),
-                "code": st.one_of(st.none(), st.text(min_size=1, max_size=20)),
-                "length_of_beam": st.one_of(st.none(), st.floats(min_value=0.1, max_value=10.0)),
-                "renovation": st.one_of(st.none(), st.booleans()),
-                "width": st.one_of(st.none(), st.floats(min_value=100, max_value=3000)),
-                "builtin_flyscreen_track": st.one_of(st.none(), st.booleans()),
-                "total_width": st.one_of(st.none(), st.floats(min_value=100, max_value=3000)),
-                "flyscreen_track_height": st.one_of(
-                    st.none(), st.floats(min_value=10, max_value=100)
-                ),
-                "front_height": st.one_of(st.none(), st.floats(min_value=100, max_value=3000)),
-                "rear_height": st.one_of(st.none(), st.floats(min_value=100, max_value=3000)),
-                "glazing_height": st.one_of(st.none(), st.floats(min_value=100, max_value=3000)),
-                "renovation_height": st.one_of(st.none(), st.floats(min_value=100, max_value=3000)),
-                "glazing_undercut_height": st.one_of(
-                    st.none(), st.floats(min_value=1, max_value=50)
-                ),
-                "pic": st.one_of(st.none(), st.text(min_size=1, max_size=100)),
-                "sash_overlap": st.one_of(st.none(), st.floats(min_value=1, max_value=50)),
-                "flying_mullion_horizontal_clearance": st.one_of(
-                    st.none(), st.floats(min_value=1, max_value=100)
-                ),
-                "flying_mullion_vertical_clearance": st.one_of(
-                    st.none(), st.floats(min_value=1, max_value=100)
-                ),
-                "steel_material_thickness": st.one_of(
-                    st.none(), st.floats(min_value=0.5, max_value=10.0)
-                ),
-                "weight_per_meter": st.one_of(st.none(), st.floats(min_value=0.1, max_value=50.0)),
-                "reinforcement_steel": st.one_of(
-                    st.none(), st.lists(st.text(min_size=1, max_size=20), min_size=0, max_size=5)
-                ),
-                "colours": st.one_of(
-                    st.none(), st.lists(st.text(min_size=1, max_size=20), min_size=0, max_size=5)
-                ),
-                "price_per_meter": st.one_of(
-                    st.none(), st.decimals(min_value=Decimal("0.01"), max_value=Decimal("1000.00"))
-                ),
-                "price_per_beam": st.one_of(
-                    st.none(), st.decimals(min_value=Decimal("0.01"), max_value=Decimal("10000.00"))
-                ),
-                "upvc_profile_discount": st.one_of(
-                    st.none(), st.floats(min_value=0.0, max_value=100.0)
-                ),
-            }
-        )
-    )
+    @given(profile_data=_build_profile_data_strategy())
     def test_preview_table_has_exact_csv_structure(self, profile_data):
         """**Feature: entry-page-system, Property 4: CSV structure preservation**
 
@@ -131,20 +115,19 @@ class TestCSVStructurePreservation:
         """
         preview_table = self.entry_service.generate_preview_table(profile_data)
 
-        # Test header count
-        assert len(preview_table.headers) == 29, (
-            f"Preview table should have exactly 29 headers, got {len(preview_table.headers)}"
+        # Test header count — loaded from YAML, not hardcoded
+        expected_count = len(_load_profile_fields())
+        assert len(preview_table.headers) == expected_count, (
+            f"Preview table should have {expected_count} headers, got {len(preview_table.headers)}"
         )
 
-        # Test header content matches expected CSV headers
+        # Test header content matches YAML-driven expected headers
         assert preview_table.headers == self.expected_headers, (
-            "Preview table headers should match exact CSV structure"
+            "Preview table headers should match YAML display_name fields"
         )
 
-        # Test that table has exactly one row (current configuration)
         assert len(preview_table.rows) == 1, "Preview table should have exactly one row"
 
-        # Test that row has data for all headers
         row = preview_table.rows[0]
         for header in self.expected_headers:
             assert header in row, f"Row should contain data for header: {header}"
@@ -235,8 +218,8 @@ class TestCSVStructurePreservation:
         preview_table = self.entry_service.generate_preview_table(form_data)
 
         # Test that table structure is maintained
-        assert len(preview_table.headers) == 29, (
-            "Table should maintain 29 columns even with null values"
+        assert len(preview_table.headers) == len(_load_profile_fields()), (
+            "Table should maintain all columns even with null values"
         )
         assert len(preview_table.rows) == 1, "Table should have exactly one row"
 

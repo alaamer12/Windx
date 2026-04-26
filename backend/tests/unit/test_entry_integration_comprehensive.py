@@ -233,7 +233,9 @@ class TestEntryIntegrationComprehensive:
                 # Verify preview generation
                 assert preview_data.configuration_id == 123
                 assert preview_data.table is not None
-                assert len(preview_data.table.headers) == 29  # All CSV columns
+                from app.core.config_loader import RuntimeConfigLoader
+                _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+                assert len(preview_data.table.headers) == _expected_count  # All CSV columns
                 assert len(preview_data.table.rows) == 1
 
                 # Verify preview data format
@@ -451,7 +453,9 @@ class TestEntryIntegrationComprehensive:
         assert len(visibility) == num_conditions
 
         assert isinstance(preview_table.headers, list)
-        assert len(preview_table.headers) == 29
+        from app.core.config_loader import RuntimeConfigLoader
+        _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+        assert len(preview_table.headers) == _expected_count
         assert len(preview_table.rows) == 1
 
     @given(

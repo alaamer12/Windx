@@ -22,12 +22,53 @@ from app.models.manufacturing_type import ManufacturingType
 from app.models.user import User
 from app.schemas.entry import ProfileEntryData
 from app.services.entry import EntryService
+from app.core.config_loader import RuntimeConfigLoader
+
+
+def _build_optional_field_strategy(attr: dict) -> st.SearchStrategy:
+    """Build a Hypothesis strategy for an optional profile field based on its YAML data_type."""
+    data_type = attr.get("data_type", "string")
+    ui_component = attr.get("ui_component", "input")
+
+    if data_type == "boolean":
+        return st.one_of(st.none(), st.booleans())
+    elif data_type == "number":
+        rules = attr.get("validation_rules") or {}
+        min_v = float(rules.get("min", 0.0))
+        max_v = float(rules.get("max", 10000.0))
+        return st.one_of(st.none(), st.floats(min_value=min_v, max_value=max_v))
+    elif ui_component in ("currency", "percentage"):
+        rules = attr.get("validation_rules") or {}
+        min_v = float(rules.get("min", 0))
+        max_v = float(rules.get("max", 10000))
+        return st.one_of(st.none(), st.decimals(min_value=min_v, max_value=max_v, places=2))
+    elif ui_component in ("multi-select", "multiselect"):
+        return st.one_of(
+            st.none(),
+            st.just([]),
+            st.lists(st.text(min_size=1, max_size=20), min_size=1, max_size=3),
+        )
+    else:
+        rules = attr.get("validation_rules") or {}
+        max_len = int(rules.get("max_length", 100))
+        return st.one_of(st.none(), st.just(""), st.text(min_size=1, max_size=max_len))
+
+
+def _get_optional_field_strategies() -> dict:
+    """Build strategy dict for all optional profile fields from YAML."""
+    config = RuntimeConfigLoader.load_page_config("profile")
+    required_names = {"manufacturing_type_id", "name", "type", "material", "opening_system", "system_series"}
+    strategies = {}
+    for attr in config.get("attributes", []):
+        name = attr.get("name")
+        if name and name not in required_names and not attr.get("required", False):
+            strategies[name] = _build_optional_field_strategy(attr)
+    return strategies
 
 
 @st.composite
 def profile_data_with_nulls(draw, manufacturing_type_id):
-    """Generate profile data with various null/empty combinations."""
-    # Base required fields
+    """Generate profile data with various null/empty combinations — driven by YAML."""
     base_data = {
         "manufacturing_type_id": manufacturing_type_id,
         "name": draw(st.text(min_size=1, max_size=100)),
@@ -37,65 +78,11 @@ def profile_data_with_nulls(draw, manufacturing_type_id):
         "system_series": draw(st.sampled_from(["Kom800", "Series100", "Premium"])),
     }
 
-    # Optional fields with high probability of being null/empty
-    optional_fields = {
-        "company": draw(st.one_of(st.none(), st.just(""), st.text(min_size=1, max_size=100))),
-        "code": draw(st.one_of(st.none(), st.just(""), st.text(min_size=1, max_size=20))),
-        "length_of_beam": draw(st.one_of(st.none(), st.floats(min_value=0.1, max_value=10.0))),
-        "renovation": draw(st.one_of(st.none(), st.booleans())),
-        "width": draw(st.one_of(st.none(), st.floats(min_value=10.0, max_value=200.0))),
-        "builtin_flyscreen_track": draw(st.one_of(st.none(), st.booleans())),
-        "total_width": draw(st.one_of(st.none(), st.floats(min_value=10.0, max_value=250.0))),
-        "flyscreen_track_height": draw(
-            st.one_of(st.none(), st.floats(min_value=5.0, max_value=100.0))
-        ),
-        "front_height": draw(st.one_of(st.none(), st.floats(min_value=20.0, max_value=300.0))),
-        "rear_height": draw(st.one_of(st.none(), st.floats(min_value=20.0, max_value=300.0))),
-        "glazing_height": draw(st.one_of(st.none(), st.floats(min_value=15.0, max_value=250.0))),
-        "renovation_height": draw(st.one_of(st.none(), st.floats(min_value=15.0, max_value=250.0))),
-        "glazing_undercut_height": draw(
-            st.one_of(st.none(), st.floats(min_value=10.0, max_value=200.0))
-        ),
-        "pic": draw(st.one_of(st.none(), st.just(""), st.text(min_size=1, max_size=100))),
-        "sash_overlap": draw(st.one_of(st.none(), st.floats(min_value=0.1, max_value=10.0))),
-        "flying_mullion_horizontal_clearance": draw(
-            st.one_of(st.none(), st.floats(min_value=0.1, max_value=5.0))
-        ),
-        "flying_mullion_vertical_clearance": draw(
-            st.one_of(st.none(), st.floats(min_value=0.1, max_value=5.0))
-        ),
-        "steel_material_thickness": draw(
-            st.one_of(st.none(), st.floats(min_value=0.5, max_value=5.0))
-        ),
-        "weight_per_meter": draw(st.one_of(st.none(), st.floats(min_value=0.1, max_value=20.0))),
-        "reinforcement_steel": draw(
-            st.one_of(
-                st.none(),
-                st.just([]),
-                st.lists(st.text(min_size=1, max_size=50), min_size=1, max_size=3),
-            )
-        ),
-        "colours": draw(
-            st.one_of(
-                st.none(),
-                st.just([]),
-                st.lists(st.text(min_size=1, max_size=20), min_size=1, max_size=5),
-            )
-        ),
-        "price_per_meter": draw(
-            st.one_of(st.none(), st.decimals(min_value=1, max_value=500, places=2))
-        ),
-        "price_per_beam": draw(
-            st.one_of(st.none(), st.decimals(min_value=10, max_value=2000, places=2))
-        ),
-        "upvc_profile_discount": draw(
-            st.one_of(st.none(), st.floats(min_value=0.0, max_value=50.0))
-        ),
-    }
+    # Generate optional fields from YAML config — no hardcoded list
+    for field_name, strategy in _get_optional_field_strategies().items():
+        base_data[field_name] = draw(strategy)
 
-    # Combine base and optional fields
-    all_data = {**base_data, **optional_fields}
-    return ProfileEntryData(**all_data)
+    return ProfileEntryData(**base_data)
 
 
 @st.composite
@@ -154,7 +141,8 @@ class TestEntryNullHandling:
 
             # Assert - Preview table should be generated successfully
             assert preview_table is not None
-            assert len(preview_table.headers) == 29  # All CSV columns
+            _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+            assert len(preview_table.headers) == _expected_count  # All CSV columns
             assert len(preview_table.rows) == 1
 
             # Verify null/empty values are handled gracefully
@@ -380,7 +368,8 @@ class TestEntryNullHandling:
             assert preview_table is not None
             assert hasattr(preview_table, "headers")
             assert hasattr(preview_table, "rows")
-            assert len(preview_table.headers) == 29  # All CSV columns
+            _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+            assert len(preview_table.headers) == _expected_count  # All CSV columns
             assert len(preview_table.rows) == 1
 
             # Verify all values in the row are strings

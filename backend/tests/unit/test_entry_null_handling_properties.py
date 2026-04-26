@@ -210,7 +210,8 @@ class TestEntryNullHandling:
             # Assert - Should return valid PreviewTable
             assert isinstance(preview_table, PreviewTable)
             assert isinstance(preview_table.headers, list)
-            assert len(preview_table.headers) == 29  # Should have all 29 CSV columns
+            _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+            assert len(preview_table.headers) == _expected_count
             assert isinstance(preview_table.rows, list)
             assert len(preview_table.rows) == 1  # Should have one row
 
@@ -290,9 +291,9 @@ class TestEntryNullHandling:
         try:
             preview_table = entry_service.generate_preview_table(config_data)
 
-            # Assert - Should handle null selections gracefully
             assert isinstance(preview_table, PreviewTable)
-            assert len(preview_table.headers) == 29
+            _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+            assert len(preview_table.headers) == _expected_count
             assert len(preview_table.rows) == 1
 
             row_data = preview_table.rows[0]

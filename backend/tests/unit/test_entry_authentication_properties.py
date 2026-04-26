@@ -258,7 +258,9 @@ class TestEntryAuthenticationIntegration:
                     # Assert - Should return ProfilePreviewData
                 assert result.configuration_id == configuration_id
                 assert result.table is not None
-                assert len(result.table.headers) == 29  # All CSV columns
+                from app.core.config_loader import RuntimeConfigLoader
+                _expected_count = len(RuntimeConfigLoader.load_page_config("profile").get("attributes", []))
+                assert len(result.table.headers) == _expected_count  # All CSV columns
 
         except (AuthorizationException, NotFoundException):
             # These are valid outcomes depending on user permissions and data existence

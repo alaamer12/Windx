@@ -148,49 +148,25 @@ class TestEntryPageProperties:
     def test_csv_structure_preservation_property(self, preview_data: dict[str, Any]):
         """**Feature: entry-page-system, Property 4: CSV structure preservation**
 
-        For any profile configuration, the preview table should contain exactly 29 columns
-        with headers matching the profile table example CSV structure.
+        For any profile configuration, the preview table should contain columns
+        matching the profile YAML attribute definitions.
 
         **Validates: Requirements 2.2, 7.1, 7.2**
         """
-        # Expected CSV headers (all 29 columns)
+        from app.core.config_loader import RuntimeConfigLoader
+
+        # Load expected headers from YAML — single source of truth
+        config = RuntimeConfigLoader.load_page_config("profile")
         expected_headers = [
-            "Name",
-            "Type",
-            "Company",
-            "Material",
-            "Opening System",
-            "System Series",
-            "Code",
-            "Length of beam",
-            "Renovation",
-            "Width",
-            "Builtin Flyscreen Track",
-            "Total Width",
-            "Flyscreen Track Height",
-            "Front Height",
-            "Rear Height",
-            "Glazing Height",
-            "Renovation Height",
-            "Glazing Undercut Height",
-            "Pic",
-            "Sash Overlap",
-            "Flying Mullion Horizontal Clearance",
-            "Flying Mullion Vertical Clearance",
-            "Steel Material Thickness",
-            "Weight per meter",
-            "Reinforcement Steel",
-            "Colours",
-            "Price per meter",
-            "Price per beam",
-            "UPVC Profile Discount",
+            attr.get("display_name") or attr["name"]
+            for attr in config.get("attributes", [])
         ]
+        expected_count = len(expected_headers)
 
         # Simulate preview table generation
         preview_headers = expected_headers.copy()
         preview_row = {}
 
-        # Fill preview row with data or N/A
         for header in expected_headers:
             if header in preview_data:
                 value = preview_data[header]
@@ -205,12 +181,10 @@ class TestEntryPageProperties:
             else:
                 preview_row[header] = "N/A"
 
-        # Verify structure preservation
-        assert len(preview_headers) == 29, "Preview table must have exactly 29 columns"
-        assert preview_headers == expected_headers, "Headers must match CSV structure exactly"
-        assert len(preview_row) == 29, "Preview row must have exactly 29 values"
+        assert len(preview_headers) == expected_count, f"Preview table must have {expected_count} columns"
+        assert preview_headers == expected_headers, "Headers must match YAML display_name fields"
+        assert len(preview_row) == expected_count, f"Preview row must have {expected_count} values"
 
-        # Verify all headers have corresponding values
         for header in expected_headers:
             assert header in preview_row, f"Missing value for header: {header}"
             assert preview_row[header] is not None, f"Value for {header} should not be None"

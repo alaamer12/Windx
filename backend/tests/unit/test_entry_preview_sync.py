@@ -349,7 +349,7 @@ class TestRealTimePreviewSynchronization:
         )
 
         # Verify preview was generated correctly
-        assert len(preview.headers) == 29, "Preview should have all headers"
+        assert len(preview.headers) == len(_load_profile_fields()), "Preview should have all headers"
         assert len(preview.rows) == 1, "Preview should have one row"
 
         # Verify some key fields are present

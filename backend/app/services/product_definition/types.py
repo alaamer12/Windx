@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Protocol, TypeVar
 from decimal import Decimal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.config_loader import RuntimeConfigLoader
 
 __all__ = [
     "EntityData",
@@ -88,12 +90,12 @@ class ProfileDependentOptions(BaseModel):
 
 class GlazingComponentData(BaseModel):
     """Data structure for glazing components."""
-    
-    component_type: str = Field(..., pattern="^(glass_type|spacer|gas)$")
+
+    component_type: str = Field(..., description="Component type")
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     price_per_sqm: Optional[Decimal] = None
-    
+
     # Component-specific properties
     thickness: Optional[float] = None
     light_transmittance: Optional[float] = None
@@ -102,14 +104,22 @@ class GlazingComponentData(BaseModel):
     thermal_conductivity: Optional[float] = None
     density: Optional[float] = None
 
+    @field_validator("component_type")
+    @classmethod
+    def validate_component_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_entity_types("glazing")
+        if valid and v not in valid:
+            raise ValueError(f"Invalid component type '{v}'. Must be one of: {valid}")
+        return v
+
 
 class GlazingUnitData(BaseModel):
     """Data structure for glazing units."""
-    
+
     name: str = Field(..., min_length=1, max_length=200)
-    glazing_type: str = Field(..., pattern="^(single|double|triple)$")
+    glazing_type: str = Field(..., description="Glazing unit type")
     description: Optional[str] = None
-    
+
     # Component references
     outer_glass_id: Optional[int] = None
     middle_glass_id: Optional[int] = None
@@ -117,6 +127,14 @@ class GlazingUnitData(BaseModel):
     spacer1_id: Optional[int] = None
     spacer2_id: Optional[int] = None
     gas_id: Optional[int] = None
+
+    @field_validator("glazing_type")
+    @classmethod
+    def validate_glazing_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_glazing_types()
+        if valid and v not in valid:
+            raise ValueError(f"Invalid glazing type '{v}'. Must be one of: {valid}")
+        return v
 
 
 class CalculationResult(BaseModel):

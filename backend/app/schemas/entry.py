@@ -30,6 +30,21 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
 
 from app.schemas.attribute_node import CalculatedFieldMetadata
 
+
+def _load_upvc_default() -> float:
+    """Load upvc_profile_discount default from YAML config.
+
+    Falls back to 20.0 if config is unavailable (e.g. during testing without DB).
+    """
+    try:
+        from app.core.config_loader import RuntimeConfigLoader
+        attr = RuntimeConfigLoader.get_attribute_config("profile", "upvc_profile_discount")
+        if attr:
+            return float(attr.get("metadata", {}).get("default", 20.0))
+    except Exception:
+        pass
+    return 20.0
+
 __all__ = [
     "FieldDefinition",
     "FormSection",
@@ -290,38 +305,11 @@ class ProfileSchema(BaseModel):
 class ProfileEntryData(BaseModel):
     """Profile page form data.
 
-    Attributes:
-        manufacturing_type_id: Manufacturing type ID
-        name: Configuration name
-        type: Product type
-        company: Company name
-        material: Material type
-        opening_system: Opening system
-        system_series: System series
-        code: Product code
-        length_of_beam: Length of beam
-        renovation: Renovation flag
-        width: Width dimension
-        builtin_flyscreen_track: Built-in flyscreen track flag
-        total_width: Total width
-        flyscreen_track_height: Flyscreen track height
-        front_height: Front height
-        rear_height: Rear height
-        glazing_height: Glazing height
-        renovation_height: Renovation height
-        glazing_undercut_height: Glazing undercut height
-        pic: Picture/image reference
-        sash_overlap: Sash overlap
-        flying_mullion_horizontal_clearance: Flying mullion horizontal clearance
-        flying_mullion_vertical_clearance: Flying mullion vertical clearance
-        steel_material_thickness: Steel material thickness
-        weight_per_meter: Weight per meter
-        reinforcement_steel: Reinforcement steel options
-        colours: Available colors
-        price_per_meter: Price per meter
-        price_per_beam: Price per beam
-        upvc_profile_discount: UPVC profile discount percentage
+    extra="allow" means new attributes added to profile.yaml and loaded into
+    the DB via setup_hierarchy.py are accepted without any code change here.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     manufacturing_type_id: Annotated[
         PositiveInt,
@@ -577,13 +565,13 @@ class ProfileEntryData(BaseModel):
     upvc_profile_discount: Annotated[
         float | None,
         Field(
-            default=20.0,
+            default_factory=_load_upvc_default,
             ge=0,
             le=100,
             description="UPVC profile discount percentage",
             examples=[15.0, 20.0, 25.0],
         ),
-    ] = 20.0
+    ] = None
 
 
 class PreviewTable(BaseModel):

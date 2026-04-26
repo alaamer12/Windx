@@ -925,3 +925,4 @@ attributes:
       max: 100
     metadata:
       placeholder: "e.g. 20"
+      default: 20.0

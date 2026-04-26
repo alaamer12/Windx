@@ -6,12 +6,13 @@ compositional structure (glass types, spacers, gases, and glazing units).
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Literal
+from typing import Any, Dict, List, Optional
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .base import BaseEntityCreate, BaseEntityUpdate, BaseEntityResponse, BaseResponse
+from app.core.config_loader import RuntimeConfigLoader
 
 __all__ = [
     "GlazingComponentCreate",
@@ -32,17 +33,24 @@ __all__ = [
 
 class GlazingComponentCreate(BaseEntityCreate):
     """Schema for creating glazing components."""
-    
-    # Override entity_type to be more specific for glazing
-    entity_type: Literal["glass_type", "spacer", "gas"] = Field(
-        ..., 
+
+    entity_type: str = Field(
+        ...,
         description="Type of glazing component"
     )
     price_per_sqm: Optional[Decimal] = Field(
-        None, 
-        ge=0, 
+        None,
+        ge=0,
         description="Price per square meter"
     )
+
+    @field_validator("entity_type")
+    @classmethod
+    def validate_entity_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_entity_types("glazing")
+        if valid and v not in valid:
+            raise ValueError(f"Invalid entity type '{v}'. Must be one of: {valid}")
+        return v
     
     # Glass-specific properties
     thickness: Optional[float] = Field(
@@ -125,13 +133,21 @@ class GlazingComponentResponse(BaseEntityResponse):
 
 class GlazingUnitCreate(BaseModel):
     """Schema for creating glazing units."""
-    
+
     name: str = Field(..., min_length=1, max_length=200, description="Glazing unit name")
-    glazing_type: Literal["single", "double", "triple"] = Field(
-        ..., 
+    glazing_type: str = Field(
+        ...,
         description="Type of glazing unit"
     )
     description: Optional[str] = Field(None, description="Unit description")
+
+    @field_validator("glazing_type")
+    @classmethod
+    def validate_glazing_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_glazing_types()
+        if valid and v not in valid:
+            raise ValueError(f"Invalid glazing type '{v}'. Must be one of: {valid}")
+        return v
     
     # Component references
     outer_glass_id: Optional[int] = Field(
@@ -209,19 +225,27 @@ class GlazingUnitResponse(BaseEntityResponse):
 
 class GlazingCalculationRequest(BaseModel):
     """Schema for calculating glazing unit properties."""
-    
-    glazing_type: Literal["single", "double", "triple"] = Field(
-        ..., 
+
+    glazing_type: str = Field(
+        ...,
         description="Type of glazing unit"
     )
     components: Dict[str, Optional[int]] = Field(
-        ..., 
+        ...,
         description="Component IDs by role"
     )
     custom_properties: Optional[Dict[str, Any]] = Field(
-        None, 
+        None,
         description="Custom properties to override"
     )
+
+    @field_validator("glazing_type")
+    @classmethod
+    def validate_glazing_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_glazing_types()
+        if valid and v not in valid:
+            raise ValueError(f"Invalid glazing type '{v}'. Must be one of: {valid}")
+        return v
 
 
 class GlazingCalculationResponse(BaseResponse):
@@ -271,7 +295,7 @@ class GlazingScopeResponse(BaseResponse):
         description="Available component types"
     )
     glazing_types: List[str] = Field(
-        default_factory=lambda: ["single", "double", "triple"],
+        default_factory=lambda: RuntimeConfigLoader.get_glazing_types(),
         description="Available glazing unit types"
     )
     supports_calculations: bool = Field(True, description="Whether scope supports calculations")

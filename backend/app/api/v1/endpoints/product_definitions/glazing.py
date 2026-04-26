@@ -27,13 +27,22 @@ __all__ = ["GlazingProductDefinitionEndpoints"]
 # Additional Glazing-Specific Schemas (not in main schema package yet)
 # ============================================================================
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from app.core.config_loader import RuntimeConfigLoader
 
 class GlazingCalculationRequest(BaseModel):
     """Schema for calculating glazing unit properties."""
-    
-    glazing_type: Literal["single", "double", "triple"]
+
+    glazing_type: str = Field(..., description="Type of glazing unit")
     components: dict[str, int] = Field(..., description="Component IDs by role")
+
+    @field_validator("glazing_type")
+    @classmethod
+    def validate_glazing_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_glazing_types()
+        if valid and v not in valid:
+            raise ValueError(f"Invalid glazing type '{v}'. Must be one of: {valid}")
+        return v
 
 
 # ============================================================================

@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.manufacturing_type import ManufacturingType
+from app.core.config_loader import RuntimeConfigLoader
 
 
 # noinspection PyTypeChecker
@@ -26,13 +27,19 @@ class ManufacturingTypeResolver:
     CASEMENT_WINDOW = "Casement Window"
     SLIDING_DOOR = "Sliding Door"
 
-    # Page type constants
+    # Page type constants (kept as named constants for convenience)
     PAGE_TYPE_PROFILE = "profile"
     PAGE_TYPE_ACCESSORIES = "accessories"
     PAGE_TYPE_GLAZING = "glazing"
 
-    # Valid page types
+    # Kept for backward compatibility — use get_valid_page_types() for dynamic lookup
     VALID_PAGE_TYPES = {PAGE_TYPE_PROFILE, PAGE_TYPE_ACCESSORIES, PAGE_TYPE_GLAZING}
+
+    @classmethod
+    def get_valid_page_types(cls) -> set[str]:
+        """Return valid page types by scanning config/pages/ directory."""
+        from_config = set(RuntimeConfigLoader.get_page_types())
+        return from_config if from_config else cls.VALID_PAGE_TYPES
 
     # Cache for resolved IDs (per-session)
     _cache: dict[str, int] = {}
@@ -224,17 +231,10 @@ class ManufacturingTypeResolver:
 
     @classmethod
     def validate_page_type(cls, page_type: Optional[str]) -> bool:
-        """Validate if page_type is valid.
-
-        Args:
-            page_type: Page type to validate
-
-        Returns:
-            bool: True if valid, False otherwise
-        """
+        """Validate if page_type is valid."""
         if page_type is None:
             return False
-        return page_type in cls.VALID_PAGE_TYPES
+        return page_type in cls.get_valid_page_types()
 
     @classmethod
     async def verify_profile_setup(

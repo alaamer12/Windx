@@ -1,0 +1,31 @@
+# Glazing Calculation Defaults
+# Fallback values used when component metadata is missing or null.
+# Change these values here — no code changes needed.
+
+calculation_defaults:
+  # U-value fallback when component has no u_value in metadata
+  u_value_fallback: 5.8
+
+  # Glass thickness fallbacks (mm)
+  single_glass_thickness: 6.0       # outer glass in single pane
+  outer_glass_thickness: 6.0        # outer glass in double/triple
+  inner_glass_thickness: 4.0        # inner glass in double/triple
+  triple_glass_thickness: 6.0       # each glass in triple pane
+
+  # Weight fallbacks (kg/m²)
+  outer_weight_per_sqm: 15.0
+  inner_weight_per_sqm: 10.0
+  triple_weight_per_sqm: 15.0
+
+  # Spacer thickness fallbacks (mm)
+  spacer_thickness_double: 16.0
+  spacer_thickness_triple: 12.0
+
+  # Gas filling effect — multiplier applied to combined U-value when gas is present
+  gas_u_value_improvement_factor: 0.9
+
+  # Default combined U-value when no component u_values were collected
+  default_combined_u_value: 5.8
+
+  # Default price when component has no price_impact_value (single pane only)
+  single_pane_default_price: 35.00

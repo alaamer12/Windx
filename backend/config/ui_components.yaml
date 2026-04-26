@@ -1,0 +1,45 @@
+# UI Component Configuration
+# Drives create_field_definition() in entry.py — no hardcoded mappings in Python.
+
+# Maps raw ui_component strings from DB → canonical frontend component names
+aliases:
+  input: text
+  text: text
+  string: text
+  textinput: text
+  multiselect: multi-select
+  multi_select: multi-select
+  file: picture-input
+  image: picture-input
+  picture: picture-input
+  pic: picture-input
+  # pass-through (already canonical — listed for completeness)
+  dropdown: dropdown
+  radio: radio
+  checkbox: checkbox
+  number: number
+  currency: currency
+  percentage: percentage
+  slider: slider
+
+# Default component when ui_component is null/empty, keyed by data_type
+fallbacks_by_data_type:
+  boolean: checkbox
+  number: number
+  float: number
+  decimal: number
+  selection: dropdown
+  string: text
+  formula: number
+
+# Field names that load options from the relations system (not child attribute nodes)
+# Keyed by page_type so each page can have its own set
+relations_fields:
+  profile:
+    - system_series
+    - company
+    - material
+    - opening_system
+    - colours
+  accessories: []
+  glazing: []

@@ -9,9 +9,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from .base import BaseEntityCreate, BaseEntityUpdate, BaseEntityResponse, BaseResponse
+from app.core.config_loader import RuntimeConfigLoader
 
 __all__ = [
     "ProfileEntityCreate",
@@ -32,17 +33,26 @@ __all__ = [
 
 class ProfileEntityCreate(BaseEntityCreate):
     """Schema for creating profile entities."""
-    
+
     entity_type: str = Field(
-        ..., 
-        pattern="^(company|material|opening_system|system_series|color)$",
+        ...,
         description="Type of profile entity"
     )
     price_from: Optional[Decimal] = Field(
-        None, 
-        ge=0, 
+        None,
+        ge=0,
         description="Base price for this entity"
     )
+
+    @field_validator("entity_type")
+    @classmethod
+    def validate_entity_type(cls, v: str) -> str:
+        valid = RuntimeConfigLoader.get_entity_types("profile")
+        if valid and v not in valid:
+            raise ValueError(
+                f"Invalid entity type '{v}'. Must be one of: {valid}"
+            )
+        return v
 
 
 class ProfileEntityUpdate(BaseEntityUpdate):
@@ -153,7 +163,7 @@ class ProfileScopeResponse(BaseResponse):
         description="Hierarchy level definitions"
     )
     entity_types: List[str] = Field(
-        default_factory=lambda: ["company", "material", "opening_system", "system_series", "color"],
+        default_factory=lambda: RuntimeConfigLoader.get_entity_types("profile"),
         description="Available entity types"
     )
     supports_paths: bool = Field(True, description="Whether scope supports dependency paths")

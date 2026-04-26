@@ -27,6 +27,7 @@ class ProductDefinitionServiceFactory:
     _services: Dict[str, Type[BaseProductDefinitionService]] = {
         "profile": ProfileProductDefinitionService,
         "glazing": GlazingProductDefinitionService,
+        "accessories": GlazingProductDefinitionService,  # placeholder until dedicated service exists
     }
     
     @classmethod

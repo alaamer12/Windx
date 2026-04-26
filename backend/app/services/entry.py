@@ -273,11 +273,12 @@ class EntryService(BaseService):
         dependencies = scope_def.get("dependencies") if scope_def else None
 
         # Generate form schema
-        return await self.generate_form_schema(manufacturing_type_id, attribute_nodes, dependencies)
+        return await self.generate_form_schema(manufacturing_type_id, attribute_nodes, dependencies, page_type)
 
     async def generate_form_schema(
-        self, manufacturing_type_id: int, attribute_nodes: list[AttributeNode], 
-        dependencies: list[dict[str, Any]] | None = None
+        self, manufacturing_type_id: int, attribute_nodes: list[AttributeNode],
+        dependencies: list[dict[str, Any]] | None = None,
+        page_type: str = "profile",
     ) -> ProfileSchema:
         """Generate form schema from attribute nodes.
 
@@ -305,8 +306,8 @@ class EntryService(BaseService):
                     title=section_name, fields=[], sort_order=len(sections_dict)
                 )
 
-            # Create field definition (now async)
-            field = await self.create_field_definition(node)
+            # Create field definition
+            field = await self.create_field_definition(node, page_type)
             sections_dict[section_name].fields.append(field)
 
             # Add conditional logic if present
@@ -354,57 +355,50 @@ class EntryService(BaseService):
             return section_name.replace("_", " ").title()
         return "General"
 
-    async def create_field_definition(self, node: AttributeNode) -> FieldDefinition:
+    async def create_field_definition(
+        self, node: AttributeNode, page_type: str = "profile"
+    ) -> FieldDefinition:
         """Create field definition from attribute node.
 
         Args:
             node: Attribute node
+            page_type: Page type — used to look up relations fields from config
 
         Returns:
             FieldDefinition: Field definition
         """
-        # Use display_name from the node, with fallback to auto-generated name
+        from app.core.config_loader import RuntimeConfigLoader
+
         label = node.get_display_name()
 
-        # Map ui_component values to match template expectations
-        # Handle variations like 'input', 'string', etc. to ensure they map to 'text'
-        ui_component = (node.ui_component or "").lower()
-        if ui_component in ["input", "text", "string", "textinput"]:
-            ui_component = "text"
-        elif ui_component in ["multiselect", "multi_select"]:
-            ui_component = "multi-select"
-        elif ui_component in ["file", "image", "picture", "pic"]:
-            ui_component = "picture-input"
-        elif not ui_component:
-            # Fallback based on data_type
-            if node.data_type == "boolean":
-                ui_component = "checkbox"
-            elif node.data_type in ["number", "float"]:
-                ui_component = "number"
-            elif node.data_type == "selection":
-                ui_component = "dropdown"
-            else:
-                ui_component = "text"
+        # Resolve ui_component via YAML alias map
+        raw_component = (node.ui_component or "").lower()
+        aliases = RuntimeConfigLoader.get_ui_component_aliases()
+        if raw_component in aliases:
+            ui_component = aliases[raw_component]
+        elif raw_component:
+            ui_component = raw_component  # unknown alias — pass through as-is
+        else:
+            # No ui_component set — derive from data_type
+            fallbacks = RuntimeConfigLoader.get_ui_component_fallbacks()
+            ui_component = fallbacks.get(node.data_type or "", "text")
 
         # Extract options from child nodes or relations system
         options = None
         options_data = None
         if ui_component in ["dropdown", "radio", "multi-select"]:
-            # Check if this is a relations field that should get options from relations system
-            if node.name in ["system_series", "company", "material", "opening_system", "colours"]:
+            relations_fields = RuntimeConfigLoader.get_relations_fields(page_type)
+            if node.name in relations_fields:
                 logger.info(f"Using relations system for field: {node.name}")
                 options, options_data = await self._extract_options_from_relations(node.name)
                 logger.info(f"Relations system returned {len(options)} options for {node.name}: {options}")
             else:
-                # Use traditional child nodes approach
                 logger.info(f"Using child nodes for field: {node.name}")
                 options = await self._extract_options_from_children(node)
                 options_data = await self._extract_options_with_metadata(node)
 
-        # Extract short help text
         help_text = node.help_text
 
-        # Prepare metadata_ and ensure a placeholder exists
         field_metadata: FieldMetadata = (node.metadata_ or {}).copy()
         if "placeholder" not in field_metadata and "name_placeholder" not in field_metadata:
             field_metadata["placeholder"] = f"Enter {label}"

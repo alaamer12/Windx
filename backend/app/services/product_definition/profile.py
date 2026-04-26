@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 from .base import BaseProductDefinitionService
 from .types import EntityCreateData, EntityUpdateData, ProfilePathData, ProfileDependentOptions
+from app.core.config_loader import RuntimeConfigLoader
 
 __all__ = ["ProfileProductDefinitionService"]
 
@@ -118,7 +119,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         
         try:
             # Validate entity type for profile scope
-            valid_types = ["company", "material", "opening_system", "system_series", "color"]
+            valid_types = RuntimeConfigLoader.get_entity_types("profile")
             if data.entity_type not in valid_types:
                 raise ValueError(f"Invalid entity type for profile scope: {data.entity_type}. Valid types: {valid_types}")
 
@@ -390,7 +391,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
         A more advanced version would filter based on 'entity_path' nodes.
         """
         result = {}
-        entity_types = ["company", "material", "opening_system", "system_series", "color"]
+        entity_types = RuntimeConfigLoader.get_entity_types("profile")
         
         for etype in entity_types:
             entities = await self.get_entities(etype)
@@ -416,7 +417,7 @@ class ProfileProductDefinitionService(BaseProductDefinitionService):
 
     def _validate_entity_type(self, entity_type: str) -> bool:
         """Validate entity type for profile scope."""
-        valid_types = ["company", "material", "opening_system", "system_series", "color"]
+        valid_types = RuntimeConfigLoader.get_entity_types("profile")
         return entity_type in valid_types
 
     async def validate_entity_references(self, data: Dict[str, Any]) -> bool:

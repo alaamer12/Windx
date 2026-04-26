@@ -562,7 +562,10 @@ class EntryService(BaseService):
     async def evaluate_display_conditions(
         self, form_data: dict[str, Any], schema: ProfileSchema
     ) -> dict[str, bool]:
-        """Evaluate display conditions for all fields.
+        """Evaluate display conditions for all fields from schema conditional_logic.
+
+        Conditions are stored in the DB (populated from YAML via setup_hierarchy.py)
+        and evaluated by ConditionEvaluator. No hardcoded rules.
 
         Args:
             form_data: Current form data
@@ -573,85 +576,24 @@ class EntryService(BaseService):
         """
         visibility: dict[str, bool] = {}
 
-        # Evaluate each field's display condition
         for field_name, condition in schema.conditional_logic.items():
             try:
                 visibility[field_name] = self.condition_evaluator.evaluate_condition(
                     condition, form_data
                 )
             except Exception as e:
-                # Log error and default to visible
-                print(f"Error evaluating condition for {field_name}: {e}")
+                logger.warning(f"Error evaluating condition for {field_name}: {e}")
                 visibility[field_name] = True
-
-        # Apply business rules for field availability
-        business_rules_visibility = self.evaluate_business_rules(form_data)
-        visibility.update(business_rules_visibility)
-
-        return visibility
-
-    @staticmethod
-    def evaluate_business_rules(form_data: dict[str, Any]) -> dict[str, bool]:
-        """Evaluate business rules for field availability based on Type selection.
-
-        Args:
-            form_data: Current form data
-
-        Returns:
-            dict[str, bool]: Field visibility map based on business rules
-        """
-        visibility: dict[str, bool] = {}
-        product_type = form_data.get("type", "").lower()
-        opening_system = form_data.get("opening_system", "").lower()
-
-        # Business Rule 1: "Renovation only for frame" → Only when Type = "Frame"
-        renovation_field = "renovation"
-        visibility[renovation_field] = product_type == "frame"
-
-        # Business Rule 2: "builtin Flyscreen track only for sliding frame" → Only for sliding frames
-        flyscreen_field = "builtin_flyscreen_track"
-        visibility[flyscreen_field] = product_type == "frame" and "sliding" in opening_system
-
-        # Business Rule 3: "Total width only for frame with builtin flyscreen"
-        total_width_field = "total_width"
-        visibility[total_width_field] = (
-            product_type == "frame" and form_data.get("builtin_flyscreen_track") is True
-        )
-
-        # Business Rule 4: "flyscreen track height only for frame with builtin flyscreen"
-        flyscreen_height_field = "flyscreen_track_height"
-        visibility[flyscreen_height_field] = (
-            product_type == "frame" and form_data.get("builtin_flyscreen_track") is True
-        )
-
-        # Business Rule 5: "Sash overlap only for sashs" → Only when Type = "sash"
-        sash_overlap_field = "sash_overlap"
-        visibility[sash_overlap_field] = product_type == "sash"
-
-        # Business Rule 6: "Flying mullion clearances" → Only when Type = "Flying mullion"
-        flying_mullion_horizontal_field = "flying_mullion_horizontal_clearance"
-        flying_mullion_vertical_field = "flying_mullion_vertical_clearance"
-        visibility[flying_mullion_horizontal_field] = product_type == "flying mullion"
-        visibility[flying_mullion_vertical_field] = product_type == "flying mullion"
-
-        # Business Rule 7: "Glazing undercut height only for glazing bead" → Only when Type = "glazing bead"
-        glazing_undercut_field = "glazing_undercut_height"
-        visibility[glazing_undercut_field] = product_type == "glazing bead"
-
-        # Business Rule 8: "Renovation height mm only for frame"
-        renovation_height_field = "renovation_height"
-        visibility[renovation_height_field] = product_type == "frame"
-
-        # Business Rule 9: "Steel material thickness only for reinforcement"
-        steel_thickness_field = "steel_material_thickness"
-        visibility[steel_thickness_field] = product_type == "reinforcement"
 
         return visibility
 
     def get_field_display_value(
         self, field_name: str, value: Any, form_data: dict[str, Any]
     ) -> str:
-        """Get display value for a field, showing 'N/A' for fields that don't apply to current type.
+        """Get display value for a field.
+
+        Returns 'N/A' when value is empty/null.
+        Conditional visibility is handled by the frontend using schema.conditional_logic.
 
         Args:
             field_name: Field name
@@ -659,15 +601,10 @@ class EntryService(BaseService):
             form_data: Current form data
 
         Returns:
-            str: Display value or 'N/A' if field doesn't apply
+            str: Formatted value or 'N/A' if empty
         """
-        # Check if field should be visible based on business rules
-        business_rules_visibility = self.evaluate_business_rules(form_data)
-
-        if field_name in business_rules_visibility and not business_rules_visibility[field_name]:
+        if value is None or value == "":
             return "N/A"
-
-        # Format the value normally if field is applicable
         return self.format_preview_value(value)
 
     async def validate_profile_data(
@@ -716,12 +653,8 @@ class EntryService(BaseService):
                         errors[field.name] = field_errors
 
         # Cross-field validation
-        cross_field_errors = self.validate_cross_field_rules(form_data, schema)
+        cross_field_errors = self.validate_cross_field_rules(form_data, schema, page_type)
         errors.update(cross_field_errors)
-
-        # Business rules validation
-        business_rule_errors = await self.validate_business_rules(form_data)
-        errors.update(business_rule_errors)
 
         if errors:
             raise ValidationException("Validation failed", field_errors=errors)
@@ -846,179 +779,27 @@ class EntryService(BaseService):
 
         return None
 
-    @staticmethod
-    def _has_meaningful_value(value: Any) -> bool:
-        """Check if a field value is meaningful (not null, empty, or default false for booleans).
-
-        Args:
-            value: Field value to check
-
-        Returns:
-            bool: True if value is meaningful, False otherwise
-        """
-        if value is None or value == "":
-            return False
-        # For boolean fields, False is not considered meaningful in this context
-        # because unchecked checkboxes should not trigger validation errors
-        if isinstance(value, bool) and value is False:
-            return False
-        return True
-
-    async def validate_business_rules(self, form_data: dict[str, Any]) -> dict[str, str]:
-        """Validate business rules and return field-specific errors.
-
-        Args:
-            form_data: Form data to validate
-
-        Returns:
-            dict[str, str]: Field errors from business rule violations
-        """
-        errors: dict[str, str] = {}
-        product_type = form_data.get("type", "").lower()
-        opening_system = form_data.get("opening_system", "").lower()
-
-        # Validate business rule violations
-
-        # Rule 1: Renovation should only have values for frames
-        if self._has_meaningful_value(form_data.get("renovation")) and product_type != "frame":
-            errors["renovation"] = "Renovation is only applicable for frame types"
-
-        # Rule 2: Builtin flyscreen track should only be set for sliding frames
-        if self._has_meaningful_value(form_data.get("builtin_flyscreen_track")) and not (
-            product_type == "frame" and "sliding" in opening_system
-        ):
-            errors["builtin_flyscreen_track"] = (
-                "Builtin flyscreen track is only applicable for sliding frames"
-            )
-
-        # Rule 3: Total width should only be set when builtin flyscreen is enabled
-        if self._has_meaningful_value(form_data.get("total_width")) and not (
-            product_type == "frame" and form_data.get("builtin_flyscreen_track") is True
-        ):
-            errors["total_width"] = (
-                "Total width is only applicable when builtin flyscreen track is enabled"
-            )
-
-        # Rule 4: Flyscreen track height should only be set when builtin flyscreen is enabled
-        if self._has_meaningful_value(form_data.get("flyscreen_track_height")) and not (
-            product_type == "frame" and form_data.get("builtin_flyscreen_track") is True
-        ):
-            errors["flyscreen_track_height"] = (
-                "Flyscreen track height is only applicable when builtin flyscreen track is enabled"
-            )
-
-        # Rule 5: Sash overlap should only have values for sash types
-        if self._has_meaningful_value(form_data.get("sash_overlap")) and product_type != "sash":
-            errors["sash_overlap"] = "Sash overlap is only applicable for sash types"
-
-        # Rule 6: Flying mullion clearances should only have values for flying mullion types
-        if (
-            self._has_meaningful_value(form_data.get("flying_mullion_horizontal_clearance"))
-            and product_type != "flying mullion"
-        ):
-            errors["flying_mullion_horizontal_clearance"] = (
-                "Flying mullion horizontal clearance is only applicable for flying mullion types"
-            )
-
-        if (
-            self._has_meaningful_value(form_data.get("flying_mullion_vertical_clearance"))
-            and product_type != "flying mullion"
-        ):
-            errors["flying_mullion_vertical_clearance"] = (
-                "Flying mullion vertical clearance is only applicable for flying mullion types"
-            )
-
-        # Rule 7: Glazing undercut height should only have values for glazing bead types
-        if (
-            self._has_meaningful_value(form_data.get("glazing_undercut_height"))
-            and product_type != "glazing bead"
-        ):
-            errors["glazing_undercut_height"] = (
-                "Glazing undercut height is only applicable for glazing bead types"
-            )
-
-        # Rule 8: Renovation height should only have values for frame types
-        if (
-            self._has_meaningful_value(form_data.get("renovation_height"))
-            and product_type != "frame"
-        ):
-            errors["renovation_height"] = "Renovation height is only applicable for frame types"
-
-        # Rule 9: Steel material thickness should only have values for reinforcement types
-        if (
-            self._has_meaningful_value(form_data.get("steel_material_thickness"))
-            and product_type != "reinforcement"
-        ):
-            errors["steel_material_thickness"] = (
-                "Steel material thickness is only applicable for reinforcement types"
-            )
-
-        return errors
-
-    @staticmethod
     def validate_cross_field_rules(
-            form_data: dict[str, Any], schema: ProfileSchema
+        self,
+        form_data: dict[str, Any],
+        schema: ProfileSchema,
+        page_type: str = "profile",
     ) -> dict[str, str]:
-        """Validate cross-field rules and dependencies.
+        """Validate cross-field rules driven by YAML configuration.
+
+        Rules (required_when, tolerance_check, formula_check) are defined in
+        config/pages/{page_type}.yaml under each attribute's validation_rules block.
 
         Args:
             form_data: Form data to validate
-            schema: Form schema with field definitions
+            schema: Form schema (kept for call-site compatibility)
+            page_type: Page type to load YAML config for
 
         Returns:
             dict[str, str]: Field errors from cross-field validation
         """
-        errors: dict[str, str] = {}
-
-        # Business logic validations for profile entry
-
-        # If builtin_flyscreen_track is True, total_width and flyscreen_track_height should be provided
-        if form_data.get("builtin_flyscreen_track") is True:
-            if not form_data.get("total_width"):
-                errors["total_width"] = (
-                    "Total width is required when builtin flyscreen track is enabled"
-                )
-            if not form_data.get("flyscreen_track_height"):
-                errors["flyscreen_track_height"] = (
-                    "Flyscreen track height is required when builtin flyscreen track is enabled"
-                )
-
-        # If type is "Flying mullion", clearance fields should be provided
-        if form_data.get("type") == "Flying mullion":
-            if not form_data.get("flying_mullion_horizontal_clearance"):
-                errors["flying_mullion_horizontal_clearance"] = (
-                    "Horizontal clearance is required for flying mullion type"
-                )
-            if not form_data.get("flying_mullion_vertical_clearance"):
-                errors["flying_mullion_vertical_clearance"] = (
-                    "Vertical clearance is required for flying mullion type"
-                )
-
-            # Logical validations
-        if form_data.get("front_height") and form_data.get("rear_height"):
-            front_height = form_data["front_height"]
-            rear_height = form_data["rear_height"]
-            if abs(front_height - rear_height) > 50:  # Example business rule
-                errors["rear_height"] = (
-                    "Rear height should not differ from front height by more than 50mm"
-                )
-
-        # Price validation
-        if form_data.get("price_per_meter") and form_data.get("price_per_beam"):
-            if form_data.get("length_of_beam"):
-                # Handle Decimal types for price calculations
-                price_per_meter = float(form_data["price_per_meter"])
-                price_per_beam = float(form_data["price_per_beam"])
-
-                expected_beam_price = price_per_meter * form_data["length_of_beam"]
-                if (
-                    abs(expected_beam_price - price_per_beam) > expected_beam_price * 0.1
-                ):  # 10% tolerance
-                    errors["price_per_beam"] = (
-                        "Price per beam should be approximately price per meter × length of beam"
-                    )
-
-        return errors
+        from app.core.validation_engine import DynamicValidationEngine
+        return DynamicValidationEngine().validate_form(form_data, page_type)
 
     # @require(ConfigurationCreator)
     # @require(AdminAccess)  # Allow admins to save configurations

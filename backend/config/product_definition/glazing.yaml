@@ -5,6 +5,18 @@ scope: glazing
 label: Glazing Definitions
 description: Manage definitions for glass units, spacers, and gas fillings
 
+# Explicit entity types for RuntimeConfigLoader.get_entity_types("glazing")
+entity_types:
+  - glass_type
+  - spacer
+  - gas
+
+# Glazing unit composition types for RuntimeConfigLoader.get_glazing_types()
+glazing_types:
+  - single
+  - double
+  - triple
+
 # Entity definitions
 entities:
   glass_unit:

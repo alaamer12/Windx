@@ -15,6 +15,7 @@ from sqlalchemy import select
 from app.models.attribute_node import AttributeNode
 from .base import BaseProductDefinitionService
 from .types import EntityCreateData, EntityUpdateData, GlazingComponentData, GlazingUnitData, CalculationResult
+from app.core.config_loader import RuntimeConfigLoader
 
 __all__ = ["GlazingProductDefinitionService"]
 
@@ -529,14 +530,7 @@ class GlazingProductDefinitionService(BaseProductDefinitionService):
     # ============================================================================
 
     async def get_scope_metadata(self) -> Dict[str, Any]:
-        """Get glazing scope metadata.
-        
-        Returns:
-            Glazing scope metadata
-        """
-        if self._scope_metadata_cache is not None:
-            return self._scope_metadata_cache
-
+        """Get glazing scope metadata from YAML configuration."""
         metadata = {
             "scope": self.scope,
             "label": "Glazing System",
@@ -544,8 +538,8 @@ class GlazingProductDefinitionService(BaseProductDefinitionService):
             "supports_hierarchy": False,
             "supports_composition": True,
             "supports_calculations": True,
-            "entity_types": ["glass_type", "spacer", "gas"],
-            "glazing_types": ["single", "double", "triple"],
+            "entity_types": RuntimeConfigLoader.get_entity_types("glazing"),
+            "glazing_types": RuntimeConfigLoader.get_glazing_types(),
             "entities": {
                 "glass_type": {
                     "label": "Glass Type",
@@ -576,8 +570,6 @@ class GlazingProductDefinitionService(BaseProductDefinitionService):
                 }
             }
         }
-        
-        self._scope_metadata_cache = metadata
         return metadata
 
     # ============================================================================
@@ -585,15 +577,8 @@ class GlazingProductDefinitionService(BaseProductDefinitionService):
     # ============================================================================
 
     def _validate_entity_type(self, entity_type: str) -> bool:
-        """Validate entity type for glazing scope.
-        
-        Args:
-            entity_type: Type of entity to validate
-            
-        Returns:
-            True if valid for glazing scope
-        """
-        valid_types = ["glass_type", "spacer", "gas"]
+        """Validate entity type for glazing scope."""
+        valid_types = RuntimeConfigLoader.get_entity_types("glazing")
         return entity_type in valid_types
 
     async def validate_entity_references(self, data: Dict[str, Any]) -> bool:

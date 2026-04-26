@@ -392,6 +392,11 @@ attributes:
     validation_rules:
       min: 0
       max: 5000
+      required_when:
+        operator: equals
+        field: builtin_flyscreen_track
+        value: true
+      error_message: "Total width is required when builtin flyscreen track is enabled"
     display_condition:
       operator: equals
       field: builtin_flyscreen_track
@@ -422,6 +427,11 @@ attributes:
     validation_rules:
       min: 0
       max: 200
+      required_when:
+        operator: equals
+        field: builtin_flyscreen_track
+        value: true
+      error_message: "Flyscreen track height is required when builtin flyscreen track is enabled"
     metadata:
       placeholder: "e.g. 25"
     display_condition:
@@ -483,6 +493,11 @@ attributes:
     validation_rules:
       min: 0
       max: 5000
+      tolerance_check:
+        compare_field: front_height
+        max_difference: 50
+        unit: mm
+        error_message: "Rear height should not differ from front height by more than {max_difference}{unit}"
     metadata:
       placeholder: "e.g. 65"
 
@@ -666,6 +681,11 @@ attributes:
     validation_rules:
       min: 0
       max: 100
+      required_when:
+        operator: equals
+        field: type
+        value: Flying mullion
+      error_message: "Horizontal clearance is required for flying mullion type"
     metadata:
       placeholder: "e.g. 10"
     display_condition:
@@ -698,6 +718,11 @@ attributes:
     validation_rules:
       min: 0
       max: 100
+      required_when:
+        operator: equals
+        field: type
+        value: Flying mullion
+      error_message: "Vertical clearance is required for flying mullion type"
     metadata:
       placeholder: "e.g. 50"
     display_condition:
@@ -857,6 +882,10 @@ attributes:
     validation_rules:
       min: 0
       max: 50000
+      formula_check:
+        formula: "price_per_meter * length_of_beam"
+        tolerance: 0.1
+        error_message: "Price per beam should be approximately price per meter × length of beam"
     metadata:
       placeholder: "e.g. 93.00"
     calculated_field:

@@ -5,6 +5,14 @@ scope: profile
 label: Profile Definitions
 description: Manage definitions and valid product configurations for window and door profiles
 
+# Explicit entity types list for RuntimeConfigLoader.get_entity_types("profile")
+entity_types:
+  - company
+  - material
+  - opening_system
+  - system_series
+  - color
+
 # Entity definitions
 entities:
   material:

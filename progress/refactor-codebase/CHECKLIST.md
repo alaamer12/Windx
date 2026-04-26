@@ -12,11 +12,13 @@
 > No new infrastructure needed. The ConditionEvaluator + DB already handle this correctly.
 
 ### 1.1 — `backend/app/services/entry.py`
-- [ ] Delete `evaluate_business_rules()` static method (~lines 594–651, ~58 lines)
-- [ ] Delete `validate_business_rules()` async method (~lines 860–930, ~70 lines)
-- [ ] Fix `evaluate_display_conditions()` — remove the two lines that call `evaluate_business_rules()` and overwrite YAML-driven results
-- [ ] Fix `validate_profile_data()` — remove the `business_rule_errors = await self.validate_business_rules(form_data)` call and the `errors.update(business_rule_errors)` line
-- [ ] Fix `get_field_display_value()` — replace `evaluate_business_rules(form_data)` call with `self.condition_evaluator.evaluate_condition()` using the field's stored `display_condition` from the schema
+- [x] Delete `evaluate_business_rules()` static method (~lines 594–651, ~58 lines)
+- [x] Delete `validate_business_rules()` async method (~lines 860–930, ~70 lines)
+- [x] Delete `_has_meaningful_value()` static method (only used by deleted methods)
+- [x] Fix `evaluate_display_conditions()` — removed the two lines that called `evaluate_business_rules()` and overwrote YAML-driven results
+- [x] Fix `validate_profile_data()` — removed `business_rule_errors` call and merge
+- [x] Fix `get_field_display_value()` — now returns N/A on empty value only; frontend handles conditional visibility via schema.conditional_logic
+- [x] `validate_cross_field_rules()` — hardcoded body removed, returns `{}` as Phase 2 stub
 
 ### 1.2 — Verification
 - [ ] Run existing test suite — all tests that tested `evaluate_business_rules` should now test `evaluate_display_conditions` instead

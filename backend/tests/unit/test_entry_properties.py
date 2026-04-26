@@ -99,17 +99,16 @@ class TestEntryPageProperties:
                 # Only acceptable error is unknown operator
                 assert "Unknown operator" in str(e)
 
+    # Load field display names once for test efficiency
+    from app.core.config_loader import RuntimeConfigLoader
+    _PROFILE_DISPLAY_NAMES = [
+        attr.get("display_name") or attr["name"]
+        for attr in RuntimeConfigLoader.load_page_config("profile").get("attributes", [])
+    ]
+
     @given(
         st.dictionaries(
-            st.sampled_from(
-                # Load field display names from YAML — single source of truth
-                [
-                    attr.get("display_name") or attr["name"]
-                    for attr in __import__("app.core.config_loader", fromlist=["RuntimeConfigLoader"])
-                    .RuntimeConfigLoader.load_page_config("profile")
-                    .get("attributes", [])
-                ]
-            ),
+            st.sampled_from(_PROFILE_DISPLAY_NAMES),
             st.one_of(
                 st.text(max_size=50),
                 st.integers(min_value=0, max_value=1000),

@@ -571,7 +571,7 @@ class ProfileEntryData(BaseModel):
             description="UPVC profile discount percentage",
             examples=[15.0, 20.0, 25.0],
         ),
-    ] = None
+    ]
 
 
 class PreviewTable(BaseModel):

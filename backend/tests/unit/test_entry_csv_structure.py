@@ -105,7 +105,6 @@ def _build_profile_data_strategy() -> st.SearchStrategy:
         self.expected_headers = _load_profile_headers()
         self.header_field_mapping = _load_header_field_mapping()
 
-    @given(
     @given(profile_data=_build_profile_data_strategy())
     def test_preview_table_has_exact_csv_structure(self, profile_data):
         """**Feature: entry-page-system, Property 4: CSV structure preservation**

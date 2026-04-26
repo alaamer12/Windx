@@ -493,14 +493,13 @@ class EntryService(BaseService):
 
         relations_service = get_product_definition_service("profile", self.db)
 
-        # Map field names to entity types
-        field_to_entity_type = {
-            "system_series": "system_series",
-            "company": "company", 
-            "material": "material",
-            "opening_system": "opening_system",
-            "colours": "color",  # Note: colours field maps to color entity type
-        }
+        from app.core.config_loader import RuntimeConfigLoader
+
+        # Map field names to entity types — loaded from ui_components.yaml relations_fields
+        # The "colours" field is a special case: field name differs from entity type name
+        relations_fields = RuntimeConfigLoader.get_relations_fields("profile")
+        field_to_entity_type = {f: f for f in relations_fields}
+        field_to_entity_type["colours"] = "color"  # field name ≠ entity type name
 
         entity_type = field_to_entity_type.get(field_name)
         if not entity_type:

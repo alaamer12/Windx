@@ -199,7 +199,7 @@ class TestEntryServiceSchemaGeneration:
         assert name_field.label == "Product Name"
         assert name_field.data_type == "string"
         assert name_field.required is True
-        assert name_field.ui_component == "input"
+        assert name_field.ui_component == "text"  # "input" maps to "text" via ui_components.yaml
         assert name_field.help_text == "Enter product name"
         assert name_field.validation_rules == {"min_length": 1, "max_length": 200}
         assert name_field.display_condition is None
@@ -220,7 +220,8 @@ class TestEntryServiceSchemaGeneration:
             result = entry_service.get_section_name(ltree_path)
             assert result == expected
 
-    def test_create_field_definition_with_all_properties(self, entry_service):
+    @pytest.mark.asyncio
+    async def test_create_field_definition_with_all_properties(self, entry_service):
         """Test field definition creation with all properties set."""
         node = AttributeNode(
             id=1,
@@ -236,13 +237,13 @@ class TestEntryServiceSchemaGeneration:
             display_condition={"operator": "greater_than", "field": "width", "value": 50},
         )
 
-        field = entry_service.create_field_definition(node)
+        field = await entry_service.create_field_definition(node, "profile")
 
         assert field.name == "test_field"
         assert field.label == "Test Field Description"
         assert field.data_type == "number"
         assert field.required is True
-        assert field.ui_component == "slider"
+        assert field.ui_component == "slider"  # "slider" passes through as-is (in aliases)
         assert field.help_text == "This is help text"
         assert field.validation_rules == {"min": 10, "max": 100}
         assert field.display_condition == {
@@ -251,19 +252,20 @@ class TestEntryServiceSchemaGeneration:
             "value": 50,
         }
 
-    def test_create_field_definition_with_minimal_properties(self, entry_service):
+    @pytest.mark.asyncio
+    async def test_create_field_definition_with_minimal_properties(self, entry_service):
         """Test field definition creation with minimal properties."""
         node = AttributeNode(
             id=1, manufacturing_type_id=1, name="minimal_field", node_type="attribute"
         )
 
-        field = entry_service.create_field_definition(node)
+        field = await entry_service.create_field_definition(node, "profile")
 
         assert field.name == "minimal_field"
         assert field.label == "minimal_field"  # Falls back to name when description is None
         assert field.data_type == "string"  # Default data type
         assert field.required is False  # Default required
-        assert field.ui_component is None
+        assert field.ui_component == "text"  # data_type=string fallback → "text"
         assert field.help_text is None
         assert field.validation_rules is None
         assert field.display_condition is None

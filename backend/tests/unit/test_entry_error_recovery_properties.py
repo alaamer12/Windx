@@ -166,14 +166,20 @@ class TestEntryErrorRecoveryProperties:
                         break
 
                 if not field_found:
-                    # Cross-field validation errors are also acceptable
-                    assert field_name in [
-                        "total_width",
-                        "flyscreen_track_height",
-                        "flying_mullion_horizontal_clearance",
-                        "flying_mullion_vertical_clearance",
-                        "steel_material_thickness",
-                    ]
+                    # Cross-field validation errors from YAML required_when / tolerance_check rules
+                    from app.core.config_loader import RuntimeConfigLoader
+                    config = RuntimeConfigLoader.load_page_config("profile")
+                    cross_field_names = {
+                        attr["name"]
+                        for attr in config.get("attributes", [])
+                        if any(
+                            k in (attr.get("validation_rules") or {})
+                            for k in ("required_when", "tolerance_check", "formula_check")
+                        )
+                    }
+                    assert field_name in cross_field_names, (
+                        f"Unexpected error field '{field_name}' — not in schema fields or cross-field rules"
+                    )
 
             # Original data should be preserved (can be accessed from profile_data)
             assert profile_data.manufacturing_type_id is not None

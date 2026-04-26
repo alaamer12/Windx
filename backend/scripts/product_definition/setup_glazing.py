@@ -15,6 +15,7 @@ from sqlalchemy import select, delete
 from .base import BaseProductDefinitionSetup
 from app.models.attribute_node import AttributeNode
 from app.services.product_definition.factory import ProductDefinitionServiceFactory
+from app.core.config_loader import RuntimeConfigLoader
 
 
 class GlazingSetup(BaseProductDefinitionSetup):
@@ -52,7 +53,7 @@ class GlazingSetup(BaseProductDefinitionSetup):
                     "description": "Gas fillings between glass panes for insulation"
                 }
             },
-            "glazing_types": ["single", "double", "triple"],
+            "glazing_types": RuntimeConfigLoader.get_glazing_types(),
             "entity_count": 3
         }
         

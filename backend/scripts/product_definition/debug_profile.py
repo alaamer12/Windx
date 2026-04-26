@@ -91,8 +91,9 @@ class ProfileDebug(BaseProductDefinitionDebug):
         """Debug entity counts by type."""
         print(f"    [COUNTS] Checking entity counts...")
         
-        # Define expected entity types
-        entity_types = ["company", "material", "opening_system", "system_series", "color"]
+        # Load expected entity types from YAML config
+        from app.core.config_loader import RuntimeConfigLoader
+        entity_types = RuntimeConfigLoader.get_entity_types("profile")
         
         for entity_type in entity_types:
             stmt = select(func.count(AttributeNode.id)).where(

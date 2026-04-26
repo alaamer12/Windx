@@ -95,8 +95,9 @@ class GlazingDebug(BaseProductDefinitionDebug):
         """Debug component counts by type."""
         print(f"    [COUNTS] Checking component counts...")
         
-        # Define expected component types
-        component_types = ["glass_type", "spacer", "gas"]
+        # Load expected component types from YAML config
+        from app.core.config_loader import RuntimeConfigLoader
+        component_types = RuntimeConfigLoader.get_entity_types("glazing")
         
         for component_type in component_types:
             stmt = select(func.count(AttributeNode.id)).where(

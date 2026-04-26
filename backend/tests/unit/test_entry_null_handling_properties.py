@@ -51,44 +51,32 @@ def profile_data_with_nulls(draw):
         # Generate various null/empty states
         value_type = draw(st.sampled_from(["null", "empty_string", "empty_list", "valid_value"]))
 
+        # Look up data_type from YAML config
+        attr_config = RuntimeConfigLoader.get_attribute_config("profile", field) or {}
+        data_type = attr_config.get("data_type", "string")
+        ui_component = attr_config.get("ui_component", "input")
+
         if value_type == "null":
             base_data[field] = None
-        elif value_type == "empty_string":
-            # Only set empty string for string fields, not numeric/list/decimal fields
-            if field in ["company", "code", "pic"]:
-                base_data[field] = ""
-            else:
-                base_data[field] = None
-        elif value_type == "empty_list" and field in ["reinforcement_steel", "colours"]:
+        elif value_type == "empty_string" and data_type == "string":
+            base_data[field] = ""
+        elif value_type == "empty_list" and ui_component in ["multi-select", "multiselect"]:
             base_data[field] = []
         else:
-            # Generate appropriate valid value based on field type
-            if field in ["reinforcement_steel", "colours"]:
+            # Generate appropriate valid value based on YAML data_type
+            if ui_component in ["multi-select", "multiselect"]:
                 base_data[field] = draw(st.lists(st.text(min_size=1, max_size=10), max_size=3))
-            elif field in ["renovation", "builtin_flyscreen_track"]:
+            elif data_type == "boolean":
                 base_data[field] = draw(st.booleans())
-            elif field in [
-                "length_of_beam",
-                "width",
-                "total_width",
-                "flyscreen_track_height",
-                "front_height",
-                "rear_height",
-                "glazing_height",
-                "renovation_height",
-                "glazing_undercut_height",
-                "sash_overlap",
-                "flying_mullion_horizontal_clearance",
-                "flying_mullion_vertical_clearance",
-                "steel_material_thickness",
-                "weight_per_meter",
-            ]:
+            elif data_type == "number":
                 base_data[field] = draw(st.floats(min_value=0.1, max_value=1000))
-            elif field in ["price_per_meter", "price_per_beam"]:
+            elif data_type in ("decimal", "currency"):
                 base_data[field] = draw(st.decimals(min_value=1, max_value=1000, places=2))
             else:
                 base_data[field] = draw(st.text(max_size=50))
-
+            if field in ["company", "code", "pic"]:
+                base_data[field] = ""
+            else:
     return ProfileEntryData(**base_data)
 
 

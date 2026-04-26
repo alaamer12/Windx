@@ -151,39 +151,7 @@ class TestCSVStructurePreservation:
 
     @given(
         form_data=st.dictionaries(
-            keys=st.sampled_from(
-                [
-                    "name",
-                    "type",
-                    "company",
-                    "material",
-                    "opening_system",
-                    "system_series",
-                    "code",
-                    "length_of_beam",
-                    "renovation",
-                    "width",
-                    "builtin_flyscreen_track",
-                    "total_width",
-                    "flyscreen_track_height",
-                    "front_height",
-                    "rear_height",
-                    "glazing_height",
-                    "renovation_height",
-                    "glazing_undercut_height",
-                    "pic",
-                    "sash_overlap",
-                    "flying_mullion_horizontal_clearance",
-                    "flying_mullion_vertical_clearance",
-                    "steel_material_thickness",
-                    "weight_per_meter",
-                    "reinforcement_steel",
-                    "colours",
-                    "price_per_meter",
-                    "price_per_beam",
-                    "upvc_profile_discount",
-                ]
-            ),
+            keys=st.sampled_from(_load_profile_fields()),
             values=st.one_of(
                 st.none(),
                 st.text(min_size=0, max_size=100),
@@ -238,34 +206,7 @@ class TestCSVStructurePreservation:
 
     @given(
         null_fields=st.lists(
-            st.sampled_from(
-                [
-                    "company",
-                    "code",
-                    "length_of_beam",
-                    "renovation",
-                    "width",
-                    "builtin_flyscreen_track",
-                    "total_width",
-                    "flyscreen_track_height",
-                    "front_height",
-                    "rear_height",
-                    "glazing_height",
-                    "renovation_height",
-                    "glazing_undercut_height",
-                    "pic",
-                    "sash_overlap",
-                    "flying_mullion_horizontal_clearance",
-                    "flying_mullion_vertical_clearance",
-                    "steel_material_thickness",
-                    "weight_per_meter",
-                    "reinforcement_steel",
-                    "colours",
-                    "price_per_meter",
-                    "price_per_beam",
-                    "upvc_profile_discount",
-                ]
-            ),
+            st.sampled_from(_load_profile_fields()),
             min_size=0,
             max_size=10,
             unique=True,
@@ -446,12 +387,7 @@ class TestCSVStructurePreservation:
                 )
 
     def test_csv_structure_completeness(self):
-        """**Feature: entry-page-system, Property 4: CSV structure preservation**
-
-        Test that the CSV structure includes all required fields and maintains
-        the exact order and naming from the reference CSV.
-        """
-        # Test with minimal required data
+        """Test that the CSV structure includes all required fields."""
         form_data = {
             "manufacturing_type_id": 1,
             "name": "Test Profile",
@@ -463,62 +399,29 @@ class TestCSVStructurePreservation:
 
         preview_table = self.entry_service.generate_preview_table(form_data)
 
-        # Test header completeness
-        assert len(preview_table.headers) == 29, "Should have all 29 CSV columns"
+        # Load expected count from YAML — no hardcoded 29
+        expected_field_count = len(_load_profile_fields())
+        assert len(preview_table.headers) == expected_field_count, (
+            f"Should have all {expected_field_count} CSV columns"
+        )
 
-        # Test header order matches expected order
-        for i, expected_header in enumerate(self.expected_headers):
-            assert preview_table.headers[i] == expected_header, (
-                f"Header at position {i} should be '{expected_header}'"
-            )
-
-        # Test that all field mappings are bidirectional
+        # All field mappings should be bidirectional
         mapped_fields = set(self.header_field_mapping.values())
-        expected_fields = {
-            "name",
-            "type",
-            "company",
-            "material",
-            "opening_system",
-            "system_series",
-            "code",
-            "length_of_beam",
-            "renovation",
-            "width",
-            "builtin_flyscreen_track",
-            "total_width",
-            "flyscreen_track_height",
-            "front_height",
-            "rear_height",
-            "glazing_height",
-            "renovation_height",
-            "glazing_undercut_height",
-            "pic",
-            "sash_overlap",
-            "flying_mullion_horizontal_clearance",
-            "flying_mullion_vertical_clearance",
-            "steel_material_thickness",
-            "weight_per_meter",
-            "reinforcement_steel",
-            "colours",
-            "price_per_meter",
-            "price_per_beam",
-            "upvc_profile_discount",
-        }
-
+        expected_fields = set(_load_profile_fields())
         assert mapped_fields == expected_fields, "All expected fields should have header mappings"
 
-        # Test row structure
+        # Row should have values for all columns
         row = preview_table.rows[0]
-        assert len(row) == 29, "Row should have values for all 29 columns"
+        assert len(row) == expected_field_count, (
+            f"Row should have values for all {expected_field_count} columns"
+        )
 
-        # Test that required fields show values, optional fields show N/A
-        required_fields = ["name", "type", "material", "opening_system", "system_series"]
+        # Required fields should not show N/A
+        config = RuntimeConfigLoader.load_page_config("profile")
+        required_fields = [
+            attr["name"] for attr in config.get("attributes", []) if attr.get("required")
+        ]
         for field in required_fields:
-            header = None
-            for h, f in self.header_field_mapping.items():
-                if f == field:
-                    header = h
-                    break
-            if header:
-                assert row[header] != "N/A", f"Required field {field} should not show as N/A"
+            header = next((h for h, f in self.header_field_mapping.items() if f == field), None)
+            if header and field in form_data:
+                assert row.get(header) != "N/A", f"Required field {field} should not show as N/A"

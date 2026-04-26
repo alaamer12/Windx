@@ -62,12 +62,13 @@ class TestEnhancedErrorHandling:
         token = login_response.json()["access_token"]
 
         # Mock the EntryService to raise ValidationException with field_errors
+        # These are generic validation errors (not business rules — those were removed)
         field_errors = {
-            "renovation": "Renovation is only applicable for frame types",
-            "sash_overlap": "Sash overlap is only applicable for sash types",
+            "name": "Name is required",
+            "type": "Type is required",
         }
         validation_exception = ValidationException(
-            message="Business rule validation failed", field_errors=field_errors
+            message="Validation failed", field_errors=field_errors
         )
 
         with patch("app.services.entry.EntryService.save_profile_configuration") as mock_save:
